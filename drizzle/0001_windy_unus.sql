@@ -1,0 +1,1 @@
+ALTER TABLE `leads` ADD `status` enum('new','contacted','booked') DEFAULT 'new' NOT NULL;

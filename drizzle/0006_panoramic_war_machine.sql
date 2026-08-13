@@ -1,0 +1,1 @@
+ALTER TABLE `leads` ADD `agentSource` enum('link','manual');

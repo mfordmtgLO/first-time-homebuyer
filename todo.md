@@ -1,0 +1,196 @@
+# Project TODO
+
+- [x] Golden Hour Porch landing page (hero, myth-buster, programs, roadmap form, how-it-works, about, FAQ, final CTA, footer)
+- [x] Rebrand with Cornerstone First Mortgage / Mike Ford (logo, NMLS# 288455, company NMLS ID #173855, compliance disclaimers, Apply Online portal link)
+- [x] Upgrade project to full-stack (web-db-user) — resolve Home.tsx conflict
+- [x] Create `leads` table in drizzle schema + migration
+- [x] Add tRPC `leads.submit` public procedure + db helper
+- [x] Wire LeadMagnet form to tRPC mutation
+- [x] Owner notification on new lead submission
+- [x] Vitest test for lead submission
+- [x] Verify end-to-end in browser + checkpoint
+- [x] Private /leads dashboard page (admin-only) with lead table
+- [x] CSV export of leads from the dashboard
+- [x] Login gating: non-authenticated → login; non-admin → access denied
+- [x] Register /leads route in App.tsx
+- [x] Vitest for leads.list access control
+- [x] Verify dashboard in browser + checkpoint
+- [x] Add `status` column (new/contacted/booked) to leads table + migration
+- [x] tRPC `leads.updateStatus` admin-only mutation
+- [x] Status dropdown/badges in /leads dashboard with optimistic updates
+- [x] Include status in CSV export
+- [x] Vitest for status update access control + validation
+- [x] Verify status flow in browser + checkpoint
+- [x] Add `notes` text column to leads table + migration
+- [x] tRPC `leads.updateNotes` admin-only mutation
+- [x] Notes editing UI (expandable row / popover with textarea + save) in /leads
+- [x] Include notes in CSV export
+- [x] Vitest for notes update access control + validation
+- [x] Verify notes flow in browser + checkpoint
+- [x] Search input (name/email) in /leads dashboard
+- [x] Status filter (All / New / Contacted / Booked) in /leads dashboard
+- [x] Filtered-empty state + result count; CSV exports the filtered view
+- [x] Verify search/filter in browser + checkpoint
+- [x] Shared 2-1 buydown math module (P&I payment, year-1/-2 savings, seller subsidy)
+- [x] Buydown calculator section: purchase price input, down payment slider (% / $ toggle), note rate input (default 6.5%)
+- [x] Chart comparing Year 1 / Year 2 / Note rate monthly payments with savings callouts
+- [x] Educational copy explaining seller-paid 2-1 buydown + disclaimer
+- [x] Add section to Home page + nav link, responsive check
+- [x] Vitest for buydown math
+- [x] Verify calculator in browser + checkpoint
+- [x] Scenario column (JSON) on leads table + migration
+- [x] Shared BuydownScenario type + React context so calculator state reaches the lead form
+- [x] leads.submit accepts optional scenario; stored with lead
+- [x] Calculator CTA "Get these numbers in my Roadmap" scrolls to form; form shows attached-scenario chip
+- [x] /leads dashboard displays scenario details; CSV includes scenario
+- [x] Vitest for scenario capture; end-to-end browser test; checkpoint
+- [x] Update contact phone number everywhere to (541) 729-0819 (Nav, About, FinalCta, Footer, tel: links)
+- [x] Add subtle hover animation to phone links (icon wiggle, sliding underline, color shift)
+- [x] Add official Equal Housing Opportunity logo after every "Equal Opportunity Lender" phrase (Hero, Footer)
+- [x] Create shared rent-vs-buy (cost of waiting) math module (rent paid vs equity built: principal paydown + appreciation)
+- [x] Build Cost of Waiting calculator UI in MythBuster section (waiting years 1-5 slider, rent input, price input, down payment %/$ toggle starting at 0, rate slider 5.875-6.5, appreciation slider 0-3)
+- [x] Comparison chart: cumulative rent spent vs equity built over the waiting period + cost-of-waiting summary
+- [x] Vitest coverage for rent-vs-buy math
+- [x] Verify interactions in browser (desktop + mobile) and checkpoint
+- [x] Extend shared scenario types to support a cost-of-waiting scenario (wait years, rent, price, down payment, rate, appreciation, rent paid, equity built, cost of waiting)
+- [x] leads.submit accepts optional costOfWaiting scenario; stored with lead
+- [x] CostOfWaiting calculator CTA attaches its scenario to the lead form (chip shows both scenarios if present)
+- [x] /leads dashboard Scenario popover + CSV include cost-of-waiting data
+- [x] Vitest for cost-of-waiting scenario capture; end-to-end browser test; checkpoint
+- [x] Rent-increase assumption slider (0%-10%/yr) in Cost of Waiting calculator UI
+- [x] Compound rent annually in the rent-vs-buy math (yearly breakdown + totals)
+- [x] Carry rentIncreaseRate through scenario capture (shared types, leads.submit, notification summary)
+- [x] Show rent increase in /leads Scenario popover + CSV export column
+- [x] Update vitest coverage for rent growth; verify in browser; checkpoint
+- [x] Research Oregon historical average rent increases over the last 5 years (credible sources)
+- [x] Add informative tooltip next to the rent-increase slider with Oregon historical data
+- [x] Verify tooltip on desktop + mobile (tap support); checkpoint
+- [x] Research Oregon historical average home price appreciation since 2000 (credible sources, e.g., FHFA HPI)
+- [x] Add informative tooltip next to the home appreciation slider with Oregon historical data
+- [x] Verify appreciation tooltip on desktop + mobile; checkpoint
+- [x] Add agent_profile table (name, headshot URL, email, cell, bio, website, company logo URL, visible flag)
+- [x] Add S3 image upload endpoint (admin-only) for headshot and company logo
+- [x] Add tRPC procedures: agent.get (public), agent.save (admin-only)
+- [x] Build "Real Estate Agent" settings panel in /leads dashboard with image uploads and clear/remove option
+- [x] Add public "Local Real Estate Agent" section at bottom of landing page (renders only when populated)
+- [x] Vitest coverage for agent.save access control and agent.get behavior
+- [x] End-to-end verify: save agent in dashboard → section appears on landing page; checkpoint
+- [x] Multi-agent upgrade: extend `agent_profile` into a multi-row agents table (unlimited profiles, unique slug, featured flag) + `agentId`/`sentToAgentAt` columns on leads; migrate existing single profile
+- [x] tRPC agent CRUD: agent.list/create/update/delete/setFeatured (admin), agent.getBySlug + agent.getFeatured (public); slug auto-generated from name, editable, uniqueness enforced
+- [x] Per-agent static co-branded URL: /with/:slug renders the landing page with that agent's Local Agent section; leads submitted there auto-tagged with agentId
+- [x] Agents manager panel in /leads dashboard: add/edit/delete agents, copy custom URL button, visible toggle per agent
+- [x] Agent assignment dropdown on each lead row (assign any saved agent to any lead)
+- [x] "Send to agent" button on each lead row: emails assigned agent an intro with lead name/email/scenario summary (Resend integration + fallback)
+- [x] Vitest coverage: agents CRUD access control, slug generation/uniqueness, getBySlug, lead assignment, sendToAgent gating
+- [x] Visual verification of dashboard + /with/:slug page; checkpoint
+- [x] Track lead origin: `agentSource` column on leads ("link" when submitted via /with/:slug, "manual" when assigned in dashboard)
+- [x] tRPC agent.stats (admin): per-agent counts — leads from custom link, currently assigned, referred (sent to agent)
+- [x] Show stats on each agent card in the Co-marketing agents panel (link leads / assigned / referred)
+- [x] Vitest coverage for agent.stats access control and per-source counting
+- [x] Visual verification of stats in dashboard; checkpoint
+- [x] Fix "Send to agent" error for unverified Resend sender domain: open a prefilled mail draft instead of returning a generic failure; add email and router tests
+- [x] Replace the dashboard lead email action with a personalized first-contact mail draft
+- [x] Include a Roadmap PDF attachment reminder and calculator-specific 2-1 buydown / cost-of-waiting summaries when available
+- [x] Include the complete assigned co-marketing agent profile and agent contact invitation for co-branded leads
+- [x] Add Vitest coverage for email-draft content and verify the lead dashboard action visually
+- [x] Checkpoint the polished lead email experience
+- [x] Host Roadmap Homebuyer guide + checklist and Your Road Home Map PDFs as stable resources for lead email drafts
+- [x] Add both named PDF links to the personalized lead email draft and replace the manual attachment placeholder
+- [x] Test the two-resource email draft and checkpoint the update
+- [x] Label the estimated temporary 2-1 buydown subsidy as 100% seller funded in lead email drafts; update test and checkpoint
+- [x] Emphasize “GO” in the Your Road Home Map callout with reliable bold Unicode in the plain-text email draft
+- [x] Change Cost of Waiting CTA text to “Get these numbers in my Roadmap” while preserving scenario attachment and form scroll behavior
+- [x] Simplify the co-branded agent section in lead email drafts by removing agent bio, headshot, and company-logo links
+- [x] Replace co-branded page wording and add contextual website links in the closing for both standard and co-branded lead drafts
+- [x] Add tests for standard and co-branded closing links, then checkpoint the refined lead email draft
+- [x] Change the 2-1 Buydown booking CTA to “Run my numbers” and add the same dark-green booking CTA to Cost of Waiting while preserving both Roadmap scenario-capture buttons
+- [x] Define and migrate chat intake lead, chat transcript, and loan-officer profile data models
+- [x] Add public structured mortgage intake procedures with partial-lead persistence, co-branded agent context, and compliant qualification prompts
+- [x] Add admin-only loan-officer profile management and chat-lead list, filter, transcript, and CSV export procedures
+- [x] Build a responsive floating Mortgage Intake Specialist widget with typing state, success card, and co-branded contact context
+- [x] Build password-protected internal chat-lead review in the existing admin dashboard
+- [x] Add Vitest coverage and complete end-to-end/visual verification of the chatbot intake flow
+- [x] Checkpoint the conversational mortgage intake assistant
+- [x] Run a complete persisted chatbot lifecycle test from greeting through qualification and transcript retrieval
+- [x] Verify the public chat launcher and protected admin chat-review panels after the final chatbot implementation
+- [x] Save a final checkpoint for the verified Mortgage Intake Specialist feature
+- [x] Reposition the floating chat launcher above the bottom-right attribution overlay on all viewport sizes
+- [x] Email each completed intake summary to the selected loan officer and, when applicable, the co-branded agent
+- [x] Retain an inactive SMS notification upgrade path only; do not configure a provider, request credentials, or send automatic text alerts
+- [x] Update “Option A — Let’s chat first” to offer clear call and text choices
+- [x] Add tests and visual verification for chat visibility, intake recipient emails, and call/text CTA behavior
+- [x] Checkpoint the intake notification and CTA improvements
+- [x] Record completed-intake recipient email delivery status and show an admin-visible manual-follow-up state when Resend is not configured or the sender domain is unverified
+- [x] Save a final checkpoint after notification fallback verification
+- [x] Adjust the opened Mortgage Intake Specialist panel so the contact header stays fully visible above the viewport edge while the launcher remains clear of the attribution overlay
+- [x] Open the Mortgage Intake Specialist at desktop and mobile widths and visually verify its full contact header is not clipped
+- [x] Add a compact minimize state that hides the open chatbot without resetting its saved conversation
+- [x] Add one-tap Purchase and Refinance quick-reply chips at the start of the mortgage intake conversation
+- [x] Add an admin-only chat intake resend procedure and dashboard action for manual loan-officer/co-branded-agent follow-up emails
+- [x] Add tests and public/admin visual verification for the chatbot interaction and resend enhancements
+- [x] Checkpoint the chat minimize, quick-reply, and manual resend improvements
+- [x] Visually verify the qualified chat-intake Resend action in the protected dashboard before final checkpointing
+- [x] Add persistent resend count and most-recent resend timestamp to completed chat intakes and display both in the dashboard
+- [x] Add a confirmation dialog before manually resending chat-intake recipient emails
+- [x] Extend the mortgage intake flow to ask about low/no-down-payment home-search interest and, when requested, capture the target city and surrounding area before completion
+- [x] Add a booking link to the chat completion card and a prominent scheduling placement on the public website
+- [x] Embed the confirmed Calendly booking URL (https://calendly.com/mikefordlo/bookacall) in the chat completion and public scheduling placements
+- [x] Add migration, tests, and public/admin visual verification for resend history, confirmation, home-search intake, and booking flows
+- [x] Checkpoint the chat follow-up, home-search, and calendar booking improvements
+- [x] Visually verify the public low/no-down-payment home-search yes/no prompt and target-area follow-up before qualification completes
+- [x] Save a final checkpoint after public home-search flow verification
+- [x] Upload the supplied enhanced Mike Ford headshot as a stable website asset and replace all public profile references
+- [x] Visually verify the enhanced Mike Ford headshot in its public About-section placement
+- [x] Checkpoint the enhanced Mike Ford headshot update
+- [x] Confirm no public code reference remains to the prior Mike Ford headshot asset
+- [x] Capture a valid public About-section render showing the enhanced Mike Ford headshot in place
+- [x] Save a final checkpoint for the fully verified enhanced Mike Ford headshot update
+- [x] Remove “not a salesperson” from the About-section headline
+- [x] Correct malformed “first-time” typography in the Good Questions FAQ heading
+- [x] Visually verify both public copy refinements and checkpoint the update
+- [x] Change the full Good Questions headline to a clean font treatment without the distorted lowercase “f,” then verify and checkpoint
+- [x] Apply the clean Public Sans headline treatment to “Your first home is closer than you think.” in the Two Easy Ways to Start section, then verify and checkpoint
+- [x] Add an accessible typing indicator while the Mortgage Intake Specialist processes a visitor response, then verify and checkpoint
+- [x] Add property-type quick replies: Single-Family, Condo, Multi-Family, Townhouse, and Manufactured home (no leased land/space rent)
+- [x] Add guided purchase-price, gross-household-income, and down-payment slider inputs with requested ranges
+- [x] Add credit-range quick replies and YES/NO property-search quick replies with the revised qualifying-properties language
+- [x] Preserve chat validation, scenario persistence, and qualification behavior for all guided inputs
+- [x] Add tests and mobile/desktop visual verification for guided chat inputs, then checkpoint
+- [x] Visually verify the guided Mortgage Intake Specialist property, slider, credit, and YES/NO controls at desktop width
+- [x] Save a final checkpoint after desktop guided-chat verification
+- [x] Add Mike Ford’s verified Experience.com client-reviews link to the Your Guide loan-officer section
+- [x] Add a second accessible client-reviews link at a high-intent public conversion point without displaying review content
+- [x] Verify both public review-link placements and the live Experience.com destination, then checkpoint
+- [x] Change the Good Questions headline to “Common first-time buyer lender questions.”, verify the public rendering, and checkpoint
+- [x] Remove the duplicate co-branded website sentence from agent contact details while retaining it once in the email closing; add a regression test and checkpoint
+- [x] Add independently scrollable vertical list containers to the Roadmap leads and Mortgage chat intakes dashboard sections
+- [x] Verify long-list dashboard scrolling on desktop and mobile, then checkpoint the layout improvement
+- [x] Automatically scroll and snap the Mortgage Intake Specialist to the newest question after quick replies or slider submissions, with accessible focus behavior
+- [x] Verify guided chat auto-scroll and focus behavior at desktop and mobile sizes, then checkpoint
+- [x] Visually verify newest-question snapping and focus at desktop width for guided quick replies and slider steps
+- [x] Save a final checkpoint after desktop chat snap verification
+- [x] Extend loan-officer data and dashboard management to support unlimited LO profiles with public slugs
+- [x] Add per-LO agent partner selection from the saved-agent dropdown and persist unique LO-agent co-marketing pairings
+- [x] Create unique public co-branded LO-agent URLs and preserve pairing attribution through chat and Roadmap lead capture
+- [x] Add dashboard copy-link controls and visible partner assignments for each loan officer
+- [x] Add migrations, access-control/attribution tests, public-route and dashboard visual verification, then checkpoint
+- [x] Separate guided quick-reply and slider controls from the scrolling transcript so they never overlap the active Mortgage Intake Specialist question
+- [x] Keep the full current question in focus immediately above the response input with an adaptively sized chat viewport for long prompts
+- [x] Add regression coverage and visually verify long-prompt quick-reply and slider steps at mobile and desktop widths
+- [x] Checkpoint the responsive Mortgage Intake Specialist layout correction
+- [x] Replace the angled golden-arch hero home photo with a vertically straight rectangular photo treatment
+- [x] Change the Loan Officer Guide portrait area to a professional 4:3 rectangular crop without tilted framing
+- [x] Visually verify both public photo treatments at desktop and mobile widths, then checkpoint
+- [x] Display loan-officer and agent attribution, including a co-branded source indicator, for every Mortgage chat intake
+- [x] Add unified chat-intake search and loan-officer/agent filtering with no-result and clear-filter states
+- [x] Ensure Mortgage chat-intake CSV export contains only the current filtered/visible list and includes LO-agent attribution columns
+- [x] Add tests and verify filtered attribution search/export behavior in the dashboard, then checkpoint
+- [x] Add City and County quick-reply choices after a visitor requests low/no-down-payment qualifying properties
+- [x] Capture the requested Oregon city or county, persist the search-area preference, and include it in dashboard and recipient email follow-up details
+- [x] Update completion and property-search chat wording to set the expectation that a qualifying-property list will be prepared and emailed soon
+- [x] Add migration, tests, and guided-chat visual verification for the City-or-County property-search flow, then checkpoint
+- [x] Display loan-officer and agent attribution, including a co-branded source indicator, for every Roadmap lead
+- [x] Add unified Roadmap lead search and loan-officer/agent filtering with no-result and clear-filter states
+- [x] Ensure Roadmap lead CSV export contains only the current filtered/visible list and includes LO-agent attribution columns
+- [x] Add tests and verify filtered Roadmap attribution search/export behavior in the dashboard, then checkpoint
+- [x] Adjust the Loan Officer Guide portrait crop so Mike Ford’s full head has comfortable top clearance, then verify and checkpoint
