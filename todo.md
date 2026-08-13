@@ -200,3 +200,6 @@
 - [x] Build admin browsing for city/county saved pulls with All, LMI, USDA RD, and dual-overlay filters
 - [x] Add Roadmap and chat-intake lead selection plus listing-table email-draft generation
 - [x] Add automated tests, visual verification, and a checkpoint for the GeoSphere/Rentcast integration
+- [x] Diagnose and repair the Roadmap lead-submission insert failure caused by a copied database schema mismatch
+- [x] Restore the missing company logo, Mike Ford headshot, and public stock-photo asset references
+- [x] Add regression coverage and verify the Roadmap submission and public media rendering, then checkpoint

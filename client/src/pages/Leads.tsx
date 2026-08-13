@@ -44,7 +44,7 @@ import {
   Users,
 } from "lucide-react";
 
-const LOGO = "/manus-storage/cornerstone-logo-standard_8b43a164.png";
+const LOGO = "/manus-storage/cornerstone-logo-standard_72b02c9f.png";
 
 type LeadStatus = "new" | "contacted" | "booked";
 

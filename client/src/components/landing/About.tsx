@@ -6,7 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { BadgeCheck, ExternalLink, Phone } from "lucide-react";
 
 // Enhanced Mike Ford portrait supplied for the public website profile.
-const ADVISOR_IMG = "/manus-storage/mike-ford-headshot-enhanced_a17f8b15.webp";
+const ADVISOR_IMG = "/manus-storage/mike-ford-headshot-enhanced_fb5e90a0.webp";
 
 export default function About() {
   const ref = useReveal<HTMLElement>();

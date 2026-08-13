@@ -10,7 +10,7 @@ import { Download, CheckCircle2, Loader2, Calculator, Hourglass, X } from "lucid
 const fmtUsd = (v: number) =>
   v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
-const COVER_IMG = "/manus-storage/roadmap-cover_fa8d4dfa.png";
+const COVER_IMG = "/manus-storage/roadmap-cover_04621272.png";
 
 const bullets = [
   "A step-by-step breakdown of the entire process — from setting your budget to grabbing your keys",

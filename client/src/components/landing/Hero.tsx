@@ -2,8 +2,8 @@
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import { useReveal } from "@/hooks/useReveal";
 
-const HERO_IMG = "/manus-storage/hero-golden-hour-home_934ee356.png";
-const COUPLE_IMG = "/manus-storage/couple-keys-porch_77fc9abd.png";
+const HERO_IMG = "/manus-storage/hero-golden-hour-home_abbb0ea0.png";
+const COUPLE_IMG = "/manus-storage/couple-keys-porch_3a40710c.png";
 
 export default function Hero() {
   const ref = useReveal<HTMLElement>();
@@ -53,7 +53,7 @@ export default function Hero() {
             <span className="flex items-center gap-1.5">
               Equal Opportunity Lender
               <img
-                src="/manus-storage/equal-housing-opportunity-logo_a0ad8f72.png"
+                src="/manus-storage/equal-housing-opportunity-logo_8960e6e0.png"
                 alt="Equal Housing Opportunity logo"
                 className="h-5 w-auto object-contain"
               />

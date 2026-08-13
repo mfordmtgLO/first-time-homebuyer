@@ -1,7 +1,7 @@
 /* GOLDEN HOUR PORCH — compliance footer: Cornerstone First Mortgage, NMLS ID #173855, Mike Ford NMLS# 288455, Equal Opportunity Lender */
 import { Phone } from "lucide-react";
 
-const LOGO = "/manus-storage/cornerstone-logo-standard_8b43a164.png";
+const LOGO = "/manus-storage/cornerstone-logo-standard_72b02c9f.png";
 
 export default function Footer() {
   return (
@@ -74,7 +74,7 @@ export default function Footer() {
             © {new Date().getFullYear()} Cornerstone First Mortgage, LLC. All Rights Reserved. NMLS ID #173855
             Equal Opportunity Lender.
             <img
-              src="/manus-storage/equal-housing-opportunity-logo_a0ad8f72.png"
+              src="/manus-storage/equal-housing-opportunity-logo_8960e6e0.png"
               alt="Equal Housing Opportunity logo"
               className="h-8 w-auto object-contain"
             />

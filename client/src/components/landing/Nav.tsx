@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { CALENDLY_BOOKING_URL } from "@/lib/booking";
 import { Phone } from "lucide-react";
 
-const LOGO = "/manus-storage/cornerstone-logo-standard_8b43a164.png";
+const LOGO = "/manus-storage/cornerstone-logo-standard_72b02c9f.png";
 
 const links = [
   { href: "#programs", label: "Loan Programs" },

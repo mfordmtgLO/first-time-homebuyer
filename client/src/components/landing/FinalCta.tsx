@@ -4,7 +4,7 @@ import { CALENDLY_BOOKING_URL } from "@/lib/booking";
 import { EXPERIENCE_REVIEWS_URL } from "@/lib/reviews";
 import { CalendarClock, ExternalLink, FileText, MessageSquare, PhoneCall } from "lucide-react";
 
-const COUPLE_IMG = "/manus-storage/couple-keys-porch_77fc9abd.png";
+const COUPLE_IMG = "/manus-storage/couple-keys-porch_3a40710c.png";
 
 export default function FinalCta() {
   const ref = useReveal<HTMLElement>();
