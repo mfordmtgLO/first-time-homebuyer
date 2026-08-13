@@ -303,6 +303,7 @@ export const appRouter = router({
         z.object({
           firstName: z.string().trim().min(1, "First name is required").max(120),
           email: z.string().trim().email("A valid email is required").max(320),
+          phone: z.string().trim().min(7, "A valid phone number is required").max(40).optional(),
           source: z.string().trim().max(64).optional(),
           scenario: buydownScenarioSchema.optional(),
           costOfWaiting: costOfWaitingScenarioSchema.optional(),
@@ -368,6 +369,7 @@ export const appRouter = router({
         await insertLead({
           firstName: input.firstName,
           email: input.email,
+          ...(input.phone ? { phone: input.phone } : {}),
           source: input.source ?? "roadmap",
           scenario: scenarioPayload,
           agentId,
@@ -500,6 +502,7 @@ export const appRouter = router({
           agentEmail: agent.email,
           leadFirstName: lead.firstName,
           leadEmail: lead.email,
+          leadPhone: lead.phone,
           leadSource: lead.source,
           submittedAt: lead.createdAt,
           scenarioSummary,
@@ -983,18 +986,27 @@ function summarizeLeadScenario(raw: string | null): string | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as {
-      buydown?: { purchasePrice: number; downPayment: number; noteRate: number };
+      buydown?: { purchasePrice: number; downPayment: number; noteRate: number; year1MonthlySavings?: number; year2MonthlySavings?: number; totalSubsidy?: number };
       costOfWaiting?: { purchasePrice: number; monthlyRent: number; waitYears: number };
       purchasePrice?: number; // legacy bare-buydown shape
       downPayment?: number;
       noteRate?: number;
+      year1MonthlySavings?: number;
+      year2MonthlySavings?: number;
+      totalSubsidy?: number;
     };
     const lines: string[] = [];
     const bd = parsed.buydown ?? (parsed.purchasePrice !== undefined ? parsed : undefined);
     if (bd && bd.purchasePrice !== undefined) {
-      lines.push(
-        `- 2-1 buydown scenario: $${Math.round(bd.purchasePrice).toLocaleString("en-US")} purchase, $${Math.round(bd.downPayment ?? 0).toLocaleString("en-US")} down, ${bd.noteRate}% note rate`
-      );
+      const money = (value: number) => `$${Math.round(value).toLocaleString("en-US")}`;
+      const savings = [
+        typeof bd.year1MonthlySavings === "number" ? `Year 1 monthly savings: ${money(bd.year1MonthlySavings)}` : null,
+        typeof bd.year2MonthlySavings === "number" ? `Year 2 monthly savings: ${money(bd.year2MonthlySavings)}` : null,
+        typeof bd.totalSubsidy === "number"
+          ? `Total seller-paid buydown interest subsidy: ${money(bd.totalSubsidy)} (${((bd.totalSubsidy / Math.max(bd.purchasePrice, 1)) * 100).toFixed(2)}% of sales price)`
+          : null,
+      ].filter((detail): detail is string => detail !== null);
+      lines.push(`- 2-1 buydown scenario: ${money(bd.purchasePrice)} purchase, ${money(bd.downPayment ?? 0)} down, ${bd.noteRate}% note rate${savings.length ? `\n  - ${savings.join("\n  - ")}` : ""}`);
     }
     if (parsed.costOfWaiting) {
       const c = parsed.costOfWaiting;
@@ -1011,12 +1023,13 @@ function summarizeLeadScenario(raw: string | null): string | null {
 /** Prefilled mailto: link so the owner can send manually when email isn't configured. */
 function buildMailtoFallback(
   agentEmail: string,
-  lead: { firstName: string; email: string; source: string },
+  lead: { firstName: string; email: string; phone: string; source: string },
   agentName: string,
   scenarioSummary: string | null
 ) {
+  const agentFirstName = agentName.trim().split(/\s+/)[0] || "there";
   const subject = `New buyer lead: ${lead.firstName}`;
-  const body = `Hi ${agentName || "there"},\n\nI'd like to connect you with a buyer lead from my First-Time Homebuyer landing page.\n\nName: ${lead.firstName}\nEmail: ${lead.email}\nCame in via: ${lead.source}${scenarioSummary ? `\n\nWhat they explored on the site:\n${scenarioSummary}` : ""}\n\nThey're working with me on financing — please reach out and introduce yourself.\n\nThanks,\nMike Ford\nCornerstone First Mortgage\n(541) 729-0819`;
+  const body = `Hi ${agentFirstName},\n\nI'd like to connect you with a buyer lead from my First-Time Homebuyer landing page.\n\nName: ${lead.firstName}\nEmail: ${lead.email}\nPhone: ${lead.phone || "Not provided"}\nCame in via: ${lead.source}${scenarioSummary ? `\n\nWhat they explored on the site:\n${scenarioSummary}` : ""}\n\nThey're working with me on financing — please reach out and introduce yourself.\n\nThanks,\nMike Ford\nCornerstone First Mortgage\n(541) 729-0819`;
   return `mailto:${agentEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 

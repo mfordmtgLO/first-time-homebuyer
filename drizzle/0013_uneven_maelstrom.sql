@@ -1,0 +1,1 @@
+ALTER TABLE `leads` ADD `phone` varchar(40) DEFAULT '' NOT NULL;

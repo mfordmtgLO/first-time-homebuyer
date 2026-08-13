@@ -519,6 +519,7 @@ export default function Leads() {
       return (
         l.firstName.toLowerCase().includes(q) ||
         l.email.toLowerCase().includes(q) ||
+        l.phone.toLowerCase().includes(q) ||
         l.source.toLowerCase().includes(q) ||
         (l.loanOfficerName ?? "").toLowerCase().includes(q) ||
         (l.agentName ?? "").toLowerCase().includes(q)
@@ -551,7 +552,7 @@ export default function Leads() {
 
   const downloadCsv = () => {
     const header =
-      "First Name,Email,Source,Co-branded Source,Loan Officer,Loan Officer URL Slug,Agent,Agent URL Slug,Status,Notes,Submitted At,Purchase Price,Down Payment,Note Rate %,Loan Amount,Year 1 Payment,Year 2 Payment,Note Payment,Year 1 Savings/mo,Year 2 Savings/mo,Seller Subsidy,Wait Years,Monthly Rent,CoW Purchase Price,CoW Down Payment,CoW Interest Rate %,CoW Appreciation %,CoW Rent Increase %,CoW Monthly Payment,Rent Paid If Waiting,Equity Missed,Cost Of Waiting";
+      "First Name,Email,Phone,Source,Co-branded Source,Loan Officer,Loan Officer URL Slug,Agent,Agent URL Slug,Status,Notes,Submitted At,Purchase Price,Down Payment,Note Rate %,Loan Amount,Year 1 Payment,Year 2 Payment,Note Payment,Year 1 Savings/mo,Year 2 Savings/mo,Seller Subsidy,Wait Years,Monthly Rent,CoW Purchase Price,CoW Down Payment,CoW Interest Rate %,CoW Appreciation %,CoW Rent Increase %,CoW Monthly Payment,Rent Paid If Waiting,Equity Missed,Cost Of Waiting";
     const rows = filteredLeads.map((l) =>
       {
         const parsed = parseScenario(l.scenario ?? null);
@@ -560,6 +561,7 @@ export default function Leads() {
         return [
         csvEscape(l.firstName),
         csvEscape(l.email),
+        csvEscape(l.phone),
         csvEscape(l.source),
         l.agentSource === "link" ? "Yes" : "No",
         csvEscape(l.loanOfficerName ?? ""),
@@ -810,6 +812,7 @@ export default function Leads() {
                           <td className="px-5 py-3.5 font-medium text-foreground">{lead.firstName}</td>
                           <td className="px-5 py-3.5 text-foreground/85">
                             <div>{lead.email}</div>
+                            {lead.phone && <div className="mt-0.5 text-xs text-muted-foreground">{lead.phone}</div>}
                             <div className="mt-1">
                               <LeadEmailDraftAction lead={lead} agents={agentOptions} />
                             </div>

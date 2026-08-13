@@ -27,6 +27,7 @@ export default function LeadMagnet() {
   const [submitted, setSubmitted] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
 
   const submitLead = trpc.leads.submit.useMutation({
     onSuccess: () => {
@@ -40,12 +41,17 @@ export default function LeadMagnet() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!firstName.trim() || !email.trim()) {
-      toast.error("Please fill in your first name and email.");
+    if (!firstName.trim() || !email.trim() || !phone.trim()) {
+      toast.error("Please fill in your first name, email, and phone number.");
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       toast.error("Please enter a valid email address.");
+      return;
+    }
+    const phoneDigits = phone.replace(/\D/g, "");
+    if (phoneDigits.length < 10 || phoneDigits.length > 15) {
+      toast.error("Please enter a valid phone number, including area code.");
       return;
     }
     const includeScenario = attached && scenario ? scenario : undefined;
@@ -58,6 +64,7 @@ export default function LeadMagnet() {
     submitLead.mutate({
       firstName: firstName.trim(),
       email: email.trim(),
+      phone: phone.trim(),
       source: sourceTags.join("+"),
       scenario: includeScenario,
       costOfWaiting: includeCow,
@@ -166,6 +173,15 @@ export default function LeadMagnet() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Email address"
                   aria-label="Email address"
+                  className="h-12 flex-1 rounded-md border border-input bg-card px-4 text-base outline-none focus:ring-2 focus:ring-ring/60"
+                />
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Best phone number"
+                  aria-label="Best phone number"
+                  autoComplete="tel"
                   className="h-12 flex-1 rounded-md border border-input bg-card px-4 text-base outline-none focus:ring-2 focus:ring-ring/60"
                 />
                 <button

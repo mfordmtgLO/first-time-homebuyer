@@ -32,6 +32,8 @@ export const leads = mysqlTable("leads", {
   id: int("id").autoincrement().primaryKey(),
   firstName: varchar("firstName", { length: 120 }).notNull(),
   email: varchar("email", { length: 320 }).notNull(),
+  /** Primary phone number captured with a Roadmap lead for agent follow-up. */
+  phone: varchar("phone", { length: 40 }).default("").notNull(),
   source: varchar("source", { length: 64 }).default("roadmap").notNull(),
   status: mysqlEnum("status", ["new", "contacted", "booked"]).default("new").notNull(),
   notes: text("notes"),

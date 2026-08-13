@@ -67,6 +67,16 @@ describe("leads.submit", () => {
     );
   });
 
+  it("stores a supplied Roadmap phone number for follow-up", async () => {
+    const caller = appRouter.createCaller(createPublicContext());
+
+    await caller.leads.submit({ firstName: "Sam", email: "sam@example.com", phone: "(541) 555-0100" });
+
+    expect(insertLeadMock).toHaveBeenCalledWith(
+      expect.objectContaining({ phone: "(541) 555-0100" })
+    );
+  });
+
   it("rejects an invalid email", async () => {
     const caller = appRouter.createCaller(createPublicContext());
 

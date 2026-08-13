@@ -205,3 +205,6 @@
 - [x] Add regression coverage and verify the Roadmap submission and public media rendering, then checkpoint
 - [x] Add a copyable loan-officer-only public profile URL when no agent partner is selected
 - [x] Verify paired and loan-officer-only profile URLs, add regression coverage, and checkpoint
+- [x] Add a phone field to Roadmap lead capture, persistence, dashboard display, and agent referral details
+- [x] Refine Roadmap agent-referral greetings and 2-1 buydown savings/subsidy calculations in the draft email
+- [x] Add regression coverage, verify the updated lead flow, and checkpoint the referral-email improvements

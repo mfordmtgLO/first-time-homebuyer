@@ -12,6 +12,7 @@ export type ReferralEmailInput = {
   agentEmail: string;
   leadFirstName: string;
   leadEmail: string;
+  leadPhone?: string | null;
   leadSource: string;
   submittedAt: Date;
   scenarioSummary: string | null;
@@ -27,16 +28,18 @@ export type ReferralEmailResult =
     };
 
 export function buildReferralEmail(input: ReferralEmailInput) {
+  const agentFirstName = input.agentName.trim().split(/\s+/)[0] || "there";
   const subject = `New buyer lead from ${input.ownerName}: ${input.leadFirstName}`;
   const scenarioBlock = input.scenarioSummary
     ? `\n\nWhat they explored on the site:\n${input.scenarioSummary}`
     : "";
-  const text = `Hi ${input.agentName || "there"},
+  const text = `Hi ${agentFirstName},
 
 I'd like to connect you with a buyer lead from my First-Time Homebuyer landing page.
 
 Name: ${input.leadFirstName}
 Email: ${input.leadEmail}
+Phone: ${input.leadPhone || "Not provided"}
 Came in via: ${input.leadSource}
 Submitted: ${input.submittedAt.toLocaleString("en-US", { timeZone: "America/Los_Angeles" })} (Pacific)${scenarioBlock}
 

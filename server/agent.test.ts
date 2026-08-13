@@ -114,11 +114,19 @@ const SAMPLE_LEAD = {
   id: 42,
   firstName: "Sarah",
   email: "sarah@example.com",
+  phone: "(541) 555-0199",
   source: "roadmap+buydown",
   status: "new" as const,
   notes: null,
   scenario: JSON.stringify({
-    buydown: { purchasePrice: 425000, downPayment: 21250, noteRate: 6.5 },
+    buydown: {
+      purchasePrice: 425000,
+      downPayment: 21250,
+      noteRate: 6.5,
+      year1MonthlySavings: 536,
+      year2MonthlySavings: 275,
+      totalSubsidy: 9730,
+    },
   }),
   agentId: 7,
   sentToAgentAt: null,
@@ -312,6 +320,7 @@ describe("leads.sendToAgent", () => {
         agentEmail: "jane@realty.com",
         leadFirstName: "Sarah",
         leadEmail: "sarah@example.com",
+        leadPhone: "(541) 555-0199",
         scenarioSummary: expect.stringContaining("$425,000"),
       })
     );
@@ -327,6 +336,12 @@ describe("leads.sendToAgent", () => {
     expect(result.sent).toBe(false);
     if (!result.sent) {
       expect(result.mailto).toContain("mailto:jane@realty.com");
+      const draft = decodeURIComponent(result.mailto);
+      expect(draft).toContain("Hi Jane,");
+      expect(draft).toContain("Phone: (541) 555-0199");
+      expect(draft).toContain("Year 1 monthly savings: $536");
+      expect(draft).toContain("Year 2 monthly savings: $275");
+      expect(draft).toContain("$9,730 (2.29% of sales price)");
     }
     expect(markLeadSentToAgentMock).not.toHaveBeenCalled();
   });
