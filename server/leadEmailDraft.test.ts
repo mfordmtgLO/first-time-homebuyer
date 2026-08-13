@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildLeadWelcomeDraft } from "../shared/leadEmailDraft";
+import { buildLeadWelcomeDraft, buildListingEmailDraft, formatListingTable } from "../shared/leadEmailDraft";
 
 const BUYDOWN = {
   purchasePrice: 425000,
@@ -105,5 +105,55 @@ describe("buildLeadWelcomeDraft", () => {
     expect(draft.body).not.toContain("YOUR LOCAL REAL ESTATE PARTNER:");
     expect(draft.body).toContain("https://lowdownhousenow.manus.space/");
     expect(draft.body).not.toContain("Headshot:");
+  });
+});
+
+describe("GeoSphere property-list email drafts", () => {
+  const LISTINGS = [
+    {
+      address: "123 Example Avenue, Portland, OR 97205",
+      price: 425000,
+      bedrooms: "3",
+      bathrooms: "2",
+      squareFootage: 1650,
+      propertyType: "Single Family",
+      isLmi: true,
+      isUsda: false,
+    },
+    {
+      address: "456 Rural Road, Eugene, OR 97401",
+      price: 385000,
+      bedrooms: "2",
+      bathrooms: "2.5",
+      squareFootage: 1420,
+      propertyType: "Townhouse",
+      isLmi: false,
+      isUsda: true,
+    },
+  ];
+
+  it("formats a readable fixed-width spreadsheet-style table with persisted overlay flags", () => {
+    const table = formatListingTable(LISTINGS);
+    expect(table).toContain("Address");
+    expect(table).toContain("Price");
+    expect(table).toContain("123 Example Avenue, Portland, OR");
+    expect(table).toContain("$425,000");
+    expect(table).toContain("Yes");
+    expect(table).toContain("USDA");
+  });
+
+  it("opens a reviewable property-list draft for the selected lead", () => {
+    const draft = buildListingEmailDraft({
+      firstName: "Taylor",
+      email: "taylor@example.com",
+      areaLabel: "Portland · OR",
+      overlayLabel: "LMI + USDA RD",
+      listings: LISTINGS,
+    });
+    expect(draft.subject).toBe("Properties to consider in Portland · OR, Taylor");
+    expect(draft.body).toContain("PROPERTY LIST — LMI + USDA RD");
+    expect(draft.body).toContain("This is a starting point for a conversation—not a pre-approval");
+    expect(draft.body).toContain("123 Example Avenue, Portland, OR");
+    expect(draft.mailto).toMatch(/^mailto:taylor%40example\.com\?subject=/);
   });
 });

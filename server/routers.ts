@@ -11,6 +11,7 @@ import {
   type IntakeValues,
 } from "@shared/chatIntake";
 import { nanoid } from "nanoid";
+import { parse as parseCookie } from "cookie";
 import {
   addChatTranscript,
   createChatLead,
@@ -18,6 +19,8 @@ import {
   createLoanOfficer,
   deleteAgent,
   deleteLoanOfficer,
+  ensureGeoSphereSyncSetting,
+  updateGeoSphereSyncSetting,
   getAgentById,
   getAgentBySlug,
   getAgentLeadStats,
@@ -29,6 +32,8 @@ import {
   getLeadById,
   getLoanOfficerById,
   getLoanOfficerBySlug,
+  listGeoSphereListings,
+  listGeoSphereSavedPulls,
   loanOfficerSlugTaken,
   recordChatIntakeResendAttempt,
   insertLead,
@@ -47,6 +52,8 @@ import {
   updateLeadNotes,
   updateLoanOfficer,
 } from "./db";
+import { syncGeoSphereSavedListings } from "./geosphere";
+import { createHeartbeatJob, updateHeartbeatJob } from "./_core/heartbeat";
 import { notifyOwner } from "./_core/notification";
 import { sendChatIntakeNotification, sendReferralEmail } from "./email";
 import { storagePut } from "./storage";
@@ -700,6 +707,60 @@ export const appRouter = router({
           await updateChatLead(lead.id, { recipientEmailStatus: "manual_follow_up", recipientEmailDetail });
           return { recipientEmailStatus: "manual_follow_up" as const, recipientEmailDetail };
         }
+      }),
+  }),
+
+  geosphere: router({
+    /** Admin-only configuration and most-recent import state for saved listings. */
+    status: protectedProcedure.query(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      return ensureGeoSphereSyncSetting();
+    }),
+    /** Admin-only area-pull index, ordered by the latest source snapshot. */
+    listPulls: protectedProcedure.query(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      return listGeoSphereSavedPulls();
+    }),
+    /** Admin-only listing browser for one saved pull and one persisted overlay set. */
+    listListings: protectedProcedure
+      .input(z.object({ savedPullId: z.number().int().positive(), overlay: z.enum(["all", "lmi", "usda", "lmiUsda"]) }))
+      .query(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return listGeoSphereListings(input.savedPullId, input.overlay);
+      }),
+    /** Manually runs a cache-only import; it never calls Rentcast directly. */
+    syncNow: protectedProcedure.mutation(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      return syncGeoSphereSavedListings();
+    }),
+    /** Creates or updates the single weekly project-level GeoSphere sync job. */
+    configureWeekly: protectedProcedure
+      .input(z.object({ cron: z.string().trim().regex(/^\S+(?:\s+\S+){5}$/, "Use a six-field UTC cron expression.") }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const setting = await ensureGeoSphereSyncSetting();
+        const sessionToken = parseCookie(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
+        const description = "Weekly cache-only import of manually refreshed GeoSphere saved Rentcast listings.";
+        if (setting?.scheduleCronTaskUid) {
+          const result = await updateHeartbeatJob(
+            setting.scheduleCronTaskUid,
+            { cron: input.cron, path: "/api/scheduled/geosphere-sync", method: "POST", description, enable: true },
+            sessionToken
+          );
+          return { taskUid: setting.scheduleCronTaskUid, ...result };
+        }
+        const job = await createHeartbeatJob(
+          {
+            name: "geosphere-weekly-saved-listing-sync",
+            cron: input.cron,
+            path: "/api/scheduled/geosphere-sync",
+            method: "POST",
+            description,
+          },
+          sessionToken
+        );
+        await updateGeoSphereSyncSetting({ scheduleCronTaskUid: job.taskUid });
+        return job;
       }),
   }),
 

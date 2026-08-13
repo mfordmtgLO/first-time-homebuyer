@@ -56,6 +56,25 @@ export type LeadWelcomeDraftInput = {
   siteOrigin: string;
 };
 
+export type ListingEmailRow = {
+  address: string;
+  price: number | null;
+  bedrooms: string | null;
+  bathrooms: string | null;
+  squareFootage: number | null;
+  propertyType: string | null;
+  isLmi: boolean;
+  isUsda: boolean;
+};
+
+export type ListingEmailDraftInput = {
+  firstName: string;
+  email: string;
+  areaLabel: string;
+  overlayLabel: string;
+  listings: ListingEmailRow[];
+};
+
 const money = (value: number) =>
   value.toLocaleString("en-US", {
     style: "currency",
@@ -136,6 +155,67 @@ function formatRoadmapResources(siteOrigin: string) {
 
 • ${ROADMAP_RESOURCES[1].title}
   Open or download: ${new URL(ROADMAP_RESOURCES[1].path, siteOrigin).toString()}`;
+}
+
+function compact(value: string, width: number) {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  return normalized.length <= width ? normalized.padEnd(width) : `${normalized.slice(0, Math.max(width - 1, 1))}…`;
+}
+
+/** A fixed-width, spreadsheet-style table that remains readable in plain-text mail clients. */
+export function formatListingTable(listings: ListingEmailRow[]) {
+  const displayed = listings.slice(0, 25);
+  const header = [
+    compact("Address", 34),
+    compact("Price", 11),
+    compact("Beds", 5),
+    compact("Baths", 5),
+    compact("Sq Ft", 8),
+    compact("Type", 14),
+    compact("LMI", 3),
+    compact("USDA", 4),
+  ].join(" | ");
+  const divider = "-".repeat(header.length);
+  const rows = displayed.map((listing) =>
+    [
+      compact(listing.address, 34),
+      compact(listing.price === null ? "—" : money(listing.price), 11),
+      compact(listing.bedrooms ?? "—", 5),
+      compact(listing.bathrooms ?? "—", 5),
+      compact(listing.squareFootage === null ? "—" : listing.squareFootage.toLocaleString("en-US"), 8),
+      compact(listing.propertyType ?? "—", 14),
+      compact(listing.isLmi ? "Yes" : "—", 3),
+      compact(listing.isUsda ? "Yes" : "—", 4),
+    ].join(" | ")
+  );
+  const overflow = listings.length > displayed.length
+    ? `\n\nShowing the first ${displayed.length} of ${listings.length} selected listings in this email.`
+    : "";
+  return `${header}\n${divider}\n${rows.join("\n")}${overflow}`;
+}
+
+export function buildListingEmailDraft(input: ListingEmailDraftInput) {
+  const table = formatListingTable(input.listings);
+  const subject = `Properties to consider in ${input.areaLabel}, ${input.firstName}`;
+  const body = `Hi ${input.firstName},
+
+Based on the home-search area you selected, I pulled together the following ${input.overlayLabel} properties in ${input.areaLabel}. This is a starting point for a conversation—not a pre-approval, program approval, or guarantee of property eligibility.
+
+PROPERTY LIST — ${input.overlayLabel.toUpperCase()}
+${table}
+
+I’d be glad to review your budget, loan options, occupancy requirements, and the details of any property that stands out. Availability and eligibility can change, so we’ll verify the relevant information before you make any decisions.
+
+Warmly,
+Mike Ford
+Loan Officer | NMLS #288455
+Cornerstone First Mortgage | Company NMLS #173855
+(541) 729-0819`;
+  return {
+    subject,
+    body,
+    mailto: `mailto:${encodeURIComponent(input.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
+  };
 }
 
 export function buildLeadWelcomeDraft(input: LeadWelcomeDraftInput) {

@@ -5,6 +5,9 @@ import {
   agentProfile,
   chatIntakeLead,
   chatTranscript,
+  geosphereListing,
+  geosphereSavedPull,
+  geosphereSyncSetting,
   leads,
   loanOfficer,
   users,
@@ -12,6 +15,7 @@ import {
   type InsertChatIntakeLead,
   type InsertLoanOfficer,
   type InsertLead,
+  type InsertGeoSphereListing,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -495,4 +499,146 @@ export async function setFeaturedLoanOfficer(id: number | null) {
   if (id !== null) {
     await db.update(loanOfficer).set({ featured: 1 }).where(eq(loanOfficer.id, id));
   }
+}
+
+// ---------------------------------------------------------------------------
+// GeoSphere saved listings
+// ---------------------------------------------------------------------------
+
+export type GeoSpherePullWrite = {
+  sourceSnapshotId: string;
+  cacheKey: string;
+  areaLabel: string;
+  city: string | null;
+  county: string | null;
+  zipCode: string | null;
+  state: string | null;
+  sourceSavedAt: Date | null;
+  listingCount: number;
+  lmiCount: number;
+  usdaCount: number;
+  lmiUsdaCount: number;
+  listings: Array<Omit<InsertGeoSphereListing, "id" | "createdAt" | "updatedAt" | "savedPullId">>;
+};
+
+/** Creates or updates one immutable GeoSphere source snapshot and its listings. */
+export async function upsertGeoSphereSavedPull(input: GeoSpherePullWrite) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.transaction(async (tx) => {
+    const existing = await tx
+      .select({ id: geosphereSavedPull.id })
+      .from(geosphereSavedPull)
+      .where(eq(geosphereSavedPull.sourceSnapshotId, input.sourceSnapshotId))
+      .limit(1);
+
+    const pullValues = {
+      cacheKey: input.cacheKey,
+      areaLabel: input.areaLabel,
+      city: input.city,
+      county: input.county,
+      zipCode: input.zipCode,
+      state: input.state,
+      sourceSavedAt: input.sourceSavedAt,
+      listingCount: input.listingCount,
+      lmiCount: input.lmiCount,
+      usdaCount: input.usdaCount,
+      lmiUsdaCount: input.lmiUsdaCount,
+    };
+
+    let savedPullId = existing[0]?.id;
+    if (savedPullId) {
+      await tx.update(geosphereSavedPull).set(pullValues).where(eq(geosphereSavedPull.id, savedPullId));
+    } else {
+      const [result] = await tx
+        .insert(geosphereSavedPull)
+        .values({ sourceSnapshotId: input.sourceSnapshotId, ...pullValues });
+      savedPullId = Number(result.insertId);
+    }
+
+    if (input.listings.length > 0) {
+      await tx
+        .insert(geosphereListing)
+        .values(input.listings.map((listing) => ({ ...listing, savedPullId: savedPullId! })))
+        .onDuplicateKeyUpdate({
+          set: {
+            externalListingId: sql`VALUES(${geosphereListing.externalListingId})`,
+            address: sql`VALUES(${geosphereListing.address})`,
+            price: sql`VALUES(${geosphereListing.price})`,
+            bedrooms: sql`VALUES(${geosphereListing.bedrooms})`,
+            bathrooms: sql`VALUES(${geosphereListing.bathrooms})`,
+            squareFootage: sql`VALUES(${geosphereListing.squareFootage})`,
+            propertyType: sql`VALUES(${geosphereListing.propertyType})`,
+            latitude: sql`VALUES(${geosphereListing.latitude})`,
+            longitude: sql`VALUES(${geosphereListing.longitude})`,
+            isLmi: sql`VALUES(${geosphereListing.isLmi})`,
+            isUsda: sql`VALUES(${geosphereListing.isUsda})`,
+            sourceData: sql`VALUES(${geosphereListing.sourceData})`,
+          },
+        });
+    }
+
+    return savedPullId!;
+  });
+}
+
+export async function listGeoSphereSavedPulls() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(geosphereSavedPull).orderBy(desc(geosphereSavedPull.sourceSavedAt), desc(geosphereSavedPull.importedAt));
+}
+
+export async function listGeoSphereListings(
+  savedPullId: number,
+  overlay: "all" | "lmi" | "usda" | "lmiUsda"
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const filters = [eq(geosphereListing.savedPullId, savedPullId)];
+  if (overlay === "lmi") filters.push(eq(geosphereListing.isLmi, 1));
+  if (overlay === "usda") filters.push(eq(geosphereListing.isUsda, 1));
+  if (overlay === "lmiUsda") filters.push(eq(geosphereListing.isLmi, 1), eq(geosphereListing.isUsda, 1));
+  return db
+    .select()
+    .from(geosphereListing)
+    .where(and(...filters))
+    .orderBy(desc(geosphereListing.price), geosphereListing.address);
+}
+
+const GEOSPHERE_SYNC_SETTING_ID = "geosphere-saved-listings";
+
+export async function ensureGeoSphereSyncSetting() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db
+    .insert(geosphereSyncSetting)
+    .values({ id: GEOSPHERE_SYNC_SETTING_ID })
+    .onDuplicateKeyUpdate({ set: { id: GEOSPHERE_SYNC_SETTING_ID } });
+  return getGeoSphereSyncSetting();
+}
+
+export async function getGeoSphereSyncSetting() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db.select().from(geosphereSyncSetting).where(eq(geosphereSyncSetting.id, GEOSPHERE_SYNC_SETTING_ID)).limit(1);
+  return rows[0];
+}
+
+export async function getGeoSphereSyncSettingByTaskUid(taskUid: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db
+    .select()
+    .from(geosphereSyncSetting)
+    .where(eq(geosphereSyncSetting.scheduleCronTaskUid, taskUid))
+    .limit(1);
+  return rows[0];
+}
+
+export async function updateGeoSphereSyncSetting(values: Partial<typeof geosphereSyncSetting.$inferInsert>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await ensureGeoSphereSyncSetting();
+  return db.update(geosphereSyncSetting).set(values).where(eq(geosphereSyncSetting.id, GEOSPHERE_SYNC_SETTING_ID));
 }

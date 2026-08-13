@@ -194,3 +194,9 @@
 - [x] Ensure Roadmap lead CSV export contains only the current filtered/visible list and includes LO-agent attribution columns
 - [x] Add tests and verify filtered Roadmap attribution search/export behavior in the dashboard, then checkpoint
 - [x] Adjust the Loan Officer Guide portrait crop so Mike Ford’s full head has comfortable top clearance, then verify and checkpoint
+- [x] Inspect and document the existing GeoSphere/Rentcast saved-listing contract and dashboard integration points
+- [x] Add dashboard data models and migration for idempotent saved-pull and listing synchronization
+- [x] Implement protected saved-listing import and a deploy-ready scheduled synchronization endpoint
+- [x] Build admin browsing for city/county saved pulls with All, LMI, USDA RD, and dual-overlay filters
+- [x] Add Roadmap and chat-intake lead selection plus listing-table email-draft generation
+- [x] Add automated tests, visual verification, and a checkpoint for the GeoSphere/Rentcast integration

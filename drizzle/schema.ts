@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -166,3 +166,86 @@ export const chatTranscript = mysqlTable("chat_transcript", {
 
 export type ChatTranscript = typeof chatTranscript.$inferSelect;
 export type InsertChatTranscript = typeof chatTranscript.$inferInsert;
+
+/**
+ * One cache-only saved pull exported by GeoSphere. The source snapshot ID makes
+ * imports idempotent while preserving every manually refreshed area pull.
+ */
+export const geosphereSavedPull = mysqlTable(
+  "geosphere_saved_pull",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    sourceSnapshotId: varchar("sourceSnapshotId", { length: 320 }).notNull(),
+    cacheKey: varchar("cacheKey", { length: 320 }).notNull(),
+    areaLabel: varchar("areaLabel", { length: 500 }).notNull(),
+    city: varchar("city", { length: 180 }),
+    county: varchar("county", { length: 180 }),
+    zipCode: varchar("zipCode", { length: 24 }),
+    state: varchar("state", { length: 8 }),
+    sourceSavedAt: timestamp("sourceSavedAt"),
+    listingCount: int("listingCount").default(0).notNull(),
+    lmiCount: int("lmiCount").default(0).notNull(),
+    usdaCount: int("usdaCount").default(0).notNull(),
+    lmiUsdaCount: int("lmiUsdaCount").default(0).notNull(),
+    importedAt: timestamp("importedAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("geosphere_saved_pull_source_snapshot_unique").on(table.sourceSnapshotId),
+    index("geosphere_saved_pull_cache_key_idx").on(table.cacheKey),
+    index("geosphere_saved_pull_area_idx").on(table.state, table.city, table.county),
+  ]
+);
+
+export type GeoSphereSavedPull = typeof geosphereSavedPull.$inferSelect;
+export type InsertGeoSphereSavedPull = typeof geosphereSavedPull.$inferInsert;
+
+/** A normalized property from a saved GeoSphere snapshot, including overlay membership. */
+export const geosphereListing = mysqlTable(
+  "geosphere_listing",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    savedPullId: int("savedPullId").notNull(),
+    listingKey: varchar("listingKey", { length: 320 }).notNull(),
+    externalListingId: varchar("externalListingId", { length: 320 }),
+    address: varchar("address", { length: 700 }).notNull(),
+    price: int("price"),
+    bedrooms: varchar("bedrooms", { length: 32 }),
+    bathrooms: varchar("bathrooms", { length: 32 }),
+    squareFootage: int("squareFootage"),
+    propertyType: varchar("propertyType", { length: 160 }),
+    latitude: varchar("latitude", { length: 48 }),
+    longitude: varchar("longitude", { length: 48 }),
+    isLmi: int("isLmi").default(0).notNull(),
+    isUsda: int("isUsda").default(0).notNull(),
+    sourceData: text("sourceData").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("geosphere_listing_pull_key_unique").on(table.savedPullId, table.listingKey),
+    index("geosphere_listing_pull_overlay_idx").on(table.savedPullId, table.isLmi, table.isUsda),
+    index("geosphere_listing_price_idx").on(table.price),
+  ]
+);
+
+export type GeoSphereListing = typeof geosphereListing.$inferSelect;
+export type InsertGeoSphereListing = typeof geosphereListing.$inferInsert;
+
+/** Persistent ownership state for the project-level GeoSphere weekly sync job. */
+export const geosphereSyncSetting = mysqlTable(
+  "geosphere_sync_setting",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    scheduleCronTaskUid: varchar("scheduleCronTaskUid", { length: 65 }),
+    lastSyncedAt: timestamp("lastSyncedAt"),
+    lastError: text("lastError"),
+    lastPullCount: int("lastPullCount").default(0).notNull(),
+    lastListingCount: int("lastListingCount").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [index("geosphere_sync_setting_task_uid_idx").on(table.scheduleCronTaskUid)]
+);
+
+export type GeoSphereSyncSetting = typeof geosphereSyncSetting.$inferSelect;

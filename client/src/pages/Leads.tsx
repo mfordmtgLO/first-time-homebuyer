@@ -7,6 +7,7 @@ import { trpc } from "@/lib/trpc";
 import AgentSettings from "@/components/AgentSettings";
 import LoanOfficerSettings from "@/components/LoanOfficerSettings";
 import ChatIntakeLeads from "@/components/ChatIntakeLeads";
+import GeoSphereListings from "@/components/GeoSphereListings";
 import {
   buildLeadWelcomeDraft,
   type LeadEmailAgent,
@@ -889,6 +890,7 @@ export default function Leads() {
             <AgentSettings />
             <LoanOfficerSettings />
             <ChatIntakeLeads />
+            <GeoSphereListings />
           </>
         )}
       </main>
