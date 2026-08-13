@@ -16,8 +16,12 @@ export default function About() {
     { loanOfficerSlug: loanOfficerSlug ?? "", agentSlug: agentSlug ?? "" },
     { enabled: Boolean(loanOfficerSlug && agentSlug) }
   );
+  const standaloneQuery = trpc.loanOfficer.getBySlug.useQuery(
+    { slug: loanOfficerSlug ?? "" },
+    { enabled: Boolean(loanOfficerSlug && !agentSlug) }
+  );
   const pairedOfficer = pairQuery.data?.officer ?? null;
-  const advisor = pairedOfficer ?? {
+  const advisor = pairedOfficer ?? standaloneQuery.data ?? {
     name: "Mike Ford",
     title: "Loan Officer",
     nmls: "288455",

@@ -203,3 +203,5 @@
 - [x] Diagnose and repair the Roadmap lead-submission insert failure caused by a copied database schema mismatch
 - [x] Restore the missing company logo, Mike Ford headshot, and public stock-photo asset references
 - [x] Add regression coverage and verify the Roadmap submission and public media rendering, then checkpoint
+- [x] Add a copyable loan-officer-only public profile URL when no agent partner is selected
+- [x] Verify paired and loan-officer-only profile URLs, add regression coverage, and checkpoint

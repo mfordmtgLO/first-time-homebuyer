@@ -46,4 +46,13 @@ describe("Roadmap LO-agent co-brand attribution", () => {
     await caller.leads.submit({ firstName: "Jordan", email: "jordan@example.com", agentSlug: "kaandice-mclean", loanOfficerSlug: "mike-ford" });
     expect(insertLeadMock).toHaveBeenCalledWith(expect.objectContaining({ agentId: 17, loanOfficerId: undefined }));
   });
+
+  it("stores the selected LO without assigning an agent for a standalone officer profile", async () => {
+    getLoanOfficerBySlugMock.mockResolvedValue({ id: 5, slug: "mike-ford", agentId: null, visible: 1 } as never);
+    const caller = appRouter.createCaller(context());
+
+    await caller.leads.submit({ firstName: "Jordan", email: "jordan@example.com", loanOfficerSlug: "mike-ford" });
+
+    expect(insertLeadMock).toHaveBeenCalledWith(expect.objectContaining({ agentId: undefined, loanOfficerId: 5, agentSource: undefined }));
+  });
 });

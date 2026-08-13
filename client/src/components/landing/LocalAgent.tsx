@@ -5,21 +5,22 @@
  * agent. Renders nothing when no matching visible agent exists.
  */
 import { trpc } from "@/lib/trpc";
-import { useAgentSlug } from "@/contexts/AgentPageContext";
+import { useAgentSlug, useLoanOfficerSlug } from "@/contexts/AgentPageContext";
 import { Globe, Mail, Phone } from "lucide-react";
 
 export default function LocalAgent() {
   const slug = useAgentSlug();
+  const loanOfficerSlug = useLoanOfficerSlug();
   const bySlug = trpc.agent.getBySlug.useQuery(
     { slug: slug ?? "" },
     { enabled: !!slug, staleTime: 5 * 60 * 1000, retry: 1 }
   );
   const featured = trpc.agent.getFeatured.useQuery(undefined, {
-    enabled: !slug,
+    enabled: !slug && !loanOfficerSlug,
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });
-  const agent = slug ? bySlug.data : featured.data;
+  const agent = slug ? bySlug.data : loanOfficerSlug ? null : featured.data;
 
   if (!agent || agent.visible !== 1 || !agent.name.trim()) return null;
 

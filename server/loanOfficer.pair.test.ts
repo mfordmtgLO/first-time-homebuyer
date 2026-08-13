@@ -81,6 +81,17 @@ describe("loan officer and agent co-marketing pairs", () => {
     await expect(caller.loanOfficer.getPair({ loanOfficerSlug: "mike-ford", agentSlug: "kaandice-mclean" })).resolves.toBeNull();
   });
 
+  it("returns a visible standalone loan officer by slug without requiring an agent", async () => {
+    getLoanOfficerBySlugMock.mockResolvedValue({ ...OFFICER, agentId: null } as never);
+    const caller = appRouter.createCaller(context(null));
+
+    await expect(caller.loanOfficer.getBySlug({ slug: "mike-ford" }))
+      .resolves.toMatchObject({ id: 5, slug: "mike-ford", name: "Mike Ford" });
+
+    getLoanOfficerBySlugMock.mockResolvedValue({ ...OFFICER, visible: 0 } as never);
+    await expect(caller.loanOfficer.getBySlug({ slug: "mike-ford" })).resolves.toBeNull();
+  });
+
   it("saves a paired chat session with both the selected LO and agent IDs", async () => {
     getAgentBySlugMock.mockResolvedValue(AGENT as never);
     getLoanOfficerBySlugMock.mockResolvedValue(OFFICER as never);
@@ -89,6 +100,17 @@ describe("loan officer and agent co-marketing pairs", () => {
     expect(result.officer.name).toBe("Mike Ford");
     expect(result.agent?.name).toBe("Kaandice McLean");
     expect(createChatLeadMock).toHaveBeenCalledWith(expect.objectContaining({ loanOfficerId: 5, agentId: 17 }));
+  });
+
+  it("saves a loan-officer-only chat session without assigning an agent", async () => {
+    getLoanOfficerBySlugMock.mockResolvedValue({ ...OFFICER, agentId: null } as never);
+    const caller = appRouter.createCaller(context(null));
+
+    const result = await caller.chat.start({ sessionId: "officer-only-session-123456", loanOfficerSlug: "mike-ford" });
+
+    expect(result.officer.name).toBe("Mike Ford");
+    expect(result.agent).toBeNull();
+    expect(createChatLeadMock).toHaveBeenCalledWith(expect.objectContaining({ loanOfficerId: 5, agentId: undefined }));
   });
 
   it("keeps LO profile creation admin-only and persists the selected agent partner", async () => {

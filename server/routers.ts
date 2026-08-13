@@ -352,10 +352,12 @@ export const appRouter = router({
           }
         }
 
-        if (input.loanOfficerSlug && agentId !== undefined) {
+        if (input.loanOfficerSlug) {
           try {
             const officer = await getLoanOfficerBySlug(input.loanOfficerSlug);
-            if (officer?.visible === 1 && officer.agentId === agentId) {
+            const isValidPair = agentId !== undefined && officer?.agentId === agentId;
+            const isStandaloneOfficer = agentId === undefined && officer?.visible === 1;
+            if (officer?.visible === 1 && (isValidPair || isStandaloneOfficer)) {
               loanOfficerId = officer.id;
             }
           } catch (error) {
@@ -586,6 +588,9 @@ export const appRouter = router({
             // a co-branded agent.
             agent = undefined;
           }
+        } else if (input.loanOfficerSlug) {
+          const standaloneOfficer = await getLoanOfficerBySlug(input.loanOfficerSlug);
+          if (standaloneOfficer?.visible === 1) officer = standaloneOfficer;
         }
 
         const contact = chatContact(officer);
@@ -766,6 +771,15 @@ export const appRouter = router({
 
   loanOfficer: router({
     getFeatured: publicProcedure.query(async () => (await getFeaturedLoanOfficer()) ?? null),
+    /** Public: resolve a visible standalone loan-officer profile. */
+    getBySlug: publicProcedure
+      .input(z.object({ slug: z.string().trim().toLowerCase().min(1).max(160) }))
+      .query(async ({ input }) => {
+        if (!SLUG_PATTERN.test(input.slug)) return null;
+        const officer = await getLoanOfficerBySlug(input.slug);
+        if (!officer || officer.visible !== 1) return null;
+        return officer;
+      }),
     /** Public: resolve only a visible saved LO-agent partner pair. */
     getPair: publicProcedure
       .input(z.object({ loanOfficerSlug: z.string().trim().toLowerCase(), agentSlug: z.string().trim().toLowerCase() }))

@@ -98,6 +98,10 @@ function pairUrl(officer: Pick<Officer, "slug">, agent: Pick<Agent, "slug"> | un
   return agent ? `${window.location.origin}/with/${officer.slug}/${agent.slug}` : null;
 }
 
+function loanOfficerUrl(officer: Pick<Officer, "slug">) {
+  return `${window.location.origin}/loan-officer/${officer.slug}`;
+}
+
 function ImageUpload({
   kind,
   label,
@@ -264,10 +268,15 @@ export default function LoanOfficerSettings() {
     catch { toast.error("Couldn't copy the link — please copy it from the address shown."); }
   };
 
+  const copyLoanOfficerLink = async (officer: Officer) => {
+    try { await navigator.clipboard.writeText(loanOfficerUrl(officer)); toast.success("Loan officer profile link copied."); }
+    catch { toast.error("Couldn't copy the link — please copy it from the address shown."); }
+  };
+
   return (
     <section className="mt-10 rounded-lg border border-border bg-card shadow-sm">
       <div className="flex flex-col justify-between gap-3 border-b border-border px-6 py-5 sm:flex-row sm:items-center">
-        <div><h2 className="flex items-center gap-2.5 font-display text-xl font-semibold text-foreground"><ShieldCheck className="h-5 w-5 text-primary" /> Loan officers</h2><p className="mt-1 text-sm text-muted-foreground">Add unlimited LO profiles, pair any saved agent, and share a unique LO-agent co-branded page.</p></div>
+        <div><h2 className="flex items-center gap-2.5 font-display text-xl font-semibold text-foreground"><ShieldCheck className="h-5 w-5 text-primary" /> Loan officers</h2><p className="mt-1 text-sm text-muted-foreground">Add unlimited LO profiles, pair any saved agent, or share a standalone loan-officer profile page.</p></div>
         <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true); }}><Plus className="mr-1.5 h-4 w-4" /> Add LO</Button>
       </div>
       {officersQuery.isLoading || agentsQuery.isLoading ? <div className="flex items-center justify-center py-12 text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading loan officers…</div> : officers.length === 0 ? <div className="py-12 text-center text-sm text-muted-foreground">No loan officers have been added yet.</div> : (
@@ -275,15 +284,17 @@ export default function LoanOfficerSettings() {
           {officers.map((officer) => {
             const partner = officer.agentId ? agentById.get(officer.agentId) : undefined;
             const url = partner ? pairUrl(officer, partner) : null;
+            const standaloneUrl = partner ? null : loanOfficerUrl(officer);
             return <li key={officer.id} className="flex flex-wrap items-center gap-4 px-6 py-4">
               {officer.headshotUrl ? <img src={officer.headshotUrl} alt={`${officer.name} headshot`} className="h-11 w-11 rounded-full border border-border object-cover" /> : <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10"><BadgeCheck className="h-5 w-5 text-primary" /></div>}
               <div className="min-w-[220px] flex-1">
                 <div className="flex flex-wrap items-center gap-2"><span className="font-semibold text-foreground">{officer.name}</span>{officer.featured === 1 && <span className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/20 px-2 py-0.5 text-[11px] font-semibold text-foreground"><Star className="h-3 w-3 fill-current" /> Default chat contact</span>}{officer.visible !== 1 && <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">Inactive</span>}</div>
                 <p className="mt-0.5 text-sm text-muted-foreground">{officer.title} · NMLS #{officer.nmls || "—"} · {officer.phone} · {officer.email}</p>
-                {partner ? <p className="mt-1 flex items-center gap-1.5 text-xs text-primary"><Users className="h-3.5 w-3.5" /> Partnered with {partner.name}{partner.companyName ? ` · ${partner.companyName}` : ""} <span className="text-muted-foreground">· /with/{officer.slug}/{partner.slug}</span></p> : <p className="mt-1 text-xs text-muted-foreground">Choose an agent partner to create a co-branded URL.</p>}
+                {partner ? <p className="mt-1 flex items-center gap-1.5 text-xs text-primary"><Users className="h-3.5 w-3.5" /> Partnered with {partner.name}{partner.companyName ? ` · ${partner.companyName}` : ""} <span className="text-muted-foreground">· /with/{officer.slug}/{partner.slug}</span></p> : <p className="mt-1 text-xs text-muted-foreground">LO profile only <span className="text-primary">· /loan-officer/{officer.slug}</span></p>}
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {url && <Button variant="outline" size="sm" onClick={() => copyPairLink(officer, partner!)}><Copy className="mr-1.5 h-3.5 w-3.5" /> Copy link</Button>}
+                {standaloneUrl && <Button variant="outline" size="sm" onClick={() => copyLoanOfficerLink(officer)}><Copy className="mr-1.5 h-3.5 w-3.5" /> Copy LO profile</Button>}
                 <Button variant="outline" size="sm" onClick={() => feature.mutate({ id: officer.featured === 1 ? null : officer.id })}><Star className={`mr-1.5 h-3.5 w-3.5 ${officer.featured === 1 ? "fill-current" : ""}`} />{officer.featured === 1 ? "Unfeature" : "Make default"}</Button>
                 <Button variant="outline" size="sm" onClick={() => { setEditing(officer); setDialogOpen(true); }}><Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit</Button>
                 <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleting(officer)}><Trash2 className="h-3.5 w-3.5" /></Button>
