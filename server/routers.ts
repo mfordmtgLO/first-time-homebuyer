@@ -60,6 +60,7 @@ import { createHeartbeatJob, updateHeartbeatJob } from "./_core/heartbeat";
 import { notifyOwner } from "./_core/notification";
 import { buildChatIntakeNotification, buildReferralEmail, sendChatIntakeNotification, sendReferralEmail } from "./email";
 import { hasUsableRoadmapPhone } from "../shared/roadmapPhone";
+import { publicSiteUrl } from "../shared/publicSiteUrl";
 import { storagePut } from "./storage";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -263,6 +264,9 @@ async function deliverChatIntakeRecipientEmails(lead: CompletedChatIntake) {
   const uniqueRecipients = recipients.filter((recipient, index) =>
     recipients.findIndex((candidate) => candidate.recipientEmail.toLowerCase() === recipient.recipientEmail.toLowerCase()) === index
   );
+  const coBrandedSourceUrl = selectedOfficer?.slug && coBrandedAgent?.slug
+    ? publicSiteUrl(`/with/${selectedOfficer.slug}/${coBrandedAgent.slug}`)
+    : null;
   const deliveryResults = await Promise.all(uniqueRecipients.map((recipient) => sendChatIntakeNotification({
     ...recipient,
     fullName: lead.fullName ?? "there",
@@ -279,6 +283,7 @@ async function deliverChatIntakeRecipientEmails(lead: CompletedChatIntake) {
     searchAreaType: lead.searchAreaType,
     targetArea: lead.targetArea,
     coBrandedAgentName: coBrandedAgent?.name ?? null,
+    coBrandedSourceUrl,
   })));
   const failureDetails = deliveryResults
     .map((result, index) => result.sent ? null : `${uniqueRecipients[index]?.recipientName ?? "Recipient"} <${uniqueRecipients[index]?.recipientEmail ?? "unknown"}>: ${result.reason}`)
@@ -302,7 +307,7 @@ async function deliverChatIntakeRecipientEmails(lead: CompletedChatIntake) {
   return { recipientEmailStatus: "sent" as const, recipientEmailDetail: null };
 }
 
-function buildChatAgentMailto(lead: CompletedChatIntake, agent: { name: string; email: string }) {
+function buildChatAgentMailto(lead: CompletedChatIntake, agent: { name: string; email: string }, coBrandedSourceUrl: string | null) {
   const { subject, text } = buildChatIntakeNotification({
     recipientName: agent.name,
     recipientEmail: agent.email,
@@ -321,6 +326,7 @@ function buildChatAgentMailto(lead: CompletedChatIntake, agent: { name: string; 
     searchAreaType: lead.searchAreaType,
     targetArea: lead.targetArea,
     coBrandedAgentName: agent.name,
+    coBrandedSourceUrl,
   });
   return `mailto:${agent.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
 }
@@ -819,6 +825,10 @@ export const appRouter = router({
         if (!lead.agentId) throw new TRPCError({ code: "BAD_REQUEST", message: "Assign an agent before sending this intake." });
         const agent = await getAgentById(lead.agentId);
         if (!agent?.email) throw new TRPCError({ code: "BAD_REQUEST", message: "The assigned agent does not have an email address." });
+        const officer = lead.loanOfficerId ? await getLoanOfficerById(lead.loanOfficerId) : undefined;
+        const coBrandedSourceUrl = officer?.slug && agent.slug
+          ? publicSiteUrl(`/with/${officer.slug}/${agent.slug}`)
+          : null;
         const result = await sendChatIntakeNotification({
           recipientName: agent.name,
           recipientEmail: agent.email,
@@ -837,13 +847,14 @@ export const appRouter = router({
           searchAreaType: lead.searchAreaType,
           targetArea: lead.targetArea,
           coBrandedAgentName: agent.name,
+          coBrandedSourceUrl,
         });
         await recordChatIntakeResendAttempt(lead.id);
         if (result.sent) {
           await updateChatLead(lead.id, { recipientEmailStatus: "sent", recipientEmailDetail: null });
           return { sent: true as const };
         }
-        return { sent: false as const, reason: result.reason, mailto: buildChatAgentMailto(lead, agent) };
+        return { sent: false as const, reason: result.reason, mailto: buildChatAgentMailto(lead, agent, coBrandedSourceUrl) };
       }),
   }),
 

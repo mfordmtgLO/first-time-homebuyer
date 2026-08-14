@@ -110,6 +110,7 @@ export type ChatIntakeNotificationInput = {
   searchAreaType: string | null;
   targetArea: string | null;
   coBrandedAgentName?: string | null;
+  coBrandedSourceUrl?: string | null;
 };
 
 export type ChatIntakeNotificationResult =
@@ -123,9 +124,12 @@ const intakeMoney = (value: number | null) =>
 
 export function buildChatIntakeNotification(input: ChatIntakeNotificationInput) {
   const roleLabel = input.recipientRole === "loan_officer" ? "selected loan officer" : "co-marketing agent";
+  const recipientFirstName = input.recipientName.trim().split(/\s+/)[0] || "there";
   const subject = `New completed mortgage intake: ${input.fullName}`;
-  const coBrandContext = input.coBrandedAgentName
-    ? `\nCo-branded source: ${input.coBrandedAgentName}'s homebuyer page`
+  const coBrandContext = input.coBrandedSourceUrl
+    ? `\nCo-branded source: ${input.coBrandedSourceUrl}`
+    : input.coBrandedAgentName
+      ? `\nCo-branded source: ${input.coBrandedAgentName}'s homebuyer page`
     : "";
   const financingDetails = input.loanPurpose === "purchase"
     ? `Down payment: ${intakeMoney(input.downPayment)}\nEstimated loan amount: ${intakeMoney(input.loanAmount)}`
@@ -133,7 +137,7 @@ export function buildChatIntakeNotification(input: ChatIntakeNotificationInput) 
   const homeSearchDetails = input.lowDownPaymentHomeSearch === 1
     ? `\nHome search request: Please prepare potential low- or no-down-payment qualifying properties${input.targetArea ? ` for the requested ${input.searchAreaType?.toLowerCase() ?? "area"} of ${input.targetArea}, Oregon` : " in Oregon"} to forward to this visitor's email soon.`
     : "";
-  const text = `Hi ${input.recipientName || "there"},
+  const text = `Hi ${recipientFirstName},
 
 A visitor completed the Mortgage Intake Specialist chat. You are receiving this message as the ${roleLabel}.
 
