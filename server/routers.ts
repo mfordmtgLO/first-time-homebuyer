@@ -388,6 +388,18 @@ export const appRouter = router({
           } catch (error) {
             console.warn("[Leads] Loan officer slug lookup failed:", error);
           }
+        } else if (agentId !== undefined) {
+          // Legacy /with/:agent links predate paired URLs. If the agent has one
+          // and only one visible partnered LO, recover that unambiguous
+          // attribution. Never choose among multiple officers automatically.
+          try {
+            const pairedOfficers = (await listLoanOfficers()).filter(
+              (officer) => officer.visible === 1 && officer.agentId === agentId
+            );
+            if (pairedOfficers.length === 1) loanOfficerId = pairedOfficers[0].id;
+          } catch (error) {
+            console.warn("[Leads] Legacy co-brand officer lookup failed:", error);
+          }
         }
 
         await insertLead({

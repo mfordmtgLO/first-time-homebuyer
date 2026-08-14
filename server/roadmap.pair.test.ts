@@ -6,17 +6,19 @@ vi.mock("./db", async (importOriginal) => {
     ...actual,
     getAgentBySlug: vi.fn(async () => undefined),
     getLoanOfficerBySlug: vi.fn(async () => undefined),
+    listLoanOfficers: vi.fn(async () => []),
     insertLead: vi.fn(async () => undefined),
   };
 });
 vi.mock("./_core/notification", () => ({ notifyOwner: vi.fn(async () => true) }));
 
 import { appRouter } from "./routers";
-import { getAgentBySlug, getLoanOfficerBySlug, insertLead } from "./db";
+import { getAgentBySlug, getLoanOfficerBySlug, insertLead, listLoanOfficers } from "./db";
 import type { TrpcContext } from "./_core/context";
 
 const getAgentBySlugMock = vi.mocked(getAgentBySlug);
 const getLoanOfficerBySlugMock = vi.mocked(getLoanOfficerBySlug);
+const listLoanOfficersMock = vi.mocked(listLoanOfficers);
 const insertLeadMock = vi.mocked(insertLead);
 
 function context(): TrpcContext {
@@ -27,6 +29,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   getAgentBySlugMock.mockResolvedValue(undefined);
   getLoanOfficerBySlugMock.mockResolvedValue(undefined);
+  listLoanOfficersMock.mockResolvedValue([]);
   insertLeadMock.mockResolvedValue(undefined as never);
 });
 
@@ -54,5 +57,21 @@ describe("Roadmap LO-agent co-brand attribution", () => {
     await caller.leads.submit({ firstName: "Jordan", email: "jordan@example.com", phone: "(541) 555-0100", smsConsent: true, loanOfficerSlug: "mike-ford" });
 
     expect(insertLeadMock).toHaveBeenCalledWith(expect.objectContaining({ agentId: undefined, loanOfficerId: 5, agentSource: undefined }));
+  });
+
+  it("recovers the one visible paired officer from a legacy agent-only co-branded URL", async () => {
+    getAgentBySlugMock.mockResolvedValue({ id: 17, name: "Kaandice", visible: 1 } as never);
+    listLoanOfficersMock.mockResolvedValue([{ id: 5, slug: "mford", agentId: 17, visible: 1 }] as never);
+    const caller = appRouter.createCaller(context());
+    await caller.leads.submit({ firstName: "Jordan", email: "jordan@example.com", phone: "(541) 555-0100", smsConsent: true, agentSlug: "kaandice-mclean" });
+    expect(insertLeadMock).toHaveBeenCalledWith(expect.objectContaining({ agentId: 17, loanOfficerId: 5, agentSource: "link" }));
+  });
+
+  it("does not guess a loan officer when a legacy agent-only URL has multiple visible pairings", async () => {
+    getAgentBySlugMock.mockResolvedValue({ id: 17, name: "Kaandice", visible: 1 } as never);
+    listLoanOfficersMock.mockResolvedValue([{ id: 5, slug: "mford", agentId: 17, visible: 1 }, { id: 6, slug: "other-lo", agentId: 17, visible: 1 }] as never);
+    const caller = appRouter.createCaller(context());
+    await caller.leads.submit({ firstName: "Jordan", email: "jordan@example.com", phone: "(541) 555-0100", smsConsent: true, agentSlug: "kaandice-mclean" });
+    expect(insertLeadMock).toHaveBeenCalledWith(expect.objectContaining({ agentId: 17, loanOfficerId: undefined }));
   });
 });

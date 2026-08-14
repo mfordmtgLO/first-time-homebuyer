@@ -236,3 +236,4 @@
 - [x] Keep all dashboard text actions in provider-unconfigured draft mode until a verified SMS/MMS account is supplied
 - [x] Add a chat-intake SMS consent question with explicit Yes and No responses, and make only Yes responses text-ready
 - [x] Add provider-ready SMS/MMS message, recipient, JPG attachment, and delivery-status records without enabling real sends
+- [x] Repair current and historical loan-officer attribution for co-branded Roadmap leads that display LO not linked

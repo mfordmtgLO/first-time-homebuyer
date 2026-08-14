@@ -1,6 +1,6 @@
 /**
  * Co-marketing Agents manager (admin-only, rendered inside /leads).
- * Unlimited agents, each with a unique co-branded URL (/with/:slug), a
+ * Unlimited agents, each with a paired co-branded URL (/with/:loanOfficer/:agent), a
  * visible toggle, and an optional "featured on homepage" selection.
  */
 import { useRef, useState } from "react";
@@ -106,8 +106,10 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-function agentUrl(slug: string) {
-  return `${window.location.origin}/with/${slug}`;
+function agentUrl(agentSlug: string, loanOfficerSlug?: string | null) {
+  return loanOfficerSlug
+    ? `${window.location.origin}/with/${loanOfficerSlug}/${agentSlug}`
+    : `${window.location.origin}/with/${agentSlug}`;
 }
 
 function ImageUpload({
@@ -434,6 +436,12 @@ function AgentFormDialog({
 export default function AgentSettings() {
   const agentsQuery = trpc.agent.list.useQuery();
   const agents = agentsQuery.data ?? [];
+  const officersQuery = trpc.loanOfficer.list.useQuery();
+  const pairedOfficerByAgent = new Map(
+    (officersQuery.data ?? [])
+      .filter((officer) => officer.agentId !== null && officer.visible === 1)
+      .map((officer) => [officer.agentId!, officer])
+  );
   const statsQuery = trpc.agent.stats.useQuery();
   const statsByAgent = new Map(
     (statsQuery.data ?? []).map((s) => [s.agentId, s])
@@ -467,21 +475,22 @@ export default function AgentSettings() {
     onError: (err) => toast.error(err.message || "Couldn't update the homepage agent."),
   });
 
-  const copyUrl = async (slug: string) => {
+  const copyUrl = async (agentSlug: string, loanOfficerSlug?: string | null) => {
+    const url = agentUrl(agentSlug, loanOfficerSlug);
     try {
-      await navigator.clipboard.writeText(agentUrl(slug));
+      await navigator.clipboard.writeText(url);
       toast.success("Co-branded link copied to clipboard.");
     } catch {
-      toast.error(`Copy failed — the link is ${agentUrl(slug)}`);
+      toast.error(`Copy failed — the link is ${url}`);
     }
   };
 
-  const openShareDraft = (agent: AgentRow) => {
+  const openShareDraft = (agent: AgentRow, loanOfficerSlug?: string | null) => {
     if (!agent.email) {
       toast.error(`${agent.name} has no email address on file.`);
       return;
     }
-    window.location.href = buildCoBrandedShareMailto({ agentName: agent.name, agentEmail: agent.email, url: agentUrl(agent.slug) });
+    window.location.href = buildCoBrandedShareMailto({ agentName: agent.name, agentEmail: agent.email, url: agentUrl(agent.slug, loanOfficerSlug) });
   };
 
   return (
@@ -508,7 +517,7 @@ export default function AgentSettings() {
         </Button>
       </div>
 
-      {agentsQuery.isLoading ? (
+      {agentsQuery.isLoading || officersQuery.isLoading ? (
         <div className="flex items-center justify-center py-14 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading agents...
         </div>
@@ -523,8 +532,10 @@ export default function AgentSettings() {
         </div>
       ) : (
         <ul className="divide-y divide-border/60">
-          {agents.map((agent) => (
-            <li key={agent.id} className="px-6 py-4 flex flex-wrap items-center gap-4">
+          {agents.map((agent) => {
+            const pairedOfficer = pairedOfficerByAgent.get(agent.id);
+            const shareUrl = agentUrl(agent.slug, pairedOfficer?.slug);
+            return <li key={agent.id} className="px-6 py-4 flex flex-wrap items-center gap-4">
               {agent.headshotUrl ? (
                 <img
                   src={agent.headshotUrl}
@@ -553,8 +564,9 @@ export default function AgentSettings() {
                 <div className="mt-0.5 text-sm text-muted-foreground flex items-center gap-1.5 flex-wrap">
                   {agent.companyName && <span>{agent.companyName} ·</span>}
                   <span className="inline-flex items-center gap-1">
-                    <Link2 className="h-3.5 w-3.5" /> /with/{agent.slug}
+                    <Link2 className="h-3.5 w-3.5" /> {pairedOfficer ? `/with/${pairedOfficer.slug}/${agent.slug}` : `/with/${agent.slug}`}
                   </span>
+                  {!pairedOfficer && <span className="text-xs font-medium text-amber-700">Pair a loan officer to create a full co-branded link.</span>}
                 </div>
                 {(() => {
                   const stats = statsByAgent.get(agent.id);
@@ -597,8 +609,8 @@ export default function AgentSettings() {
                 })()}
               </div>
               <div className="flex items-center gap-1.5 flex-wrap">
-                <ProfileShareTools url={agentUrl(agent.slug)} label={`${agent.name} co-branded page`} />
-                <Button variant="outline" size="sm" onClick={() => openShareDraft(agent)} title="Open an email draft with this agent's QR-and-URL sharing message">
+                <ProfileShareTools url={shareUrl} label={`${agent.name} co-branded page`} />
+                <Button variant="outline" size="sm" onClick={() => openShareDraft(agent, pairedOfficer?.slug)} title="Open an email draft with this agent's QR-and-URL sharing message">
                   <MailCheck className="h-3.5 w-3.5 mr-1.5" /> Share QR + URL
                 </Button>
                 <Button
@@ -638,8 +650,8 @@ export default function AgentSettings() {
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
-            </li>
-          ))}
+            </li>;
+          })}
         </ul>
       )}
 
