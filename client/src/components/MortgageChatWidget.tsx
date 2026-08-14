@@ -290,20 +290,21 @@ export default function MortgageChatWidget() {
         </section>
       )}
 
-      <button
-        type="button"
-        onClick={() => {
-          if (!open) { setOpen(true); setMinimized(false); return; }
-          if (minimized) { setMinimized(false); return; }
-          setMinimized(true);
-        }}
-        className="btn-press fixed bottom-[5.5rem] right-5 z-50 inline-flex h-14 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-xl transition hover:brightness-110 sm:bottom-24 sm:right-6"
-        aria-expanded={open && !minimized}
-        aria-label={!open ? "Open mortgage intake chat" : minimized ? "Resume mortgage intake chat" : "Minimize mortgage intake chat"}
-      >
-        {open && !minimized ? <Minus className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
-        {!open ? "Ask about buying" : minimized ? "Resume chat" : "Minimize"}
-      </button>
+      {(!open || minimized) && (
+        <button
+          type="button"
+          onClick={() => {
+            if (!open) { setOpen(true); setMinimized(false); return; }
+            setMinimized(false);
+          }}
+          className="btn-press fixed bottom-[5.5rem] right-5 z-50 inline-flex h-14 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-xl transition hover:brightness-110 sm:bottom-24 sm:right-6"
+          aria-expanded={open && !minimized}
+          aria-label={!open ? "Open mortgage intake chat" : "Resume mortgage intake chat"}
+        >
+          <MessageCircle className="h-5 w-5" />
+          {!open ? "Ask about buying" : "Resume chat"}
+        </button>
+      )}
     </>
   );
 }
