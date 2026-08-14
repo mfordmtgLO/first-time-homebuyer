@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { buildLeadWelcomeDraft, type LeadWelcomeDraftInput } from "@shared/leadEmailDraft";
 import { PUBLIC_SITE_ORIGIN } from "@shared/publicSiteUrl";
 import { getCoBrandAgentFilterOptions, getLoanOfficerFilterOptions, matchesSelectedCoBrandPair } from "@shared/roadmapPairFilters";
+import { qualifiesForUsdaDashboardBadge } from "@shared/usdaEligibility";
 
 type Recipient = {
   sourceType: "roadmap" | "chat";
@@ -30,6 +31,10 @@ type Recipient = {
   agentSlug: string | null;
   agentSource: "link" | "manual" | null;
   isCoBranded: boolean;
+  annualIncome: number | null;
+  lowDownPaymentHomeSearch: number | null;
+  searchAreaType: string | null;
+  targetArea: string | null;
 };
 
 type AgentOption = { id: number; name: string; slug: string; email: string; phone: string; bio: string | null; website: string; companyName: string; headshotUrl: string; companyLogoUrl: string; visible: number };
@@ -267,7 +272,7 @@ export default function TextingWorkspace() {
               const mutationPending = roadmapAssignAgent.isPending || chatAssignAgent.isPending || roadmapSendToAgent.isPending || chatSendToAgent.isPending;
               return <div key={key} className="min-w-[1040px] grid grid-cols-[28px_1.25fr_.65fr_1fr_.75fr_1.4fr] items-start gap-3 px-4 py-3 transition hover:bg-muted/40">
                 <Checkbox checked={selectedKeys.has(key)} onCheckedChange={() => toggleRecipient(recipient)} aria-label={`Select ${recipient.name} for a text draft`} />
-                <div className="min-w-0"><div className="font-medium text-foreground">{recipient.name}</div><div className="mt-0.5 text-xs text-muted-foreground">{recipient.phone}{recipient.email ? ` · ${recipient.email}` : ""}</div></div>
+                <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><div className="font-medium text-foreground">{recipient.name}</div>{recipient.sourceType === "chat" && qualifiesForUsdaDashboardBadge(recipient) && <Badge title="USDA screening indicator based on the configured city and income criteria; program and property eligibility require verification." variant="outline" className="border-emerald-600/30 bg-emerald-600/10 text-emerald-700">USDA</Badge>}</div><div className="mt-0.5 text-xs text-muted-foreground">{recipient.phone}{recipient.email ? ` · ${recipient.email}` : ""}</div></div>
                 <div className="flex flex-wrap gap-1"><Badge variant="outline" className={recipient.sourceType === "roadmap" ? "border-primary/25 bg-primary/5 text-primary" : "border-violet-600/25 bg-violet-600/5 text-violet-700"}>{recipient.sourceType === "roadmap" ? "Roadmap" : "Chat"}</Badge><Badge variant="outline" className="capitalize">{recipient.status}</Badge></div>
                 <div className="text-xs"><div className="font-medium text-foreground">LO: {recipient.loanOfficerName || "—"}</div><div className="text-muted-foreground">Agent: {recipient.agentName || "—"}</div></div>
                 <div className="text-[11px] text-emerald-700">Recorded {formatDate(recipient.consentedAt)}</div>

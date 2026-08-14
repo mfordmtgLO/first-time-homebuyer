@@ -22,6 +22,7 @@ import { getCoBrandAgentFilterOptions, getLoanOfficerFilterOptions, matchesSelec
 import { buildLeadWelcomeDraft } from "@shared/leadEmailDraft";
 import { PUBLIC_SITE_ORIGIN } from "@shared/publicSiteUrl";
 import { hasUsableRoadmapPhone } from "@shared/roadmapPhone";
+import { qualifiesForUsdaDashboardBadge } from "@shared/usdaEligibility";
 
 type ChatLead = {
   id: number;
@@ -67,13 +68,18 @@ const money = (value: number | null) =>
 
 const formatDateTime = (value: Date | null) => (value ? new Date(value).toLocaleString() : "—");
 
+function UsdaBadge({ lead }: { lead: ChatLead }) {
+  if (!qualifiesForUsdaDashboardBadge(lead)) return null;
+  return <Badge title="USDA screening indicator based on the configured city and income criteria; program and property eligibility require verification." variant="outline" className="border-emerald-600/30 bg-emerald-600/10 text-emerald-700">USDA</Badge>;
+}
+
 function TranscriptDialog({ lead, onOpenChange }: { lead: ChatLead | null; onOpenChange: (open: boolean) => void }) {
   const transcript = trpc.chat.transcript.useQuery({ chatLeadId: lead?.id ?? 1 }, { enabled: lead !== null });
   return (
     <Dialog open={lead !== null} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{lead?.fullName || "Anonymous"}’s intake transcript</DialogTitle>
+          <DialogTitle className="flex flex-wrap items-center gap-2"><span>{lead?.fullName || "Anonymous"}’s intake transcript</span>{lead && <UsdaBadge lead={lead} />}</DialogTitle>
           <DialogDescription>Full chat history for this saved intake session.</DialogDescription>
         </DialogHeader>
         {transcript.isLoading ? (
@@ -226,7 +232,7 @@ export default function ChatIntakeLeads() {
           <table className="w-full text-sm">
             <thead><tr className="sticky top-0 z-10 border-b border-border bg-muted/95 text-left text-muted-foreground backdrop-blur-sm"><th className="px-5 py-3 font-semibold">Lead</th><th className="px-5 py-3 font-semibold">Co-brand source</th><th className="px-5 py-3 font-semibold">Status</th><th className="px-5 py-3 font-semibold">Recipients</th><th className="px-5 py-3 font-semibold">Resends</th><th className="px-5 py-3 font-semibold">Purpose</th><th className="px-5 py-3 font-semibold">Planning snapshot</th><th className="px-5 py-3 font-semibold">Updated</th><th className="px-5 py-3 text-right font-semibold">Actions</th></tr></thead>
             <tbody>{filtered.map((lead) => <tr key={lead.id} className="border-b border-border/60 last:border-0">
-              <td className="px-5 py-3.5"><div className="font-medium text-foreground">{lead.fullName || "Anonymous visitor"}</div><div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"><span>{lead.email || "No email"}</span><span>{lead.phone || "No phone"}</span>{hasUsableRoadmapPhone(lead.phone) && <Badge variant="outline" className="border-emerald-600/25 bg-emerald-600/5 text-emerald-700"><Smartphone className="mr-1 h-3 w-3" /> Phone ready</Badge>}{lead.smsConsent === 1 && hasUsableRoadmapPhone(lead.phone) && <Badge variant="outline" className="border-violet-600/25 bg-violet-600/5 text-violet-700"><MessageSquareText className="mr-1 h-3 w-3" /> Text ready</Badge>}</div><div className="mt-2 flex flex-wrap gap-1.5"><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" disabled={!lead.email} title={lead.email ? "Open a welcome email draft" : "This intake needs an email address first"} onClick={() => openEmailDraft(lead)}><Mail className="mr-1 h-3 w-3" /> Email draft</Button><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" onClick={() => { setNotesLead(lead); setNotesDraft(lead.notes ?? ""); }}><NotebookPen className="mr-1 h-3 w-3" /> {lead.notes?.trim() ? "Notes" : "Add note"}</Button><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" disabled={!lead.agentId || sendToAgent.isPending} title={lead.agentId ? "Email this intake to the assigned agent" : "Assign an agent first"} onClick={() => sendToAgent.mutate({ chatLeadId: lead.id })}>{sendToAgent.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-3 w-3" />} Send to agent</Button></div></td>
+              <td className="px-5 py-3.5"><div className="flex flex-wrap items-center gap-2"><div className="font-medium text-foreground">{lead.fullName || "Anonymous visitor"}</div><UsdaBadge lead={lead} /></div><div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"><span>{lead.email || "No email"}</span><span>{lead.phone || "No phone"}</span>{hasUsableRoadmapPhone(lead.phone) && <Badge variant="outline" className="border-emerald-600/25 bg-emerald-600/5 text-emerald-700"><Smartphone className="mr-1 h-3 w-3" /> Phone ready</Badge>}{lead.smsConsent === 1 && hasUsableRoadmapPhone(lead.phone) && <Badge variant="outline" className="border-violet-600/25 bg-violet-600/5 text-violet-700"><MessageSquareText className="mr-1 h-3 w-3" /> Text ready</Badge>}</div><div className="mt-2 flex flex-wrap gap-1.5"><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" disabled={!lead.email} title={lead.email ? "Open a welcome email draft" : "This intake needs an email address first"} onClick={() => openEmailDraft(lead)}><Mail className="mr-1 h-3 w-3" /> Email draft</Button><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" onClick={() => { setNotesLead(lead); setNotesDraft(lead.notes ?? ""); }}><NotebookPen className="mr-1 h-3 w-3" /> {lead.notes?.trim() ? "Notes" : "Add note"}</Button><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" disabled={!lead.agentId || sendToAgent.isPending} title={lead.agentId ? "Email this intake to the assigned agent" : "Assign an agent first"} onClick={() => sendToAgent.mutate({ chatLeadId: lead.id })}>{sendToAgent.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-3 w-3" />} Send to agent</Button></div></td>
               <td className="px-5 py-3.5">{lead.isCoBranded ? <div className="min-w-44"><Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Co-branded</Badge><div className="mt-1.5 text-xs font-medium text-foreground">LO: {lead.loanOfficerName || "—"}</div><div className="text-xs text-muted-foreground">Agent: {lead.agentName || "—"}</div></div> : <Badge variant="outline" className="text-muted-foreground">Direct site</Badge>}</td>
               <td className="px-5 py-3.5"><Badge variant="outline" className={lead.status === "qualified" ? "border-emerald-600/30 bg-emerald-600/10 text-emerald-700" : "border-accent/40 bg-accent/15 text-accent-foreground"}>{lead.status === "qualified" ? "Qualified" : "Incomplete"}</Badge></td>
               <td className="px-5 py-3.5">{recipientStatus(lead)}</td>

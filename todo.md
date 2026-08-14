@@ -249,3 +249,4 @@
 - [x] Update Texting Workspace Send to agent drafts with agent first-name greetings and branded co-marketing source URLs
 - [x] Update Mortgage Chat Intake email drafts with a chat-specific thank-you and complete conversation recap
 - [x] Add a centered fixed dashboard snap-navigation bar with Top and section-jump buttons for all major management areas
+- [x] Add a green USDA badge for qualifying Mortgage Chat Intake leads across all dashboard name displays
