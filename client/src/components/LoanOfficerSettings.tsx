@@ -26,6 +26,7 @@ import {
 import { slugify } from "@shared/slug";
 import ProfileShareTools from "@/components/ProfileShareTools";
 import { toast } from "sonner";
+import { publicSiteUrl } from "@shared/publicSiteUrl";
 import {
   BadgeCheck,
   Building2,
@@ -96,11 +97,11 @@ function readFileToBase64(file: File): Promise<string> {
 }
 
 function pairUrl(officer: Pick<Officer, "slug">, agent: Pick<Agent, "slug"> | undefined) {
-  return agent ? `${window.location.origin}/with/${officer.slug}/${agent.slug}` : null;
+  return agent ? publicSiteUrl(`/with/${officer.slug}/${agent.slug}`) : null;
 }
 
 function loanOfficerUrl(officer: Pick<Officer, "slug">) {
-  return `${window.location.origin}/loan-officer/${officer.slug}`;
+  return publicSiteUrl(`/loan-officer/${officer.slug}`);
 }
 
 function ImageUpload({

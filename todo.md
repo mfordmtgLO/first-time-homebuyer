@@ -242,3 +242,4 @@
 - [x] Add linked Loan Officer and co-brand Agent Chat Bot Intake Lead dropdown filters with historical per-pair intake counts and pair-specific CSV export
 - [x] Replace the copied-project title in automatic lead notification footers with the professional website name
 - [x] Reformat automatic Roadmap lead notifications with name, phone, email, and detailed 2-1 buydown and cost-of-waiting summaries matching the referral draft
+- [x] Replace the generated hosting subdomain in loan-officer and co-branded share links with a clean branded domain

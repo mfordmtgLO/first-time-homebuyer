@@ -33,6 +33,7 @@ import { slugify } from "@shared/slug";
 import ProfileShareTools from "@/components/ProfileShareTools";
 import { buildCoBrandedShareMailto } from "@shared/coBrandedShareDraft";
 import { getUnpairedAgentIds } from "@shared/agentPairingStatus";
+import { publicSiteUrl } from "@shared/publicSiteUrl";
 import {
   AlertTriangle,
   Building2,
@@ -110,8 +111,8 @@ function fileToBase64(file: File): Promise<string> {
 
 function agentUrl(agentSlug: string, loanOfficerSlug?: string | null) {
   return loanOfficerSlug
-    ? `${window.location.origin}/with/${loanOfficerSlug}/${agentSlug}`
-    : `${window.location.origin}/with/${agentSlug}`;
+    ? publicSiteUrl(`/with/${loanOfficerSlug}/${agentSlug}`)
+    : publicSiteUrl(`/with/${agentSlug}`);
 }
 
 function ImageUpload({

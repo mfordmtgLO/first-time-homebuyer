@@ -31,6 +31,7 @@ import {
 import { toast } from "sonner";
 import { hasUsableRoadmapPhone } from "@shared/roadmapPhone";
 import { getCoBrandAgentFilterOptions, getLoanOfficerFilterOptions, matchesSelectedCoBrandPair } from "@shared/roadmapPairFilters";
+import { PUBLIC_SITE_ORIGIN } from "@shared/publicSiteUrl";
 import {
   Calculator,
   Download,
@@ -316,7 +317,7 @@ function LeadEmailDraftAction({
       email: lead.email,
       scenarios,
       coMarketingAgent,
-      siteOrigin: window.location.origin,
+      siteOrigin: PUBLIC_SITE_ORIGIN,
     });
     window.location.href = draft.mailto;
     toast.success(`Welcome email draft opened for ${lead.firstName}. Both Roadmap resources are included as download links.`);
