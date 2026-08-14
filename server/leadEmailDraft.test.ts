@@ -106,6 +106,29 @@ describe("buildLeadWelcomeDraft", () => {
     expect(draft.body).toContain("https://lowdownhousenow.manus.space/");
     expect(draft.body).not.toContain("Headshot:");
   });
+
+  it("uses a chat-specific thank-you and includes the complete chat conversation recap", () => {
+    const draft = buildLeadWelcomeDraft({
+      firstName: "Sam",
+      email: "sam@example.com",
+      scenarios: null,
+      siteOrigin: "https://firsttimehomebuyer.manus.space",
+      chatTranscript: [
+        { role: "assistant", content: "Are you looking to purchase or refinance?" },
+        { role: "user", content: "Purchase" },
+        { role: "assistant", content: "What area are you considering?" },
+        { role: "user", content: "Coos Bay" },
+      ],
+    });
+
+    expect(draft.body).toContain("Thank you for reaching out through my Mortgage Intake Specialist chat.");
+    expect(draft.body).not.toContain("Thank you for requesting the First-Time Homebuyer Roadmap.");
+    expect(draft.body).toContain("CHAT CONVERSATION RECAP");
+    expect(draft.body).toContain("Mortgage Intake Specialist: Are you looking to purchase or refinance?");
+    expect(draft.body).toContain("Sam: Purchase");
+    expect(draft.body).toContain("Sam: Coos Bay");
+    expect(draft.body).toContain("Roadmap Homebuyer Guide + Checklist");
+  });
 });
 
 describe("GeoSphere property-list email drafts", () => {

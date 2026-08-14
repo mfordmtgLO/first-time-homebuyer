@@ -54,6 +54,8 @@ export type LeadWelcomeDraftInput = {
   /** Present only when the submission came through /with/:slug, not a manual assignment. */
   coMarketingAgent?: LeadEmailAgent | null;
   siteOrigin: string;
+  /** Present for a manual email draft opened from a Mortgage Chat Intake row. */
+  chatTranscript?: Array<{ role: "assistant" | "user" | "system"; content: string }>;
 };
 
 export type ListingEmailRow = {
@@ -229,10 +231,20 @@ export function buildLeadWelcomeDraft(input: LeadWelcomeDraftInput) {
   const contextualWebsiteUrl = input.coMarketingAgent
     ? new URL(`/with/${input.coMarketingAgent.slug}`, input.siteOrigin).toString()
     : new URL("/", input.siteOrigin).toString();
+  const isChatDraft = Boolean(input.chatTranscript);
+  const transcriptRecap = input.chatTranscript?.length
+    ? `
+
+CHAT CONVERSATION RECAP
+${input.chatTranscript.map((message) => `${message.role === "assistant" ? "Mortgage Intake Specialist" : message.role === "user" ? input.firstName : "System"}: ${message.content}`).join("\n\n")}`
+    : "";
+  const opening = isChatDraft
+    ? `Thank you for reaching out through my Mortgage Intake Specialist chat. I appreciate you sharing your goals and the information in our conversation.`
+    : `Thank you for requesting the First-Time Homebuyer Roadmap. I’m Mike Ford with Cornerstone First Mortgage, and I’m glad you’re here.`;
 
   const body = `Hi ${input.firstName},
 
-Thank you for requesting the First-Time Homebuyer Roadmap. I’m Mike Ford with Cornerstone First Mortgage, and I’m glad you’re here.
+${opening}${transcriptRecap}
 
 These resources are designed to give you a clear, no-pressure starting point for understanding your options, mapping your next steps, and preparing to buy when the time feels right.
 

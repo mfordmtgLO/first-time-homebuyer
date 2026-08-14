@@ -145,23 +145,29 @@ export default function ChatIntakeLeads() {
     },
     onError: (error) => toast.error(error.message || "Unable to save notes."),
   });
-  const openEmailDraft = (lead: ChatLead) => {
+  const openEmailDraft = async (lead: ChatLead) => {
     if (!lead.email) {
       toast.error("This chat intake does not have an email address yet.");
       return;
     }
-    const coMarketingAgent = lead.isCoBranded && lead.agentId
-      ? agents.find((agent) => agent.id === lead.agentId) ?? null
-      : null;
-    const draft = buildLeadWelcomeDraft({
-      firstName: lead.fullName?.trim().split(/\s+/)[0] || "there",
-      email: lead.email,
-      scenarios: null,
-      coMarketingAgent,
-      siteOrigin: PUBLIC_SITE_ORIGIN,
-    });
-    window.location.href = draft.mailto;
-    toast.success("Welcome email draft opened.");
+    try {
+      const transcript = await utils.chat.transcript.fetch({ chatLeadId: lead.id });
+      const coMarketingAgent = lead.isCoBranded && lead.agentId
+        ? agents.find((agent) => agent.id === lead.agentId) ?? null
+        : null;
+      const draft = buildLeadWelcomeDraft({
+        firstName: lead.fullName?.trim().split(/\s+/)[0] || "there",
+        email: lead.email,
+        scenarios: null,
+        coMarketingAgent,
+        siteOrigin: PUBLIC_SITE_ORIGIN,
+        chatTranscript: transcript.map((message) => ({ role: message.role, content: message.content })),
+      });
+      window.location.href = draft.mailto;
+      toast.success("Chat recap email draft opened.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to load this chat conversation for the email draft.");
+    }
   };
   const loanOfficerOptions = useMemo(() => getLoanOfficerFilterOptions(displayLeads), [displayLeads]);
   const agentOptions = useMemo(() => getCoBrandAgentFilterOptions(displayLeads, loanOfficerFilter), [displayLeads, loanOfficerFilter]);
