@@ -16,6 +16,7 @@ describe("copied database schema compatibility", () => {
     expect(chatIntakeLead.lowDownPaymentHomeSearch.name).toBe("lowDownPaymentHomeSearch");
     expect(chatIntakeLead.searchAreaType.name).toBe("searchAreaType");
     expect(chatIntakeLead.targetArea.name).toBe("targetArea");
+    expect(chatIntakeLead.recipientEmailDetail.name).toBe("recipientEmailDetail");
     expect(chatIntakeLead.resendCount.name).toBe("resendCount");
     expect(chatIntakeLead.lastResentAt.name).toBe("lastResentAt");
   });

@@ -229,3 +229,4 @@
 - [x] Change the Your Guide Mike Ford headshot frame to a taller vertical portrait treatment
 - [x] Resolve the bottom-right overlap between the platform attribution badge and Start chat launcher
 - [x] Diagnose and fix the public Mortgage Intake Specialist startup error that appears after opening chat
+- [x] Resolve the remaining production chat-start query failure shown in the browser console
