@@ -5,8 +5,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { ImagePlus, Loader2, MessageSquareText, Paperclip, Save, Send, ShieldCheck, Smartphone, Users, X } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ImagePlus, Loader2, Mail, MessageSquareText, Paperclip, Save, Send, ShieldCheck, Smartphone, Users, X } from "lucide-react";
 import { toast } from "sonner";
+import { buildLeadWelcomeDraft, type LeadWelcomeDraftInput } from "@shared/leadEmailDraft";
+import { PUBLIC_SITE_ORIGIN } from "@shared/publicSiteUrl";
+import { getCoBrandAgentFilterOptions, getLoanOfficerFilterOptions, matchesSelectedCoBrandPair } from "@shared/roadmapPairFilters";
 
 type Recipient = {
   sourceType: "roadmap" | "chat";
@@ -16,7 +20,19 @@ type Recipient = {
   email: string | null;
   consentedAt: Date | null;
   createdAt: Date;
+  updatedAt: Date;
+  status: string;
+  scenario: string | null;
+  loanOfficerName: string | null;
+  loanOfficerSlug: string | null;
+  agentId: number | null;
+  agentName: string | null;
+  agentSlug: string | null;
+  agentSource: "link" | "manual" | null;
+  isCoBranded: boolean;
 };
+
+type AgentOption = { id: number; name: string; slug: string; email: string; phone: string; bio: string | null; website: string; companyName: string; headshotUrl: string; companyLogoUrl: string; visible: number };
 
 type UploadedAttachment = {
   storageKey: string;
@@ -45,13 +61,27 @@ function readFileAsBase64(file: File) {
   });
 }
 
+function parseRecipientScenario(raw: string | null): LeadWelcomeDraftInput["scenarios"] {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { buydown?: unknown; costOfWaiting?: unknown };
+    return { buydown: parsed.buydown ?? null, costOfWaiting: parsed.costOfWaiting ?? null } as LeadWelcomeDraftInput["scenarios"];
+  } catch {
+    return null;
+  }
+}
+
 export default function TextingWorkspace() {
   const utils = trpc.useUtils();
   const statusQuery = trpc.texting.status.useQuery();
   const recipientsQuery = trpc.texting.recipients.useQuery();
   const draftsQuery = trpc.texting.listDrafts.useQuery();
+  const agentsQuery = trpc.agent.list.useQuery();
   const [search, setSearch] = useState("");
   const [source, setSource] = useState<"all" | "roadmap" | "chat">("all");
+  const [status, setStatus] = useState("all");
+  const [loanOfficerFilter, setLoanOfficerFilter] = useState("all");
+  const [agentFilter, setAgentFilter] = useState("all");
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set());
   const [body, setBody] = useState("");
   const [attachments, setAttachments] = useState<UploadedAttachment[]>([]);
@@ -68,21 +98,44 @@ export default function TextingWorkspace() {
     },
     onError: (error) => toast.error(error.message || "Unable to save the text draft."),
   });
+  const roadmapAssignAgent = trpc.leads.assignAgent.useMutation({ onSuccess: () => void Promise.all([utils.texting.recipients.invalidate(), utils.leads.list.invalidate()]), onError: (error) => toast.error(error.message || "Unable to assign the agent.") });
+  const chatAssignAgent = trpc.chat.assignAgent.useMutation({ onSuccess: () => void Promise.all([utils.texting.recipients.invalidate(), utils.chat.list.invalidate()]), onError: (error) => toast.error(error.message || "Unable to assign the agent.") });
+  const roadmapSendToAgent = trpc.leads.sendToAgent.useMutation({
+    onSuccess: (result) => {
+      if (result.sent) toast.success("Lead sent to the assigned agent.");
+      else { window.location.href = result.mailto; toast.info("Opened a prefilled referral draft because automatic email delivery is unavailable."); }
+    },
+    onError: (error) => toast.error(error.message || "Unable to send this lead to the agent."),
+  });
+  const chatSendToAgent = trpc.chat.sendToAgent.useMutation({
+    onSuccess: (result) => {
+      if (result.sent) toast.success("Chat intake sent to the assigned agent.");
+      else { window.location.href = result.mailto; toast.info("Opened a prefilled intake referral draft because automatic email delivery is unavailable."); }
+    },
+    onError: (error) => toast.error(error.message || "Unable to send this intake to the agent."),
+  });
 
   const recipients = (recipientsQuery.data ?? []) as Recipient[];
+  const agents = ((agentsQuery.data ?? []) as AgentOption[]).filter((agent) => agent.visible === 1);
+  const loanOfficerOptions = useMemo(() => getLoanOfficerFilterOptions(recipients), [recipients]);
+  const agentOptions = useMemo(() => getCoBrandAgentFilterOptions(recipients, loanOfficerFilter), [recipients, loanOfficerFilter]);
   const filteredRecipients = useMemo(() => {
     const query = search.trim().toLowerCase();
     return recipients.filter((recipient) => {
       const sourceMatches = source === "all" || recipient.sourceType === source;
-      const textMatches = !query || `${recipient.name} ${recipient.phone} ${recipient.email ?? ""}`.toLowerCase().includes(query);
-      return sourceMatches && textMatches;
+      const statusMatches = status === "all" || recipient.status === status;
+      const officerMatches = loanOfficerFilter === "all" || recipient.loanOfficerSlug === loanOfficerFilter || recipient.loanOfficerName === loanOfficerFilter;
+      const agentMatches = agentFilter === "all" || matchesSelectedCoBrandPair(recipient, loanOfficerFilter, agentFilter);
+      const textMatches = !query || `${recipient.name} ${recipient.phone} ${recipient.email ?? ""} ${recipient.loanOfficerName ?? ""} ${recipient.agentName ?? ""}`.toLowerCase().includes(query);
+      return sourceMatches && statusMatches && officerMatches && agentMatches && textMatches;
     });
-  }, [recipients, search, source]);
+  }, [recipients, search, source, status, loanOfficerFilter, agentFilter]);
   const selectedRecipients = useMemo(
     () => recipients.filter((recipient) => selectedKeys.has(recipientKey(recipient))),
     [recipients, selectedKeys]
   );
   const selectedVisible = filteredRecipients.length > 0 && filteredRecipients.every((recipient) => selectedKeys.has(recipientKey(recipient)));
+  const isFiltered = Boolean(search.trim() || source !== "all" || status !== "all" || loanOfficerFilter !== "all" || agentFilter !== "all");
 
   const toggleRecipient = (recipient: Recipient) => {
     const key = recipientKey(recipient);
@@ -131,6 +184,39 @@ export default function TextingWorkspace() {
       attachments,
     });
   };
+  const clearFilters = () => {
+    setSearch("");
+    setSource("all");
+    setStatus("all");
+    setLoanOfficerFilter("all");
+    setAgentFilter("all");
+  };
+  const openEmailDraft = (recipient: Recipient) => {
+    if (!recipient.email) {
+      toast.error("This lead does not have an email address yet.");
+      return;
+    }
+    const coMarketingAgent = recipient.isCoBranded && recipient.agentId
+      ? agents.find((agent) => agent.id === recipient.agentId) ?? null
+      : null;
+    const draft = buildLeadWelcomeDraft({
+      firstName: recipient.name.trim().split(/\s+/)[0] || "there",
+      email: recipient.email,
+      scenarios: parseRecipientScenario(recipient.scenario),
+      coMarketingAgent,
+      siteOrigin: PUBLIC_SITE_ORIGIN,
+    });
+    window.location.href = draft.mailto;
+    toast.success("Welcome email draft opened.");
+  };
+  const assignRecipientAgent = (recipient: Recipient, agentId: number | null) => {
+    if (recipient.sourceType === "roadmap") roadmapAssignAgent.mutate({ id: recipient.sourceLeadId, agentId });
+    else chatAssignAgent.mutate({ chatLeadId: recipient.sourceLeadId, agentId });
+  };
+  const sendRecipientToAgent = (recipient: Recipient) => {
+    if (recipient.sourceType === "roadmap") roadmapSendToAgent.mutate({ id: recipient.sourceLeadId });
+    else chatSendToAgent.mutate({ chatLeadId: recipient.sourceLeadId });
+  };
 
   return (
     <section className="mt-10 rounded-xl border border-primary/20 bg-card shadow-sm">
@@ -157,10 +243,16 @@ export default function TextingWorkspace() {
             </div>
             <Badge variant="outline" className="w-fit border-emerald-600/30 bg-emerald-600/10 text-emerald-700"><Smartphone className="mr-1 h-3.5 w-3.5" /> {recipients.length} ready</Badge>
           </div>
-          <div className="flex flex-col gap-2 border-b border-border p-4 sm:flex-row">
-            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name, phone, or email…" className="bg-card" />
-            <div className="flex gap-1 rounded-md border border-border bg-card p-1">
-              {(["all", "roadmap", "chat"] as const).map((value) => <Button key={value} size="sm" variant={source === value ? "default" : "ghost"} onClick={() => setSource(value)} className="capitalize">{value === "all" ? "All" : value}</Button>)}
+          <div className="flex flex-col gap-2 border-b border-border p-4">
+            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name, phone, email, loan officer, or agent…" className="bg-card" />
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex gap-1 rounded-md border border-border bg-card p-1">
+                {(["all", "roadmap", "chat"] as const).map((value) => <Button key={value} size="sm" variant={source === value ? "default" : "ghost"} onClick={() => setSource(value)} className="capitalize">{value === "all" ? "All sources" : value}</Button>)}
+              </div>
+              <Select value={status} onValueChange={setStatus}><SelectTrigger className="h-9 w-full bg-card text-xs sm:w-[140px]"><SelectValue placeholder="All statuses" /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem>{Array.from(new Set(recipients.map((recipient) => recipient.status))).sort().map((value) => <SelectItem key={value} value={value}>{value.charAt(0).toUpperCase() + value.slice(1)}</SelectItem>)}</SelectContent></Select>
+              <Select value={loanOfficerFilter} onValueChange={(value) => { setLoanOfficerFilter(value); setAgentFilter("all"); }}><SelectTrigger className="h-9 w-full bg-card text-xs sm:w-[180px]"><SelectValue placeholder="All loan officers" /></SelectTrigger><SelectContent><SelectItem value="all">All loan officers</SelectItem>{loanOfficerOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select>
+              <Select value={agentFilter} onValueChange={setAgentFilter} disabled={loanOfficerFilter === "all"}><SelectTrigger className="h-9 w-full bg-card text-xs sm:w-[210px]"><SelectValue placeholder={loanOfficerFilter === "all" ? "Select LO first" : "All co-brand agents"} /></SelectTrigger><SelectContent><SelectItem value="all">All co-brand agents</SelectItem>{agentOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select>
+              {isFiltered && <Button variant="ghost" size="sm" onClick={clearFilters}>Clear filters</Button>}
             </div>
           </div>
           <div className="flex items-center gap-2 border-b border-border px-4 py-3 text-xs text-muted-foreground">
@@ -168,17 +260,19 @@ export default function TextingWorkspace() {
             <label htmlFor="select-text-visible" className="cursor-pointer">Select visible</label>
             <span className="ml-auto font-medium text-foreground">{selectedRecipients.length} selected</span>
           </div>
-          <div className="max-h-[25rem] divide-y divide-border overflow-y-auto overscroll-contain">
+          <div className="max-h-[29rem] divide-y divide-border overflow-auto overscroll-contain">
+            <div className="hidden min-w-[1040px] grid-cols-[28px_1.25fr_.65fr_1fr_.75fr_1.4fr] gap-3 border-b border-border bg-muted/70 px-4 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground xl:grid"><span /><span>Lead</span><span>Source / status</span><span>Loan officer / agent</span><span>SMS consent</span><span className="text-right">Actions</span></div>
             {recipientsQuery.isLoading ? <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading text-ready leads…</div> : filteredRecipients.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">No text-ready leads match this view. Chat leads appear here after they choose Yes to the SMS consent question.</div> : filteredRecipients.map((recipient) => {
               const key = recipientKey(recipient);
-              return <label key={key} className="flex cursor-pointer items-start gap-3 px-4 py-3 transition hover:bg-muted/40">
+              const mutationPending = roadmapAssignAgent.isPending || chatAssignAgent.isPending || roadmapSendToAgent.isPending || chatSendToAgent.isPending;
+              return <div key={key} className="min-w-[1040px] grid grid-cols-[28px_1.25fr_.65fr_1fr_.75fr_1.4fr] items-start gap-3 px-4 py-3 transition hover:bg-muted/40">
                 <Checkbox checked={selectedKeys.has(key)} onCheckedChange={() => toggleRecipient(recipient)} aria-label={`Select ${recipient.name} for a text draft`} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2"><span className="font-medium text-foreground">{recipient.name}</span><Badge variant="outline" className={recipient.sourceType === "roadmap" ? "border-primary/25 bg-primary/5 text-primary" : "border-violet-600/25 bg-violet-600/5 text-violet-700"}>{recipient.sourceType === "roadmap" ? "Roadmap" : "Chat"}</Badge></div>
-                  <div className="mt-0.5 text-xs text-muted-foreground">{recipient.phone}{recipient.email ? ` · ${recipient.email}` : ""}</div>
-                  <div className="mt-1 text-[11px] text-emerald-700">SMS permission recorded {formatDate(recipient.consentedAt)}</div>
-                </div>
-              </label>;
+                <div className="min-w-0"><div className="font-medium text-foreground">{recipient.name}</div><div className="mt-0.5 text-xs text-muted-foreground">{recipient.phone}{recipient.email ? ` · ${recipient.email}` : ""}</div></div>
+                <div className="flex flex-wrap gap-1"><Badge variant="outline" className={recipient.sourceType === "roadmap" ? "border-primary/25 bg-primary/5 text-primary" : "border-violet-600/25 bg-violet-600/5 text-violet-700"}>{recipient.sourceType === "roadmap" ? "Roadmap" : "Chat"}</Badge><Badge variant="outline" className="capitalize">{recipient.status}</Badge></div>
+                <div className="text-xs"><div className="font-medium text-foreground">LO: {recipient.loanOfficerName || "—"}</div><div className="text-muted-foreground">Agent: {recipient.agentName || "—"}</div></div>
+                <div className="text-[11px] text-emerald-700">Recorded {formatDate(recipient.consentedAt)}</div>
+                <div className="flex flex-wrap justify-end gap-1.5"><Button variant="outline" size="sm" className="h-8 text-xs" disabled={!recipient.email} onClick={() => openEmailDraft(recipient)}><Mail className="mr-1 h-3.5 w-3.5" /> Email draft</Button><Select value={recipient.agentId ? String(recipient.agentId) : "none"} onValueChange={(value) => assignRecipientAgent(recipient, value === "none" ? null : Number(value))} disabled={mutationPending}><SelectTrigger className="h-8 w-[132px] text-xs"><SelectValue placeholder="No agent" /></SelectTrigger><SelectContent><SelectItem value="none">No agent</SelectItem>{agents.map((agent) => <SelectItem key={agent.id} value={String(agent.id)}>{agent.name}</SelectItem>)}</SelectContent></Select>{recipient.agentId && <Button variant="outline" size="sm" className="h-8 text-xs" disabled={mutationPending} onClick={() => sendRecipientToAgent(recipient)}><Send className="mr-1 h-3.5 w-3.5" /> Send to agent</Button>}</div>
+              </div>;
             })}
           </div>
         </div>

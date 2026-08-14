@@ -243,3 +243,5 @@
 - [x] Replace the copied-project title in automatic lead notification footers with the professional website name
 - [x] Reformat automatic Roadmap lead notifications with name, phone, email, and detailed 2-1 buydown and cost-of-waiting summaries matching the referral draft
 - [x] Replace the generated hosting subdomain in loan-officer and co-branded share links with a clean branded domain
+- [x] Align Texting Workspace and Mortgage Chat Intake Leads with Roadmap Leads columns, searches, filters, email drafts, agent routing, and clear-filter controls
+- [x] Add a visible Clear Filters action to all three lead-management sections whenever filters are active

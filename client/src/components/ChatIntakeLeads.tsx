@@ -15,9 +15,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Download, FileText, Loader2, Mail, MapPin, MessageCircle, MessageSquareText, Search } from "lucide-react";
+import { Download, FileText, Loader2, Mail, MapPin, MessageCircle, MessageSquareText, Search, Send } from "lucide-react";
 import { toast } from "sonner";
 import { getCoBrandAgentFilterOptions, getLoanOfficerFilterOptions, matchesSelectedCoBrandPair } from "@shared/roadmapPairFilters";
+import { buildLeadWelcomeDraft } from "@shared/leadEmailDraft";
+import { PUBLIC_SITE_ORIGIN } from "@shared/publicSiteUrl";
 
 type ChatLead = {
   id: number;
@@ -49,8 +51,11 @@ type ChatLead = {
   loanOfficerSlug: string | null;
   agentName: string | null;
   agentSlug: string | null;
+  agentId: number | null;
   isCoBranded: boolean;
 };
+
+type AgentOption = { id: number; name: string; slug: string; email: string; phone: string; bio: string | null; website: string; companyName: string; headshotUrl: string; companyLogoUrl: string; visible: number };
 
 const money = (value: number | null) =>
   value === null
@@ -87,8 +92,10 @@ function TranscriptDialog({ lead, onOpenChange }: { lead: ChatLead | null; onOpe
 
 export default function ChatIntakeLeads() {
   const query = trpc.chat.list.useQuery();
+  const agentsQuery = trpc.agent.list.useQuery();
   const utils = trpc.useUtils();
   const leads = (query.data ?? []) as ChatLead[];
+  const agents = ((agentsQuery.data ?? []) as AgentOption[]).filter((agent) => agent.visible === 1);
   const displayLeads = leads;
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | "incomplete" | "qualified">("all");
@@ -105,6 +112,44 @@ export default function ChatIntakeLeads() {
     },
     onError: (error) => toast.error(error.message || "Unable to resend the completed intake email."),
   });
+  const assignAgent = trpc.chat.assignAgent.useMutation({
+    onSuccess: () => {
+      void utils.chat.list.invalidate();
+      toast.success("Agent assignment updated.");
+    },
+    onError: (error) => toast.error(error.message || "Unable to assign the agent."),
+  });
+  const sendToAgent = trpc.chat.sendToAgent.useMutation({
+    onSuccess: (result, input) => {
+      const lead = leads.find((candidate) => candidate.id === input.chatLeadId);
+      if (result.sent) {
+        toast.success(`Chat intake sent to ${lead?.agentName || "the agent"}.`);
+        void utils.chat.list.invalidate();
+      } else {
+        window.location.href = result.mailto;
+        toast.info("Opened a prefilled intake referral draft because automatic email delivery is unavailable.");
+      }
+    },
+    onError: (error) => toast.error(error.message || "Unable to send this intake to the agent."),
+  });
+  const openEmailDraft = (lead: ChatLead) => {
+    if (!lead.email) {
+      toast.error("This chat intake does not have an email address yet.");
+      return;
+    }
+    const coMarketingAgent = lead.isCoBranded && lead.agentId
+      ? agents.find((agent) => agent.id === lead.agentId) ?? null
+      : null;
+    const draft = buildLeadWelcomeDraft({
+      firstName: lead.fullName?.trim().split(/\s+/)[0] || "there",
+      email: lead.email,
+      scenarios: null,
+      coMarketingAgent,
+      siteOrigin: PUBLIC_SITE_ORIGIN,
+    });
+    window.location.href = draft.mailto;
+    toast.success("Welcome email draft opened.");
+  };
   const loanOfficerOptions = useMemo(() => getLoanOfficerFilterOptions(displayLeads), [displayLeads]);
   const agentOptions = useMemo(() => getCoBrandAgentFilterOptions(displayLeads, loanOfficerFilter), [displayLeads, loanOfficerFilter]);
   const filtered = useMemo(() => displayLeads.filter((lead) => {
@@ -170,7 +215,7 @@ export default function ChatIntakeLeads() {
               <td className="px-5 py-3.5 capitalize">{lead.loanPurpose || "—"}</td>
               <td className="px-5 py-3.5 text-xs text-muted-foreground"><div>{lead.propertyType || "—"} · {money(lead.propertyValue)} · {lead.creditRange || "—"} · Income {money(lead.annualIncome)}</div>{lead.lowDownPaymentHomeSearch === 1 && <div className="mt-1 flex items-center gap-1 text-emerald-700"><MapPin className="h-3 w-3" /> Low/no-down search{lead.targetArea ? ` · ${lead.searchAreaType ?? "Area"}: ${lead.targetArea}` : " requested"}</div>}</td>
               <td className="px-5 py-3.5 whitespace-nowrap text-muted-foreground">{new Date(lead.updatedAt).toLocaleString()}</td>
-              <td className="px-5 py-3.5 text-right"><div className="flex justify-end gap-2"><Button variant="outline" size="sm" onClick={() => setSelected(lead)}><FileText className="mr-1.5 h-3.5 w-3.5" /> View</Button>{lead.status === "qualified" && <Button variant="outline" size="sm" disabled={resend.isPending} onClick={() => setResendCandidate(lead)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Resend</Button>}</div></td>
+              <td className="px-5 py-3.5 text-right"><div className="flex flex-wrap justify-end gap-2"><Button variant="outline" size="sm" onClick={() => setSelected(lead)}><FileText className="mr-1.5 h-3.5 w-3.5" /> View</Button>{lead.email && <Button variant="outline" size="sm" onClick={() => openEmailDraft(lead)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Email draft</Button>}<Select value={lead.agentId ? String(lead.agentId) : "none"} onValueChange={(value) => assignAgent.mutate({ chatLeadId: lead.id, agentId: value === "none" ? null : Number(value) })} disabled={assignAgent.isPending}><SelectTrigger className="h-8 w-[145px] text-xs"><SelectValue placeholder="No agent" /></SelectTrigger><SelectContent><SelectItem value="none">No agent</SelectItem>{agents.map((agent) => <SelectItem key={agent.id} value={String(agent.id)}>{agent.name}</SelectItem>)}</SelectContent></Select>{lead.agentId && <Button variant="outline" size="sm" disabled={sendToAgent.isPending} onClick={() => sendToAgent.mutate({ chatLeadId: lead.id })}>{sendToAgent.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Send className="mr-1.5 h-3.5 w-3.5" />} Send to agent</Button>}{lead.status === "qualified" && <Button variant="outline" size="sm" disabled={resend.isPending} onClick={() => setResendCandidate(lead)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Resend</Button>}</div></td>
             </tr>)}</tbody>
           </table>
         </div>

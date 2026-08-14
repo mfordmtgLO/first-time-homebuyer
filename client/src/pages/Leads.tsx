@@ -743,6 +743,20 @@ export default function Leads() {
                     {attributionAgentOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                {isFiltered && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSearch("");
+                      setStatusFilter("all");
+                      setLoanOfficerFilter("all");
+                      setAgentFilter("all");
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                )}
               </div>
             )}
 

@@ -58,7 +58,7 @@ import {
 import { syncGeoSphereSavedListings } from "./geosphere";
 import { createHeartbeatJob, updateHeartbeatJob } from "./_core/heartbeat";
 import { notifyOwner } from "./_core/notification";
-import { buildReferralEmail, sendChatIntakeNotification, sendReferralEmail } from "./email";
+import { buildChatIntakeNotification, buildReferralEmail, sendChatIntakeNotification, sendReferralEmail } from "./email";
 import { hasUsableRoadmapPhone } from "../shared/roadmapPhone";
 import { storagePut } from "./storage";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -300,6 +300,29 @@ async function deliverChatIntakeRecipientEmails(lead: CompletedChatIntake) {
   }
   await updateChatLead(lead.id, { recipientEmailStatus: "sent", recipientEmailDetail: null });
   return { recipientEmailStatus: "sent" as const, recipientEmailDetail: null };
+}
+
+function buildChatAgentMailto(lead: CompletedChatIntake, agent: { name: string; email: string }) {
+  const { subject, text } = buildChatIntakeNotification({
+    recipientName: agent.name,
+    recipientEmail: agent.email,
+    recipientRole: "agent",
+    fullName: lead.fullName ?? "Visitor",
+    email: lead.email ?? "Not provided",
+    phone: lead.phone ?? "Not provided",
+    loanPurpose: lead.loanPurpose,
+    propertyType: lead.propertyType,
+    propertyValue: lead.propertyValue,
+    creditRange: lead.creditRange,
+    annualIncome: lead.annualIncome,
+    downPayment: lead.downPayment,
+    loanAmount: lead.loanAmount,
+    lowDownPaymentHomeSearch: lead.lowDownPaymentHomeSearch,
+    searchAreaType: lead.searchAreaType,
+    targetArea: lead.targetArea,
+    coBrandedAgentName: agent.name,
+  });
+  return `mailto:${agent.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
 }
 
 export const appRouter = router({
@@ -759,6 +782,58 @@ export const appRouter = router({
           await updateChatLead(lead.id, { recipientEmailStatus: "manual_follow_up", recipientEmailDetail });
           return { recipientEmailStatus: "manual_follow_up" as const, recipientEmailDetail };
         }
+      }),
+    /** Admin-only manual agent assignment for a chat intake. */
+    assignAgent: protectedProcedure
+      .input(z.object({ chatLeadId: z.number().int().positive(), agentId: z.number().int().positive().nullable() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        if (input.agentId) {
+          const agent = await getAgentById(input.agentId);
+          if (!agent || agent.visible !== 1) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "That agent is no longer available." });
+          }
+        }
+        const lead = await getChatLeadById(input.chatLeadId);
+        if (!lead) throw new TRPCError({ code: "NOT_FOUND", message: "Mortgage intake not found." });
+        await updateChatLead(input.chatLeadId, { agentId: input.agentId });
+        return { success: true as const };
+      }),
+    /** Admin-only referral to the currently assigned agent, with a manual mail-draft fallback. */
+    sendToAgent: protectedProcedure
+      .input(z.object({ chatLeadId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const lead = await getChatLeadById(input.chatLeadId);
+        if (!lead) throw new TRPCError({ code: "NOT_FOUND", message: "Mortgage intake not found." });
+        if (!lead.agentId) throw new TRPCError({ code: "BAD_REQUEST", message: "Assign an agent before sending this intake." });
+        const agent = await getAgentById(lead.agentId);
+        if (!agent?.email) throw new TRPCError({ code: "BAD_REQUEST", message: "The assigned agent does not have an email address." });
+        const result = await sendChatIntakeNotification({
+          recipientName: agent.name,
+          recipientEmail: agent.email,
+          recipientRole: "agent",
+          fullName: lead.fullName ?? "Visitor",
+          email: lead.email ?? "Not provided",
+          phone: lead.phone ?? "Not provided",
+          loanPurpose: lead.loanPurpose,
+          propertyType: lead.propertyType,
+          propertyValue: lead.propertyValue,
+          creditRange: lead.creditRange,
+          annualIncome: lead.annualIncome,
+          downPayment: lead.downPayment,
+          loanAmount: lead.loanAmount,
+          lowDownPaymentHomeSearch: lead.lowDownPaymentHomeSearch,
+          searchAreaType: lead.searchAreaType,
+          targetArea: lead.targetArea,
+          coBrandedAgentName: agent.name,
+        });
+        await recordChatIntakeResendAttempt(lead.id);
+        if (result.sent) {
+          await updateChatLead(lead.id, { recipientEmailStatus: "sent", recipientEmailDetail: null });
+          return { sent: true as const };
+        }
+        return { sent: false as const, reason: result.reason, mailto: buildChatAgentMailto(lead, agent) };
       }),
   }),
 

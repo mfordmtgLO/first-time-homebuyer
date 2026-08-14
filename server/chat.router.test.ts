@@ -25,7 +25,10 @@ vi.mock("./db", async (importOriginal) => {
 });
 
 vi.mock("./_core/notification", () => ({ notifyOwner: vi.fn(async () => true) }));
-vi.mock("./email", () => ({ sendChatIntakeNotification: vi.fn(async () => ({ sent: true })) }));
+vi.mock("./email", () => ({
+  sendChatIntakeNotification: vi.fn(async () => ({ sent: true })),
+  buildChatIntakeNotification: vi.fn(() => ({ subject: "Chat intake", text: "Chat intake details" })),
+}));
 
 import { appRouter } from "./routers";
 import {
@@ -234,6 +237,18 @@ describe("chat intake router", () => {
     await expect(caller.chat.resend({ chatLeadId: 99 })).resolves.toMatchObject({ recipientEmailStatus: "sent" });
     expect(recordChatIntakeResendAttemptMock).toHaveBeenCalledWith(99);
     expect(sendChatIntakeNotificationMock).toHaveBeenCalledWith(expect.objectContaining({ recipientEmail: "mford@cfmtg.com", recipientRole: "loan_officer" }));
+  });
+
+  it("allows an admin to assign an agent and opens a fallback draft when direct chat-agent delivery is unavailable", async () => {
+    const agent = { id: 17, name: "Kaandice McLean", email: "kaandice@example.com", visible: 1 };
+    getChatLeadByIdMock.mockResolvedValue({ ...PHONE_STEP_LEAD, agentId: 17 } as never);
+    getAgentByIdMock.mockResolvedValue(agent as never);
+    sendChatIntakeNotificationMock.mockResolvedValueOnce({ sent: false, reason: "not_configured" });
+    const caller = appRouter.createCaller(context("admin"));
+    await expect(caller.chat.assignAgent({ chatLeadId: 99, agentId: 17 })).resolves.toEqual({ success: true });
+    expect(updateChatLeadMock).toHaveBeenCalledWith(99, { agentId: 17 });
+    await expect(caller.chat.sendToAgent({ chatLeadId: 99 })).resolves.toMatchObject({ sent: false, reason: "not_configured", mailto: expect.stringMatching(/^mailto:kaandice@example\.com\?subject=/) });
+    expect(recordChatIntakeResendAttemptMock).toHaveBeenCalledWith(99);
   });
 
   it("keeps manual resend restricted to the admin", async () => {

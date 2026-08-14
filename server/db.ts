@@ -423,6 +423,16 @@ export type TextReadyRecipient = {
   email: string | null;
   consentedAt: Date | null;
   createdAt: Date;
+  updatedAt: Date;
+  status: string;
+  scenario: string | null;
+  loanOfficerName: string | null;
+  loanOfficerSlug: string | null;
+  agentId: number | null;
+  agentName: string | null;
+  agentSlug: string | null;
+  agentSource: "link" | "manual" | null;
+  isCoBranded: boolean;
 };
 
 /**
@@ -442,8 +452,18 @@ export async function listTextReadyRecipients(): Promise<TextReadyRecipient[]> {
         phone: leads.phone,
         email: leads.email,
         createdAt: leads.createdAt,
+        scenario: leads.scenario,
+        status: leads.status,
+        agentId: leads.agentId,
+        agentSource: leads.agentSource,
+        loanOfficerName: loanOfficer.name,
+        loanOfficerSlug: loanOfficer.slug,
+        agentName: agentProfile.name,
+        agentSlug: agentProfile.slug,
       })
       .from(leads)
+      .leftJoin(loanOfficer, eq(leads.loanOfficerId, loanOfficer.id))
+      .leftJoin(agentProfile, eq(leads.agentId, agentProfile.id))
       .where(and(eq(leads.smsConsent, 1), ne(leads.phone, ""))),
     db
       .select({
@@ -453,8 +473,17 @@ export async function listTextReadyRecipients(): Promise<TextReadyRecipient[]> {
         email: chatIntakeLead.email,
         consentedAt: chatIntakeLead.smsConsentAt,
         createdAt: chatIntakeLead.createdAt,
+        updatedAt: chatIntakeLead.updatedAt,
+        status: chatIntakeLead.status,
+        agentId: chatIntakeLead.agentId,
+        loanOfficerName: loanOfficer.name,
+        loanOfficerSlug: loanOfficer.slug,
+        agentName: agentProfile.name,
+        agentSlug: agentProfile.slug,
       })
       .from(chatIntakeLead)
+      .leftJoin(loanOfficer, eq(chatIntakeLead.loanOfficerId, loanOfficer.id))
+      .leftJoin(agentProfile, eq(chatIntakeLead.agentId, agentProfile.id))
       .where(and(eq(chatIntakeLead.smsConsent, 1), isNotNull(chatIntakeLead.phone))),
   ]);
 
@@ -464,10 +493,20 @@ export async function listTextReadyRecipients(): Promise<TextReadyRecipient[]> {
       sourceLeadId: lead.sourceLeadId,
       name: lead.name,
       phone: lead.phone,
-      email: lead.email,
-      consentedAt: lead.createdAt,
-      createdAt: lead.createdAt,
-    })),
+        email: lead.email,
+        consentedAt: lead.createdAt,
+        createdAt: lead.createdAt,
+        updatedAt: lead.createdAt,
+        status: lead.status,
+        scenario: lead.scenario,
+        loanOfficerName: lead.loanOfficerName ?? null,
+        loanOfficerSlug: lead.loanOfficerSlug ?? null,
+        agentId: lead.agentId ?? null,
+        agentName: lead.agentName ?? null,
+        agentSlug: lead.agentSlug ?? null,
+        agentSource: lead.agentSource ?? null,
+        isCoBranded: lead.agentSource === "link" && Boolean(lead.agentId && lead.loanOfficerSlug),
+      })),
     ...chatRows
       .filter((lead) => Boolean(lead.phone))
       .map((lead) => ({
@@ -478,6 +517,16 @@ export async function listTextReadyRecipients(): Promise<TextReadyRecipient[]> {
         email: lead.email,
         consentedAt: lead.consentedAt,
         createdAt: lead.createdAt,
+        updatedAt: lead.updatedAt,
+        status: lead.status,
+        scenario: null,
+        loanOfficerName: lead.loanOfficerName ?? null,
+        loanOfficerSlug: lead.loanOfficerSlug ?? null,
+        agentId: lead.agentId ?? null,
+        agentName: lead.agentName ?? null,
+        agentSlug: lead.agentSlug ?? null,
+        agentSource: null,
+        isCoBranded: Boolean(lead.agentId && lead.loanOfficerSlug),
       })),
   ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
