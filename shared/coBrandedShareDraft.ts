@@ -18,7 +18,7 @@ If you would like, I can also help set up this co-branded page in my CRM for out
 
 Leads captured through your co-branded page remain associated with your profile, so we can stay coordinated as they move through their Roadmap Journey to Homeownership.
 
-You have a local, trusted, experienced team on your side. I look forward to helping you and your clients every step of the way.
+I look forward to our next deal together!
 
 Mike Ford
 Cornerstone First Mortgage

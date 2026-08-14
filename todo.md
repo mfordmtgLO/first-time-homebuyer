@@ -224,3 +224,4 @@
 - [x] Diagnose why the live dashboard does not reflect completed dashboard changes
 - [x] Restore and verify the current dashboard application bundle and referral action on the published site
 - [x] Correct the Roadmap “Send me the Roadmap” button text wrapping and alignment at responsive form widths
+- [x] Replace the co-marketing Share QR + URL email-draft closing with the requested next-deal message

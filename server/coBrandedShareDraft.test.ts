@@ -11,5 +11,7 @@ describe("buildCoBrandedShareMailto", () => {
     expect(draft).toContain("https://example.com/with/jane-doe");
     expect(draft).toContain("QR code is available in the dashboard");
     expect(draft).toContain("associated with your profile");
+    expect(draft).toContain("I look forward to our next deal together!");
+    expect(draft).not.toContain("You have a local, trusted, experienced team on your side.");
   });
 });
