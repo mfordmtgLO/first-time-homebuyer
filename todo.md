@@ -237,3 +237,4 @@
 - [x] Add a chat-intake SMS consent question with explicit Yes and No responses, and make only Yes responses text-ready
 - [x] Add provider-ready SMS/MMS message, recipient, JPG attachment, and delivery-status records without enabling real sends
 - [x] Repair current and historical loan-officer attribution for co-branded Roadmap leads that display LO not linked
+- [x] Add a visible pairing-status warning and guidance for co-marketing agents without an active loan-officer pairing

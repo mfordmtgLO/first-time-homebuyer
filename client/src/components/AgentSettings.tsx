@@ -32,7 +32,9 @@ import { toast } from "sonner";
 import { slugify } from "@shared/slug";
 import ProfileShareTools from "@/components/ProfileShareTools";
 import { buildCoBrandedShareMailto } from "@shared/coBrandedShareDraft";
+import { getUnpairedAgentIds } from "@shared/agentPairingStatus";
 import {
+  AlertTriangle,
   Building2,
   Copy,
   Home,
@@ -442,6 +444,8 @@ export default function AgentSettings() {
       .filter((officer) => officer.agentId !== null && officer.visible === 1)
       .map((officer) => [officer.agentId!, officer])
   );
+  const unpairedAgentIds = new Set(getUnpairedAgentIds(agents, officersQuery.data ?? []));
+  const unpairedAgents = agents.filter((agent) => unpairedAgentIds.has(agent.id));
   const statsQuery = trpc.agent.stats.useQuery();
   const statsByAgent = new Map(
     (statsQuery.data ?? []).map((s) => [s.agentId, s])
@@ -504,6 +508,12 @@ export default function AgentSettings() {
             Every agent gets their own co-branded page link to share. Mark one agent
             "On homepage" to feature them on the main site; assign agents to leads above.
           </p>
+          {unpairedAgents.length > 0 && (
+            <div role="alert" className="mt-3 flex max-w-3xl items-start gap-2.5 rounded-md border border-amber-500/35 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-950">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
+              <p><strong>{unpairedAgents.length} co-marketing agent{unpairedAgents.length === 1 ? " is" : "s are"} not paired with a loan officer.</strong> In the <em>Loan officers</em> section below, edit the appropriate officer, select the agent under <em>Co-marketing agent partner</em>, and save before distributing a QR code or co-branded link.</p>
+            </div>
+          )}
         </div>
         <Button
           size="sm"
@@ -558,6 +568,11 @@ export default function AgentSettings() {
                   {agent.visible !== 1 && (
                     <span className="inline-flex rounded-full bg-muted text-muted-foreground border border-border px-2 py-0.5 text-[11px] font-semibold">
                       Inactive
+                    </span>
+                  )}
+                  {unpairedAgentIds.has(agent.id) && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-800" title="This agent has no active loan-officer pairing">
+                      <AlertTriangle className="h-3 w-3" aria-hidden="true" /> Unpaired LO
                     </span>
                   )}
                 </div>
