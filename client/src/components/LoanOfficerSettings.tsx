@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { slugify } from "@shared/slug";
+import ProfileShareTools from "@/components/ProfileShareTools";
 import { toast } from "sonner";
 import {
   BadgeCheck,
@@ -268,11 +269,6 @@ export default function LoanOfficerSettings() {
     catch { toast.error("Couldn't copy the link — please copy it from the address shown."); }
   };
 
-  const copyLoanOfficerLink = async (officer: Officer) => {
-    try { await navigator.clipboard.writeText(loanOfficerUrl(officer)); toast.success("Loan officer profile link copied."); }
-    catch { toast.error("Couldn't copy the link — please copy it from the address shown."); }
-  };
-
   return (
     <section className="mt-10 rounded-lg border border-border bg-card shadow-sm">
       <div className="flex flex-col justify-between gap-3 border-b border-border px-6 py-5 sm:flex-row sm:items-center">
@@ -294,7 +290,7 @@ export default function LoanOfficerSettings() {
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {url && <Button variant="outline" size="sm" onClick={() => copyPairLink(officer, partner!)}><Copy className="mr-1.5 h-3.5 w-3.5" /> Copy link</Button>}
-                {standaloneUrl && <Button variant="outline" size="sm" onClick={() => copyLoanOfficerLink(officer)} title={`Copy ${standaloneUrl}`}><Copy className="mr-1.5 h-3.5 w-3.5" /> Copy link</Button>}
+                {standaloneUrl && <ProfileShareTools url={standaloneUrl} label={`${officer.name} loan officer profile`} />}
                 <Button variant="outline" size="sm" onClick={() => feature.mutate({ id: officer.featured === 1 ? null : officer.id })}><Star className={`mr-1.5 h-3.5 w-3.5 ${officer.featured === 1 ? "fill-current" : ""}`} />{officer.featured === 1 ? "Unfeature" : "Make default"}</Button>
                 <Button variant="outline" size="sm" onClick={() => { setEditing(officer); setDialogOpen(true); }}><Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit</Button>
                 <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleting(officer)}><Trash2 className="h-3.5 w-3.5" /></Button>

@@ -213,3 +213,6 @@
 - [x] Add a dashboard badge for usable Roadmap lead phone numbers and verify the end-to-end behavior
 - [x] Repair the missing standalone URL and copy-link control for unpaired loan-officer dashboard rows
 - [x] Verify the unpaired loan-officer profile action and checkpoint the dashboard correction
+- [x] Add QR-code, copy-feedback, and LinkedIn/Facebook sharing controls for standalone loan-officer profile URLs
+- [x] Add a co-branded agent Share QR + URL dashboard action with a prefilled sharing email draft
+- [x] Add regression coverage, visual verification, and a checkpoint for dashboard sharing tools

@@ -30,6 +30,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { slugify } from "@shared/slug";
+import ProfileShareTools from "@/components/ProfileShareTools";
+import { buildCoBrandedShareMailto } from "@shared/coBrandedShareDraft";
 import {
   Building2,
   Copy,
@@ -474,6 +476,14 @@ export default function AgentSettings() {
     }
   };
 
+  const openShareDraft = (agent: AgentRow) => {
+    if (!agent.email) {
+      toast.error(`${agent.name} has no email address on file.`);
+      return;
+    }
+    window.location.href = buildCoBrandedShareMailto({ agentName: agent.name, agentEmail: agent.email, url: agentUrl(agent.slug) });
+  };
+
   return (
     <section className="mt-10 rounded-lg bg-card border border-border shadow-sm">
       <div className="px-6 py-5 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -587,8 +597,9 @@ export default function AgentSettings() {
                 })()}
               </div>
               <div className="flex items-center gap-1.5 flex-wrap">
-                <Button variant="outline" size="sm" onClick={() => copyUrl(agent.slug)}>
-                  <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy link
+                <ProfileShareTools url={agentUrl(agent.slug)} label={`${agent.name} co-branded page`} />
+                <Button variant="outline" size="sm" onClick={() => openShareDraft(agent)} title="Open an email draft with this agent's QR-and-URL sharing message">
+                  <MailCheck className="h-3.5 w-3.5 mr-1.5" /> Share QR + URL
                 </Button>
                 <Button
                   variant="outline"
