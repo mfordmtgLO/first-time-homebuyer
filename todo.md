@@ -252,3 +252,5 @@
 - [x] Add a green USDA badge for qualifying Mortgage Chat Intake leads across all dashboard name displays
 - [x] Correct Mortgage Chat Intake lead email drafts with first-home financing language and a readable question-and-response chat recap
 - [x] Fix the Mortgage Chat Minimize button overlap with the response-field Enter action
+- [x] Add a provider-ready Text Chain viewer for consented leads with clickable links, timestamps, and attachment cards
+- [x] Prepare inbound and outbound text-history persistence for future SMS/MMS provider webhook synchronization

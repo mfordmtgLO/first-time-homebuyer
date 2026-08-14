@@ -13,6 +13,8 @@ import {
   textMessage,
   textMessageAttachment,
   textMessageRecipient,
+  textChainAttachment,
+  textChainEvent,
   users,
   type InsertAgentProfile,
   type InsertChatIntakeLead,
@@ -600,6 +602,129 @@ export async function listTextMessageDrafts() {
     recipients: recipients.filter((recipient) => recipient.textMessageId === message.id),
     attachments: attachments.filter((attachment) => attachment.textMessageId === message.id),
   }));
+}
+
+export type TextChainAttachmentRow = {
+  id: number;
+  storageKey: string;
+  url: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+};
+
+export type TextChainEntry = {
+  id: string;
+  direction: "incoming" | "outgoing";
+  body: string;
+  status: string;
+  senderLabel: string;
+  occurredAt: Date;
+  attachments: TextChainAttachmentRow[];
+  providerName: string | null;
+};
+
+/**
+ * Returns one lead's complete visible message history. Existing saved drafts
+ * are represented as outgoing provider-setup entries, then future webhook
+ * events are merged in chronological order as real SMS/MMS is synchronized.
+ */
+export async function listTextChainByLead(input: { sourceType: "roadmap" | "chat"; sourceLeadId: number }): Promise<TextChainEntry[]> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const [messages, recipients, draftAttachments, events, eventAttachments] = await Promise.all([
+    db.select().from(textMessage),
+    db.select().from(textMessageRecipient).where(and(eq(textMessageRecipient.sourceType, input.sourceType), eq(textMessageRecipient.sourceLeadId, input.sourceLeadId))),
+    db.select().from(textMessageAttachment),
+    db.select().from(textChainEvent).where(and(eq(textChainEvent.sourceType, input.sourceType), eq(textChainEvent.sourceLeadId, input.sourceLeadId))),
+    db.select().from(textChainAttachment),
+  ]);
+
+  const eventRecipientIds = new Set(events.map((event) => event.textMessageRecipientId).filter((id): id is number => id !== null));
+  const draftEntries = recipients
+    .filter((recipient) => !eventRecipientIds.has(recipient.id))
+    .flatMap((recipient) => {
+      const message = messages.find((candidate) => candidate.id === recipient.textMessageId);
+      if (!message) return [];
+      return [{
+        id: `draft-${recipient.id}`,
+        direction: "outgoing" as const,
+        body: message.body,
+        status: recipient.deliveryStatus,
+        senderLabel: "Mike Ford",
+        occurredAt: recipient.sentAt ?? recipient.createdAt,
+        attachments: draftAttachments
+          .filter((attachment) => attachment.textMessageId === message.id)
+          .map((attachment) => ({
+            id: attachment.id,
+            storageKey: attachment.storageKey,
+            url: attachment.url,
+            fileName: attachment.fileName,
+            mimeType: attachment.mimeType,
+            sizeBytes: attachment.sizeBytes,
+          })),
+        providerName: message.providerName,
+      }];
+    });
+  const providerEntries = events.map((event) => ({
+    id: `event-${event.id}`,
+    direction: event.direction,
+    body: event.body,
+    status: event.eventStatus,
+    senderLabel: event.senderLabel || (event.direction === "outgoing" ? "Mike Ford" : "Lead"),
+    occurredAt: event.occurredAt,
+    attachments: eventAttachments
+      .filter((attachment) => attachment.textChainEventId === event.id)
+      .map((attachment) => ({
+        id: attachment.id,
+        storageKey: attachment.storageKey,
+        url: attachment.url,
+        fileName: attachment.fileName,
+        mimeType: attachment.mimeType,
+        sizeBytes: attachment.sizeBytes,
+      })),
+    providerName: event.providerName,
+  }));
+
+  return [...draftEntries, ...providerEntries].sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime());
+}
+
+/** Provider integration hook for future inbound and outbound SMS/MMS synchronization. */
+export async function recordTextChainEvent(input: {
+  sourceType: "roadmap" | "chat";
+  sourceLeadId: number;
+  direction: "incoming" | "outgoing";
+  body: string;
+  eventStatus: "queued" | "sent" | "delivered" | "failed" | "received" | "opted_out";
+  senderLabel?: string | null;
+  providerName?: string | null;
+  providerMessageId?: string | null;
+  textMessageId?: number | null;
+  textMessageRecipientId?: number | null;
+  occurredAt?: Date;
+  attachments?: Array<Omit<TextChainAttachmentRow, "id">>;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(textChainEvent).values({
+    sourceType: input.sourceType,
+    sourceLeadId: input.sourceLeadId,
+    direction: input.direction,
+    body: input.body,
+    eventStatus: input.eventStatus,
+    senderLabel: input.senderLabel ?? null,
+    providerName: input.providerName ?? null,
+    providerMessageId: input.providerMessageId ?? null,
+    textMessageId: input.textMessageId ?? null,
+    textMessageRecipientId: input.textMessageRecipientId ?? null,
+    occurredAt: input.occurredAt ?? new Date(),
+  });
+  const textChainEventId = Number(result.insertId);
+  if (input.attachments?.length) {
+    await db.insert(textChainAttachment).values(input.attachments.map((attachment) => ({ textChainEventId, ...attachment })));
+  }
+  return textChainEventId;
 }
 
 export async function getChatTranscriptByLeadId(chatLeadId: number) {

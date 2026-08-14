@@ -7,17 +7,19 @@ vi.mock("./db", async (importOriginal) => {
     listTextReadyRecipients: vi.fn(async () => []),
     createTextMessageDraft: vi.fn(async () => 201),
     listTextMessageDrafts: vi.fn(async () => []),
+    listTextChainByLead: vi.fn(async () => []),
   };
 });
 
 vi.mock("./storage", () => ({ storagePut: vi.fn(async () => ({ key: "text-drafts/1/example.jpg", url: "/manus-storage/text-drafts/1/example.jpg" })) }));
 
 import { appRouter } from "./routers";
-import { createTextMessageDraft, listTextReadyRecipients } from "./db";
+import { createTextMessageDraft, listTextChainByLead, listTextReadyRecipients } from "./db";
 import type { TrpcContext } from "./_core/context";
 
 const listTextReadyRecipientsMock = vi.mocked(listTextReadyRecipients);
 const createTextMessageDraftMock = vi.mocked(createTextMessageDraft);
+const listTextChainByLeadMock = vi.mocked(listTextChainByLead);
 
 function context(role: "admin" | "user"): TrpcContext {
   return {
@@ -42,6 +44,7 @@ describe("provider-ready texting workspace", () => {
     vi.clearAllMocks();
     listTextReadyRecipientsMock.mockResolvedValue([CONSENTED_RECIPIENT]);
     createTextMessageDraftMock.mockResolvedValue(201 as never);
+    listTextChainByLeadMock.mockResolvedValue([]);
   });
 
   it("exposes an explicit no-provider state and only returns text-ready recipients", async () => {
@@ -62,6 +65,16 @@ describe("provider-ready texting workspace", () => {
       createdByUserId: 1,
       recipients: [expect.objectContaining({ sourceLeadId: 44, phone: "(541) 729-0819" })],
     }));
+  });
+
+  it("returns a consented lead's Text Chain history only to the dashboard owner", async () => {
+    const chain = [{ id: "draft-1", direction: "outgoing" as const, body: "Review this website: https://firsttimehomebuyer.manus.space", status: "provider_setup_required", senderLabel: "Mike Ford", occurredAt: new Date("2026-08-14T12:00:00Z"), attachments: [], providerName: null }];
+    listTextChainByLeadMock.mockResolvedValue(chain);
+    const caller = appRouter.createCaller(context("admin"));
+    await expect(caller.texting.chain({ sourceType: "roadmap", sourceLeadId: 44 })).resolves.toEqual(chain);
+    expect(listTextChainByLeadMock).toHaveBeenCalledWith({ sourceType: "roadmap", sourceLeadId: 44 });
+    const nonAdmin = appRouter.createCaller(context("user"));
+    await expect(nonAdmin.texting.chain({ sourceType: "roadmap", sourceLeadId: 44 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("rejects recipient selections that no longer satisfy the text-ready rule", async () => {

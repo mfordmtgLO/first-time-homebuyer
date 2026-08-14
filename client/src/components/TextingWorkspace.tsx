@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ImagePlus, Loader2, Mail, MessageSquareText, Paperclip, Save, Send, ShieldCheck, Smartphone, Users, X } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Clock3, Contact, ExternalLink, FileText, ImagePlus, Loader2, Mail, MessageSquareText, Paperclip, Save, Send, ShieldCheck, Smartphone, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { buildLeadWelcomeDraft, type LeadWelcomeDraftInput } from "@shared/leadEmailDraft";
 import { PUBLIC_SITE_ORIGIN } from "@shared/publicSiteUrl";
@@ -47,6 +48,26 @@ type UploadedAttachment = {
   sizeBytes: number;
 };
 
+type TextChainAttachment = {
+  id: number;
+  storageKey: string;
+  url: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+};
+
+type TextChainEntry = {
+  id: string;
+  direction: "incoming" | "outgoing";
+  body: string;
+  status: string;
+  senderLabel: string;
+  occurredAt: Date;
+  attachments: TextChainAttachment[];
+  providerName: string | null;
+};
+
 const recipientKey = (recipient: Pick<Recipient, "sourceType" | "sourceLeadId">) => `${recipient.sourceType}:${recipient.sourceLeadId}`;
 
 function formatDate(value: Date | null) {
@@ -76,6 +97,69 @@ function parseRecipientScenario(raw: string | null): LeadWelcomeDraftInput["scen
   }
 }
 
+function LinkifiedText({ body }: { body: string }) {
+  const segments = body.split(/(https?:\/\/[^\s<]+)/gi);
+  return (
+    <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
+      {segments.map((segment, index) => /^https?:\/\//i.test(segment) ? (
+        <a key={`${segment}-${index}`} href={segment} target="_blank" rel="noopener noreferrer" className="font-medium underline decoration-current/60 underline-offset-2 hover:opacity-80">
+          {segment}
+        </a>
+      ) : segment)}
+    </p>
+  );
+}
+
+function TextChainDialog({ recipient, onOpenChange }: { recipient: Recipient | null; onOpenChange: (open: boolean) => void }) {
+  const chain = trpc.texting.chain.useQuery(
+    { sourceType: recipient?.sourceType ?? "roadmap", sourceLeadId: recipient?.sourceLeadId ?? 1 },
+    { enabled: recipient !== null }
+  );
+  const entries = (chain.data ?? []) as TextChainEntry[];
+  return (
+    <Dialog open={recipient !== null} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[82vh] flex-col overflow-hidden p-0 sm:max-w-2xl">
+        <DialogHeader className="border-b border-border px-5 pb-4 pt-5">
+          <DialogTitle className="flex flex-wrap items-center gap-2"><MessageSquareText className="h-5 w-5 text-primary" /> Text Chain · {recipient?.name || "Lead"}</DialogTitle>
+          <DialogDescription>Timestamped one-to-one message history. Website links are clickable; images, vCards, and files remain attached to their original message.</DialogDescription>
+        </DialogHeader>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-muted/20 px-4 py-5 sm:px-5">
+          {chain.isLoading ? (
+            <div className="flex justify-center py-12 text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading text chain…</div>
+          ) : entries.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border bg-card p-5 text-center text-sm leading-relaxed text-muted-foreground">No text messages are saved for this lead yet. Provider-unconfigured drafts and future sent or received SMS/MMS messages will appear here in order.</div>
+          ) : (
+            <div className="space-y-4">
+              {entries.map((entry) => {
+                const outgoing = entry.direction === "outgoing";
+                return <article key={entry.id} className={outgoing ? "ml-8" : "mr-8"}>
+                  <div className={`rounded-xl px-4 py-3 shadow-sm ${outgoing ? "bg-primary text-primary-foreground" : "border border-border bg-card text-foreground"}`}>
+                    <div className={`mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] font-semibold ${outgoing ? "text-primary-foreground/75" : "text-muted-foreground"}`}>
+                      <span>{entry.senderLabel}</span>
+                      <span className="inline-flex items-center gap-1"><Clock3 className="h-3 w-3" /> {new Date(entry.occurredAt).toLocaleString()}</span>
+                    </div>
+                    <LinkifiedText body={entry.body} />
+                    {entry.attachments.length > 0 && <div className="mt-3 grid gap-2 sm:grid-cols-2">{entry.attachments.map((attachment) => {
+                      const image = attachment.mimeType.startsWith("image/");
+                      const vcard = attachment.mimeType.includes("vcard") || attachment.fileName.toLowerCase().endsWith(".vcf");
+                      return <a key={attachment.id} href={attachment.url} target="_blank" rel="noopener noreferrer" className={`group rounded-lg border p-2 transition hover:brightness-95 ${outgoing ? "border-primary-foreground/25 bg-primary-foreground/10" : "border-border bg-muted/40"}`}>
+                        {image ? <img src={attachment.url} alt={attachment.fileName} className="h-28 w-full rounded object-cover" /> : <div className="flex min-h-16 items-center gap-2"><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded ${outgoing ? "bg-primary-foreground/15" : "bg-background"}`}>{vcard ? <Contact className="h-4 w-4" /> : <FileText className="h-4 w-4" />}</span><span className="min-w-0"><span className="block truncate text-xs font-medium">{attachment.fileName}</span><span className="mt-0.5 flex items-center gap-1 text-[11px] opacity-70">{vcard ? "vCard contact" : "Open attachment"} <ExternalLink className="h-3 w-3" /></span></span></div>}
+                        {image && <span className="mt-1.5 flex items-center gap-1 text-[11px] opacity-75"><ExternalLink className="h-3 w-3" /> {attachment.fileName}</span>}
+                      </a>;
+                    })}</div>}
+                  </div>
+                  <p className="mt-1.5 px-1 text-[10px] text-muted-foreground">{entry.status.replace(/_/g, " ")}{entry.providerName ? ` · ${entry.providerName}` : ""}</p>
+                </article>;
+              })}
+            </div>
+          )}
+        </div>
+        <div className="border-t border-border bg-card px-5 py-3 text-xs text-muted-foreground">Use the Compose draft panel to prepare the next one-to-one message. Delivery remains disabled until an SMS/MMS provider is connected.</div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function TextingWorkspace() {
   const utils = trpc.useUtils();
   const statusQuery = trpc.texting.status.useQuery();
@@ -90,6 +174,7 @@ export default function TextingWorkspace() {
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set());
   const [body, setBody] = useState("");
   const [attachments, setAttachments] = useState<UploadedAttachment[]>([]);
+  const [chainRecipient, setChainRecipient] = useState<Recipient | null>(null);
   const uploadJpg = trpc.texting.uploadJpg.useMutation({
     onError: (error) => toast.error(error.message || "Unable to upload the JPG attachment."),
   });
@@ -285,7 +370,7 @@ export default function TextingWorkspace() {
                 <div className="flex flex-wrap gap-1"><Badge variant="outline" className={recipient.sourceType === "roadmap" ? "border-primary/25 bg-primary/5 text-primary" : "border-violet-600/25 bg-violet-600/5 text-violet-700"}>{recipient.sourceType === "roadmap" ? "Roadmap" : "Chat"}</Badge><Badge variant="outline" className="capitalize">{recipient.status}</Badge></div>
                 <div className="text-xs"><div className="font-medium text-foreground">LO: {recipient.loanOfficerName || "—"}</div><div className="text-muted-foreground">Agent: {recipient.agentName || "—"}</div></div>
                 <div className="text-[11px] text-emerald-700">Recorded {formatDate(recipient.consentedAt)}</div>
-                <div className="flex flex-wrap justify-end gap-1.5"><Button variant="outline" size="sm" className="h-8 text-xs" disabled={!recipient.email} onClick={() => openEmailDraft(recipient)}><Mail className="mr-1 h-3.5 w-3.5" /> Email draft</Button><Select value={recipient.agentId ? String(recipient.agentId) : "none"} onValueChange={(value) => assignRecipientAgent(recipient, value === "none" ? null : Number(value))} disabled={mutationPending}><SelectTrigger className="h-8 w-[132px] text-xs"><SelectValue placeholder="No agent" /></SelectTrigger><SelectContent><SelectItem value="none">No agent</SelectItem>{agents.map((agent) => <SelectItem key={agent.id} value={String(agent.id)}>{agent.name}</SelectItem>)}</SelectContent></Select>{recipient.agentId && <Button variant="outline" size="sm" className="h-8 text-xs" disabled={mutationPending} onClick={() => sendRecipientToAgent(recipient)}><Send className="mr-1 h-3.5 w-3.5" /> Send to agent</Button>}</div>
+                <div className="flex flex-wrap justify-end gap-1.5"><Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setChainRecipient(recipient)}><MessageSquareText className="mr-1 h-3.5 w-3.5" /> Text Chain</Button><Button variant="outline" size="sm" className="h-8 text-xs" disabled={!recipient.email} onClick={() => void openEmailDraft(recipient)}><Mail className="mr-1 h-3.5 w-3.5" /> Email draft</Button><Select value={recipient.agentId ? String(recipient.agentId) : "none"} onValueChange={(value) => assignRecipientAgent(recipient, value === "none" ? null : Number(value))} disabled={mutationPending}><SelectTrigger className="h-8 w-[132px] text-xs"><SelectValue placeholder="No agent" /></SelectTrigger><SelectContent><SelectItem value="none">No agent</SelectItem>{agents.map((agent) => <SelectItem key={agent.id} value={String(agent.id)}>{agent.name}</SelectItem>)}</SelectContent></Select>{recipient.agentId && <Button variant="outline" size="sm" className="h-8 text-xs" disabled={mutationPending} onClick={() => sendRecipientToAgent(recipient)}><Send className="mr-1 h-3.5 w-3.5" /> Send to agent</Button>}</div>
               </div>;
             })}
           </div>
@@ -315,6 +400,7 @@ export default function TextingWorkspace() {
         <div className="flex items-center gap-2"><Paperclip className="h-4 w-4 text-muted-foreground" /><h3 className="font-semibold text-foreground">Saved draft history</h3></div>
         {draftsQuery.isLoading ? <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading drafts…</div> : (draftsQuery.data ?? []).length === 0 ? <p className="mt-3 text-sm text-muted-foreground">No text drafts saved yet.</p> : <div className="mt-4 grid gap-3 lg:grid-cols-2">{(draftsQuery.data ?? []).slice(0, 8).map((draft) => <article key={draft.id} className="rounded-lg border border-border bg-background/40 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><Badge className="border-amber-600/30 bg-amber-600/10 text-amber-800 hover:bg-amber-600/10">Provider setup required</Badge><span className="text-xs text-muted-foreground">{new Date(draft.createdAt).toLocaleString()}</span></div><p className="mt-3 line-clamp-3 whitespace-pre-wrap text-sm text-foreground">{draft.body}</p><div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground"><span>{draft.recipients.length} recipient{draft.recipients.length === 1 ? "" : "s"}</span><span>{draft.attachments.length} JPG attachment{draft.attachments.length === 1 ? "" : "s"}</span></div></article>)}</div>}
       </div>
+      <TextChainDialog recipient={chainRecipient} onOpenChange={(open) => { if (!open) setChainRecipient(null); }} />
     </section>
   );
 }

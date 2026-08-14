@@ -242,6 +242,58 @@ export type TextMessageAttachment = typeof textMessageAttachment.$inferSelect;
 export type InsertTextMessageAttachment = typeof textMessageAttachment.$inferInsert;
 
 /**
+ * Provider-synchronized individual SMS/MMS events. Draft messages remain in
+ * text_message until an eventual provider integration records their real
+ * outbound delivery here; received messages will also be stored here.
+ */
+export const textChainEvent = mysqlTable(
+  "text_chain_event",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    sourceType: mysqlEnum("sourceType", ["roadmap", "chat"]).notNull(),
+    sourceLeadId: int("sourceLeadId").notNull(),
+    direction: mysqlEnum("direction", ["incoming", "outgoing"]).notNull(),
+    body: text("body").notNull(),
+    eventStatus: mysqlEnum("eventStatus", ["queued", "sent", "delivered", "failed", "received", "opted_out"])
+      .default("received")
+      .notNull(),
+    senderLabel: varchar("senderLabel", { length: 180 }),
+    providerName: varchar("providerName", { length: 80 }),
+    providerMessageId: varchar("providerMessageId", { length: 160 }),
+    textMessageId: int("textMessageId"),
+    textMessageRecipientId: int("textMessageRecipientId"),
+    occurredAt: timestamp("occurredAt").defaultNow().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [
+    index("text_chain_event_source_time_idx").on(table.sourceType, table.sourceLeadId, table.occurredAt),
+    index("text_chain_event_provider_id_idx").on(table.providerName, table.providerMessageId),
+  ]
+);
+
+export type TextChainEvent = typeof textChainEvent.$inferSelect;
+export type InsertTextChainEvent = typeof textChainEvent.$inferInsert;
+
+/** Attachments associated with one provider-synchronized text-chain event. */
+export const textChainAttachment = mysqlTable(
+  "text_chain_attachment",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    textChainEventId: int("textChainEventId").notNull(),
+    storageKey: varchar("storageKey", { length: 700 }).notNull(),
+    url: varchar("url", { length: 1000 }).notNull(),
+    fileName: varchar("fileName", { length: 300 }).notNull(),
+    mimeType: varchar("mimeType", { length: 120 }).notNull(),
+    sizeBytes: int("sizeBytes").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [index("text_chain_attachment_event_idx").on(table.textChainEventId)]
+);
+
+export type TextChainAttachment = typeof textChainAttachment.$inferSelect;
+export type InsertTextChainAttachment = typeof textChainAttachment.$inferInsert;
+
+/**
  * One cache-only saved pull exported by GeoSphere. The source snapshot ID makes
  * imports idempotent while preserving every manually refreshed area pull.
  */

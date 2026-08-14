@@ -43,6 +43,7 @@ import {
   listLoanOfficers,
   listLeads,
   listTextMessageDrafts,
+  listTextChainByLead,
   listTextReadyRecipients,
   markLeadSentToAgent,
   setFeaturedAgent,
@@ -879,6 +880,19 @@ export const appRouter = router({
       requireAdmin(ctx.user.role);
       return listTextMessageDrafts();
     }),
+    /** Admin-only: one consented lead's ordered dashboard drafts and future provider-synchronized SMS/MMS events. */
+    chain: protectedProcedure
+      .input(z.object({ sourceType: z.enum(["roadmap", "chat"]), sourceLeadId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const candidate = (await listTextReadyRecipients()).find(
+          (recipient) => recipient.sourceType === input.sourceType && recipient.sourceLeadId === input.sourceLeadId && hasUsableRoadmapPhone(recipient.phone)
+        );
+        if (!candidate) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "This lead is not currently text-ready." });
+        }
+        return listTextChainByLead(input);
+      }),
     /** Admin-only: upload a JPG attachment to storage for a saved future MMS draft. */
     uploadJpg: protectedProcedure
       .input(
