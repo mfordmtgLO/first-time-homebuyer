@@ -40,7 +40,6 @@ I'd like to connect you with a buyer lead from my First-Time Homebuyer landing p
 Name: ${input.leadFirstName}
 Email: ${input.leadEmail}
 Phone: ${input.leadPhone || "Not provided"}
-Came in via: ${input.leadSource}
 Submitted: ${input.submittedAt.toLocaleString("en-US", { timeZone: "America/Los_Angeles" })} (Pacific)${scenarioBlock}
 
 They're working with me on financing — please reach out and introduce yourself when you get a chance.

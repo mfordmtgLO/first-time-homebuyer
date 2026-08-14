@@ -994,7 +994,7 @@ function summarizeLeadScenario(raw: string | null): string | null {
   try {
     const parsed = JSON.parse(raw) as {
       buydown?: { purchasePrice: number; downPayment: number; noteRate: number; year1MonthlySavings?: number; year2MonthlySavings?: number; totalSubsidy?: number };
-      costOfWaiting?: { purchasePrice: number; monthlyRent: number; waitYears: number };
+      costOfWaiting?: { purchasePrice: number; monthlyRent: number; waitYears: number; costOfWaiting?: number };
       purchasePrice?: number; // legacy bare-buydown shape
       downPayment?: number;
       noteRate?: number;
@@ -1017,9 +1017,10 @@ function summarizeLeadScenario(raw: string | null): string | null {
     }
     if (parsed.costOfWaiting) {
       const c = parsed.costOfWaiting;
-      lines.push(
-        `- Rent vs. buy scenario: $${Math.round(c.purchasePrice).toLocaleString("en-US")} home vs $${Math.round(c.monthlyRent).toLocaleString("en-US")}/mo rent, ${c.waitYears} yr(s) of waiting compared`
-      );
+      const result = typeof c.costOfWaiting === "number"
+        ? `, resulting in $${Math.round(c.costOfWaiting).toLocaleString("en-US")} cost of waiting.`
+        : ".";
+      lines.push(`- Rent vs. buy scenario: $${Math.round(c.purchasePrice).toLocaleString("en-US")} home vs $${Math.round(c.monthlyRent).toLocaleString("en-US")}/mo rent, ${c.waitYears} yr(s) of waiting compared${result}`);
     }
     return lines.length > 0 ? lines.join("\n") : null;
   } catch {
@@ -1030,13 +1031,13 @@ function summarizeLeadScenario(raw: string | null): string | null {
 /** Prefilled mailto: link so the owner can send manually when email isn't configured. */
 function buildMailtoFallback(
   agentEmail: string,
-  lead: { firstName: string; email: string; phone: string; source: string },
+  lead: { firstName: string; email: string; phone: string },
   agentName: string,
   scenarioSummary: string | null
 ) {
   const agentFirstName = agentName.trim().split(/\s+/)[0] || "there";
   const subject = `New buyer lead: ${lead.firstName}`;
-  const body = `Hi ${agentFirstName},\n\nI'd like to connect you with a buyer lead from my First-Time Homebuyer landing page.\n\nName: ${lead.firstName}\nEmail: ${lead.email}\nPhone: ${lead.phone || "Not provided"}\nCame in via: ${lead.source}${scenarioSummary ? `\n\nWhat they explored on the site:\n${scenarioSummary}` : ""}\n\nThey're working with me on financing — please reach out and introduce yourself.\n\nThanks,\nMike Ford\nCornerstone First Mortgage\n(541) 729-0819`;
+  const body = `Hi ${agentFirstName},\n\nI'd like to connect you with a buyer lead from my First-Time Homebuyer landing page.\n\nName: ${lead.firstName}\nEmail: ${lead.email}\nPhone: ${lead.phone || "Not provided"}${scenarioSummary ? `\n\nWhat they explored on the site:\n${scenarioSummary}` : ""}\n\nThey're working with me on financing — please reach out and introduce yourself.\n\nThanks,\nMike Ford\nCornerstone First Mortgage\n(541) 729-0819`;
   return `mailto:${agentEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 

@@ -216,3 +216,6 @@
 - [x] Add QR-code, copy-feedback, and LinkedIn/Facebook sharing controls for standalone loan-officer profile URLs
 - [x] Add a co-branded agent Share QR + URL dashboard action with a prefilled sharing email draft
 - [x] Add regression coverage, visual verification, and a checkpoint for dashboard sharing tools
+- [x] Update Roadmap send-to-agent drafts with first-name greeting, lead phone, and no source-tag line
+- [x] Expand 2-1 buydown and cost-of-waiting details in sent and fallback referral drafts
+- [x] Add regression coverage and checkpoint the revised Roadmap agent-referral drafts

@@ -127,6 +127,12 @@ const SAMPLE_LEAD = {
       year2MonthlySavings: 275,
       totalSubsidy: 9730,
     },
+    costOfWaiting: {
+      purchasePrice: 400000,
+      monthlyRent: 1800,
+      waitYears: 3,
+      costOfWaiting: 105578,
+    },
   }),
   agentId: 7,
   sentToAgentAt: null,
@@ -342,6 +348,8 @@ describe("leads.sendToAgent", () => {
       expect(draft).toContain("Year 1 monthly savings: $536");
       expect(draft).toContain("Year 2 monthly savings: $275");
       expect(draft).toContain("$9,730 (2.29% of sales price)");
+      expect(draft).toContain("resulting in $105,578 cost of waiting.");
+      expect(draft).not.toContain("Came in via:");
     }
     expect(markLeadSentToAgentMock).not.toHaveBeenCalled();
   });

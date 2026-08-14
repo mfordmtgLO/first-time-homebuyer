@@ -19,5 +19,6 @@ describe("buildReferralEmail", () => {
     expect(email.text).not.toContain("Hi Jane Doe,");
     expect(email.text).toContain("Phone: (541) 555-0199");
     expect(email.text).toContain("Year 1 monthly savings: $536");
+    expect(email.text).not.toContain("Came in via:");
   });
 });
