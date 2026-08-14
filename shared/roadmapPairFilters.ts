@@ -3,7 +3,8 @@ export type RoadmapAttributionLead = {
   loanOfficerSlug: string | null;
   agentName: string | null;
   agentSlug: string | null;
-  agentSource: string | null;
+  agentSource?: string | null;
+  isCoBranded?: boolean;
 };
 
 export type RoadmapFilterOption = { value: string; label: string };
@@ -44,7 +45,8 @@ export function getCoBrandAgentFilterOptions(
   if (loanOfficerValue === "all") return [];
   const grouped = new Map<string, { name: string; count: number }>();
   for (const lead of leads) {
-    if (loanOfficerFilterValue(lead) !== loanOfficerValue || lead.agentSource !== "link" || !lead.agentName) continue;
+    const wasCapturedFromPair = lead.agentSource === "link" || lead.isCoBranded === true;
+    if (loanOfficerFilterValue(lead) !== loanOfficerValue || !wasCapturedFromPair || !lead.agentName) continue;
     const value = agentFilterValue(lead);
     if (!value) continue;
     const current = grouped.get(value);
@@ -57,5 +59,5 @@ export function getCoBrandAgentFilterOptions(
 
 /** True only for a historical lead captured through the selected paired website. */
 export function matchesSelectedCoBrandPair(lead: RoadmapAttributionLead, loanOfficerValue: string, agentValue: string) {
-  return loanOfficerFilterValue(lead) === loanOfficerValue && agentFilterValue(lead) === agentValue && lead.agentSource === "link";
+  return loanOfficerFilterValue(lead) === loanOfficerValue && agentFilterValue(lead) === agentValue && (lead.agentSource === "link" || lead.isCoBranded === true);
 }

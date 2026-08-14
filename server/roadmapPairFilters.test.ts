@@ -24,4 +24,10 @@ describe("Roadmap loan-officer and co-brand pairing filters", () => {
   it("exports only shared-url leads when a specific LO-agent pairing is selected", () => {
     expect(leads.filter((lead) => matchesSelectedCoBrandPair(lead, "mford", "kaandice-mclean"))).toHaveLength(2);
   });
+
+  it("supports chat-intake co-brand attribution without a Roadmap agent-source tag", () => {
+    const chatLead = { loanOfficerName: "Mike Ford", loanOfficerSlug: "mford", agentName: "Kaandice McLean", agentSlug: "kaandice-mclean", agentSource: null, isCoBranded: true };
+    expect(getCoBrandAgentFilterOptions([chatLead], "mford")).toEqual([{ value: "kaandice-mclean", label: "Kaandice McLean (1)", count: 1 }]);
+    expect(matchesSelectedCoBrandPair(chatLead, "mford", "kaandice-mclean")).toBe(true);
+  });
 });

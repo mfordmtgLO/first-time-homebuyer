@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Download, FileText, Loader2, Mail, MapPin, MessageCircle, MessageSquareText, Search } from "lucide-react";
 import { toast } from "sonner";
+import { getCoBrandAgentFilterOptions, getLoanOfficerFilterOptions, matchesSelectedCoBrandPair } from "@shared/roadmapPairFilters";
 
 type ChatLead = {
   id: number;
@@ -104,18 +105,12 @@ export default function ChatIntakeLeads() {
     },
     onError: (error) => toast.error(error.message || "Unable to resend the completed intake email."),
   });
-  const loanOfficerOptions = useMemo(
-    () => Array.from(new Map(displayLeads.filter((lead) => lead.loanOfficerName).map((lead) => [lead.loanOfficerSlug ?? lead.loanOfficerName!, { value: lead.loanOfficerSlug ?? lead.loanOfficerName!, label: lead.loanOfficerName! }])).values()),
-    [displayLeads]
-  );
-  const agentOptions = useMemo(
-    () => Array.from(new Map(displayLeads.filter((lead) => lead.agentName).map((lead) => [lead.agentSlug ?? lead.agentName!, { value: lead.agentSlug ?? lead.agentName!, label: lead.agentName! }])).values()),
-    [displayLeads]
-  );
+  const loanOfficerOptions = useMemo(() => getLoanOfficerFilterOptions(displayLeads), [displayLeads]);
+  const agentOptions = useMemo(() => getCoBrandAgentFilterOptions(displayLeads, loanOfficerFilter), [displayLeads, loanOfficerFilter]);
   const filtered = useMemo(() => displayLeads.filter((lead) => {
     const haystack = `${lead.fullName ?? ""} ${lead.email ?? ""} ${lead.phone ?? ""} ${lead.loanOfficerName ?? ""} ${lead.agentName ?? ""}`.toLowerCase();
     const officerMatches = loanOfficerFilter === "all" || lead.loanOfficerSlug === loanOfficerFilter || lead.loanOfficerName === loanOfficerFilter;
-    const agentMatches = agentFilter === "all" || lead.agentSlug === agentFilter || lead.agentName === agentFilter;
+    const agentMatches = agentFilter === "all" || matchesSelectedCoBrandPair(lead, loanOfficerFilter, agentFilter);
     return (status === "all" || lead.status === status) && officerMatches && agentMatches && haystack.includes(search.toLowerCase());
   }), [displayLeads, search, status, loanOfficerFilter, agentFilter]);
   const clearFilters = () => {
@@ -152,8 +147,8 @@ export default function ChatIntakeLeads() {
         <div className="relative min-w-0 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name, email, phone, loan officer, or agent…" /></div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="flex gap-2">{(["all", "qualified", "incomplete"] as const).map((value) => <Button key={value} size="sm" variant={status === value ? "default" : "outline"} onClick={() => setStatus(value)}>{value === "all" ? "All" : value === "qualified" ? "Qualified" : "Incomplete"}</Button>)}</div>
-          <Select value={loanOfficerFilter} onValueChange={setLoanOfficerFilter}><SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="All loan officers" /></SelectTrigger><SelectContent><SelectItem value="all">All loan officers</SelectItem>{loanOfficerOptions.map((officer) => <SelectItem key={officer.value} value={officer.value}>{officer.label}</SelectItem>)}</SelectContent></Select>
-          <Select value={agentFilter} onValueChange={setAgentFilter}><SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="All agents" /></SelectTrigger><SelectContent><SelectItem value="all">All agents</SelectItem>{agentOptions.map((agent) => <SelectItem key={agent.value} value={agent.value}>{agent.label}</SelectItem>)}</SelectContent></Select>
+          <Select value={loanOfficerFilter} onValueChange={(value) => { setLoanOfficerFilter(value); setAgentFilter("all"); }}><SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="All loan officers" /></SelectTrigger><SelectContent><SelectItem value="all">All loan officers</SelectItem>{loanOfficerOptions.map((officer) => <SelectItem key={officer.value} value={officer.value}>{officer.label}</SelectItem>)}</SelectContent></Select>
+          <Select value={agentFilter} onValueChange={setAgentFilter} disabled={loanOfficerFilter === "all"}><SelectTrigger className="w-full sm:w-56"><SelectValue placeholder={loanOfficerFilter === "all" ? "Select LO first" : "All co-brand agents"} /></SelectTrigger><SelectContent><SelectItem value="all">All co-brand agents</SelectItem>{agentOptions.map((agent) => <SelectItem key={agent.value} value={agent.value}>{agent.label}</SelectItem>)}</SelectContent></Select>
           {(search || status !== "all" || loanOfficerFilter !== "all" || agentFilter !== "all") && <Button variant="ghost" size="sm" onClick={clearFilters}>Clear filters</Button>}
         </div>
         <p className="text-xs text-muted-foreground">Showing {filtered.length} of {displayLeads.length} chat intake{displayLeads.length === 1 ? "" : "s"}. CSV export follows these filters.</p>
