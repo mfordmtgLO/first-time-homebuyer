@@ -248,3 +248,4 @@
 - [x] Add visible Phone ready, Email draft, Send to agent, and Notes controls to Mortgage Chat Intake lead rows
 - [x] Update Texting Workspace Send to agent drafts with agent first-name greetings and branded co-marketing source URLs
 - [x] Update Mortgage Chat Intake email drafts with a chat-specific thank-you and complete conversation recap
+- [x] Add a centered fixed dashboard snap-navigation bar with Top and section-jump buttons for all major management areas

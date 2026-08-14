@@ -33,6 +33,7 @@ import { hasUsableRoadmapPhone } from "@shared/roadmapPhone";
 import { getCoBrandAgentFilterOptions, getLoanOfficerFilterOptions, matchesSelectedCoBrandPair } from "@shared/roadmapPairFilters";
 import { PUBLIC_SITE_ORIGIN } from "@shared/publicSiteUrl";
 import {
+  ArrowUp,
   Calculator,
   Download,
   Inbox,
@@ -51,6 +52,15 @@ import {
 } from "lucide-react";
 
 const LOGO = "/manus-storage/cornerstone-logo-standard_72b02c9f.png";
+
+const DASHBOARD_SECTIONS = [
+  { id: "roadmap-leads", label: "Roadmap" },
+  { id: "co-marketing-agents", label: "Agents" },
+  { id: "loan-officers", label: "Loan officers" },
+  { id: "texting-workspace", label: "Texting" },
+  { id: "chat-intakes", label: "Chat intakes" },
+  { id: "saved-qualifying-listings", label: "Listings" },
+] as const;
 
 type LeadStatus = "new" | "contacted" | "booked";
 
@@ -622,6 +632,13 @@ export default function Leads() {
         </div>
       </header>
 
+      {isAuthenticated && isAdmin && (
+        <nav aria-label="Dashboard section navigation" className="fixed left-1/2 top-3 z-50 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto rounded-full border border-border/80 bg-card/95 p-1.5 shadow-lg backdrop-blur-md">
+          <Button variant="default" size="sm" className="h-8 shrink-0 rounded-full px-3 text-xs" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}><ArrowUp className="mr-1 h-3.5 w-3.5" /> Top</Button>
+          {DASHBOARD_SECTIONS.map((section) => <Button key={section.id} variant="ghost" size="sm" className="h-8 shrink-0 rounded-full px-3 text-xs" onClick={() => document.getElementById(section.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}>{section.label}</Button>)}
+        </nav>
+      )}
+
       <main className="container py-10">
         {loading ? (
           <div className="flex items-center justify-center py-32 text-muted-foreground">
@@ -655,7 +672,7 @@ export default function Leads() {
             </Link>
           </div>
         ) : (
-          <>
+          <section id="roadmap-leads" className="scroll-mt-24">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
               <div>
                 <h1 className="font-display font-semibold text-3xl text-foreground flex items-center gap-3">
@@ -899,12 +916,12 @@ export default function Leads() {
               </p>
             )}
 
-            <AgentSettings />
-            <LoanOfficerSettings />
-            <TextingWorkspace />
-            <ChatIntakeLeads />
-            <GeoSphereListings />
-          </>
+            <div id="co-marketing-agents" className="scroll-mt-24"><AgentSettings /></div>
+            <div id="loan-officers" className="scroll-mt-24"><LoanOfficerSettings /></div>
+            <div id="texting-workspace" className="scroll-mt-24"><TextingWorkspace /></div>
+            <div id="chat-intakes" className="scroll-mt-24"><ChatIntakeLeads /></div>
+            <div id="saved-qualifying-listings" className="scroll-mt-24"><GeoSphereListings /></div>
+          </section>
         )}
       </main>
     </div>
