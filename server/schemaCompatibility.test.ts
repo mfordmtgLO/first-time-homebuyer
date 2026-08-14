@@ -21,6 +21,7 @@ describe("copied database schema compatibility", () => {
     expect(chatIntakeLead.lastResentAt.name).toBe("lastResentAt");
     expect(chatIntakeLead.smsConsent.name).toBe("smsConsent");
     expect(chatIntakeLead.smsConsentAt.name).toBe("smsConsentAt");
+    expect(chatIntakeLead.notes.name).toBe("notes");
   });
 
   it("keeps normalized draft, recipient, and attachment records ready for a future SMS/MMS provider", () => {

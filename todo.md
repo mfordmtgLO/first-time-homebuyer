@@ -245,3 +245,4 @@
 - [x] Replace the generated hosting subdomain in loan-officer and co-branded share links with a clean branded domain
 - [x] Align Texting Workspace and Mortgage Chat Intake Leads with Roadmap Leads columns, searches, filters, email drafts, agent routing, and clear-filter controls
 - [x] Add a visible Clear Filters action to all three lead-management sections whenever filters are active
+- [x] Add visible Phone ready, Email draft, Send to agent, and Notes controls to Mortgage Chat Intake lead rows

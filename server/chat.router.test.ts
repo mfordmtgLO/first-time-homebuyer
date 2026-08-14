@@ -214,6 +214,13 @@ describe("chat intake router", () => {
     await expect(caller.chat.list()).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
+  it("allows an admin to save private follow-up notes on a chat intake", async () => {
+    getChatLeadByIdMock.mockResolvedValue(PHONE_STEP_LEAD as never);
+    const caller = appRouter.createCaller(context("admin"));
+    await expect(caller.chat.updateNotes({ chatLeadId: 99, notes: "Call Friday after reviewing payment options." })).resolves.toEqual({ success: true });
+    expect(updateChatLeadMock).toHaveBeenCalledWith(99, { notes: "Call Friday after reviewing payment options." });
+  });
+
   it("returns saved LO-agent co-branded attribution to the admin chat intake list", async () => {
     listChatIntakeLeadsMock.mockResolvedValue([{
       ...PHONE_STEP_LEAD,

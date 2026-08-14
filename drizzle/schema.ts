@@ -148,6 +148,8 @@ export const chatIntakeLead = mysqlTable("chat_intake_lead", {
   smsConsentAt: timestamp("smsConsentAt"),
   agentId: int("agentId"),
   loanOfficerId: int("loanOfficerId"),
+  /** Private admin follow-up notes; never shown to visitors. */
+  notes: text("notes"),
   recipientEmailStatus: mysqlEnum("recipientEmailStatus", ["not_attempted", "sent", "manual_follow_up"])
     .default("not_attempted")
     .notNull(),

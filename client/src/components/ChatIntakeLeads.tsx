@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -15,11 +16,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Download, FileText, Loader2, Mail, MapPin, MessageCircle, MessageSquareText, Search, Send } from "lucide-react";
+import { Download, FileText, Loader2, Mail, MapPin, MessageCircle, MessageSquareText, NotebookPen, Search, Send, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { getCoBrandAgentFilterOptions, getLoanOfficerFilterOptions, matchesSelectedCoBrandPair } from "@shared/roadmapPairFilters";
 import { buildLeadWelcomeDraft } from "@shared/leadEmailDraft";
 import { PUBLIC_SITE_ORIGIN } from "@shared/publicSiteUrl";
+import { hasUsableRoadmapPhone } from "@shared/roadmapPhone";
 
 type ChatLead = {
   id: number;
@@ -38,6 +40,7 @@ type ChatLead = {
   fullName: string | null;
   email: string | null;
   phone: string | null;
+  notes: string | null;
   smsConsent: number;
   smsConsentAt: Date | null;
   recipientEmailStatus: "not_attempted" | "sent" | "manual_follow_up";
@@ -103,6 +106,8 @@ export default function ChatIntakeLeads() {
   const [agentFilter, setAgentFilter] = useState("all");
   const [selected, setSelected] = useState<ChatLead | null>(null);
   const [resendCandidate, setResendCandidate] = useState<ChatLead | null>(null);
+  const [notesLead, setNotesLead] = useState<ChatLead | null>(null);
+  const [notesDraft, setNotesDraft] = useState("");
   const resend = trpc.chat.resend.useMutation({
     onSuccess: async (result) => {
       await utils.chat.list.invalidate();
@@ -131,6 +136,14 @@ export default function ChatIntakeLeads() {
       }
     },
     onError: (error) => toast.error(error.message || "Unable to send this intake to the agent."),
+  });
+  const updateNotes = trpc.chat.updateNotes.useMutation({
+    onSuccess: () => {
+      void utils.chat.list.invalidate();
+      setNotesLead(null);
+      toast.success("Chat intake notes saved.");
+    },
+    onError: (error) => toast.error(error.message || "Unable to save notes."),
   });
   const openEmailDraft = (lead: ChatLead) => {
     if (!lead.email) {
@@ -207,7 +220,7 @@ export default function ChatIntakeLeads() {
           <table className="w-full text-sm">
             <thead><tr className="sticky top-0 z-10 border-b border-border bg-muted/95 text-left text-muted-foreground backdrop-blur-sm"><th className="px-5 py-3 font-semibold">Lead</th><th className="px-5 py-3 font-semibold">Co-brand source</th><th className="px-5 py-3 font-semibold">Status</th><th className="px-5 py-3 font-semibold">Recipients</th><th className="px-5 py-3 font-semibold">Resends</th><th className="px-5 py-3 font-semibold">Purpose</th><th className="px-5 py-3 font-semibold">Planning snapshot</th><th className="px-5 py-3 font-semibold">Updated</th><th className="px-5 py-3 text-right font-semibold">Actions</th></tr></thead>
             <tbody>{filtered.map((lead) => <tr key={lead.id} className="border-b border-border/60 last:border-0">
-              <td className="px-5 py-3.5"><div className="font-medium text-foreground">{lead.fullName || "Anonymous visitor"}</div><div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"><span>{lead.email || lead.phone || "No contact details yet"}</span>{lead.smsConsent === 1 && lead.phone && <Badge variant="outline" className="border-violet-600/25 bg-violet-600/5 text-violet-700"><MessageSquareText className="mr-1 h-3 w-3" /> Text ready</Badge>}</div></td>
+              <td className="px-5 py-3.5"><div className="font-medium text-foreground">{lead.fullName || "Anonymous visitor"}</div><div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"><span>{lead.email || "No email"}</span><span>{lead.phone || "No phone"}</span>{hasUsableRoadmapPhone(lead.phone) && <Badge variant="outline" className="border-emerald-600/25 bg-emerald-600/5 text-emerald-700"><Smartphone className="mr-1 h-3 w-3" /> Phone ready</Badge>}{lead.smsConsent === 1 && hasUsableRoadmapPhone(lead.phone) && <Badge variant="outline" className="border-violet-600/25 bg-violet-600/5 text-violet-700"><MessageSquareText className="mr-1 h-3 w-3" /> Text ready</Badge>}</div><div className="mt-2 flex flex-wrap gap-1.5"><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" disabled={!lead.email} title={lead.email ? "Open a welcome email draft" : "This intake needs an email address first"} onClick={() => openEmailDraft(lead)}><Mail className="mr-1 h-3 w-3" /> Email draft</Button><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" onClick={() => { setNotesLead(lead); setNotesDraft(lead.notes ?? ""); }}><NotebookPen className="mr-1 h-3 w-3" /> {lead.notes?.trim() ? "Notes" : "Add note"}</Button><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" disabled={!lead.agentId || sendToAgent.isPending} title={lead.agentId ? "Email this intake to the assigned agent" : "Assign an agent first"} onClick={() => sendToAgent.mutate({ chatLeadId: lead.id })}>{sendToAgent.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-3 w-3" />} Send to agent</Button></div></td>
               <td className="px-5 py-3.5">{lead.isCoBranded ? <div className="min-w-44"><Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Co-branded</Badge><div className="mt-1.5 text-xs font-medium text-foreground">LO: {lead.loanOfficerName || "—"}</div><div className="text-xs text-muted-foreground">Agent: {lead.agentName || "—"}</div></div> : <Badge variant="outline" className="text-muted-foreground">Direct site</Badge>}</td>
               <td className="px-5 py-3.5"><Badge variant="outline" className={lead.status === "qualified" ? "border-emerald-600/30 bg-emerald-600/10 text-emerald-700" : "border-accent/40 bg-accent/15 text-accent-foreground"}>{lead.status === "qualified" ? "Qualified" : "Incomplete"}</Badge></td>
               <td className="px-5 py-3.5">{recipientStatus(lead)}</td>
@@ -215,12 +228,22 @@ export default function ChatIntakeLeads() {
               <td className="px-5 py-3.5 capitalize">{lead.loanPurpose || "—"}</td>
               <td className="px-5 py-3.5 text-xs text-muted-foreground"><div>{lead.propertyType || "—"} · {money(lead.propertyValue)} · {lead.creditRange || "—"} · Income {money(lead.annualIncome)}</div>{lead.lowDownPaymentHomeSearch === 1 && <div className="mt-1 flex items-center gap-1 text-emerald-700"><MapPin className="h-3 w-3" /> Low/no-down search{lead.targetArea ? ` · ${lead.searchAreaType ?? "Area"}: ${lead.targetArea}` : " requested"}</div>}</td>
               <td className="px-5 py-3.5 whitespace-nowrap text-muted-foreground">{new Date(lead.updatedAt).toLocaleString()}</td>
-              <td className="px-5 py-3.5 text-right"><div className="flex flex-wrap justify-end gap-2"><Button variant="outline" size="sm" onClick={() => setSelected(lead)}><FileText className="mr-1.5 h-3.5 w-3.5" /> View</Button>{lead.email && <Button variant="outline" size="sm" onClick={() => openEmailDraft(lead)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Email draft</Button>}<Select value={lead.agentId ? String(lead.agentId) : "none"} onValueChange={(value) => assignAgent.mutate({ chatLeadId: lead.id, agentId: value === "none" ? null : Number(value) })} disabled={assignAgent.isPending}><SelectTrigger className="h-8 w-[145px] text-xs"><SelectValue placeholder="No agent" /></SelectTrigger><SelectContent><SelectItem value="none">No agent</SelectItem>{agents.map((agent) => <SelectItem key={agent.id} value={String(agent.id)}>{agent.name}</SelectItem>)}</SelectContent></Select>{lead.agentId && <Button variant="outline" size="sm" disabled={sendToAgent.isPending} onClick={() => sendToAgent.mutate({ chatLeadId: lead.id })}>{sendToAgent.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Send className="mr-1.5 h-3.5 w-3.5" />} Send to agent</Button>}{lead.status === "qualified" && <Button variant="outline" size="sm" disabled={resend.isPending} onClick={() => setResendCandidate(lead)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Resend</Button>}</div></td>
+              <td className="px-5 py-3.5 text-right"><div className="flex min-w-[180px] flex-wrap justify-end gap-2"><Button variant="outline" size="sm" onClick={() => setSelected(lead)}><FileText className="mr-1.5 h-3.5 w-3.5" /> View</Button><Select value={lead.agentId ? String(lead.agentId) : "none"} onValueChange={(value) => assignAgent.mutate({ chatLeadId: lead.id, agentId: value === "none" ? null : Number(value) })} disabled={assignAgent.isPending}><SelectTrigger className="h-8 w-[145px] text-xs"><SelectValue placeholder="No agent" /></SelectTrigger><SelectContent><SelectItem value="none">No agent</SelectItem>{agents.map((agent) => <SelectItem key={agent.id} value={String(agent.id)}>{agent.name}</SelectItem>)}</SelectContent></Select>{lead.status === "qualified" && <Button variant="outline" size="sm" disabled={resend.isPending} onClick={() => setResendCandidate(lead)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Resend</Button>}</div></td>
             </tr>)}</tbody>
           </table>
         </div>
       )}
       <TranscriptDialog lead={selected} onOpenChange={(open) => !open && setSelected(null)} />
+      <Dialog open={notesLead !== null} onOpenChange={(open) => !open && setNotesLead(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Notes for {notesLead?.fullName || "this chat intake"}</DialogTitle>
+            <DialogDescription>Private follow-up notes are visible only in this dashboard and never to the visitor.</DialogDescription>
+          </DialogHeader>
+          <Textarea value={notesDraft} onChange={(event) => setNotesDraft(event.target.value)} maxLength={5000} placeholder="e.g., Called 8/14 — reviewing payment options before follow-up Friday" className="min-h-32" />
+          <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setNotesLead(null)} disabled={updateNotes.isPending}>Cancel</Button><Button onClick={() => notesLead && updateNotes.mutate({ chatLeadId: notesLead.id, notes: notesDraft })} disabled={!notesLead || updateNotes.isPending || notesDraft === (notesLead.notes ?? "")}>{updateNotes.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null} Save notes</Button></div>
+        </DialogContent>
+      </Dialog>
       <AlertDialog open={resendCandidate !== null} onOpenChange={(open) => !open && setResendCandidate(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

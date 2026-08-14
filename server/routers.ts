@@ -763,6 +763,16 @@ export const appRouter = router({
         requireAdmin(ctx.user.role);
         return getChatTranscriptByLeadId(input.chatLeadId);
       }),
+    /** Admin-only private follow-up notes for a chat intake. */
+    updateNotes: protectedProcedure
+      .input(z.object({ chatLeadId: z.number().int().positive(), notes: z.string().max(5000) }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const lead = await getChatLeadById(input.chatLeadId);
+        if (!lead) throw new TRPCError({ code: "NOT_FOUND", message: "Mortgage intake not found." });
+        await updateChatLead(input.chatLeadId, { notes: input.notes });
+        return { success: true as const };
+      }),
     /** Admin-only retry for a qualified intake that needs recipient email follow-up. */
     resend: protectedProcedure
       .input(z.object({ chatLeadId: z.number().int().positive() }))

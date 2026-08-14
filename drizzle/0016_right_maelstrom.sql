@@ -1,0 +1,1 @@
+ALTER TABLE `chat_intake_lead` ADD `notes` text;
