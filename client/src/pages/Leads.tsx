@@ -8,6 +8,7 @@ import AgentSettings from "@/components/AgentSettings";
 import LoanOfficerSettings from "@/components/LoanOfficerSettings";
 import ChatIntakeLeads from "@/components/ChatIntakeLeads";
 import GeoSphereListings from "@/components/GeoSphereListings";
+import TextingWorkspace from "@/components/TextingWorkspace";
 import {
   buildLeadWelcomeDraft,
   type LeadEmailAgent,
@@ -43,6 +44,7 @@ import {
   Search,
   Send,
   ShieldAlert,
+  MessageSquareText,
   Users,
 } from "lucide-react";
 
@@ -814,7 +816,7 @@ export default function Leads() {
                           <td className="px-5 py-3.5 font-medium text-foreground">{lead.firstName}</td>
                           <td className="px-5 py-3.5 text-foreground/85">
                             <div>{lead.email}</div>
-                            {lead.phone && <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground"><span>{lead.phone}</span>{hasUsableRoadmapPhone(lead.phone) && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600/10 px-1.5 py-0.5 font-medium text-emerald-700" title="Usable phone number provided"><Phone className="h-3 w-3" aria-hidden="true" /> Phone ready</span>}</div>}
+                            {lead.phone && <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"><span>{lead.phone}</span>{hasUsableRoadmapPhone(lead.phone) && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600/10 px-1.5 py-0.5 font-medium text-emerald-700" title="Usable phone number provided"><Phone className="h-3 w-3" aria-hidden="true" /> Phone ready</span>}{hasUsableRoadmapPhone(lead.phone) && lead.smsConsent === 1 && <span className="inline-flex items-center gap-1 rounded-full bg-violet-600/10 px-1.5 py-0.5 font-medium text-violet-700" title="SMS consent recorded"><MessageSquareText className="h-3 w-3" aria-hidden="true" /> Text ready</span>}</div>}
                             <div className="mt-1">
                               <LeadEmailDraftAction lead={lead} agents={agentOptions} />
                             </div>
@@ -894,6 +896,7 @@ export default function Leads() {
 
             <AgentSettings />
             <LoanOfficerSettings />
+            <TextingWorkspace />
             <ChatIntakeLeads />
             <GeoSphereListings />
           </>

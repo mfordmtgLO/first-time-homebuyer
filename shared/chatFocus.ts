@@ -5,6 +5,7 @@ const GUIDED_CHAT_STEPS = new Set([
   "credit_range",
   "annual_income",
   "down_payment",
+  "sms_consent",
   "home_search_interest",
 ]);
 

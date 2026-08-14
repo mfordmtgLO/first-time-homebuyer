@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chatIntakeLead, leads, loanOfficer } from "../drizzle/schema";
+import { chatIntakeLead, leads, loanOfficer, textMessage, textMessageAttachment, textMessageRecipient } from "../drizzle/schema";
 
 describe("copied database schema compatibility", () => {
   it("keeps the nullable lead officer attribution column used by public Roadmap submissions", () => {
@@ -19,5 +19,14 @@ describe("copied database schema compatibility", () => {
     expect(chatIntakeLead.recipientEmailDetail.name).toBe("recipientEmailDetail");
     expect(chatIntakeLead.resendCount.name).toBe("resendCount");
     expect(chatIntakeLead.lastResentAt.name).toBe("lastResentAt");
+    expect(chatIntakeLead.smsConsent.name).toBe("smsConsent");
+    expect(chatIntakeLead.smsConsentAt.name).toBe("smsConsentAt");
+  });
+
+  it("keeps normalized draft, recipient, and attachment records ready for a future SMS/MMS provider", () => {
+    expect(textMessage.providerMode.name).toBe("providerMode");
+    expect(textMessageRecipient.sourceType.name).toBe("sourceType");
+    expect(textMessageRecipient.deliveryStatus.name).toBe("deliveryStatus");
+    expect(textMessageAttachment.storageKey.name).toBe("storageKey");
   });
 });

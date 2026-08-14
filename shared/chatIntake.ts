@@ -9,6 +9,7 @@ export const CHAT_STEPS = [
   "full_name",
   "email",
   "phone",
+  "sms_consent",
   "home_search_interest",
   "search_area_type",
   "target_area",
@@ -34,6 +35,7 @@ export type IntakeValues = {
   fullName: string | null;
   email: string | null;
   phone: string | null;
+  smsConsent: number | null;
 };
 
 export type ChatContact = {
@@ -107,6 +109,8 @@ export function promptForStep(step: ChatStep, values: IntakeValues): string {
       return "What is the best **email address** for your personalized options review?";
     case "phone":
       return "What is the best **phone number** for a licensed specialist to reach you?";
+    case "sms_consent":
+      return "Would you agree to receive calls and text messages from Mike Ford and Cornerstone First Mortgage about your mortgage inquiry? Consent is not a condition of purchase. Please choose **Yes** or **No**.";
     case "home_search_interest":
       return "Would you like us to prepare a list of potential **low- or no-down-payment qualifying properties in Oregon** and forward it to your email soon?";
     case "search_area_type":
@@ -220,8 +224,19 @@ export function parseAnswer(step: ChatStep, raw: string, values: IntakeValues): 
     case "phone": {
       const digits = text.replace(/\D/g, "");
       if (digits.length < 10 || digits.length > 15) return { ok: false, response: "Please enter a valid phone number, including area code." };
-      const nextStep = values.loanPurpose === "purchase" ? "home_search_interest" : "complete";
+      const nextStep = "sms_consent";
       return { ok: true, patch: { phone: text }, nextStep, response: promptForStep(nextStep, { ...values, phone: text }) };
+    }
+    case "sms_consent": {
+      const answer = text.toLowerCase();
+      const nextStep = values.loanPurpose === "purchase" ? "home_search_interest" : "complete";
+      if (/^(yes|y|yeah|yep|sure|i agree)\b/.test(answer)) {
+        return { ok: true, patch: { smsConsent: 1 }, nextStep, response: promptForStep(nextStep, { ...values, smsConsent: 1 }) };
+      }
+      if (/^(no|n|nope|do not|don't)\b/.test(answer)) {
+        return { ok: true, patch: { smsConsent: 0 }, nextStep, response: promptForStep(nextStep, { ...values, smsConsent: 0 }) };
+      }
+      return { ok: false, response: "Please choose **Yes** to agree to receive calls and text messages about your mortgage inquiry, or **No** to continue without SMS permission." };
     }
     case "home_search_interest": {
       const answer = text.toLowerCase();
@@ -264,6 +279,7 @@ export function intakeSummary(values: IntakeValues) {
     values.annualIncome ? `Income: ${usd(values.annualIncome)}` : "",
     values.downPayment !== null ? `Down payment: ${usd(values.downPayment ?? 0)}` : "",
     values.loanAmount ? `Loan amount: ${usd(values.loanAmount)}` : "",
+    values.smsConsent === 1 ? "SMS consent: Yes" : values.smsConsent === 0 ? "SMS consent: No" : "",
     values.lowDownPaymentHomeSearch === 1 ? `Home search: Low/no-down-payment options${values.targetArea ? ` · ${values.searchAreaType ?? "Area"}: ${values.targetArea}` : ""}` : "",
   ].filter(Boolean);
 }

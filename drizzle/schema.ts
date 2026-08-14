@@ -143,6 +143,9 @@ export const chatIntakeLead = mysqlTable("chat_intake_lead", {
   fullName: varchar("fullName", { length: 180 }),
   email: varchar("email", { length: 320 }),
   phone: varchar("phone", { length: 40 }),
+  /** Visitor explicitly chose Yes to the chat SMS consent question. */
+  smsConsent: int("smsConsent").default(0).notNull(),
+  smsConsentAt: timestamp("smsConsentAt"),
   agentId: int("agentId"),
   loanOfficerId: int("loanOfficerId"),
   recipientEmailStatus: mysqlEnum("recipientEmailStatus", ["not_attempted", "sent", "manual_follow_up"])
@@ -170,6 +173,71 @@ export const chatTranscript = mysqlTable("chat_transcript", {
 
 export type ChatTranscript = typeof chatTranscript.$inferSelect;
 export type InsertChatTranscript = typeof chatTranscript.$inferInsert;
+
+/**
+ * A dashboard-authored text campaign or individual message. All rows remain in
+ * draft mode until a messaging provider is deliberately configured.
+ */
+export const textMessage = mysqlTable("text_message", {
+  id: int("id").autoincrement().primaryKey(),
+  body: text("body").notNull(),
+  providerMode: mysqlEnum("providerMode", ["draft", "provider_setup_required", "sent", "failed"])
+    .default("draft")
+    .notNull(),
+  providerName: varchar("providerName", { length: 80 }),
+  createdByUserId: int("createdByUserId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type TextMessage = typeof textMessage.$inferSelect;
+export type InsertTextMessage = typeof textMessage.$inferInsert;
+
+/** One independently delivered recipient per dashboard-selected lead. */
+export const textMessageRecipient = mysqlTable(
+  "text_message_recipient",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    textMessageId: int("textMessageId").notNull(),
+    sourceType: mysqlEnum("sourceType", ["roadmap", "chat"]).notNull(),
+    sourceLeadId: int("sourceLeadId").notNull(),
+    recipientName: varchar("recipientName", { length: 180 }).notNull(),
+    recipientPhone: varchar("recipientPhone", { length: 40 }).notNull(),
+    deliveryStatus: mysqlEnum("deliveryStatus", ["draft", "provider_setup_required", "sent", "failed", "opted_out"])
+      .default("draft")
+      .notNull(),
+    providerMessageId: varchar("providerMessageId", { length: 160 }),
+    deliveryDetail: text("deliveryDetail"),
+    sentAt: timestamp("sentAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [
+    index("text_message_recipient_message_idx").on(table.textMessageId),
+    index("text_message_recipient_source_idx").on(table.sourceType, table.sourceLeadId),
+  ]
+);
+
+export type TextMessageRecipient = typeof textMessageRecipient.$inferSelect;
+export type InsertTextMessageRecipient = typeof textMessageRecipient.$inferInsert;
+
+/** JPG attachments stored in S3 and associated with a saved dashboard draft. */
+export const textMessageAttachment = mysqlTable(
+  "text_message_attachment",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    textMessageId: int("textMessageId").notNull(),
+    storageKey: varchar("storageKey", { length: 700 }).notNull(),
+    url: varchar("url", { length: 1000 }).notNull(),
+    fileName: varchar("fileName", { length: 300 }).notNull(),
+    mimeType: varchar("mimeType", { length: 120 }).notNull(),
+    sizeBytes: int("sizeBytes").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [index("text_message_attachment_message_idx").on(table.textMessageId)]
+);
+
+export type TextMessageAttachment = typeof textMessageAttachment.$inferSelect;
+export type InsertTextMessageAttachment = typeof textMessageAttachment.$inferInsert;
 
 /**
  * One cache-only saved pull exported by GeoSphere. The source snapshot ID makes

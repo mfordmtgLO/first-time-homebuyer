@@ -230,3 +230,9 @@
 - [x] Resolve the bottom-right overlap between the platform attribution badge and Start chat launcher
 - [x] Diagnose and fix the public Mortgage Intake Specialist startup error that appears after opening chat
 - [x] Resolve the remaining production chat-start query failure shown in the browser console
+- [x] Add consent-aware Text ready indicators for Roadmap and chat-intake leads
+- [x] Build an admin texting workspace for individual and selected-recipient custom SMS/MMS composition
+- [ ] Add attachment, send-history, delivery-status, and mobile-responsive messaging controls after an SMS/MMS provider is configured
+- [x] Keep all dashboard text actions in provider-unconfigured draft mode until a verified SMS/MMS account is supplied
+- [x] Add a chat-intake SMS consent question with explicit Yes and No responses, and make only Yes responses text-ready
+- [x] Add provider-ready SMS/MMS message, recipient, JPG attachment, and delivery-status records without enabling real sends

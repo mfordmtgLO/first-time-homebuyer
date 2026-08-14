@@ -100,11 +100,20 @@ const PHONE_STEP_LEAD = {
   annualIncome: 120000,
   downPayment: 45000,
   loanAmount: 405000,
+  lowDownPaymentHomeSearch: null,
+  searchAreaType: null,
+  targetArea: null,
   fullName: "Sarah Chen",
   email: "sarah@example.com",
   phone: null,
+  smsConsent: 0,
+  smsConsentAt: null,
   agentId: null,
   loanOfficerId: 5,
+  recipientEmailStatus: "not_attempted" as const,
+  recipientEmailDetail: null,
+  resendCount: 0,
+  lastResentAt: null,
   completedAt: null,
   createdAt: new Date(),
   updatedAt: new Date(),
@@ -133,17 +142,17 @@ describe("chat intake router", () => {
   });
 
   it("marks a completed contact capture as qualified and saves a completion timestamp", async () => {
-    getChatLeadBySessionMock.mockResolvedValue(PHONE_STEP_LEAD as never);
+    getChatLeadBySessionMock.mockResolvedValue({ ...PHONE_STEP_LEAD, currentStep: "sms_consent", phone: "(541) 555-0101" } as never);
     const caller = appRouter.createCaller(context(null));
-    const result = await caller.chat.answer({ sessionId: "chat-session-1234567890", message: "(541) 555-0101" });
+    const result = await caller.chat.answer({ sessionId: "chat-session-1234567890", message: "Yes" });
     expect(result.completed).toBe(true);
     expect(result.message).toContain("within 24 business hours");
-    expect(updateChatLeadMock).toHaveBeenCalledWith(99, expect.objectContaining({ status: "qualified", currentStep: "complete", phone: "(541) 555-0101", completedAt: expect.any(Date) }));
+    expect(updateChatLeadMock).toHaveBeenCalledWith(99, expect.objectContaining({ status: "qualified", currentStep: "complete", smsConsent: 1, smsConsentAt: expect.any(Date), completedAt: expect.any(Date) }));
     expect(sendChatIntakeNotificationMock).toHaveBeenCalledWith(expect.objectContaining({ recipientEmail: "mford@cfmtg.com", recipientRole: "loan_officer", fullName: "Sarah Chen" }));
   });
 
   it("notifies a co-branded agent as well as the selected loan officer", async () => {
-    getChatLeadBySessionMock.mockResolvedValue({ ...PHONE_STEP_LEAD, agentId: 17 } as never);
+    getChatLeadBySessionMock.mockResolvedValue({ ...PHONE_STEP_LEAD, agentId: 17, currentStep: "sms_consent", phone: "(541) 555-0101" } as never);
     getAgentByIdMock.mockResolvedValue({
       id: 17,
       name: "Kaandice McLean",
@@ -161,7 +170,7 @@ describe("chat intake router", () => {
       updatedAt: new Date(),
     } as never);
     const caller = appRouter.createCaller(context(null));
-    await caller.chat.answer({ sessionId: "chat-session-1234567890", message: "(541) 555-0101" });
+    await caller.chat.answer({ sessionId: "chat-session-1234567890", message: "Yes" });
     expect(sendChatIntakeNotificationMock).toHaveBeenCalledTimes(2);
     expect(sendChatIntakeNotificationMock).toHaveBeenCalledWith(expect.objectContaining({ recipientEmail: "kaandice@example.com", recipientRole: "agent", coBrandedAgentName: "Kaandice McLean" }));
   });
@@ -170,24 +179,27 @@ describe("chat intake router", () => {
     const phoneLead = { ...PHONE_STEP_LEAD, loanPurpose: "purchase" as const };
     getChatLeadBySessionMock.mockResolvedValueOnce(phoneLead as never);
     const caller = appRouter.createCaller(context(null));
-    await expect(caller.chat.answer({ sessionId: "chat-session-1234567890", message: "(541) 555-0101" })).resolves.toMatchObject({ completed: false, currentStep: "home_search_interest" });
+    await expect(caller.chat.answer({ sessionId: "chat-session-1234567890", message: "(541) 555-0101" })).resolves.toMatchObject({ completed: false, currentStep: "sms_consent" });
 
-    getChatLeadBySessionMock.mockResolvedValueOnce({ ...phoneLead, currentStep: "home_search_interest", phone: "(541) 555-0101" } as never);
+    getChatLeadBySessionMock.mockResolvedValueOnce({ ...phoneLead, currentStep: "sms_consent", phone: "(541) 555-0101" } as never);
+    await expect(caller.chat.answer({ sessionId: "chat-session-1234567890", message: "Yes" })).resolves.toMatchObject({ completed: false, currentStep: "home_search_interest" });
+
+    getChatLeadBySessionMock.mockResolvedValueOnce({ ...phoneLead, currentStep: "home_search_interest", phone: "(541) 555-0101", smsConsent: 1 } as never);
     await expect(caller.chat.answer({ sessionId: "chat-session-1234567890", message: "Yes" })).resolves.toMatchObject({ completed: false, currentStep: "search_area_type" });
 
-    getChatLeadBySessionMock.mockResolvedValueOnce({ ...phoneLead, currentStep: "search_area_type", phone: "(541) 555-0101", lowDownPaymentHomeSearch: 1 } as never);
+    getChatLeadBySessionMock.mockResolvedValueOnce({ ...phoneLead, currentStep: "search_area_type", phone: "(541) 555-0101", smsConsent: 1, lowDownPaymentHomeSearch: 1 } as never);
     await expect(caller.chat.answer({ sessionId: "chat-session-1234567890", message: "County" })).resolves.toMatchObject({ completed: false, currentStep: "target_area" });
 
-    getChatLeadBySessionMock.mockResolvedValueOnce({ ...phoneLead, currentStep: "target_area", phone: "(541) 555-0101", lowDownPaymentHomeSearch: 1, searchAreaType: "County" } as never);
+    getChatLeadBySessionMock.mockResolvedValueOnce({ ...phoneLead, currentStep: "target_area", phone: "(541) 555-0101", smsConsent: 1, lowDownPaymentHomeSearch: 1, searchAreaType: "County" } as never);
     await expect(caller.chat.answer({ sessionId: "chat-session-1234567890", message: "Eugene and Springfield" })).resolves.toMatchObject({ completed: true, currentStep: "complete" });
     expect(sendChatIntakeNotificationMock).toHaveBeenCalledWith(expect.objectContaining({ lowDownPaymentHomeSearch: 1, searchAreaType: "County", targetArea: "Eugene and Springfield" }));
   });
 
   it("records an admin-visible manual follow-up state when recipient email delivery is unavailable", async () => {
-    getChatLeadBySessionMock.mockResolvedValue(PHONE_STEP_LEAD as never);
+    getChatLeadBySessionMock.mockResolvedValue({ ...PHONE_STEP_LEAD, currentStep: "sms_consent", phone: "(541) 555-0101" } as never);
     sendChatIntakeNotificationMock.mockResolvedValueOnce({ sent: false, reason: "unverified_domain" });
     const caller = appRouter.createCaller(context(null));
-    await caller.chat.answer({ sessionId: "chat-session-1234567890", message: "(541) 555-0101" });
+    await caller.chat.answer({ sessionId: "chat-session-1234567890", message: "Yes" });
     expect(updateChatLeadMock).toHaveBeenLastCalledWith(99, expect.objectContaining({
       recipientEmailStatus: "manual_follow_up",
       recipientEmailDetail: expect.stringContaining("unverified_domain"),

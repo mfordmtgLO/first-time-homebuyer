@@ -10,6 +10,9 @@ import {
   geosphereSyncSetting,
   leads,
   loanOfficer,
+  textMessage,
+  textMessageAttachment,
+  textMessageRecipient,
   users,
   type InsertAgentProfile,
   type InsertChatIntakeLead,
@@ -409,6 +412,132 @@ export async function listChatIntakeLeads() {
     agentName: agentName ?? null,
     agentSlug: agentSlug ?? null,
     isCoBranded: Boolean(lead.loanOfficerId && lead.agentId),
+  }));
+}
+
+export type TextReadyRecipient = {
+  sourceType: "roadmap" | "chat";
+  sourceLeadId: number;
+  name: string;
+  phone: string;
+  email: string | null;
+  consentedAt: Date | null;
+  createdAt: Date;
+};
+
+/**
+ * Returns only leads with an affirmative recorded SMS consent and a stored
+ * phone number. The router performs final normalized phone validation before a
+ * recipient may be saved to a message draft.
+ */
+export async function listTextReadyRecipients(): Promise<TextReadyRecipient[]> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const [roadmapRows, chatRows] = await Promise.all([
+    db
+      .select({
+        sourceLeadId: leads.id,
+        name: leads.firstName,
+        phone: leads.phone,
+        email: leads.email,
+        createdAt: leads.createdAt,
+      })
+      .from(leads)
+      .where(and(eq(leads.smsConsent, 1), ne(leads.phone, ""))),
+    db
+      .select({
+        sourceLeadId: chatIntakeLead.id,
+        name: chatIntakeLead.fullName,
+        phone: chatIntakeLead.phone,
+        email: chatIntakeLead.email,
+        consentedAt: chatIntakeLead.smsConsentAt,
+        createdAt: chatIntakeLead.createdAt,
+      })
+      .from(chatIntakeLead)
+      .where(and(eq(chatIntakeLead.smsConsent, 1), isNotNull(chatIntakeLead.phone))),
+  ]);
+
+  return [
+    ...roadmapRows.map((lead) => ({
+      sourceType: "roadmap" as const,
+      sourceLeadId: lead.sourceLeadId,
+      name: lead.name,
+      phone: lead.phone,
+      email: lead.email,
+      consentedAt: lead.createdAt,
+      createdAt: lead.createdAt,
+    })),
+    ...chatRows
+      .filter((lead) => Boolean(lead.phone))
+      .map((lead) => ({
+        sourceType: "chat" as const,
+        sourceLeadId: lead.sourceLeadId,
+        name: lead.name || "Chat intake lead",
+        phone: lead.phone || "",
+        email: lead.email,
+        consentedAt: lead.consentedAt,
+        createdAt: lead.createdAt,
+      })),
+  ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+}
+
+type TextDraftRecipientInput = Pick<TextReadyRecipient, "sourceType" | "sourceLeadId" | "name" | "phone">;
+type TextDraftAttachmentInput = {
+  storageKey: string;
+  url: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+};
+
+/** Saves a dashboard message draft. No provider delivery occurs in this helper. */
+export async function createTextMessageDraft(input: {
+  body: string;
+  createdByUserId: number;
+  recipients: TextDraftRecipientInput[];
+  attachments: TextDraftAttachmentInput[];
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(textMessage).values({
+    body: input.body,
+    createdByUserId: input.createdByUserId,
+    providerMode: "provider_setup_required",
+  });
+  const textMessageId = Number(result.insertId);
+  await db.insert(textMessageRecipient).values(
+    input.recipients.map((recipient) => ({
+      textMessageId,
+      sourceType: recipient.sourceType,
+      sourceLeadId: recipient.sourceLeadId,
+      recipientName: recipient.name,
+      recipientPhone: recipient.phone,
+      deliveryStatus: "provider_setup_required" as const,
+      deliveryDetail: "An SMS/MMS provider has not been configured. This draft was not sent.",
+    }))
+  );
+  if (input.attachments.length > 0) {
+    await db.insert(textMessageAttachment).values(
+      input.attachments.map((attachment) => ({ textMessageId, ...attachment }))
+    );
+  }
+  return textMessageId;
+}
+
+/** Lists saved messaging drafts together with their independent recipients and attachments. */
+export async function listTextMessageDrafts() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [messages, recipients, attachments] = await Promise.all([
+    db.select().from(textMessage).orderBy(desc(textMessage.createdAt)),
+    db.select().from(textMessageRecipient).orderBy(desc(textMessageRecipient.createdAt)),
+    db.select().from(textMessageAttachment).orderBy(desc(textMessageAttachment.createdAt)),
+  ]);
+  return messages.map((message) => ({
+    ...message,
+    recipients: recipients.filter((recipient) => recipient.textMessageId === message.id),
+    attachments: attachments.filter((attachment) => attachment.textMessageId === message.id),
   }));
 }
 

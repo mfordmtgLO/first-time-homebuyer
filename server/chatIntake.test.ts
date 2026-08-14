@@ -14,6 +14,7 @@ const EMPTY: IntakeValues = {
   fullName: null,
   email: null,
   phone: null,
+  smsConsent: null,
 };
 
 describe("mortgage chat intake flow", () => {
@@ -60,14 +61,18 @@ describe("mortgage chat intake flow", () => {
     const email = parseAnswer("email", "not-an-email", values);
     expect(email.ok).toBe(false);
     const phone = parseAnswer("phone", "(541) 555-0101", values);
-    expect(phone).toMatchObject({ ok: true, nextStep: "complete", patch: { phone: "(541) 555-0101" } });
+    expect(phone).toMatchObject({ ok: true, nextStep: "sms_consent", patch: { phone: "(541) 555-0101" } });
+    const noConsent = parseAnswer("sms_consent", "No", { ...values, phone: "(541) 555-0101" });
+    expect(noConsent).toMatchObject({ ok: true, nextStep: "complete", patch: { smsConsent: 0 } });
   });
 
   it("captures an optional low/no-down-payment home-search target before completing a purchase intake", () => {
     const purchaseValues = { ...EMPTY, loanPurpose: "purchase" as const };
     const phone = parseAnswer("phone", "(541) 555-0101", purchaseValues);
-    expect(phone).toMatchObject({ ok: true, nextStep: "home_search_interest" });
-    const interested = parseAnswer("home_search_interest", "Yes, please", { ...purchaseValues, phone: "(541) 555-0101" });
+    expect(phone).toMatchObject({ ok: true, nextStep: "sms_consent" });
+    const consent = parseAnswer("sms_consent", "Yes", { ...purchaseValues, phone: "(541) 555-0101" });
+    expect(consent).toMatchObject({ ok: true, nextStep: "home_search_interest", patch: { smsConsent: 1 } });
+    const interested = parseAnswer("home_search_interest", "Yes, please", { ...purchaseValues, phone: "(541) 555-0101", smsConsent: 1 });
     expect(interested).toMatchObject({ ok: true, nextStep: "search_area_type", patch: { lowDownPaymentHomeSearch: 1 } });
     const areaType = parseAnswer("search_area_type", "City", { ...purchaseValues, lowDownPaymentHomeSearch: 1 });
     expect(areaType).toMatchObject({ ok: true, nextStep: "target_area", patch: { searchAreaType: "City" } });

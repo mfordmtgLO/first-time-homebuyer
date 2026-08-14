@@ -15,6 +15,7 @@ import { parse as parseCookie } from "cookie";
 import {
   addChatTranscript,
   createChatLead,
+  createTextMessageDraft,
   createAgent,
   createLoanOfficer,
   deleteAgent,
@@ -41,6 +42,8 @@ import {
   listChatIntakeLeads,
   listLoanOfficers,
   listLeads,
+  listTextMessageDrafts,
+  listTextReadyRecipients,
   markLeadSentToAgent,
   setFeaturedAgent,
   setFeaturedLoanOfficer,
@@ -143,6 +146,19 @@ const IMAGE_MIME_EXT: Record<string, string> = {
 /** ~4MB raw ≈ 5.6MB base64. Generous for headshots/logos without abuse risk. */
 const MAX_IMAGE_BASE64_CHARS = 5_600_000;
 
+const textDraftRecipientSchema = z.object({
+  sourceType: z.enum(["roadmap", "chat"]),
+  sourceLeadId: z.number().int().positive(),
+});
+
+const textDraftAttachmentSchema = z.object({
+  storageKey: z.string().trim().min(1).max(700),
+  url: z.string().trim().startsWith("/manus-storage/").max(1000),
+  fileName: z.string().trim().min(1).max(300),
+  mimeType: z.literal("image/jpeg"),
+  sizeBytes: z.number().int().positive().max(4_000_000),
+});
+
 const chatSessionSchema = z.string().trim().min(12).max(72);
 
 const loanOfficerInputSchema = z.object({
@@ -191,6 +207,7 @@ function chatValuesFromLead(lead: {
   fullName: string | null;
   email: string | null;
   phone: string | null;
+  smsConsent: number | null;
 }): IntakeValues {
   return {
     loanPurpose: lead.loanPurpose,
@@ -206,6 +223,7 @@ function chatValuesFromLead(lead: {
     fullName: lead.fullName,
     email: lead.email,
     phone: lead.phone,
+    smsConsent: lead.smsConsent,
   };
 }
 
@@ -654,13 +672,20 @@ export const appRouter = router({
           return { completed: false as const, currentStep, message: parsed.response };
         }
 
+        const { smsConsent, ...answerPatch } = parsed.patch;
+        const consentPatch = smsConsent === 1
+          ? { smsConsent: 1, smsConsentAt: new Date() }
+          : smsConsent === 0
+            ? { smsConsent: 0, smsConsentAt: null }
+            : {};
+        const persistedPatch = { ...answerPatch, ...consentPatch };
         const updatedValues = { ...values, ...parsed.patch };
         if (parsed.nextStep === "complete") {
           const fullName = updatedValues.fullName ?? "there";
           const phone = updatedValues.phone ?? "your preferred number";
           const completion = completeMessage(fullName, phone, updatedValues.lowDownPaymentHomeSearch === 1, updatedValues.searchAreaType, updatedValues.targetArea);
           await updateChatLead(lead.id, {
-            ...parsed.patch,
+            ...persistedPatch,
             currentStep: "complete",
             status: "qualified",
             completedAt: new Date(),
@@ -687,7 +712,7 @@ export const appRouter = router({
           return { completed: true as const, currentStep: "complete" as const, message: completion };
         }
 
-        await updateChatLead(lead.id, { ...parsed.patch, currentStep: parsed.nextStep });
+        await updateChatLead(lead.id, { ...persistedPatch, currentStep: parsed.nextStep });
         await addChatTranscript(lead.id, "assistant", parsed.response);
         return { completed: false as const, currentStep: parsed.nextStep, message: parsed.response };
       }),
@@ -722,6 +747,77 @@ export const appRouter = router({
           await updateChatLead(lead.id, { recipientEmailStatus: "manual_follow_up", recipientEmailDetail });
           return { recipientEmailStatus: "manual_follow_up" as const, recipientEmailDetail };
         }
+      }),
+  }),
+
+  texting: router({
+    /** Admin-only provider state. Delivery remains disabled until credentials are intentionally configured. */
+    status: protectedProcedure.query(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      return {
+        providerConfigured: false as const,
+        mode: "provider_setup_required" as const,
+        detail: "No SMS/MMS provider is configured. You can select consented leads, upload JPG attachments, and save drafts, but no text messages will be sent.",
+      };
+    }),
+    /** Admin-only: only recipients with recorded consent and a valid non-placeholder phone are returned. */
+    recipients: protectedProcedure.query(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      const recipients = await listTextReadyRecipients();
+      return recipients.filter((recipient) => hasUsableRoadmapPhone(recipient.phone));
+    }),
+    /** Admin-only: saved drafts and their independently-addressed recipients. */
+    listDrafts: protectedProcedure.query(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      return listTextMessageDrafts();
+    }),
+    /** Admin-only: upload a JPG attachment to storage for a saved future MMS draft. */
+    uploadJpg: protectedProcedure
+      .input(
+        z.object({
+          fileName: z.string().trim().min(1).max(300),
+          dataBase64: z.string().min(1).max(MAX_IMAGE_BASE64_CHARS, "JPG is too large (max ~4MB)."),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const buffer = Buffer.from(input.dataBase64, "base64");
+        if (buffer.length === 0 || buffer.length > 4_000_000) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "JPG must be no larger than 4MB." });
+        }
+        const key = `text-drafts/${ctx.user.id}/${nanoid(16)}.jpg`;
+        const { url } = await storagePut(key, buffer, "image/jpeg");
+        return { storageKey: key, url, fileName: input.fileName, mimeType: "image/jpeg" as const, sizeBytes: buffer.length };
+      }),
+    /** Admin-only: save a provider-unconfigured message draft. This never sends an SMS or MMS. */
+    saveDraft: protectedProcedure
+      .input(
+        z.object({
+          body: z.string().trim().min(1, "Write a message before saving.").max(1600, "Messages are limited to 1600 characters."),
+          recipients: z.array(textDraftRecipientSchema).min(1, "Select at least one text-ready lead.").max(100, "Select up to 100 leads per draft."),
+          attachments: z.array(textDraftAttachmentSchema).max(3, "Attach up to three JPG files per draft."),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const candidates = await listTextReadyRecipients();
+        const validCandidates = new Map(
+          candidates
+            .filter((candidate) => hasUsableRoadmapPhone(candidate.phone))
+            .map((candidate) => [`${candidate.sourceType}:${candidate.sourceLeadId}`, candidate])
+        );
+        const distinctSelections = Array.from(new Map(input.recipients.map((recipient) => [`${recipient.sourceType}:${recipient.sourceLeadId}`, recipient])).values());
+        const recipients = distinctSelections.map((selection) => validCandidates.get(`${selection.sourceType}:${selection.sourceLeadId}`)).filter((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate));
+        if (recipients.length !== distinctSelections.length) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "One or more selected leads are no longer text-ready. Refresh the workspace and review consent." });
+        }
+        const messageId = await createTextMessageDraft({
+          body: input.body,
+          createdByUserId: ctx.user.id,
+          recipients,
+          attachments: input.attachments,
+        });
+        return { messageId, providerConfigured: false as const, deliveryMode: "provider_setup_required" as const };
       }),
   }),
 

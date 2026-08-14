@@ -107,7 +107,9 @@ describe("full mortgage intake lifecycle", () => {
     await publicCaller.chat.answer({ sessionId, message: "Sarah Chen" });
     await publicCaller.chat.answer({ sessionId, message: "sarah@example.com" });
     await publicCaller.chat.answer({ sessionId, message: "(541) 555-0101" });
-    expect(state.lead).toMatchObject({ currentStep: "home_search_interest" });
+    expect(state.lead).toMatchObject({ currentStep: "sms_consent" });
+    await publicCaller.chat.answer({ sessionId, message: "Yes" });
+    expect(state.lead).toMatchObject({ currentStep: "home_search_interest", smsConsent: 1, smsConsentAt: expect.any(Date) });
     await publicCaller.chat.answer({ sessionId, message: "Yes" });
     expect(state.lead).toMatchObject({ currentStep: "search_area_type", lowDownPaymentHomeSearch: 1 });
     await publicCaller.chat.answer({ sessionId, message: "City" });

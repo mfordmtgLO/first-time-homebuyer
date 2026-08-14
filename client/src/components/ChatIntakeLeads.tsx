@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Download, FileText, Loader2, Mail, MapPin, MessageCircle, Search } from "lucide-react";
+import { Download, FileText, Loader2, Mail, MapPin, MessageCircle, MessageSquareText, Search } from "lucide-react";
 import { toast } from "sonner";
 
 type ChatLead = {
@@ -35,6 +35,8 @@ type ChatLead = {
   fullName: string | null;
   email: string | null;
   phone: string | null;
+  smsConsent: number;
+  smsConsentAt: Date | null;
   recipientEmailStatus: "not_attempted" | "sent" | "manual_follow_up";
   recipientEmailDetail: string | null;
   resendCount: number;
@@ -165,7 +167,7 @@ export default function ChatIntakeLeads() {
           <table className="w-full text-sm">
             <thead><tr className="sticky top-0 z-10 border-b border-border bg-muted/95 text-left text-muted-foreground backdrop-blur-sm"><th className="px-5 py-3 font-semibold">Lead</th><th className="px-5 py-3 font-semibold">Co-brand source</th><th className="px-5 py-3 font-semibold">Status</th><th className="px-5 py-3 font-semibold">Recipients</th><th className="px-5 py-3 font-semibold">Resends</th><th className="px-5 py-3 font-semibold">Purpose</th><th className="px-5 py-3 font-semibold">Planning snapshot</th><th className="px-5 py-3 font-semibold">Updated</th><th className="px-5 py-3 text-right font-semibold">Actions</th></tr></thead>
             <tbody>{filtered.map((lead) => <tr key={lead.id} className="border-b border-border/60 last:border-0">
-              <td className="px-5 py-3.5"><div className="font-medium text-foreground">{lead.fullName || "Anonymous visitor"}</div><div className="text-xs text-muted-foreground">{lead.email || lead.phone || "No contact details yet"}</div></td>
+              <td className="px-5 py-3.5"><div className="font-medium text-foreground">{lead.fullName || "Anonymous visitor"}</div><div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"><span>{lead.email || lead.phone || "No contact details yet"}</span>{lead.smsConsent === 1 && lead.phone && <Badge variant="outline" className="border-violet-600/25 bg-violet-600/5 text-violet-700"><MessageSquareText className="mr-1 h-3 w-3" /> Text ready</Badge>}</div></td>
               <td className="px-5 py-3.5">{lead.isCoBranded ? <div className="min-w-44"><Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Co-branded</Badge><div className="mt-1.5 text-xs font-medium text-foreground">LO: {lead.loanOfficerName || "—"}</div><div className="text-xs text-muted-foreground">Agent: {lead.agentName || "—"}</div></div> : <Badge variant="outline" className="text-muted-foreground">Direct site</Badge>}</td>
               <td className="px-5 py-3.5"><Badge variant="outline" className={lead.status === "qualified" ? "border-emerald-600/30 bg-emerald-600/10 text-emerald-700" : "border-accent/40 bg-accent/15 text-accent-foreground"}>{lead.status === "qualified" ? "Qualified" : "Incomplete"}</Badge></td>
               <td className="px-5 py-3.5">{recipientStatus(lead)}</td>

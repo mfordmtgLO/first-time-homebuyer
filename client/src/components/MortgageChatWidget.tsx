@@ -17,6 +17,7 @@ const QUICK_REPLIES: Record<string, string[]> = {
   property_type: ["Single-Family", "Condo", "Multi-Family", "Townhouse", "Manufactured home (no leased land/space rent)"],
   credit_range: ["Excellent 720+", "Good 660-719", "Fair 620-659", "Poor under 620"],
   home_search_interest: ["YES", "NO"],
+  sms_consent: ["Yes", "No"],
   search_area_type: ["City", "County"],
 };
 
@@ -152,7 +153,7 @@ export default function MortgageChatWidget() {
       {displayQuickReplies.length > 0 && (
         <>
           <span className="block text-xs font-medium text-muted-foreground">
-            {displayStep === "loan_purpose" ? "Choose a starting point:" : displayStep === "home_search_interest" ? "Choose YES or NO:" : displayStep === "search_area_type" ? "Choose a search area:" : "Choose the best match:"}
+            {displayStep === "loan_purpose" ? "Choose a starting point:" : displayStep === "home_search_interest" || displayStep === "sms_consent" ? "Choose YES or NO:" : displayStep === "search_area_type" ? "Choose a search area:" : "Choose the best match:"}
           </span>
           <div className="mt-2 flex flex-wrap gap-2">
             {displayQuickReplies.map((reply, index) => (
