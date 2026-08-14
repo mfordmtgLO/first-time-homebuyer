@@ -37,7 +37,7 @@ export default function About() {
     <section id="about" ref={ref} className="py-20 md:py-28" style={{ background: "oklch(0.945 0.018 85)" }}>
       <div className="container grid lg:grid-cols-[4fr_7fr] gap-12 lg:gap-16 items-center">
         <div className="relative reveal">
-          <div className="aspect-[4/3] max-w-md overflow-hidden rounded-md border border-primary/15 bg-card shadow-xl mx-auto lg:mx-0">
+          <div className="aspect-[3/4] max-w-sm overflow-hidden rounded-md border border-primary/15 bg-card shadow-xl mx-auto lg:mx-0">
             <img src={advisorImage} alt={`${advisor.name}, ${advisor.title} at ${advisor.companyName || "Cornerstone First Mortgage"}`} className="h-full w-full object-cover object-top" />
           </div>
           <div className="absolute -bottom-5 right-2 flex items-center gap-2.5 border-t-4 bg-card px-5 py-3.5 shadow-lg lg:-right-4" style={{ borderTopColor: "oklch(0.73 0.13 75)" }}>
@@ -69,7 +69,7 @@ export default function About() {
             </p>
             <p className="text-base">
               <strong className="text-foreground font-semibold">Reach me directly:</strong>{" "}
-              <a href={`tel:${advisor.phone.replace(/[^+\d]/g, "")}`} className="phone-link inline-flex items-center gap-1 underline underline-offset-2 hover:text-foreground"><Phone className="phone-icon h-3.5 w-3.5 text-accent" />{advisor.phone}</a>
+              <a href={`tel:${advisor.phone.replace(/[^+\d]/g, "")}`} className="phone-link inline-flex items-center gap-1 hover:text-foreground"><Phone className="phone-icon h-3.5 w-3.5 text-accent" />{advisor.phone}</a>
               {" · "}
               <a href={`mailto:${advisor.email}`} className="underline underline-offset-2 hover:text-foreground">{advisor.email}</a>
               {isMike && <span className="block mt-1 text-sm text-muted-foreground">17850 Pilkington Rd | Lake Oswego, OR 97035</span>}

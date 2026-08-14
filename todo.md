@@ -225,3 +225,5 @@
 - [x] Restore and verify the current dashboard application bundle and referral action on the published site
 - [x] Correct the Roadmap “Send me the Roadmap” button text wrapping and alignment at responsive form widths
 - [x] Replace the co-marketing Share QR + URL email-draft closing with the requested next-deal message
+- [x] Remove the always-visible Your Guide phone-link underline while preserving its animated hover treatment
+- [x] Change the Your Guide Mike Ford headshot frame to a taller vertical portrait treatment
