@@ -219,3 +219,5 @@
 - [x] Update Roadmap send-to-agent drafts with first-name greeting, lead phone, and no source-tag line
 - [x] Expand 2-1 buydown and cost-of-waiting details in sent and fallback referral drafts
 - [x] Add regression coverage and checkpoint the revised Roadmap agent-referral drafts
+- [x] Diagnose why the published Roadmap Send to agent action still displays the prior referral-draft wording
+- [x] Correct and verify the active sent-email or fallback draft path, then checkpoint the published-draft fix

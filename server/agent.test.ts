@@ -34,9 +34,13 @@ vi.mock("./storage", () => ({
   })),
 }));
 
-vi.mock("./email", () => ({
-  sendReferralEmail: vi.fn(async () => ({ sent: true })),
-}));
+vi.mock("./email", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./email")>();
+  return {
+    ...actual,
+    sendReferralEmail: vi.fn(async () => ({ sent: true })),
+  };
+});
 
 import { appRouter } from "./routers";
 import {
@@ -345,10 +349,12 @@ describe("leads.sendToAgent", () => {
       const draft = decodeURIComponent(result.mailto);
       expect(draft).toContain("Hi Jane,");
       expect(draft).toContain("Phone: (541) 555-0199");
+      expect(draft).toContain("Submitted:");
       expect(draft).toContain("Year 1 monthly savings: $536");
       expect(draft).toContain("Year 2 monthly savings: $275");
       expect(draft).toContain("$9,730 (2.29% of sales price)");
       expect(draft).toContain("resulting in $105,578 cost of waiting.");
+      expect(draft).toContain("introduce yourself when you get a chance.");
       expect(draft).not.toContain("Came in via:");
     }
     expect(markLeadSentToAgentMock).not.toHaveBeenCalled();

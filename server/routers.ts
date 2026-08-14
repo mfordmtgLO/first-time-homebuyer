@@ -55,7 +55,7 @@ import {
 import { syncGeoSphereSavedListings } from "./geosphere";
 import { createHeartbeatJob, updateHeartbeatJob } from "./_core/heartbeat";
 import { notifyOwner } from "./_core/notification";
-import { sendChatIntakeNotification, sendReferralEmail } from "./email";
+import { buildReferralEmail, sendChatIntakeNotification, sendReferralEmail } from "./email";
 import { hasUsableRoadmapPhone } from "../shared/roadmapPhone";
 import { storagePut } from "./storage";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -1031,14 +1031,22 @@ function summarizeLeadScenario(raw: string | null): string | null {
 /** Prefilled mailto: link so the owner can send manually when email isn't configured. */
 function buildMailtoFallback(
   agentEmail: string,
-  lead: { firstName: string; email: string; phone: string },
+  lead: { firstName: string; email: string; phone: string; source: string; createdAt: Date },
   agentName: string,
   scenarioSummary: string | null
 ) {
-  const agentFirstName = agentName.trim().split(/\s+/)[0] || "there";
-  const subject = `New buyer lead: ${lead.firstName}`;
-  const body = `Hi ${agentFirstName},\n\nI'd like to connect you with a buyer lead from my First-Time Homebuyer landing page.\n\nName: ${lead.firstName}\nEmail: ${lead.email}\nPhone: ${lead.phone || "Not provided"}${scenarioSummary ? `\n\nWhat they explored on the site:\n${scenarioSummary}` : ""}\n\nThey're working with me on financing — please reach out and introduce yourself.\n\nThanks,\nMike Ford\nCornerstone First Mortgage\n(541) 729-0819`;
-  return `mailto:${agentEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const { subject, text } = buildReferralEmail({
+    agentName,
+    agentEmail,
+    leadFirstName: lead.firstName,
+    leadEmail: lead.email,
+    leadPhone: lead.phone,
+    leadSource: lead.source,
+    submittedAt: lead.createdAt,
+    scenarioSummary,
+    ownerName: "Mike Ford",
+  });
+  return `mailto:${agentEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
 }
 
 export type AppRouter = typeof appRouter;
