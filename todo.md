@@ -221,3 +221,6 @@
 - [x] Add regression coverage and checkpoint the revised Roadmap agent-referral drafts
 - [x] Diagnose why the published Roadmap Send to agent action still displays the prior referral-draft wording
 - [x] Correct and verify the active sent-email or fallback draft path, then checkpoint the published-draft fix
+- [ ] Diagnose why the live dashboard does not reflect completed dashboard changes
+- [ ] Restore and verify the current dashboard application bundle and referral action on the published site
+- [x] Correct the Roadmap “Send me the Roadmap” button text wrapping and alignment at responsive form widths

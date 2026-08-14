@@ -171,7 +171,7 @@ export default function LeadMagnet() {
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder="First name"
                   aria-label="First name"
-                  className="h-12 rounded-md border border-input bg-card px-4 text-base outline-none focus:ring-2 focus:ring-ring/60 sm:w-44"
+                  className="h-12 shrink-0 rounded-md border border-input bg-card px-4 text-base outline-none focus:ring-2 focus:ring-ring/60 sm:w-40"
                 />
                 <input
                   type="email"
@@ -179,7 +179,7 @@ export default function LeadMagnet() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Email address"
                   aria-label="Email address"
-                  className="h-12 flex-1 rounded-md border border-input bg-card px-4 text-base outline-none focus:ring-2 focus:ring-ring/60"
+                  className="h-12 min-w-0 flex-1 rounded-md border border-input bg-card px-4 text-base outline-none focus:ring-2 focus:ring-ring/60"
                 />
                 <input
                   type="tel"
@@ -190,12 +190,12 @@ export default function LeadMagnet() {
                   autoComplete="tel"
                   inputMode="tel"
                   maxLength={14}
-                  className="h-12 flex-1 rounded-md border border-input bg-card px-4 text-base outline-none focus:ring-2 focus:ring-ring/60"
+                  className="h-12 min-w-0 flex-1 rounded-md border border-input bg-card px-4 text-base outline-none focus:ring-2 focus:ring-ring/60"
                 />
                 <button
                   type="submit"
                   disabled={submitLead.isPending}
-                  className="btn-press inline-flex h-12 items-center justify-center gap-2 rounded-md bg-accent px-6 text-base font-semibold text-accent-foreground shadow-md hover:brightness-105 disabled:opacity-70 disabled:pointer-events-none"
+                  className="btn-press inline-flex h-12 min-w-[14.5rem] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-accent px-4 text-base font-semibold text-accent-foreground shadow-md hover:brightness-105 disabled:opacity-70 disabled:pointer-events-none"
                 >
                   {submitLead.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                   {submitLead.isPending ? "Sending..." : "Send me the Roadmap"}
