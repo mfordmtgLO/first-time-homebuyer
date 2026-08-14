@@ -167,6 +167,7 @@ export default function ChatIntakeLeads() {
         scenarios: null,
         coMarketingAgent,
         siteOrigin: PUBLIC_SITE_ORIGIN,
+        draftSource: "chat",
         chatTranscript: transcript.map((message) => ({ role: message.role, content: message.content })),
       });
       window.location.href = draft.mailto;

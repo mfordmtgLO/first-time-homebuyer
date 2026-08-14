@@ -107,12 +107,13 @@ describe("buildLeadWelcomeDraft", () => {
     expect(draft.body).not.toContain("Headshot:");
   });
 
-  it("uses a chat-specific thank-you and includes the complete chat conversation recap", () => {
+  it("uses first-home financing language and a top-down question-and-response recap for chat-origin drafts", () => {
     const draft = buildLeadWelcomeDraft({
       firstName: "Sam",
       email: "sam@example.com",
       scenarios: null,
       siteOrigin: "https://firsttimehomebuyer.manus.space",
+      draftSource: "chat",
       chatTranscript: [
         { role: "assistant", content: "Are you looking to purchase or refinance?" },
         { role: "user", content: "Purchase" },
@@ -121,12 +122,12 @@ describe("buildLeadWelcomeDraft", () => {
       ],
     });
 
-    expect(draft.body).toContain("Thank you for reaching out through my Mortgage Intake Specialist chat.");
+    expect(draft.body).toContain("Thank you for your interest in home loan financing options for your first home purchase.");
     expect(draft.body).not.toContain("Thank you for requesting the First-Time Homebuyer Roadmap.");
     expect(draft.body).toContain("CHAT CONVERSATION RECAP");
-    expect(draft.body).toContain("Mortgage Intake Specialist: Are you looking to purchase or refinance?");
-    expect(draft.body).toContain("Sam: Purchase");
-    expect(draft.body).toContain("Sam: Coos Bay");
+    expect(draft.body).toContain("Mortgage Intake Specialist\nAre you looking to purchase or refinance?");
+    expect(draft.body).toContain("Sam\nPurchase");
+    expect(draft.body).toContain("Sam\nCoos Bay");
     expect(draft.body).toContain("Roadmap Homebuyer Guide + Checklist");
   });
 });

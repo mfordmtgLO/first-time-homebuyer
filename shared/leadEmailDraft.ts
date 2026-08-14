@@ -54,6 +54,8 @@ export type LeadWelcomeDraftInput = {
   /** Present only when the submission came through /with/:slug, not a manual assignment. */
   coMarketingAgent?: LeadEmailAgent | null;
   siteOrigin: string;
+  /** Identifies a Chat Intake origin even if no transcript messages have been saved yet. */
+  draftSource?: "roadmap" | "chat";
   /** Present for a manual email draft opened from a Mortgage Chat Intake row. */
   chatTranscript?: Array<{ role: "assistant" | "user" | "system"; content: string }>;
 };
@@ -159,6 +161,25 @@ function formatRoadmapResources(siteOrigin: string) {
   Open or download: ${new URL(ROADMAP_RESOURCES[1].path, siteOrigin).toString()}`;
 }
 
+function formatChatConversationRecap(
+  transcript: Array<{ role: "assistant" | "user" | "system"; content: string }> | undefined,
+  firstName: string
+) {
+  const visibleMessages = (transcript ?? []).filter((message) => message.role !== "system" && message.content.trim());
+  if (visibleMessages.length === 0) {
+    return `CHAT CONVERSATION RECAP
+
+No saved chat messages were available when this draft was opened. Please review the intake record in the dashboard before sending.`;
+  }
+
+  return `CHAT CONVERSATION RECAP
+${visibleMessages.map((message) => {
+    const speaker = message.role === "assistant" ? "Mortgage Intake Specialist" : firstName;
+    return `${speaker}
+${message.content.trim()}`;
+  }).join("\n\n")}`;
+}
+
 function compact(value: string, width: number) {
   const normalized = value.replace(/\s+/g, " ").trim();
   return normalized.length <= width ? normalized.padEnd(width) : `${normalized.slice(0, Math.max(width - 1, 1))}…`;
@@ -231,15 +252,14 @@ export function buildLeadWelcomeDraft(input: LeadWelcomeDraftInput) {
   const contextualWebsiteUrl = input.coMarketingAgent
     ? new URL(`/with/${input.coMarketingAgent.slug}`, input.siteOrigin).toString()
     : new URL("/", input.siteOrigin).toString();
-  const isChatDraft = Boolean(input.chatTranscript);
-  const transcriptRecap = input.chatTranscript?.length
+  const isChatDraft = input.draftSource === "chat" || input.chatTranscript !== undefined;
+  const transcriptRecap = isChatDraft
     ? `
 
-CHAT CONVERSATION RECAP
-${input.chatTranscript.map((message) => `${message.role === "assistant" ? "Mortgage Intake Specialist" : message.role === "user" ? input.firstName : "System"}: ${message.content}`).join("\n\n")}`
+${formatChatConversationRecap(input.chatTranscript, input.firstName)}`
     : "";
   const opening = isChatDraft
-    ? `Thank you for reaching out through my Mortgage Intake Specialist chat. I appreciate you sharing your goals and the information in our conversation.`
+    ? `Thank you for your interest in home loan financing options for your first home purchase. Below is a recap of the conversation you had with my Mortgage Intake Specialist chat.`
     : `Thank you for requesting the First-Time Homebuyer Roadmap. I’m Mike Ford with Cornerstone First Mortgage, and I’m glad you’re here.`;
 
   const body = `Hi ${input.firstName},

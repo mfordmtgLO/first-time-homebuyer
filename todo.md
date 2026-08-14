@@ -250,3 +250,4 @@
 - [x] Update Mortgage Chat Intake email drafts with a chat-specific thank-you and complete conversation recap
 - [x] Add a centered fixed dashboard snap-navigation bar with Top and section-jump buttons for all major management areas
 - [x] Add a green USDA badge for qualifying Mortgage Chat Intake leads across all dashboard name displays
+- [x] Correct Mortgage Chat Intake lead email drafts with first-home financing language and a readable question-and-response chat recap

@@ -196,23 +196,32 @@ export default function TextingWorkspace() {
     setLoanOfficerFilter("all");
     setAgentFilter("all");
   };
-  const openEmailDraft = (recipient: Recipient) => {
+  const openEmailDraft = async (recipient: Recipient) => {
     if (!recipient.email) {
       toast.error("This lead does not have an email address yet.");
       return;
     }
-    const coMarketingAgent = recipient.isCoBranded && recipient.agentId
-      ? agents.find((agent) => agent.id === recipient.agentId) ?? null
-      : null;
-    const draft = buildLeadWelcomeDraft({
-      firstName: recipient.name.trim().split(/\s+/)[0] || "there",
-      email: recipient.email,
-      scenarios: parseRecipientScenario(recipient.scenario),
-      coMarketingAgent,
-      siteOrigin: PUBLIC_SITE_ORIGIN,
-    });
-    window.location.href = draft.mailto;
-    toast.success("Welcome email draft opened.");
+    try {
+      const coMarketingAgent = recipient.isCoBranded && recipient.agentId
+        ? agents.find((agent) => agent.id === recipient.agentId) ?? null
+        : null;
+      const chatTranscript = recipient.sourceType === "chat"
+        ? await utils.chat.transcript.fetch({ chatLeadId: recipient.sourceLeadId })
+        : undefined;
+      const draft = buildLeadWelcomeDraft({
+        firstName: recipient.name.trim().split(/\s+/)[0] || "there",
+        email: recipient.email,
+        scenarios: parseRecipientScenario(recipient.scenario),
+        coMarketingAgent,
+        siteOrigin: PUBLIC_SITE_ORIGIN,
+        draftSource: recipient.sourceType,
+        chatTranscript: chatTranscript?.map((message) => ({ role: message.role, content: message.content })),
+      });
+      window.location.href = draft.mailto;
+      toast.success(recipient.sourceType === "chat" ? "Chat recap email draft opened." : "Welcome email draft opened.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to load this chat conversation for the email draft.");
+    }
   };
   const assignRecipientAgent = (recipient: Recipient, agentId: number | null) => {
     if (recipient.sourceType === "roadmap") roadmapAssignAgent.mutate({ id: recipient.sourceLeadId, agentId });
