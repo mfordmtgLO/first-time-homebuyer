@@ -56,6 +56,7 @@ import { syncGeoSphereSavedListings } from "./geosphere";
 import { createHeartbeatJob, updateHeartbeatJob } from "./_core/heartbeat";
 import { notifyOwner } from "./_core/notification";
 import { sendChatIntakeNotification, sendReferralEmail } from "./email";
+import { hasUsableRoadmapPhone } from "../shared/roadmapPhone";
 import { storagePut } from "./storage";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -304,6 +305,7 @@ export const appRouter = router({
           firstName: z.string().trim().min(1, "First name is required").max(120),
           email: z.string().trim().email("A valid email is required").max(320),
           phone: z.string().trim().min(7, "A valid phone number is required").max(40).optional(),
+          smsConsent: z.literal(true, { error: "SMS consent is required." }),
           source: z.string().trim().max(64).optional(),
           scenario: buydownScenarioSchema.optional(),
           costOfWaiting: costOfWaitingScenarioSchema.optional(),
@@ -328,6 +330,10 @@ export const appRouter = router({
         // The scenario column stores a combined payload so both calculators can
         // ride along with a single lead. Legacy rows may contain a bare buydown
         // object; the dashboard parser handles both shapes.
+        if (!hasUsableRoadmapPhone(input.phone)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Enter a valid 10-digit phone number; placeholder numbers are not accepted." });
+        }
+
         const scenarioPayload =
           input.scenario || input.costOfWaiting
             ? JSON.stringify({
@@ -369,7 +375,8 @@ export const appRouter = router({
         await insertLead({
           firstName: input.firstName,
           email: input.email,
-          ...(input.phone ? { phone: input.phone } : {}),
+          phone: input.phone,
+          smsConsent: 1,
           source: input.source ?? "roadmap",
           scenario: scenarioPayload,
           agentId,

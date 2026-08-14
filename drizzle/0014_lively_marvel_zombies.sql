@@ -1,0 +1,1 @@
+ALTER TABLE `leads` ADD `smsConsent` int DEFAULT 0 NOT NULL;

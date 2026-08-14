@@ -6,6 +6,7 @@ import { useAgentSlug, useLoanOfficerSlug } from "@/contexts/AgentPageContext";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Download, CheckCircle2, Loader2, Calculator, Hourglass, X } from "lucide-react";
+import { formatUsRoadmapPhone, hasUsableRoadmapPhone } from "@shared/roadmapPhone";
 
 const fmtUsd = (v: number) =>
   v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -28,6 +29,7 @@ export default function LeadMagnet() {
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [smsConsent, setSmsConsent] = useState(false);
 
   const submitLead = trpc.leads.submit.useMutation({
     onSuccess: () => {
@@ -49,9 +51,12 @@ export default function LeadMagnet() {
       toast.error("Please enter a valid email address.");
       return;
     }
-    const phoneDigits = phone.replace(/\D/g, "");
-    if (phoneDigits.length < 10 || phoneDigits.length > 15) {
-      toast.error("Please enter a valid phone number, including area code.");
+    if (!hasUsableRoadmapPhone(phone)) {
+      toast.error("Please enter a valid 10-digit mobile phone number. Placeholder numbers are not accepted.");
+      return;
+    }
+    if (!smsConsent) {
+      toast.error("Please agree to receive text messages so we can send your Roadmap follow-up.");
       return;
     }
     const includeScenario = attached && scenario ? scenario : undefined;
@@ -65,6 +70,7 @@ export default function LeadMagnet() {
       firstName: firstName.trim(),
       email: email.trim(),
       phone: phone.trim(),
+      smsConsent: true,
       source: sourceTags.join("+"),
       scenario: includeScenario,
       costOfWaiting: includeCow,
@@ -178,10 +184,12 @@ export default function LeadMagnet() {
                 <input
                   type="tel"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Best phone number"
+                  onChange={(e) => setPhone(formatUsRoadmapPhone(e.target.value))}
+                  placeholder="(555) 555-5555"
                   aria-label="Best phone number"
                   autoComplete="tel"
+                  inputMode="tel"
+                  maxLength={14}
                   className="h-12 flex-1 rounded-md border border-input bg-card px-4 text-base outline-none focus:ring-2 focus:ring-ring/60"
                 />
                 <button
@@ -193,6 +201,18 @@ export default function LeadMagnet() {
                   {submitLead.isPending ? "Sending..." : "Send me the Roadmap"}
                 </button>
               </div>
+              <label className="mt-4 flex items-start gap-2.5 text-xs leading-relaxed text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={smsConsent}
+                  onChange={(event) => setSmsConsent(event.target.checked)}
+                  required
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-input text-primary focus:ring-ring"
+                />
+                <span>
+                  I agree to receive calls and text messages from Mike Ford and Cornerstone First Mortgage about my mortgage inquiry. Consent is not a condition of purchase. Message frequency varies; message and data rates may apply. Reply STOP to opt out or HELP for help.
+                </span>
+              </label>
               <p className="mt-3 text-xs text-muted-foreground">
                 No spam, ever. Just the guide and a few genuinely useful tips. Unsubscribe anytime.
               </p>

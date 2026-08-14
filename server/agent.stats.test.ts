@@ -115,6 +115,8 @@ describe("leads.submit agentSource tagging", () => {
     await caller.leads.submit({
       firstName: "Sarah",
       email: "sarah@example.com",
+      phone: "(541) 555-0100",
+      smsConsent: true,
       agentSlug: "jane-doe",
     });
     expect(insertLeadMock).toHaveBeenCalledWith(
@@ -124,7 +126,7 @@ describe("leads.submit agentSource tagging", () => {
 
   it("stores no agentSource when submitted from the default page", async () => {
     const caller = appRouter.createCaller(createContext(null));
-    await caller.leads.submit({ firstName: "Sam", email: "sam@example.com" });
+    await caller.leads.submit({ firstName: "Sam", email: "sam@example.com", phone: "(541) 555-0100", smsConsent: true });
     expect(insertLeadMock).toHaveBeenCalledWith(
       expect.objectContaining({ agentId: undefined, agentSource: undefined })
     );
@@ -135,6 +137,8 @@ describe("leads.submit agentSource tagging", () => {
     await caller.leads.submit({
       firstName: "Sam",
       email: "sam@example.com",
+      phone: "(541) 555-0100",
+      smsConsent: true,
       agentSlug: "ghost-agent",
     });
     expect(insertLeadMock).toHaveBeenCalledWith(

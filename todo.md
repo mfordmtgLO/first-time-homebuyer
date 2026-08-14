@@ -208,3 +208,6 @@
 - [x] Add a phone field to Roadmap lead capture, persistence, dashboard display, and agent referral details
 - [x] Refine Roadmap agent-referral greetings and 2-1 buydown savings/subsidy calculations in the draft email
 - [x] Add regression coverage, verify the updated lead flow, and checkpoint the referral-email improvements
+- [x] Add live U.S. phone formatting and placeholder-number validation to Roadmap lead capture
+- [x] Add required and persisted SMS consent disclosure to Roadmap submissions
+- [x] Add a dashboard badge for usable Roadmap lead phone numbers and verify the end-to-end behavior

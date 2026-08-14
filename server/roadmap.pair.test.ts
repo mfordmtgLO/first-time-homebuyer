@@ -35,7 +35,7 @@ describe("Roadmap LO-agent co-brand attribution", () => {
     getAgentBySlugMock.mockResolvedValue({ id: 17, name: "Kaandice", visible: 1 } as never);
     getLoanOfficerBySlugMock.mockResolvedValue({ id: 5, slug: "mike-ford", agentId: 17, visible: 1 } as never);
     const caller = appRouter.createCaller(context());
-    await caller.leads.submit({ firstName: "Jordan", email: "jordan@example.com", agentSlug: "kaandice-mclean", loanOfficerSlug: "mike-ford" });
+    await caller.leads.submit({ firstName: "Jordan", email: "jordan@example.com", phone: "(541) 555-0100", smsConsent: true, agentSlug: "kaandice-mclean", loanOfficerSlug: "mike-ford" });
     expect(insertLeadMock).toHaveBeenCalledWith(expect.objectContaining({ agentId: 17, loanOfficerId: 5, agentSource: "link" }));
   });
 
@@ -43,7 +43,7 @@ describe("Roadmap LO-agent co-brand attribution", () => {
     getAgentBySlugMock.mockResolvedValue({ id: 17, name: "Kaandice", visible: 1 } as never);
     getLoanOfficerBySlugMock.mockResolvedValue({ id: 5, slug: "mike-ford", agentId: 99, visible: 1 } as never);
     const caller = appRouter.createCaller(context());
-    await caller.leads.submit({ firstName: "Jordan", email: "jordan@example.com", agentSlug: "kaandice-mclean", loanOfficerSlug: "mike-ford" });
+    await caller.leads.submit({ firstName: "Jordan", email: "jordan@example.com", phone: "(541) 555-0100", smsConsent: true, agentSlug: "kaandice-mclean", loanOfficerSlug: "mike-ford" });
     expect(insertLeadMock).toHaveBeenCalledWith(expect.objectContaining({ agentId: 17, loanOfficerId: undefined }));
   });
 
@@ -51,7 +51,7 @@ describe("Roadmap LO-agent co-brand attribution", () => {
     getLoanOfficerBySlugMock.mockResolvedValue({ id: 5, slug: "mike-ford", agentId: null, visible: 1 } as never);
     const caller = appRouter.createCaller(context());
 
-    await caller.leads.submit({ firstName: "Jordan", email: "jordan@example.com", loanOfficerSlug: "mike-ford" });
+    await caller.leads.submit({ firstName: "Jordan", email: "jordan@example.com", phone: "(541) 555-0100", smsConsent: true, loanOfficerSlug: "mike-ford" });
 
     expect(insertLeadMock).toHaveBeenCalledWith(expect.objectContaining({ agentId: undefined, loanOfficerId: 5, agentSource: undefined }));
   });

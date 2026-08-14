@@ -43,6 +43,8 @@ describe("leads.submit", () => {
     const result = await caller.leads.submit({
       firstName: "Taylor",
       email: "taylor@example.com",
+      phone: "(541) 555-0100",
+      smsConsent: true,
       source: "roadmap",
     });
 
@@ -50,6 +52,8 @@ describe("leads.submit", () => {
     expect(insertLeadMock).toHaveBeenCalledWith({
       firstName: "Taylor",
       email: "taylor@example.com",
+      phone: "(541) 555-0100",
+      smsConsent: 1,
       source: "roadmap",
       scenario: undefined,
     });
@@ -60,7 +64,7 @@ describe("leads.submit", () => {
   it("defaults source to roadmap when omitted", async () => {
     const caller = appRouter.createCaller(createPublicContext());
 
-    await caller.leads.submit({ firstName: "Sam", email: "sam@example.com" });
+    await caller.leads.submit({ firstName: "Sam", email: "sam@example.com", phone: "(541) 555-0100", smsConsent: true });
 
     expect(insertLeadMock).toHaveBeenCalledWith(
       expect.objectContaining({ source: "roadmap" })
@@ -70,11 +74,25 @@ describe("leads.submit", () => {
   it("stores a supplied Roadmap phone number for follow-up", async () => {
     const caller = appRouter.createCaller(createPublicContext());
 
-    await caller.leads.submit({ firstName: "Sam", email: "sam@example.com", phone: "(541) 555-0100" });
+    await caller.leads.submit({ firstName: "Sam", email: "sam@example.com", phone: "(541) 555-0100", smsConsent: true });
 
     expect(insertLeadMock).toHaveBeenCalledWith(
-      expect.objectContaining({ phone: "(541) 555-0100" })
+      expect.objectContaining({ phone: "(541) 555-0100", smsConsent: 1 })
     );
+  });
+
+  it("rejects a submission without affirmative SMS consent", async () => {
+    const caller = appRouter.createCaller(createPublicContext());
+
+    await expect(caller.leads.submit({ firstName: "Sam", email: "sam@example.com", phone: "(541) 555-0100" })).rejects.toThrow("SMS consent is required");
+    expect(insertLeadMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects the common 555 placeholder phone number", async () => {
+    const caller = appRouter.createCaller(createPublicContext());
+
+    await expect(caller.leads.submit({ firstName: "Sam", email: "sam@example.com", phone: "555-555-5555", smsConsent: true })).rejects.toThrow("placeholder numbers are not accepted");
+    expect(insertLeadMock).not.toHaveBeenCalled();
   });
 
   it("rejects an invalid email", async () => {
@@ -114,6 +132,8 @@ describe("leads.submit", () => {
     await caller.leads.submit({
       firstName: "Jordan",
       email: "jordan@example.com",
+      phone: "(541) 555-0100",
+      smsConsent: true,
       source: "roadmap+buydown",
       scenario,
     });
@@ -156,6 +176,8 @@ describe("leads.submit", () => {
     await caller.leads.submit({
       firstName: "Riley",
       email: "riley@example.com",
+      phone: "(541) 555-0100",
+      smsConsent: true,
       source: "roadmap+waiting",
       costOfWaiting,
     });
@@ -212,6 +234,8 @@ describe("leads.submit", () => {
     await caller.leads.submit({
       firstName: "Alex",
       email: "alex@example.com",
+      phone: "(541) 555-0100",
+      smsConsent: true,
       source: "roadmap+buydown+waiting",
       scenario,
       costOfWaiting,

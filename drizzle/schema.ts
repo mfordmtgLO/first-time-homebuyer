@@ -34,6 +34,8 @@ export const leads = mysqlTable("leads", {
   email: varchar("email", { length: 320 }).notNull(),
   /** Primary phone number captured with a Roadmap lead for agent follow-up. */
   phone: varchar("phone", { length: 40 }).default("").notNull(),
+  /** Visitor affirmatively agreed to receive mortgage-inquiry text messages. */
+  smsConsent: int("smsConsent").default(0).notNull(),
   source: varchar("source", { length: 64 }).default("roadmap").notNull(),
   status: mysqlEnum("status", ["new", "contacted", "booked"]).default("new").notNull(),
   notes: text("notes"),
