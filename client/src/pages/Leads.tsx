@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { hasUsableRoadmapPhone } from "@shared/roadmapPhone";
+import { getCoBrandAgentFilterOptions, getLoanOfficerFilterOptions, matchesSelectedCoBrandPair } from "@shared/roadmapPairFilters";
 import {
   Calculator,
   Download,
@@ -496,21 +497,10 @@ export default function Leads() {
     [leadsQuery.data]
   );
 
-  const loanOfficerOptions = useMemo(
-    () => Array.from(new Map(
-      leads
-        .filter((lead) => lead.loanOfficerName)
-        .map((lead) => [lead.loanOfficerSlug ?? lead.loanOfficerName!, { value: lead.loanOfficerSlug ?? lead.loanOfficerName!, label: lead.loanOfficerName! }])
-    ).values()),
-    [leads]
-  );
+  const loanOfficerOptions = useMemo(() => getLoanOfficerFilterOptions(leads), [leads]);
   const attributionAgentOptions = useMemo(
-    () => Array.from(new Map(
-      leads
-        .filter((lead) => lead.agentName)
-        .map((lead) => [lead.agentSlug ?? lead.agentName!, { value: lead.agentSlug ?? lead.agentName!, label: lead.agentName! }])
-    ).values()),
-    [leads]
+    () => getCoBrandAgentFilterOptions(leads, loanOfficerFilter),
+    [leads, loanOfficerFilter]
   );
 
   const filteredLeads = useMemo(() => {
@@ -518,7 +508,7 @@ export default function Leads() {
     return leads.filter((l) => {
       if (statusFilter !== "all" && l.status !== statusFilter) return false;
       if (loanOfficerFilter !== "all" && (l.loanOfficerSlug ?? l.loanOfficerName) !== loanOfficerFilter) return false;
-      if (agentFilter !== "all" && (l.agentSlug ?? l.agentName) !== agentFilter) return false;
+      if (agentFilter !== "all" && !matchesSelectedCoBrandPair(l, loanOfficerFilter, agentFilter)) return false;
       if (!q) return true;
       return (
         l.firstName.toLowerCase().includes(q) ||
@@ -734,7 +724,7 @@ export default function Leads() {
                     </button>
                   ))}
                 </div>
-                <Select value={loanOfficerFilter} onValueChange={setLoanOfficerFilter}>
+                <Select value={loanOfficerFilter} onValueChange={(value) => { setLoanOfficerFilter(value); setAgentFilter("all"); }}>
                   <SelectTrigger className="h-9 w-full bg-card text-xs sm:w-[180px]" aria-label="Filter Roadmap leads by loan officer">
                     <SelectValue placeholder="All loan officers" />
                   </SelectTrigger>
@@ -743,12 +733,12 @@ export default function Leads() {
                     {loanOfficerOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Select value={agentFilter} onValueChange={setAgentFilter}>
-                  <SelectTrigger className="h-9 w-full bg-card text-xs sm:w-[180px]" aria-label="Filter Roadmap leads by agent">
-                    <SelectValue placeholder="All agents" />
+                <Select value={agentFilter} onValueChange={setAgentFilter} disabled={loanOfficerFilter === "all"}>
+                  <SelectTrigger className="h-9 w-full bg-card text-xs sm:w-[230px]" aria-label="Filter Roadmap leads by co-brand agent for the selected loan officer">
+                    <SelectValue placeholder={loanOfficerFilter === "all" ? "Select LO first" : "All co-brand agents"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All agents</SelectItem>
+                    <SelectItem value="all">All co-brand agents</SelectItem>
                     {attributionAgentOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
