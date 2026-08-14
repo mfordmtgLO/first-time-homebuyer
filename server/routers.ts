@@ -420,25 +420,19 @@ export const appRouter = router({
           agentSource: agentId !== undefined ? "link" : undefined,
         });
 
-        const scenarioSummary = input.scenario
-          ? ` They ran a 2-1 buydown scenario: $${Math.round(input.scenario.purchasePrice).toLocaleString("en-US")} purchase, $${Math.round(input.scenario.downPayment).toLocaleString("en-US")} down, ${input.scenario.noteRate}% note rate — Year 1 saves $${Math.round(input.scenario.year1MonthlySavings)}/mo, seller subsidy $${Math.round(input.scenario.totalSubsidy).toLocaleString("en-US")}.`
-          : "";
-
-        const cowSummary = input.costOfWaiting
-          ? ` They ran a cost-of-waiting scenario: waiting ${input.costOfWaiting.waitYears} yr(s) at $${Math.round(input.costOfWaiting.monthlyRent).toLocaleString("en-US")}/mo rent vs buying a $${Math.round(input.costOfWaiting.purchasePrice).toLocaleString("en-US")} home (${input.costOfWaiting.interestRate}% rate, ${input.costOfWaiting.appreciationRate}% appreciation${input.costOfWaiting.rentIncreaseRate !== undefined ? `, ${input.costOfWaiting.rentIncreaseRate}% rent growth` : ""}) — rent paid $${Math.round(input.costOfWaiting.totalRentPaid).toLocaleString("en-US")}, equity missed $${Math.round(input.costOfWaiting.equityGained).toLocaleString("en-US")}, total cost of waiting $${Math.round(input.costOfWaiting.costOfWaiting).toLocaleString("en-US")}.`
-          : "";
-
-        const agentSummary = agentName
-          ? ` This lead came in through ${agentName}'s co-branded page.`
-          : "";
-
         // Alert the owner (Mike) about the new lead. Notification failure must not
         // block the lead from being stored, but we log it for observability — the
         // lead is still recoverable from the database/dashboard.
         try {
           const delivered = await notifyOwner({
             title: `New Roadmap lead: ${input.firstName}`,
-            content: `${input.firstName} (${input.email}) just requested the First-Time Homebuyer Roadmap via the landing page (source: ${input.source ?? "roadmap"}).${agentSummary}${scenarioSummary}${cowSummary} Follow up with the Roadmap email and your nurture sequence.`,
+            content: buildRoadmapNotificationContent({
+              firstName: input.firstName,
+              phone: input.phone,
+              email: input.email,
+              agentName,
+              scenario: scenarioPayload ?? null,
+            }),
           });
           if (!delivered) {
             console.warn(
@@ -1140,6 +1134,36 @@ function summarizeLeadScenario(raw: string | null): string | null {
   } catch {
     return null;
   }
+}
+
+/** Contact-first automatic notification that shares the exact calculator detail used in referral drafts. */
+export function buildRoadmapNotificationContent({
+  firstName,
+  phone,
+  email,
+  agentName,
+  scenario,
+}: {
+  firstName: string;
+  phone: string | null | undefined;
+  email: string;
+  agentName?: string;
+  scenario: string | null;
+}) {
+  const scenarioSummary = summarizeLeadScenario(scenario);
+  return [
+    `Lead name: ${firstName}`,
+    `Lead phone: ${phone || "Not provided"}`,
+    `Lead email: ${email}`,
+    "",
+    "New Roadmap lead",
+    `${firstName} just requested the First-Time Homebuyer Roadmap via the landing page.${agentName ? ` This lead came in through ${agentName}'s co-branded page.` : ""}`,
+    "",
+    "What they explored on the site:",
+    scenarioSummary ?? "- No calculator scenario was completed.",
+    "",
+    "Follow up with the Roadmap email and your nurture sequence.",
+  ].join("\n");
 }
 
 /** Prefilled mailto: link so the owner can send manually when email isn't configured. */

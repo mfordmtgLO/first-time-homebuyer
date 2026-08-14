@@ -151,9 +151,11 @@ describe("leads.submit", () => {
     expect(stored.buydown.totalSubsidy).toBe(9730);
 
     const content = notifyOwnerMock.mock.calls[0]?.[0]?.content ?? "";
+    expect(content).toContain("Lead name: Jordan\nLead phone: (541) 555-0100\nLead email: jordan@example.com");
     expect(content).toContain("$450,000 purchase");
-    expect(content).toContain("$536/mo");
-    expect(content).toContain("$9,730");
+    expect(content).toContain("Year 1 monthly savings: $536");
+    expect(content).toContain("Year 2 monthly savings: $275");
+    expect(content).toContain("Total seller-paid buydown interest subsidy: $9,730 (2.16% of sales price)");
   });
 
   it("stores an attached cost-of-waiting scenario and summarizes it in the notification", async () => {
@@ -197,10 +199,10 @@ describe("leads.submit", () => {
     expect(stored.buydown).toBeUndefined();
 
     const content = notifyOwnerMock.mock.calls[0]?.[0]?.content ?? "";
-    expect(content).toContain("waiting 3 yr(s)");
+    expect(content).toContain("Lead name: Riley\nLead phone: (541) 555-0100\nLead email: riley@example.com");
+    expect(content).toContain("3 yr(s) of waiting compared");
     expect(content).toContain("$1,800/mo rent");
-    expect(content).toContain("3% rent growth");
-    expect(content).toContain("$103,614");
+    expect(content).toContain("resulting in $103,614 cost of waiting.");
   });
 
   it("stores both scenarios together in one combined payload", async () => {
@@ -249,7 +251,8 @@ describe("leads.submit", () => {
 
     const content = notifyOwnerMock.mock.calls[0]?.[0]?.content ?? "";
     expect(content).toContain("2-1 buydown scenario");
-    expect(content).toContain("cost-of-waiting scenario");
+    expect(content).toContain("Rent vs. buy scenario");
+    expect(content).toContain("resulting in $85,000 cost of waiting.");
   });
 
   it("rejects a cost-of-waiting scenario with out-of-range values", async () => {
