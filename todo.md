@@ -240,3 +240,4 @@
 - [x] Add a visible pairing-status warning and guidance for co-marketing agents without an active loan-officer pairing
 - [x] Add linked Loan Officer and co-brand Agent Roadmap lead dropdown filters with historical per-pair lead counts and pair-specific CSV export
 - [x] Add linked Loan Officer and co-brand Agent Chat Bot Intake Lead dropdown filters with historical per-pair intake counts and pair-specific CSV export
+- [x] Replace the copied-project title in automatic lead notification footers with the professional website name
