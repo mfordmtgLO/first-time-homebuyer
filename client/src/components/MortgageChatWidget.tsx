@@ -296,7 +296,7 @@ export default function MortgageChatWidget() {
           if (minimized) { setMinimized(false); return; }
           setMinimized(true);
         }}
-        className="btn-press fixed bottom-5 right-5 z-50 inline-flex h-14 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-xl transition hover:brightness-110 sm:right-6"
+        className="btn-press fixed bottom-[5.5rem] right-5 z-50 inline-flex h-14 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-xl transition hover:brightness-110 sm:bottom-24 sm:right-6"
         aria-expanded={open && !minimized}
         aria-label={!open ? "Open mortgage intake chat" : minimized ? "Resume mortgage intake chat" : "Minimize mortgage intake chat"}
       >
