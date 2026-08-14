@@ -211,3 +211,5 @@
 - [x] Add live U.S. phone formatting and placeholder-number validation to Roadmap lead capture
 - [x] Add required and persisted SMS consent disclosure to Roadmap submissions
 - [x] Add a dashboard badge for usable Roadmap lead phone numbers and verify the end-to-end behavior
+- [x] Repair the missing standalone URL and copy-link control for unpaired loan-officer dashboard rows
+- [x] Verify the unpaired loan-officer profile action and checkpoint the dashboard correction
