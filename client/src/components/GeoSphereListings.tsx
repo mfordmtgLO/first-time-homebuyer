@@ -623,7 +623,7 @@ export default function GeoSphereListings() {
                   <table className="w-full min-w-[1270px] text-sm">
                     <thead>
                         <tr className="sticky top-0 z-10 border-b border-border bg-muted/95 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur-sm">
-                          <th className="px-4 py-3">Select</th><th className="px-4 py-3">Address</th><th className="px-4 py-3">Price</th><th className="px-4 py-3">Beds/Baths</th><th className="px-4 py-3">Sq. ft.</th><th className="px-4 py-3">Property type</th><th className="px-4 py-3">Eligibility</th><th className="px-4 py-3">Communications</th><th className="px-4 py-3 text-right">Source</th>
+                          <th className="px-4 py-3"><label className="inline-flex cursor-pointer items-center gap-2 whitespace-nowrap"><input type="checkbox" checked={allSelectableVisibleListingsSelected} onChange={toggleSelectAllVisibleListings} disabled={!selectableVisibleListingIds.length} aria-label="Select all visible addresses with a listing-agent email" className="h-4 w-4 rounded border-input accent-primary" /><span>Select all</span></label></th><th className="px-4 py-3">Address</th><th className="px-4 py-3">Price</th><th className="px-4 py-3">Beds/Baths</th><th className="px-4 py-3">Sq. ft.</th><th className="px-4 py-3">Property type</th><th className="px-4 py-3">Eligibility</th><th className="px-4 py-3">Communications</th><th className="px-4 py-3 text-right">Source</th>
                       </tr>
                     </thead>
                     <tbody>

@@ -270,3 +270,4 @@
 - [x] Add a warm buyer-agent showing and tailored home-search offer before the standard loan-officer signature in property-list email drafts
 - [x] Add comma-separated multi-last-name recipient search and multi-lead selection to property-list email drafts
 - [x] Add privacy-safe multi-recipient property email composition with a clear template selection step
+- [x] Add a Select all visible addresses checkbox to the GeoSphere listing table header
