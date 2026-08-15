@@ -14,12 +14,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ExternalLink, Layers3, Loader2, Mail, MapPin, RefreshCw, SearchCheck } from "lucide-react";
+import { Download, ExternalLink, Layers3, Loader2, Mail, MapPin, RefreshCw, SearchCheck, SlidersHorizontal, X } from "lucide-react";
 import {
   buildListingEmailDraft,
   type ListingEmailRow,
 } from "@shared/leadEmailDraft";
 import { OVERLAY_LABELS, type GeoSphereOverlayKey } from "@shared/geosphere";
+import { buildGeoSphereInventoryCsv, filterAndSortGeoSphereListings, type GeoSphereInventorySort } from "@shared/geosphereInventory";
 
 const OVERLAYS: GeoSphereOverlayKey[] = ["all", "lmi", "usda", "lmiUsda"];
 
@@ -91,6 +92,8 @@ export default function GeoSphereListings() {
   const [selectedPullId, setSelectedPullId] = useState<string>("");
   const [overlay, setOverlay] = useState<GeoSphereOverlayKey>("all");
   const [recipientValue, setRecipientValue] = useState<string>("");
+  const [listingSearch, setListingSearch] = useState("");
+  const [listingSort, setListingSort] = useState<GeoSphereInventorySort>("address");
 
   const statusQuery = trpc.geosphere.status.useQuery();
   const pullsQuery = trpc.geosphere.listPulls.useQuery();
@@ -141,7 +144,7 @@ export default function GeoSphereListings() {
 
   const openListingDraft = () => {
     const recipient = recipients.find((item) => item.value === recipientValue);
-    const listings = listingsQuery.data ?? [];
+    const listings = visibleListings;
     if (!recipient) {
       toast.error("Choose a Roadmap lead or completed Mortgage Intake Specialist lead first.");
       return;
@@ -173,6 +176,30 @@ export default function GeoSphereListings() {
 
   const lastSynced = statusQuery.data?.lastSyncedAt ? new Date(statusQuery.data.lastSyncedAt).toLocaleString() : "Not synced yet";
   const listings = listingsQuery.data ?? [];
+  const visibleListings = useMemo(
+    () => filterAndSortGeoSphereListings(listings, listingSearch, listingSort),
+    [listings, listingSearch, listingSort]
+  );
+  const hasInventoryFilters = Boolean(listingSearch.trim()) || listingSort !== "address" || overlay !== "all";
+
+  const clearInventoryFilters = () => {
+    setListingSearch("");
+    setListingSort("address");
+    setOverlay("all");
+  };
+
+  const downloadVisibleInventory = () => {
+    const csv = buildGeoSphereInventoryCsv(visibleListings);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const safeArea = (selectedPull?.areaLabel || "geosphere-saved-listings").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    link.href = href;
+    link.download = `${safeArea || "geosphere-saved-listings"}-${overlay}-listings.csv`;
+    link.click();
+    URL.revokeObjectURL(href);
+    toast.success(`Exported ${visibleListings.length} visible saved listing${visibleListings.length === 1 ? "" : "s"}.`);
+  };
 
   return (
     <section className="mt-10 rounded-2xl border border-primary/15 bg-card shadow-sm overflow-hidden">
@@ -188,6 +215,11 @@ export default function GeoSphereListings() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline" size="sm" className="bg-card">
+              <a href="https://geosphere-map-oregon.vercel.app/" target="_blank" rel="noreferrer">
+                <MapPin className="mr-1.5 h-4 w-4" /> Open GeoSphere map <ExternalLink className="ml-1 h-3.5 w-3.5" />
+              </a>
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -201,7 +233,7 @@ export default function GeoSphereListings() {
           </div>
         </div>
         <p className="mt-4 text-xs text-muted-foreground">
-          Last dashboard sync: <span className="font-medium text-foreground">{lastSynced}</span>
+          Last cache-only dashboard sync: <span className="font-medium text-foreground">{lastSynced}</span>. Sync imports GeoSphere snapshots only and never makes a Rentcast pull.
           {statusQuery.data?.lastError ? <span className="ml-2 text-destructive">Latest issue: {statusQuery.data.lastError}</span> : null}
         </p>
       </div>
@@ -223,14 +255,13 @@ export default function GeoSphereListings() {
               </SelectContent>
             </Select>
           </label>
-          {selectedPull && (
-            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-              <span className="rounded-full bg-muted px-3 py-2">Saved {selectedPull.sourceSavedAt ? new Date(selectedPull.sourceSavedAt).toLocaleString() : "date unavailable"}</span>
-              <span className="rounded-full bg-muted px-3 py-2">LMI: {selectedPull.lmiCount}</span>
-              <span className="rounded-full bg-muted px-3 py-2">USDA: {selectedPull.usdaCount}</span>
-              <span className="rounded-full bg-muted px-3 py-2">Both: {selectedPull.lmiUsdaCount}</span>
-            </div>
-          )}
+          {selectedPull && <div className="flex flex-wrap gap-2 text-xs text-muted-foreground" aria-label="Selected saved snapshot summary">
+            <span className="rounded-full bg-muted px-3 py-2">Saved {selectedPull.sourceSavedAt ? new Date(selectedPull.sourceSavedAt).toLocaleString() : "date unavailable"}</span>
+            <span className="rounded-full bg-primary/10 px-3 py-2 text-primary">All: {selectedPull.listingCount}</span>
+            <span className="rounded-full bg-amber-500/10 px-3 py-2 text-amber-800">LMI: {selectedPull.lmiCount}</span>
+            <span className="rounded-full bg-emerald-600/10 px-3 py-2 text-emerald-800">USDA: {selectedPull.usdaCount}</span>
+            <span className="rounded-full bg-muted px-3 py-2">Both: {selectedPull.lmiUsdaCount}</span>
+          </div>}
         </div>
 
         {(pullsQuery.data ?? []).length === 0 && !pullsQuery.isLoading ? (
@@ -241,27 +272,60 @@ export default function GeoSphereListings() {
           </div>
         ) : selectedPull ? (
           <>
-            <div className="mt-6 flex flex-wrap gap-2" role="tablist" aria-label="Listing overlay filters">
-              {OVERLAYS.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => setOverlay(option)}
-                  aria-pressed={overlay === option}
-                  className={`rounded-full border px-3.5 py-1.5 text-xs font-bold transition-colors ${
-                    overlay === option ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Layers3 className="mr-1 inline-block h-3.5 w-3.5" /> {OVERLAY_LABELS[option]}
-                </button>
-              ))}
+            <div className="mt-6 rounded-xl border border-border bg-muted/20 p-3 sm:p-4">
+              <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+                <div className="min-w-0 flex-1">
+                  <label className="block">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Search this saved snapshot</span>
+                    <input
+                      value={listingSearch}
+                      onChange={(event) => setListingSearch(event.target.value)}
+                      placeholder="Address or property type"
+                      className="mt-1.5 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+                    />
+                  </label>
+                </div>
+                <label className="block xl:w-52">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sort visible listings</span>
+                  <Select value={listingSort} onValueChange={(value) => setListingSort(value as GeoSphereInventorySort)}>
+                    <SelectTrigger className="mt-1.5 h-10 bg-background"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="address">Address A–Z</SelectItem>
+                      <SelectItem value="price-low">Price: low to high</SelectItem>
+                      <SelectItem value="price-high">Price: high to low</SelectItem>
+                      <SelectItem value="size-high">Square footage: high to low</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" onClick={downloadVisibleInventory} disabled={!visibleListings.length}>
+                    <Download className="mr-1.5 h-4 w-4" /> Export visible CSV
+                  </Button>
+                  {hasInventoryFilters ? <Button variant="ghost" size="sm" onClick={clearInventoryFilters}><X className="mr-1.5 h-4 w-4" /> Clear filters</Button> : null}
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-2" role="tablist" aria-label="Listing overlay filters">
+                <SlidersHorizontal className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                {OVERLAYS.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setOverlay(option)}
+                    aria-pressed={overlay === option}
+                    className={`rounded-full border px-3.5 py-1.5 text-xs font-bold transition-colors ${overlay === option ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground hover:text-foreground"}`}
+                  >
+                    <Layers3 className="mr-1 inline-block h-3.5 w-3.5" /> {OVERLAY_LABELS[option]}
+                  </button>
+                ))}
+                <span className="ml-auto text-xs font-semibold text-muted-foreground" aria-live="polite">Showing {visibleListings.length} of {listings.length}</span>
+              </div>
             </div>
 
             <div className="mt-5 overflow-hidden rounded-xl border border-border">
               {listingsQuery.isLoading ? (
                 <div className="flex items-center justify-center py-14 text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading saved listings…</div>
-              ) : listings.length === 0 ? (
-                <div className="py-14 text-center text-sm text-muted-foreground">No listings match the {OVERLAY_LABELS[overlay]} saved overlay for this pull.</div>
+              ) : visibleListings.length === 0 ? (
+                <div className="py-14 text-center text-sm text-muted-foreground">No listings match the current saved-snapshot search and {OVERLAY_LABELS[overlay]} overlay. <button type="button" onClick={clearInventoryFilters} className="font-semibold text-primary hover:underline">Clear filters</button></div>
               ) : (
                 <div className="max-h-[30rem] overflow-auto overscroll-contain [scrollbar-gutter:stable]">
                   <table className="w-full min-w-[900px] text-sm">
@@ -271,7 +335,7 @@ export default function GeoSphereListings() {
                       </tr>
                     </thead>
                     <tbody>
-                      {listings.map((listing) => (
+                      {visibleListings.map((listing) => (
                         <tr key={listing.id} className="border-b border-border/60 last:border-0 hover:bg-muted/25">
                           <td className="px-4 py-3 font-medium text-foreground">{listing.address}</td>
                           <td className="px-4 py-3 whitespace-nowrap">{usd(listing.price)}</td>
@@ -300,7 +364,7 @@ export default function GeoSphereListings() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button onClick={openListingDraft} disabled={!listings.length}>
+                <Button onClick={openListingDraft} disabled={!visibleListings.length}>
                   <Mail className="mr-1.5 h-4 w-4" /> Open property email draft
                 </Button>
               </div>

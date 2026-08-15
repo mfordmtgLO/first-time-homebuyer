@@ -254,3 +254,4 @@
 - [x] Fix the Mortgage Chat Minimize button overlap with the response-field Enter action
 - [x] Add a provider-ready Text Chain viewer for consented leads with clickable links, timestamps, and attachment cards
 - [x] Prepare inbound and outbound text-history persistence for future SMS/MMS provider webhook synchronization
+- [x] Enhance the GeoSphere inventory workspace with clearer saved-snapshot management, filters, and cache-only sync usability
