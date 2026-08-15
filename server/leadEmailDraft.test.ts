@@ -172,12 +172,24 @@ describe("GeoSphere property-list email drafts", () => {
       email: "taylor@example.com",
       areaLabel: "Portland · OR",
       overlayLabel: "LMI + USDA RD",
-      listings: LISTINGS,
+      listings: [{
+        ...LISTINGS[0],
+        listingAgentName: "Avery Agent",
+        listingAgentEmail: "avery@example.com",
+        listingAgentPhone: "(541) 555-0119",
+      }],
     });
     expect(draft.subject).toBe("Properties to consider in Portland · OR, Taylor");
     expect(draft.body).toContain("PROPERTY LIST — LMI + USDA RD");
     expect(draft.body).toContain("This is a starting point for a conversation—not a pre-approval");
+    expect(draft.body).toContain("PROPERTY 1 OF 1");
     expect(draft.body).toContain("123 Example Avenue, Portland, OR");
+    expect(draft.body).toContain("LISTING AGENT CONTACT");
+    expect(draft.body).toContain("Name: Avery Agent");
+    expect(draft.body).toContain("Phone: (541) 555-0119");
+    expect(draft.body).toContain("Email: avery@example.com");
+    expect(draft.body).toContain("check its current status and current price");
+    expect(draft.body).toContain("ask the agent any other questions");
     expect(draft.mailto).toMatch(/^mailto:taylor%40example\.com\?subject=/);
   });
 

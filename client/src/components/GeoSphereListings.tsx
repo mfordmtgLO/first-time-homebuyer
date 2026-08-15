@@ -219,6 +219,14 @@ export default function GeoSphereListings() {
       return;
     }
     const rows: ListingEmailRow[] = listings.map((listing) => ({
+      ...(() => {
+        const agent = parseImportedListingAgent(listing.sourceData);
+        return {
+          listingAgentName: agent?.name,
+          listingAgentEmail: agent?.email,
+          listingAgentPhone: agent?.phone,
+        };
+      })(),
       address: listing.address,
       price: listing.price,
       bedrooms: listing.bedrooms,

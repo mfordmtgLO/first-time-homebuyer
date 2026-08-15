@@ -10,8 +10,8 @@ const listings = [
 describe("imported GeoSphere listing agents", () => {
   it("builds alphabetical listing-agent options from saved source details", () => {
     expect(getImportedListingAgentOptions(listings)).toEqual([
-      { key: "email:avery@example.com", name: "Avery Agent", email: "avery@example.com", listingCount: 2 },
-      { key: "name:blake broker", name: "Blake Broker", email: "", listingCount: 1 },
+      { key: "email:avery@example.com", name: "Avery Agent", email: "avery@example.com", phone: "", listingCount: 2 },
+      { key: "name:blake broker", name: "Blake Broker", email: "", phone: "", listingCount: 1 },
     ]);
   });
 

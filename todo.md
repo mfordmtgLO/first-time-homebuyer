@@ -265,3 +265,4 @@
 - [x] Record per-property listing-agent outreach email history, including first send, resend count, most-recent sent time, and most-recent template
 - [x] Add a multi-line Communications column to GeoSphere listings with sent/resend badges, dates, resend totals, and latest template name
 - [x] Standardize every Export visible CSV button to the dark-green Roadmap Leads primary style
+- [x] Enhance property-list email drafts with scan-friendly listing details, listing-agent contacts, and a tailored agent-status follow-up offer

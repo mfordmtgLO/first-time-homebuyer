@@ -2,6 +2,7 @@ export type ImportedListingAgent = {
   key: string;
   name: string;
   email: string;
+  phone: string;
 };
 
 export type ListingAgentSourceRow = {
@@ -14,12 +15,14 @@ export function parseImportedListingAgent(sourceData: string): ImportedListingAg
     const agent = source.listingAgent as Record<string, unknown> | undefined;
     const email = typeof agent?.email === "string" ? agent.email.trim() : "";
     const name = typeof agent?.name === "string" ? agent.name.trim() : "";
+    const phone = typeof agent?.phone === "string" ? agent.phone.trim() : "";
     if (!name && !email) return null;
     const displayName = name || email;
     return {
       key: email ? `email:${email.toLowerCase()}` : `name:${displayName.toLowerCase()}`,
       name: displayName,
       email,
+      phone,
     };
   } catch {
     return null;

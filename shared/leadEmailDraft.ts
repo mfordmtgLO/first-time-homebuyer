@@ -69,6 +69,9 @@ export type ListingEmailRow = {
   propertyType: string | null;
   isLmi: boolean;
   isUsda: boolean;
+  listingAgentName?: string;
+  listingAgentEmail?: string;
+  listingAgentPhone?: string;
 };
 
 export type ListingEmailDraftInput = {
@@ -226,17 +229,53 @@ export function formatListingTable(listings: ListingEmailRow[]) {
   return `${header}\n${divider}\n${rows.join("\n")}${overflow}`;
 }
 
+function listingProgramLabel(listing: ListingEmailRow) {
+  if (listing.isLmi && listing.isUsda) return "OHCS Flex Lending or USDA RD";
+  if (listing.isLmi) return "OHCS Flex Lending";
+  if (listing.isUsda) return "USDA RD";
+  return "General home-financing review";
+}
+
+/** A readable, plain-text property card that remains scannable in common email clients. */
+export function formatPropertyEmailDetails(listings: ListingEmailRow[]) {
+  const displayed = listings.slice(0, 25);
+  const details = displayed.map((listing, index) => {
+    const agentContact = [
+      listing.listingAgentName ? `• Name: ${listing.listingAgentName}` : "",
+      listing.listingAgentPhone ? `• Phone: ${listing.listingAgentPhone}` : "",
+      listing.listingAgentEmail ? `• Email: ${listing.listingAgentEmail}` : "",
+    ].filter(Boolean);
+    const contactSection = agentContact.length
+      ? `LISTING AGENT CONTACT\n${agentContact.join("\n")}`
+      : "LISTING AGENT CONTACT\n• Contact details were not included in this saved listing.";
+    return `PROPERTY ${index + 1} OF ${displayed.length}
+${listing.address}
+────────────────────────────────
+• Price: ${listing.price === null ? "Price unavailable" : money(listing.price)}
+• Home type: ${listing.propertyType ?? "Not provided"}
+• Beds / baths: ${listing.bedrooms ?? "—"} / ${listing.bathrooms ?? "—"}
+• Square feet: ${listing.squareFootage === null ? "Not provided" : listing.squareFootage.toLocaleString("en-US")}
+• Potential financing conversation: ${listingProgramLabel(listing)}
+
+${contactSection}`;
+  });
+  const overflow = listings.length > displayed.length
+    ? `\n\nShowing the first ${displayed.length} of ${listings.length} selected properties in this email.`
+    : "";
+  return `${details.join("\n\n")}${overflow}`;
+}
+
 export function buildListingEmailDraft(input: ListingEmailDraftInput) {
-  const table = formatListingTable(input.listings);
+  const propertyDetails = formatPropertyEmailDetails(input.listings);
   const subject = `Properties to consider in ${input.areaLabel}, ${input.firstName}`;
   const body = `Hi ${input.firstName},
 
 Based on the home-search area you selected, I pulled together the following ${input.overlayLabel} properties in ${input.areaLabel}. This is a starting point for a conversation—not a pre-approval, program approval, or guarantee of property eligibility.
 
 PROPERTY LIST — ${input.overlayLabel.toUpperCase()}
-${table}
+${propertyDetails}
 
-I’d be glad to review your budget, loan options, occupancy requirements, and the details of any property that stands out. Availability and eligibility can change, so we’ll verify the relevant information before you make any decisions.
+I’d be glad to review your budget, loan options, occupancy requirements, and the details of any property that stands out. If a home catches your attention, I can reach out to the listing agent to check its current status and current price. Just let me know if you would like me to ask the agent any other questions you may have about the property, and I’ll get back to you quickly with any information I can find out. Availability and eligibility can change, so we’ll verify the relevant information before you make any decisions.
 
 Warmly,
 Mike Ford
