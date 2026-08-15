@@ -344,6 +344,12 @@ export const geosphereListing = mysqlTable(
     longitude: varchar("longitude", { length: 48 }),
     isLmi: int("isLmi").default(0).notNull(),
     isUsda: int("isUsda").default(0).notNull(),
+    /** When outreach was last initiated from the dashboard mail draft for this saved property. */
+    lastEmailSentAt: timestamp("lastEmailSentAt"),
+    /** The named outreach template used for the most recently recorded email. */
+    lastEmailTemplateName: varchar("lastEmailTemplateName", { length: 160 }),
+    /** Counts re-opened outreach drafts after the first recorded email for this property. */
+    emailResendCount: int("emailResendCount").default(0).notNull(),
     sourceData: text("sourceData").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

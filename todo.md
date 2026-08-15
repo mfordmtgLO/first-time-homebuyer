@@ -262,3 +262,5 @@
 - [x] Rename Roadmap and Mortgage Chat Intake CSV export buttons to Export visible CSV
 - [x] Add built-in Flex Lending, USDA RD, and dual-program listing-agent outreach email templates with a selector beside Select all
 - [x] Add a saved custom listing-agent outreach template editor with automatic recipient, property details, program labels, and standard signature composition
+- [x] Record per-property listing-agent outreach email history, including first send, resend count, most-recent sent time, and most-recent template
+- [x] Add a multi-line Communications column to GeoSphere listings with sent/resend badges, dates, resend totals, and latest template name

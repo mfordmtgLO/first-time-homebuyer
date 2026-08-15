@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, getTableColumns, isNotNull, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, getTableColumns, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -920,6 +920,46 @@ export async function listGeoSphereListings(
     .from(geosphereListing)
     .where(and(...filters))
     .orderBy(desc(geosphereListing.price), geosphereListing.address);
+}
+
+/**
+ * Records that a dashboard user opened a listing-agent outreach mail draft.
+ * The browser mail client performs the actual delivery, so this is presented as
+ * dashboard-recorded outreach activity rather than delivery confirmation.
+ */
+export async function recordGeoSphereListingEmailActivity(input: {
+  listingIds: number[];
+  templateName: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const sentAt = new Date();
+  const result = await db.transaction(async (tx) => {
+    const rows = await tx
+      .select({ id: geosphereListing.id, emailResendCount: geosphereListing.emailResendCount, lastEmailSentAt: geosphereListing.lastEmailSentAt })
+      .from(geosphereListing)
+      .where(inArray(geosphereListing.id, input.listingIds));
+    if (rows.length !== input.listingIds.length) {
+      throw new Error("One or more selected saved listings are no longer available.");
+    }
+    await Promise.all(rows.map((row) => tx
+      .update(geosphereListing)
+      .set({
+        lastEmailSentAt: sentAt,
+        lastEmailTemplateName: input.templateName,
+        emailResendCount: row.lastEmailSentAt ? row.emailResendCount + 1 : row.emailResendCount,
+      })
+      .where(eq(geosphereListing.id, row.id))
+    ));
+    return rows.map((row) => ({
+      id: row.id,
+      sentAt,
+      wasResend: Boolean(row.lastEmailSentAt),
+      emailResendCount: row.lastEmailSentAt ? row.emailResendCount + 1 : row.emailResendCount,
+      templateName: input.templateName,
+    }));
+  });
+  return result;
 }
 
 /** Reusable listing-agent outreach copy, with built-ins displayed before saved custom templates. */

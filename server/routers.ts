@@ -39,6 +39,7 @@ import {
   listListingAgentEmailTemplates,
   loanOfficerSlugTaken,
   recordChatIntakeResendAttempt,
+  recordGeoSphereListingEmailActivity,
   insertLead,
   listAgents,
   listChatIntakeLeads,
@@ -984,6 +985,16 @@ export const appRouter = router({
           }
           throw error;
         }
+      }),
+    /** Records dashboard-opened listing-agent outreach drafts for per-property communication visibility. */
+    recordListingEmailActivity: protectedProcedure
+      .input(z.object({
+        listingIds: z.array(z.number().int().positive()).min(1).max(100),
+        templateName: z.string().trim().min(1).max(160),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return recordGeoSphereListingEmailActivity(input);
       }),
     /** Manually runs a cache-only import; it never calls Rentcast directly. */
     syncNow: protectedProcedure.mutation(async ({ ctx }) => {

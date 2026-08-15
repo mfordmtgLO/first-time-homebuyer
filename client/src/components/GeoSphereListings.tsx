@@ -90,6 +90,30 @@ function ListingDetails({ sourceData, address }: { sourceData: string; address: 
   );
 }
 
+function ListingCommunicationStatus({
+  lastEmailSentAt,
+  emailResendCount,
+  lastEmailTemplateName,
+}: {
+  lastEmailSentAt: Date | string | null;
+  emailResendCount: number;
+  lastEmailTemplateName: string | null;
+}) {
+  if (!lastEmailSentAt) {
+    return <div className="min-w-44 text-xs"><span className="rounded-full bg-muted px-2 py-1 font-semibold text-muted-foreground">No email sent</span><p className="mt-2 text-muted-foreground">No outreach logged yet</p></div>;
+  }
+  const mostRecentWasResend = emailResendCount > 0;
+  return (
+    <div className="min-w-52 space-y-1 text-xs leading-snug">
+      <span className="inline-flex rounded-full bg-emerald-600/15 px-2 py-1 font-bold text-emerald-800">Email sent</span>
+      <p className="text-foreground"><span className="font-semibold">Most recent:</span> {new Date(lastEmailSentAt).toLocaleString()}</p>
+      <p className={mostRecentWasResend ? "font-semibold text-amber-800" : "font-semibold text-primary"}>{mostRecentWasResend ? "Most recent email: resend" : "Most recent email: original"}</p>
+      {mostRecentWasResend ? <p className="text-muted-foreground">Total resends: {emailResendCount}</p> : null}
+      <p className="break-words text-muted-foreground"><span className="font-semibold text-foreground">Template:</span> {lastEmailTemplateName || "General buyer-attraction outreach"}</p>
+    </div>
+  );
+}
+
 export default function GeoSphereListings() {
   const utils = trpc.useUtils();
   const [selectedPullId, setSelectedPullId] = useState<string>("");
@@ -178,6 +202,9 @@ export default function GeoSphereListings() {
       toast.success(`${template.name} is now available in the email-template menu.`);
     },
     onError: (error) => toast.error(error.message || "The custom email template could not be saved."),
+  });
+  const recordListingEmailActivity = trpc.geosphere.recordListingEmailActivity.useMutation({
+    onError: (error) => toast.error(error.message || "The email draft opened, but communication activity could not be recorded."),
   });
 
   const openListingDraft = () => {
@@ -313,6 +340,21 @@ export default function GeoSphereListings() {
     saveOutreachTemplate.mutate({ name, bodyTemplate });
   };
 
+  const recordAndOpenListingAgentDraft = (input: { listingIds: number[]; mailto: string; agentName: string }) => {
+    const templateName = selectedOutreachTemplate?.name ?? "General buyer-attraction outreach";
+    recordListingEmailActivity.mutate(
+      { listingIds: input.listingIds, templateName },
+      {
+        onSuccess: async (activities) => {
+          await utils.geosphere.listListings.invalidate();
+          window.location.href = input.mailto;
+          const resendCount = activities.filter((activity) => activity.wasResend).length;
+          toast.success(`Email draft opened for ${input.agentName}. ${resendCount ? "This outreach is recorded as a resend." : "This outreach is recorded as the original email."} Send it from your email app to complete delivery.`);
+        },
+      }
+    );
+  };
+
   const openSingleListingAgentDraft = (listing: (typeof visibleListings)[number]) => {
     const agent = visibleListingAgents.get(listing.id);
     if (!agent || !selectedPull) {
@@ -335,8 +377,7 @@ export default function GeoSphereListings() {
         isUsda: listing.isUsda === 1,
       }],
     });
-    window.location.href = draft.mailto;
-    toast.success(`Listing-agent outreach draft opened for ${agent.name}.`);
+    recordAndOpenListingAgentDraft({ listingIds: [listing.id], mailto: draft.mailto, agentName: agent.name });
   };
 
   const openListingAgentDraft = () => {
@@ -362,8 +403,7 @@ export default function GeoSphereListings() {
       bodyTemplate: selectedOutreachTemplate?.bodyTemplate,
       listings: rows,
     });
-    window.location.href = draft.mailto;
-    toast.success(`Listing-agent outreach draft opened for ${group.name}.`);
+    recordAndOpenListingAgentDraft({ listingIds: group.listings.map((listing) => listing.id), mailto: draft.mailto, agentName: group.name });
   };
 
   const downloadVisibleInventory = () => {
@@ -532,10 +572,10 @@ export default function GeoSphereListings() {
                 <div className="py-14 text-center text-sm text-muted-foreground">No listings match the current saved-snapshot search and {OVERLAY_LABELS[overlay]} overlay. <button type="button" onClick={clearInventoryFilters} className="font-semibold text-primary hover:underline">Clear filters</button></div>
               ) : (
                 <div className="max-h-[30rem] overflow-auto overscroll-contain [scrollbar-gutter:stable]">
-                  <table className="w-full min-w-[1020px] text-sm">
+                  <table className="w-full min-w-[1270px] text-sm">
                     <thead>
-                      <tr className="sticky top-0 z-10 border-b border-border bg-muted/95 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur-sm">
-                        <th className="px-4 py-3">Select</th><th className="px-4 py-3">Address</th><th className="px-4 py-3">Price</th><th className="px-4 py-3">Beds/Baths</th><th className="px-4 py-3">Sq. ft.</th><th className="px-4 py-3">Property type</th><th className="px-4 py-3">Eligibility</th><th className="px-4 py-3 text-right">Source</th>
+                        <tr className="sticky top-0 z-10 border-b border-border bg-muted/95 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur-sm">
+                          <th className="px-4 py-3">Select</th><th className="px-4 py-3">Address</th><th className="px-4 py-3">Price</th><th className="px-4 py-3">Beds/Baths</th><th className="px-4 py-3">Sq. ft.</th><th className="px-4 py-3">Property type</th><th className="px-4 py-3">Eligibility</th><th className="px-4 py-3">Communications</th><th className="px-4 py-3 text-right">Source</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -558,7 +598,8 @@ export default function GeoSphereListings() {
                           <td className="px-4 py-3 whitespace-nowrap">{listing.squareFootage?.toLocaleString("en-US") ?? "—"}</td>
                           <td className="px-4 py-3">{listing.propertyType ?? "—"}</td>
                           <td className="px-4 py-3"><div className="flex gap-1.5">{listing.isLmi === 1 ? <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-800">LMI</span> : null}{listing.isUsda === 1 ? <span className="rounded-full bg-emerald-600/15 px-2 py-0.5 text-[11px] font-bold text-emerald-800">USDA RD</span> : null}{listing.isLmi === 0 && listing.isUsda === 0 ? <span className="text-xs text-muted-foreground">General</span> : null}</div></td>
-                          <td className="px-4 py-3 text-right"><div className="flex items-center justify-end gap-3"><ListingDetails sourceData={listing.sourceData} address={listing.address} />{visibleListingAgents.get(listing.id) ? <button type="button" onClick={() => openSingleListingAgentDraft(listing)} className="text-xs font-semibold text-primary hover:underline">Agent draft</button> : null}</div></td>
+                          <td className="px-4 py-3 align-top"><ListingCommunicationStatus lastEmailSentAt={listing.lastEmailSentAt} emailResendCount={listing.emailResendCount} lastEmailTemplateName={listing.lastEmailTemplateName} /></td>
+                          <td className="px-4 py-3 text-right"><div className="flex items-center justify-end gap-3"><ListingDetails sourceData={listing.sourceData} address={listing.address} />{visibleListingAgents.get(listing.id) ? <button type="button" disabled={recordListingEmailActivity.isPending} onClick={() => openSingleListingAgentDraft(listing)} className="text-xs font-semibold text-primary hover:underline disabled:cursor-wait disabled:opacity-50">Agent draft</button> : null}</div></td>
                         </tr>
                       ))}
                     </tbody>
