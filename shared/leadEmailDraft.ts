@@ -253,8 +253,14 @@ export function buildListingAgentOutreachDraft(input: ListingAgentOutreachDraftI
   const listingLabel = input.listings.length === 1 ? "listing" : "listings";
   const listingSummary = input.listings.map((listing) => {
     const price = listing.price === null ? "price not listed" : money(listing.price);
-    const programFlags = [listing.isLmi ? "LMI" : "", listing.isUsda ? "USDA RD" : ""].filter(Boolean).join(" + ");
-    return `• ${listing.address} — ${price}${programFlags ? ` (${programFlags} screening flag)` : ""}`;
+    const programOption = listing.isLmi && listing.isUsda
+      ? "OHCS Flex Lending or USDA RD"
+      : listing.isLmi
+        ? "OHCS Flex Lending"
+        : listing.isUsda
+          ? "USDA RD"
+          : "No saved program flag";
+    return `• ${listing.address} — ${price}\n  Saved program option: ${programOption}`;
   }).join("\n");
   const subject = `${input.listings.length} ${listingLabel} in ${input.areaLabel}: buyer-attraction opportunity`;
   const body = `Hi ${firstName},
@@ -263,7 +269,7 @@ I’m Mike Ford, a local loan officer with Cornerstone First Mortgage. I noticed
 
 ${listingSummary}
 
-Depending on the buyer, property, income, location, and current program guidelines, options such as OHCS Flex Lending and USDA Rural Development financing may help broaden the conversation with qualified first-time buyers. I would be glad to discuss a compliant, co-marketed outreach approach that highlights the opportunity for buyers to explore their financing options around these homes.
+The saved program option for each property is listed above. I would be glad to discuss a compliant, co-marketed outreach approach that highlights the specific buyer-financing conversation indicated for each home.
 
 This is not a program approval or a guarantee of property or borrower eligibility. We would verify all program, borrower, property, occupancy, and availability requirements before making any representations.
 

@@ -189,9 +189,24 @@ describe("GeoSphere property-list email drafts", () => {
       listings: [LISTINGS[0]],
     });
     expect(draft.body).toContain("Hi Jamie,");
-    expect(draft.body).toContain("OHCS Flex Lending and USDA Rural Development");
+    expect(draft.body).toContain("Saved program option: OHCS Flex Lending");
+    expect(draft.body).not.toContain("Saved program option: USDA RD");
     expect(draft.body).toContain("not a program approval or a guarantee");
     expect(draft.body).toContain("123 Example Avenue, Portland, OR");
     expect(draft.mailto).toContain("jamie%40example.com");
+  });
+
+  it("maps USDA-only and dual flags to their exact saved program options", () => {
+    const draft = buildListingAgentOutreachDraft({
+      agentName: "Jamie Listing Agent",
+      agentEmail: "jamie@example.com",
+      areaLabel: "Coos Bay, OR",
+      listings: [
+        { ...LISTINGS[1], address: "USDA Only", isLmi: false, isUsda: true },
+        { ...LISTINGS[0], address: "Both Options", isLmi: true, isUsda: true },
+      ],
+    });
+    expect(draft.body).toContain("USDA Only — $385,000\n  Saved program option: USDA RD");
+    expect(draft.body).toContain("Both Options — $425,000\n  Saved program option: OHCS Flex Lending or USDA RD");
   });
 });
