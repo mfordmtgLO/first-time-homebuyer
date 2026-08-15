@@ -257,3 +257,4 @@
 - [x] Enhance the GeoSphere inventory workspace with clearer saved-snapshot management, filters, and cache-only sync usability
 - [x] Add grouped listing-agent outreach email drafts for selected GeoSphere listings with cautious low- and no-down-payment program messaging
 - [x] Match listing-agent outreach program wording exactly to each selected listing’s LMI and USDA RD flags
+- [x] Add a dynamic imported Listing Agent filter, agent-level select all, and consolidated property-detail outreach drafts in GeoSphere inventory

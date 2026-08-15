@@ -22,6 +22,7 @@ import {
 } from "@shared/leadEmailDraft";
 import { OVERLAY_LABELS, type GeoSphereOverlayKey } from "@shared/geosphere";
 import { buildGeoSphereInventoryCsv, filterAndSortGeoSphereListings, type GeoSphereInventorySort } from "@shared/geosphereInventory";
+import { filterByImportedListingAgent, getImportedListingAgentOptions, parseImportedListingAgent } from "@shared/geosphereListingAgents";
 
 const OVERLAYS: GeoSphereOverlayKey[] = ["all", "lmi", "usda", "lmiUsda"];
 
@@ -35,22 +36,7 @@ type Recipient = {
   source: "Roadmap" | "Mortgage intake";
 };
 
-type ListingAgent = {
-  name: string;
-  email: string;
-};
-
-function getListingAgent(raw: string): ListingAgent | null {
-  try {
-    const source = JSON.parse(raw) as Record<string, unknown>;
-    const agent = source.listingAgent as Record<string, unknown> | undefined;
-    const email = typeof agent?.email === "string" ? agent.email.trim() : "";
-    const name = typeof agent?.name === "string" ? agent.name.trim() : "";
-    return email ? { name: name || "Listing agent", email } : null;
-  } catch {
-    return null;
-  }
-}
+const ALL_LISTING_AGENTS = "__all_listing_agents__";
 
 function getListingDetails(raw: string) {
   try {
@@ -112,6 +98,7 @@ export default function GeoSphereListings() {
   const [recipientValue, setRecipientValue] = useState<string>("");
   const [listingSearch, setListingSearch] = useState("");
   const [listingSort, setListingSort] = useState<GeoSphereInventorySort>("address");
+  const [listingAgentKey, setListingAgentKey] = useState(ALL_LISTING_AGENTS);
   const [selectedListingIds, setSelectedListingIds] = useState<Set<number>>(() => new Set());
   const [selectedAgentEmail, setSelectedAgentEmail] = useState("");
 
@@ -126,6 +113,10 @@ export default function GeoSphereListings() {
   const listingsQuery = trpc.geosphere.listListings.useQuery(
     { savedPullId: Number(selectedPullId), overlay },
     { enabled: Boolean(selectedPullId) }
+  );
+  const allListingsQuery = trpc.geosphere.listListings.useQuery(
+    { savedPullId: Number(selectedPullId), overlay: "all" },
+    { enabled: Boolean(selectedPullId) && overlay !== "all" }
   );
 
   useEffect(() => {
@@ -196,13 +187,19 @@ export default function GeoSphereListings() {
 
   const lastSynced = statusQuery.data?.lastSyncedAt ? new Date(statusQuery.data.lastSyncedAt).toLocaleString() : "Not synced yet";
   const listings = listingsQuery.data ?? [];
-  const visibleListings = useMemo(
+  const allSnapshotListings = overlay === "all" ? listings : allListingsQuery.data ?? [];
+  const listingAgentOptions = useMemo(() => getImportedListingAgentOptions(allSnapshotListings), [allSnapshotListings]);
+  const searchedListings = useMemo(
     () => filterAndSortGeoSphereListings(listings, listingSearch, listingSort),
     [listings, listingSearch, listingSort]
   );
-  const hasInventoryFilters = Boolean(listingSearch.trim()) || listingSort !== "address" || overlay !== "all";
+  const visibleListings = useMemo(
+    () => listingAgentKey === ALL_LISTING_AGENTS ? searchedListings : filterByImportedListingAgent(searchedListings, listingAgentKey),
+    [listingAgentKey, searchedListings]
+  );
+  const hasInventoryFilters = Boolean(listingSearch.trim()) || listingSort !== "address" || overlay !== "all" || listingAgentKey !== ALL_LISTING_AGENTS;
   const visibleListingAgents = useMemo(
-    () => new Map(visibleListings.map((listing) => [listing.id, getListingAgent(listing.sourceData)])),
+    () => new Map(visibleListings.map((listing) => [listing.id, parseImportedListingAgent(listing.sourceData)])),
     [visibleListings]
   );
   const selectedAgentGroups = useMemo(() => {
@@ -236,6 +233,7 @@ export default function GeoSphereListings() {
     setListingSearch("");
     setListingSort("address");
     setOverlay("all");
+    setListingAgentKey(ALL_LISTING_AGENTS);
   };
 
   const toggleListingSelection = (listingId: number) => {
@@ -243,6 +241,21 @@ export default function GeoSphereListings() {
       const next = new Set(current);
       if (next.has(listingId)) next.delete(listingId);
       else next.add(listingId);
+      return next;
+    });
+  };
+
+  const selectableVisibleListingIds = useMemo(
+    () => visibleListings.filter((listing) => Boolean(visibleListingAgents.get(listing.id)?.email)).map((listing) => listing.id),
+    [visibleListingAgents, visibleListings]
+  );
+  const allSelectableVisibleListingsSelected = selectableVisibleListingIds.length > 0 && selectableVisibleListingIds.every((id) => selectedListingIds.has(id));
+
+  const toggleSelectAllVisibleListings = () => {
+    setSelectedListingIds((current) => {
+      const next = new Set(current);
+      if (allSelectableVisibleListingsSelected) selectableVisibleListingIds.forEach((id) => next.delete(id));
+      else selectableVisibleListingIds.forEach((id) => next.add(id));
       return next;
     });
   };
@@ -352,7 +365,7 @@ export default function GeoSphereListings() {
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <label className="block">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Saved city, county, or ZIP pull</span>
-            <Select value={selectedPullId} onValueChange={setSelectedPullId}>
+            <Select value={selectedPullId} onValueChange={(value) => { setSelectedPullId(value); setSelectedListingIds(new Set()); setListingAgentKey(ALL_LISTING_AGENTS); }}>
               <SelectTrigger className="mt-1.5 h-10 bg-background">
                 <SelectValue placeholder={pullsQuery.isLoading ? "Loading saved pulls…" : "Choose a saved pull"} />
               </SelectTrigger>
@@ -407,6 +420,16 @@ export default function GeoSphereListings() {
                     </SelectContent>
                   </Select>
                 </label>
+                <label className="block xl:w-64">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Listing Agent</span>
+                  <Select value={listingAgentKey} onValueChange={setListingAgentKey}>
+                    <SelectTrigger className="mt-1.5 h-10 bg-background"><SelectValue placeholder="All listing agents" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ALL_LISTING_AGENTS}>All listing agents</SelectItem>
+                      {listingAgentOptions.map((agent) => <SelectItem key={agent.key} value={agent.key}>{agent.name} · {agent.listingCount} {agent.listingCount === 1 ? "listing" : "listings"}{agent.email ? "" : " · email unavailable"}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </label>
                 <div className="flex flex-wrap gap-2">
                   <Button variant="outline" size="sm" onClick={downloadVisibleInventory} disabled={!visibleListings.length}>
                     <Download className="mr-1.5 h-4 w-4" /> Export visible CSV
@@ -432,7 +455,13 @@ export default function GeoSphereListings() {
             </div>
 
             <div className="mt-5 overflow-hidden rounded-xl border border-border">
-              <p className="border-b border-border bg-muted/30 px-4 py-2.5 text-xs text-muted-foreground">Use <strong className="text-foreground">Agent draft</strong> for one property, or select multiple properties to group outreach by listing-agent email.</p>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/30 px-4 py-2.5 text-xs text-muted-foreground">
+                <p>Use <strong className="text-foreground">Agent draft</strong> for one property, or select multiple properties to group outreach by listing-agent email.</p>
+                <label className="inline-flex cursor-pointer items-center gap-2 font-semibold text-foreground">
+                  <input type="checkbox" checked={allSelectableVisibleListingsSelected} onChange={toggleSelectAllVisibleListings} disabled={!selectableVisibleListingIds.length} className="h-4 w-4 rounded border-input accent-primary" />
+                  Select all with agent email ({selectableVisibleListingIds.length})
+                </label>
+              </div>
               {listingsQuery.isLoading ? (
                 <div className="flex items-center justify-center py-14 text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading saved listings…</div>
               ) : visibleListings.length === 0 ? (
