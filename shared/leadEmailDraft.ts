@@ -90,6 +90,9 @@ export type ListingEmailDraftInput = {
   overlayLabel: string;
   listings: ListingEmailRow[];
   template?: PropertyEmailTemplateKey;
+  /** Optional saved custom introduction; all recipient, property, and signature sections remain automatic. */
+  customBodyTemplate?: string | null;
+  customTemplateName?: string | null;
 };
 
 export type ListingAgentOutreachDraftInput = {
@@ -312,7 +315,14 @@ export function buildListingEmailDraft(input: ListingEmailDraftInput) {
   const recipientEmails = Array.from(new Set([input.email, ...(input.recipientEmails ?? [])].map((email) => email.trim()).filter(Boolean)));
   const isMultiRecipient = recipientEmails.length > 1;
   const template = input.template ?? "property_shortlist_with_agent_follow_up";
-  const templateCopy = getPropertyEmailTemplateCopy(template, input.areaLabel);
+  const savedCustomBody = input.customBodyTemplate?.trim();
+  const templateCopy = savedCustomBody
+    ? {
+        subject: `Properties to consider in ${input.areaLabel}`,
+        heading: input.customTemplateName?.trim() || "PROPERTY LIST",
+        opening: savedCustomBody,
+      }
+    : getPropertyEmailTemplateCopy(template, input.areaLabel);
   const subject = isMultiRecipient ? templateCopy.subject : `${templateCopy.subject}, ${input.firstName}`;
   const body = `Hi ${isMultiRecipient ? "there" : input.firstName},
 

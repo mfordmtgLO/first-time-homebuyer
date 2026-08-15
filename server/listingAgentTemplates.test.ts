@@ -12,6 +12,13 @@ vi.mock("./db", async (importOriginal) => {
       createdAt: new Date(),
       updatedAt: new Date(),
     })),
+    listPropertyEmailTemplates: vi.fn(async () => []),
+    createPropertyEmailTemplate: vi.fn(async (input: { name: string; bodyTemplate: string }) => ({
+      id: 93,
+      ...input,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })),
     recordGeoSphereListingEmailActivity: vi.fn(async (input: { listingIds: number[]; templateName: string }) => input.listingIds.map((id, index) => ({
       id,
       sentAt: new Date("2026-08-15T19:30:00.000Z"),
@@ -23,7 +30,7 @@ vi.mock("./db", async (importOriginal) => {
 });
 
 import { appRouter } from "./routers";
-import { createListingAgentEmailTemplate, listListingAgentEmailTemplates, recordGeoSphereListingEmailActivity } from "./db";
+import { createListingAgentEmailTemplate, createPropertyEmailTemplate, listListingAgentEmailTemplates, listPropertyEmailTemplates, recordGeoSphereListingEmailActivity } from "./db";
 import type { TrpcContext } from "./_core/context";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
@@ -49,6 +56,8 @@ function createContext(role: "admin" | "user"): TrpcContext {
 
 const listTemplatesMock = vi.mocked(listListingAgentEmailTemplates);
 const createTemplateMock = vi.mocked(createListingAgentEmailTemplate);
+const listPropertyTemplatesMock = vi.mocked(listPropertyEmailTemplates);
+const createPropertyTemplateMock = vi.mocked(createPropertyEmailTemplate);
 const recordEmailActivityMock = vi.mocked(recordGeoSphereListingEmailActivity);
 
 describe("geosphere listing-agent email templates", () => {
@@ -94,6 +103,30 @@ describe("geosphere listing-agent email templates", () => {
 
   it("does not expose template management to a non-admin user", async () => {
     await expect(appRouter.createCaller(createContext("user")).geosphere.listListingAgentEmailTemplates()).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+  });
+
+  it("lists and saves custom buyer-facing property email introductions for the site owner", async () => {
+    const templates = [{ id: 4, name: "Weekend homes", bodyTemplate: "Here are a few homes to consider.", createdAt: new Date(), updatedAt: new Date() }];
+    listPropertyTemplatesMock.mockResolvedValueOnce(templates as never);
+
+    const listed = await appRouter.createCaller(createContext("admin")).geosphere.listPropertyEmailTemplates();
+    const saved = await appRouter.createCaller(createContext("admin")).geosphere.savePropertyEmailTemplate({
+      name: "Saturday review",
+      bodyTemplate: "I pulled together a few homes for your weekend review and would be glad to help with any questions.",
+    });
+
+    expect(listed).toEqual(templates);
+    expect(createPropertyTemplateMock).toHaveBeenCalledWith({
+      name: "Saturday review",
+      bodyTemplate: "I pulled together a few homes for your weekend review and would be glad to help with any questions.",
+    });
+    expect(saved).toMatchObject({ id: 93, name: "Saturday review" });
+  });
+
+  it("does not expose buyer-facing property template management to a non-admin user", async () => {
+    await expect(appRouter.createCaller(createContext("user")).geosphere.listPropertyEmailTemplates()).rejects.toMatchObject({
       code: "FORBIDDEN",
     });
   });

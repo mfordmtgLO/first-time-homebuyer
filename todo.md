@@ -273,3 +273,5 @@
 - [x] Add a Select all visible addresses checkbox to the GeoSphere listing table header
 - [x] Add two blank lines between each property email section heading and address
 - [x] Add Short property update, USDA RD-focused list, and OHCS Flex Lending-focused list property-email templates
+- [x] Add a saved custom buyer-facing property-email template editor with Add custom email template as the first selector option
+- [x] Preserve automatic recipient, BCC, property, Zillow, listing-agent, buyer-agent, and signature pre-fills for custom property-email templates

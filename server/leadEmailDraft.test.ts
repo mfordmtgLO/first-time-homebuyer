@@ -229,6 +229,29 @@ describe("GeoSphere property-list email drafts", () => {
     expect(flexDraft.body).toContain("OHCS Flex Lending and low-down-payment first-home options");
   });
 
+  it("composes a saved custom property introduction with every automatic detail section", () => {
+    const draft = buildListingEmailDraft({
+      firstName: "Taylor",
+      email: "taylor@example.com",
+      areaLabel: "Coos Bay · OR",
+      overlayLabel: "USDA RD",
+      customTemplateName: "Weekend favorites",
+      customBodyTemplate: "Here are a few homes I thought might be worth a closer look this weekend.",
+      listings: [{
+        ...LISTINGS[0],
+        listingAgentName: "Avery Agent",
+        listingAgentEmail: "avery@example.com",
+        zillowUrl: "https://www.zillow.com/homedetails/example-home/123_zpid/",
+      }],
+    });
+    expect(draft.body).toContain("Here are a few homes I thought might be worth a closer look this weekend.");
+    expect(draft.body).toContain("Weekend favorites — USDA RD");
+    expect(draft.body).toContain("Zillow listing: https://www.zillow.com/homedetails/example-home/123_zpid/");
+    expect(draft.body).toContain("LISTING AGENT CONTACT");
+    expect(draft.body).toContain("connect you with a great local buyer’s agent");
+    expect(draft.body).toContain("Mike Ford");
+  });
+
   it("builds a cautious buyer-attraction outreach draft for the listing agent", () => {
     const draft = buildListingAgentOutreachDraft({
       agentName: "Jamie Listing Agent",

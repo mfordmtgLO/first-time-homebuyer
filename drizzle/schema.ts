@@ -381,6 +381,22 @@ export const listingAgentEmailTemplate = mysqlTable(
 export type ListingAgentEmailTemplate = typeof listingAgentEmailTemplate.$inferSelect;
 export type InsertListingAgentEmailTemplate = typeof listingAgentEmailTemplate.$inferInsert;
 
+/** Reusable buyer-facing property-list email introductions; property variables and signature are composed separately. */
+export const propertyEmailTemplate = mysqlTable(
+  "property_email_template",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    name: varchar("name", { length: 160 }).notNull(),
+    bodyTemplate: text("bodyTemplate").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [uniqueIndex("property_email_template_name_unique").on(table.name)]
+);
+
+export type PropertyEmailTemplate = typeof propertyEmailTemplate.$inferSelect;
+export type InsertPropertyEmailTemplate = typeof propertyEmailTemplate.$inferInsert;
+
 /** Persistent ownership state for the project-level GeoSphere weekly sync job. */
 export const geosphereSyncSetting = mysqlTable(
   "geosphere_sync_setting",

@@ -37,6 +37,7 @@ const usd = (value: number | null) =>
 
 const ALL_LISTING_AGENTS = "__all_listing_agents__";
 const ADD_CUSTOM_TEMPLATE = "__add_custom_email_template__";
+const ADD_CUSTOM_PROPERTY_EMAIL_TEMPLATE = "__add_custom_property_email_template__";
 const PROPERTY_EMAIL_TEMPLATES: Array<{ value: PropertyEmailTemplateKey; label: string }> = [
   { value: "property_shortlist_with_agent_follow_up", label: "Property shortlist with agent follow-up" },
   { value: "short_property_update", label: "Short property update" },
@@ -138,7 +139,10 @@ export default function GeoSphereListings() {
   const [selectedRecipientValues, setSelectedRecipientValues] = useState<Set<string>>(() => new Set());
   const [recipientLastNameSearch, setRecipientLastNameSearch] = useState("");
   const [recipientSourceFilter, setRecipientSourceFilter] = useState<PropertyListRecipientFilter>("all");
-  const [propertyEmailTemplate, setPropertyEmailTemplate] = useState<PropertyEmailTemplateKey>("property_shortlist_with_agent_follow_up");
+  const [propertyEmailTemplate, setPropertyEmailTemplate] = useState<string>("property_shortlist_with_agent_follow_up");
+  const [customPropertyTemplateOpen, setCustomPropertyTemplateOpen] = useState(false);
+  const [customPropertyTemplateName, setCustomPropertyTemplateName] = useState("");
+  const [customPropertyTemplateBody, setCustomPropertyTemplateBody] = useState("");
   const [listingSearch, setListingSearch] = useState("");
   const [listingSort, setListingSort] = useState<GeoSphereInventorySort>("address");
   const [listingAgentKey, setListingAgentKey] = useState(ALL_LISTING_AGENTS);
@@ -154,6 +158,7 @@ export default function GeoSphereListings() {
   const leadsQuery = trpc.leads.list.useQuery();
   const chatsQuery = trpc.chat.list.useQuery();
   const outreachTemplatesQuery = trpc.geosphere.listListingAgentEmailTemplates.useQuery();
+  const propertyTemplatesQuery = trpc.geosphere.listPropertyEmailTemplates.useQuery();
   const selectedPull = useMemo(
     () => (pullsQuery.data ?? []).find((pull) => String(pull.id) === selectedPullId) ?? null,
     [pullsQuery.data, selectedPullId]
@@ -229,6 +234,17 @@ export default function GeoSphereListings() {
     },
     onError: (error) => toast.error(error.message || "The custom email template could not be saved."),
   });
+  const savePropertyEmailTemplate = trpc.geosphere.savePropertyEmailTemplate.useMutation({
+    onSuccess: async (template) => {
+      await utils.geosphere.listPropertyEmailTemplates.invalidate();
+      setPropertyEmailTemplate(`custom:${template.id}`);
+      setCustomPropertyTemplateOpen(false);
+      setCustomPropertyTemplateName("");
+      setCustomPropertyTemplateBody("");
+      toast.success(`${template.name} is now available in the property-email template menu.`);
+    },
+    onError: (error) => toast.error(error.message || "The custom property email template could not be saved."),
+  });
   const recordListingEmailActivity = trpc.geosphere.recordListingEmailActivity.useMutation({
     onError: (error) => toast.error(error.message || "The email draft opened, but communication activity could not be recorded."),
   });
@@ -269,7 +285,11 @@ export default function GeoSphereListings() {
       areaLabel: selectedPull.areaLabel,
       overlayLabel: OVERLAY_LABELS[overlay],
       listings: rows,
-      template: propertyEmailTemplate,
+      template: PROPERTY_EMAIL_TEMPLATES.some((template) => template.value === propertyEmailTemplate)
+        ? propertyEmailTemplate as PropertyEmailTemplateKey
+        : undefined,
+      customBodyTemplate: selectedCustomPropertyEmailTemplate?.bodyTemplate,
+      customTemplateName: selectedCustomPropertyEmailTemplate?.name,
     });
     window.location.href = draft.mailto;
     toast.success(`Property-list email draft opened for ${selectedRecipients.length} ${selectedRecipients.length === 1 ? "lead" : "leads"}${selectedRecipients.length > 1 ? " using BCC to protect recipient privacy" : ""}.`);
@@ -326,6 +346,10 @@ export default function GeoSphereListings() {
   const selectedOutreachTemplate = useMemo(
     () => (outreachTemplatesQuery.data ?? []).find((template) => String(template.id) === selectedOutreachTemplateId) ?? null,
     [outreachTemplatesQuery.data, selectedOutreachTemplateId]
+  );
+  const selectedCustomPropertyEmailTemplate = useMemo(
+    () => (propertyTemplatesQuery.data ?? []).find((template) => `custom:${template.id}` === propertyEmailTemplate) ?? null,
+    [propertyEmailTemplate, propertyTemplatesQuery.data]
   );
 
   useEffect(() => {
@@ -393,6 +417,28 @@ export default function GeoSphereListings() {
       return;
     }
     saveOutreachTemplate.mutate({ name, bodyTemplate });
+  };
+
+  const selectPropertyEmailTemplate = (value: string) => {
+    if (value === ADD_CUSTOM_PROPERTY_EMAIL_TEMPLATE) {
+      setCustomPropertyTemplateOpen(true);
+      return;
+    }
+    setPropertyEmailTemplate(value);
+  };
+
+  const saveCustomPropertyTemplate = () => {
+    const name = customPropertyTemplateName.trim();
+    const bodyTemplate = customPropertyTemplateBody.trim();
+    if (!name) {
+      toast.error("Enter a name for the reusable property email template.");
+      return;
+    }
+    if (bodyTemplate.length < 20) {
+      toast.error("Write at least 20 characters for the property email body.");
+      return;
+    }
+    savePropertyEmailTemplate.mutate({ name, bodyTemplate });
   };
 
   const recordAndOpenListingAgentDraft = (input: { listingIds: number[]; mailto: string; agentName: string }) => {
@@ -707,9 +753,13 @@ export default function GeoSphereListings() {
                       {visibleRecipients.length ? visibleRecipients.map((recipient) => <label key={recipient.value} className="flex cursor-pointer items-center gap-2 border-b border-border/60 px-3 py-2 text-xs last:border-0 hover:bg-muted/25"><input type="checkbox" checked={selectedRecipientValues.has(recipient.value)} onChange={() => toggleRecipientSelection(recipient.value)} className="h-4 w-4 rounded border-input accent-primary" /><span className="min-w-0 flex-1 truncate font-medium text-foreground">{formatRecipientLastFirst(recipient.name)}</span><span className="truncate text-muted-foreground">{recipient.email} · {recipient.source}</span></label>) : <p className="px-3 py-3 text-xs text-muted-foreground">No matching lead recipients.</p>}
                     </div>
                   </div>
-                  <Select value={propertyEmailTemplate} onValueChange={(value) => setPropertyEmailTemplate(value as PropertyEmailTemplateKey)}>
+                  <Select value={propertyEmailTemplate} onValueChange={selectPropertyEmailTemplate}>
                     <SelectTrigger className="mt-3 h-10 bg-card"><SelectValue placeholder="Select property email template" /></SelectTrigger>
-                    <SelectContent>{PROPERTY_EMAIL_TEMPLATES.map((template) => <SelectItem key={template.value} value={template.value}>{template.label}</SelectItem>)}</SelectContent>
+                    <SelectContent>
+                      <SelectItem value={ADD_CUSTOM_PROPERTY_EMAIL_TEMPLATE}>Add custom email template</SelectItem>
+                      {PROPERTY_EMAIL_TEMPLATES.map((template) => <SelectItem key={template.value} value={template.value}>{template.label}</SelectItem>)}
+                      {(propertyTemplatesQuery.data ?? []).map((template) => <SelectItem key={template.id} value={`custom:${template.id}`}>Saved · {template.name}</SelectItem>)}
+                    </SelectContent>
                   </Select>
                   <p className="mt-2 text-xs text-muted-foreground" aria-live="polite">{visibleRecipients.length} matching {visibleRecipients.length === 1 ? "lead" : "leads"}, ordered by last name. {selectedRecipients.length} selected. The draft includes all currently visible listings above.</p>
                 </div>
@@ -741,6 +791,29 @@ export default function GeoSphereListings() {
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setCustomTemplateOpen(false)} disabled={saveOutreachTemplate.isPending}>Cancel</Button>
             <Button onClick={saveCustomTemplate} disabled={saveOutreachTemplate.isPending}>{saveOutreachTemplate.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}Save email template</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={customPropertyTemplateOpen} onOpenChange={setCustomPropertyTemplateOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display">Add custom property email template</DialogTitle>
+            <DialogDescription>Write only the reusable opening or introduction. Each property email automatically adds the selected lead recipients, BCC privacy for group drafts, property details, Zillow links, listing-agent contacts, buyer-agent assistance offer, and Mike Ford’s signature.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="property-email-template-name">Template name</Label>
+              <Input id="property-email-template-name" value={customPropertyTemplateName} onChange={(event) => setCustomPropertyTemplateName(event.target.value)} maxLength={160} placeholder="e.g., Weekend homes to review" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="property-email-template-body">Reusable email introduction</Label>
+              <Textarea id="property-email-template-body" value={customPropertyTemplateBody} onChange={(event) => setCustomPropertyTemplateBody(event.target.value)} maxLength={6000} className="min-h-56 resize-y" placeholder="Write your warm introductory message. The greeting, selected properties, Zillow links, listing-agent contacts, buyer-agent assistance, and signature are added automatically." />
+              <p className="text-right text-xs text-muted-foreground">{customPropertyTemplateBody.length}/6000</p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setCustomPropertyTemplateOpen(false)} disabled={savePropertyEmailTemplate.isPending}>Cancel</Button>
+            <Button onClick={saveCustomPropertyTemplate} disabled={savePropertyEmailTemplate.isPending}>{savePropertyEmailTemplate.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}Save property email template</Button>
           </div>
         </DialogContent>
       </Dialog>

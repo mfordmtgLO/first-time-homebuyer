@@ -141,6 +141,13 @@
       "when": 1786821620724,
       "tag": "0019_aspiring_tomorrow_man",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1786827610853,
+      "tag": "0020_thin_lady_mastermind",
+      "breakpoints": true
     }
   ]
 }

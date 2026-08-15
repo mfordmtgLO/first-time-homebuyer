@@ -9,6 +9,7 @@ import {
   geosphereSavedPull,
   geosphereSyncSetting,
   listingAgentEmailTemplate,
+  propertyEmailTemplate,
   leads,
   loanOfficer,
   textMessage,
@@ -985,6 +986,26 @@ export async function createListingAgentEmailTemplate(input: { name: string; bod
     .select()
     .from(listingAgentEmailTemplate)
     .where(eq(listingAgentEmailTemplate.id, Number(result.insertId)))
+    .limit(1);
+  return rows[0]!;
+}
+
+/** Reusable buyer-facing property-list email introductions, ordered alphabetically for the dashboard selector. */
+export async function listPropertyEmailTemplates() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(propertyEmailTemplate).orderBy(asc(propertyEmailTemplate.name));
+}
+
+/** Saves a dashboard-only custom property-email introduction; automatic listing and signature sections remain separate. */
+export async function createPropertyEmailTemplate(input: { name: string; bodyTemplate: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(propertyEmailTemplate).values(input);
+  const rows = await db
+    .select()
+    .from(propertyEmailTemplate)
+    .where(eq(propertyEmailTemplate.id, Number(result.insertId)))
     .limit(1);
   return rows[0]!;
 }

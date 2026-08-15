@@ -17,6 +17,7 @@ import {
   createChatLead,
   createTextMessageDraft,
   createListingAgentEmailTemplate,
+  createPropertyEmailTemplate,
   createAgent,
   createLoanOfficer,
   deleteAgent,
@@ -37,6 +38,7 @@ import {
   listGeoSphereListings,
   listGeoSphereSavedPulls,
   listListingAgentEmailTemplates,
+  listPropertyEmailTemplates,
   loanOfficerSlugTaken,
   recordChatIntakeResendAttempt,
   recordGeoSphereListingEmailActivity,
@@ -979,6 +981,27 @@ export const appRouter = router({
         requireAdmin(ctx.user.role);
         try {
           return await createListingAgentEmailTemplate(input);
+        } catch (error) {
+          if (error instanceof Error && /duplicate|unique/i.test(error.message)) {
+            throw new TRPCError({ code: "CONFLICT", message: "A template with that name already exists." });
+          }
+          throw error;
+        }
+      }),
+    /** Admin-only reusable buyer-facing property-email intros. Property variables and signature remain automatic. */
+    listPropertyEmailTemplates: protectedProcedure.query(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      return listPropertyEmailTemplates();
+    }),
+    savePropertyEmailTemplate: protectedProcedure
+      .input(z.object({
+        name: z.string().trim().min(2, "Enter a template name.").max(160),
+        bodyTemplate: z.string().trim().min(20, "Write at least 20 characters for the email body.").max(6000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        try {
+          return await createPropertyEmailTemplate(input);
         } catch (error) {
           if (error instanceof Error && /duplicate|unique/i.test(error.message)) {
             throw new TRPCError({ code: "CONFLICT", message: "A template with that name already exists." });
