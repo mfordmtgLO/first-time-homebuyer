@@ -708,7 +708,7 @@ export default function Leads() {
                   Refresh
                 </Button>
                 <Button size="sm" onClick={downloadCsv} disabled={filteredLeads.length === 0}>
-                  <Download className="h-4 w-4 mr-1.5" /> Export CSV
+                  <Download className="h-4 w-4 mr-1.5" /> Export visible CSV
                 </Button>
               </div>
             </div>
