@@ -184,6 +184,7 @@ describe("GeoSphere property-list email drafts", () => {
     expect(draft.body).toContain("PROPERTY LIST — LMI + USDA RD");
     expect(draft.body).toContain("This is a starting point for a conversation—not a pre-approval");
     expect(draft.body).toContain("PROPERTY 1 OF 1");
+    expect(draft.body).toContain("PROPERTY 1 OF 1\n\n\n123 Example Avenue, Portland, OR");
     expect(draft.body).toContain("123 Example Avenue, Portland, OR");
     expect(draft.body).toContain("LISTING AGENT CONTACT");
     expect(draft.body).toContain("Name: Avery Agent");

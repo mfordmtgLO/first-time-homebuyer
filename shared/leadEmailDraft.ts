@@ -253,6 +253,8 @@ export function formatPropertyEmailDetails(listings: ListingEmailRow[]) {
       : "LISTING AGENT CONTACT\n• Contact details were not included in this saved listing.";
     const listingLink = listing.zillowUrl ? `\n• Zillow listing: ${listing.zillowUrl}` : "";
     return `PROPERTY ${index + 1} OF ${displayed.length}
+
+
 ${listing.address}
 ────────────────────────────────
 • Price: ${listing.price === null ? "Price unavailable" : money(listing.price)}
