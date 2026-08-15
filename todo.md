@@ -272,3 +272,4 @@
 - [x] Add privacy-safe multi-recipient property email composition with a clear template selection step
 - [x] Add a Select all visible addresses checkbox to the GeoSphere listing table header
 - [x] Add two blank lines between each property email section heading and address
+- [x] Add Short property update, USDA RD-focused list, and OHCS Flex Lending-focused list property-email templates

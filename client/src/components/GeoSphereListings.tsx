@@ -23,6 +23,7 @@ import {
   buildListingAgentOutreachDraft,
   buildListingEmailDraft,
   type ListingEmailRow,
+  type PropertyEmailTemplateKey,
 } from "@shared/leadEmailDraft";
 import { OVERLAY_LABELS, type GeoSphereOverlayKey } from "@shared/geosphere";
 import { buildGeoSphereInventoryCsv, filterAndSortGeoSphereListings, type GeoSphereInventorySort } from "@shared/geosphereInventory";
@@ -36,7 +37,12 @@ const usd = (value: number | null) =>
 
 const ALL_LISTING_AGENTS = "__all_listing_agents__";
 const ADD_CUSTOM_TEMPLATE = "__add_custom_email_template__";
-const PROPERTY_EMAIL_TEMPLATE = "property_shortlist_with_agent_follow_up";
+const PROPERTY_EMAIL_TEMPLATES: Array<{ value: PropertyEmailTemplateKey; label: string }> = [
+  { value: "property_shortlist_with_agent_follow_up", label: "Property shortlist with agent follow-up" },
+  { value: "short_property_update", label: "Short property update" },
+  { value: "usda_rd_focused_list", label: "USDA RD-focused list" },
+  { value: "ohcs_flex_lending_focused_list", label: "OHCS Flex Lending-focused list" },
+];
 
 function getListingDetails(raw: string) {
   try {
@@ -132,7 +138,7 @@ export default function GeoSphereListings() {
   const [selectedRecipientValues, setSelectedRecipientValues] = useState<Set<string>>(() => new Set());
   const [recipientLastNameSearch, setRecipientLastNameSearch] = useState("");
   const [recipientSourceFilter, setRecipientSourceFilter] = useState<PropertyListRecipientFilter>("all");
-  const [propertyEmailTemplate, setPropertyEmailTemplate] = useState(PROPERTY_EMAIL_TEMPLATE);
+  const [propertyEmailTemplate, setPropertyEmailTemplate] = useState<PropertyEmailTemplateKey>("property_shortlist_with_agent_follow_up");
   const [listingSearch, setListingSearch] = useState("");
   const [listingSort, setListingSort] = useState<GeoSphereInventorySort>("address");
   const [listingAgentKey, setListingAgentKey] = useState(ALL_LISTING_AGENTS);
@@ -263,6 +269,7 @@ export default function GeoSphereListings() {
       areaLabel: selectedPull.areaLabel,
       overlayLabel: OVERLAY_LABELS[overlay],
       listings: rows,
+      template: propertyEmailTemplate,
     });
     window.location.href = draft.mailto;
     toast.success(`Property-list email draft opened for ${selectedRecipients.length} ${selectedRecipients.length === 1 ? "lead" : "leads"}${selectedRecipients.length > 1 ? " using BCC to protect recipient privacy" : ""}.`);
@@ -700,9 +707,9 @@ export default function GeoSphereListings() {
                       {visibleRecipients.length ? visibleRecipients.map((recipient) => <label key={recipient.value} className="flex cursor-pointer items-center gap-2 border-b border-border/60 px-3 py-2 text-xs last:border-0 hover:bg-muted/25"><input type="checkbox" checked={selectedRecipientValues.has(recipient.value)} onChange={() => toggleRecipientSelection(recipient.value)} className="h-4 w-4 rounded border-input accent-primary" /><span className="min-w-0 flex-1 truncate font-medium text-foreground">{formatRecipientLastFirst(recipient.name)}</span><span className="truncate text-muted-foreground">{recipient.email} · {recipient.source}</span></label>) : <p className="px-3 py-3 text-xs text-muted-foreground">No matching lead recipients.</p>}
                     </div>
                   </div>
-                  <Select value={propertyEmailTemplate} onValueChange={setPropertyEmailTemplate}>
+                  <Select value={propertyEmailTemplate} onValueChange={(value) => setPropertyEmailTemplate(value as PropertyEmailTemplateKey)}>
                     <SelectTrigger className="mt-3 h-10 bg-card"><SelectValue placeholder="Select property email template" /></SelectTrigger>
-                    <SelectContent><SelectItem value={PROPERTY_EMAIL_TEMPLATE}>Property shortlist with agent follow-up</SelectItem></SelectContent>
+                    <SelectContent>{PROPERTY_EMAIL_TEMPLATES.map((template) => <SelectItem key={template.value} value={template.value}>{template.label}</SelectItem>)}</SelectContent>
                   </Select>
                   <p className="mt-2 text-xs text-muted-foreground" aria-live="polite">{visibleRecipients.length} matching {visibleRecipients.length === 1 ? "lead" : "leads"}, ordered by last name. {selectedRecipients.length} selected. The draft includes all currently visible listings above.</p>
                 </div>

@@ -212,6 +212,23 @@ describe("GeoSphere property-list email drafts", () => {
     expect(draft.mailto).not.toContain("mailto:taylor%40example.com?");
   });
 
+  it("uses focused buyer-facing copy for short update, USDA RD, and OHCS Flex Lending templates", () => {
+    const shared = {
+      firstName: "Taylor",
+      email: "taylor@example.com",
+      areaLabel: "Coos Bay · OR",
+      overlayLabel: "All saved listings",
+      listings: [LISTINGS[0]],
+    };
+    expect(buildListingEmailDraft({ ...shared, template: "short_property_update" }).body).toContain("I wanted to send you a quick update");
+    const usdaDraft = buildListingEmailDraft({ ...shared, template: "usda_rd_focused_list" });
+    expect(usdaDraft.subject).toBe("USDA RD-focused homes to consider in Coos Bay · OR, Taylor");
+    expect(usdaDraft.body).toContain("USDA Rural Development financing");
+    const flexDraft = buildListingEmailDraft({ ...shared, template: "ohcs_flex_lending_focused_list" });
+    expect(flexDraft.subject).toBe("OHCS Flex Lending-focused homes to consider in Coos Bay · OR, Taylor");
+    expect(flexDraft.body).toContain("OHCS Flex Lending and low-down-payment first-home options");
+  });
+
   it("builds a cautious buyer-attraction outreach draft for the listing agent", () => {
     const draft = buildListingAgentOutreachDraft({
       agentName: "Jamie Listing Agent",

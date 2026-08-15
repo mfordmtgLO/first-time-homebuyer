@@ -75,6 +75,12 @@ export type ListingEmailRow = {
   zillowUrl?: string;
 };
 
+export type PropertyEmailTemplateKey =
+  | "property_shortlist_with_agent_follow_up"
+  | "short_property_update"
+  | "usda_rd_focused_list"
+  | "ohcs_flex_lending_focused_list";
+
 export type ListingEmailDraftInput = {
   firstName: string;
   email: string;
@@ -83,6 +89,7 @@ export type ListingEmailDraftInput = {
   areaLabel: string;
   overlayLabel: string;
   listings: ListingEmailRow[];
+  template?: PropertyEmailTemplateKey;
 };
 
 export type ListingAgentOutreachDraftInput = {
@@ -271,16 +278,47 @@ ${contactSection}`;
   return `${details.join("\n\n")}${overflow}`;
 }
 
+function getPropertyEmailTemplateCopy(template: PropertyEmailTemplateKey, areaLabel: string) {
+  switch (template) {
+    case "short_property_update":
+      return {
+        subject: `Quick property update for ${areaLabel}`,
+        heading: "PROPERTY UPDATE",
+        opening: `I wanted to send you a quick update with a few homes currently saved in ${areaLabel}. Take a look at the details and Zillow links below, and let me know which ones you would like to explore further.`,
+      };
+    case "usda_rd_focused_list":
+      return {
+        subject: `USDA RD-focused homes to consider in ${areaLabel}`,
+        heading: "USDA RD-FOCUSED PROPERTY LIST",
+        opening: `I pulled together these homes in ${areaLabel} to support a conversation about USDA Rural Development financing and low- or no-down-payment possibilities. Program, borrower, and property eligibility all require case-by-case verification before any decision is made.`,
+      };
+    case "ohcs_flex_lending_focused_list":
+      return {
+        subject: `OHCS Flex Lending-focused homes to consider in ${areaLabel}`,
+        heading: "OHCS FLEX LENDING-FOCUSED PROPERTY LIST",
+        opening: `I pulled together these homes in ${areaLabel} to support a conversation about OHCS Flex Lending and low-down-payment first-home options. Program, borrower, and property eligibility all require case-by-case verification before any decision is made.`,
+      };
+    default:
+      return {
+        subject: `Properties to consider in ${areaLabel}`,
+        heading: "PROPERTY LIST",
+        opening: `Based on the home-search area you selected, I pulled together the following properties in ${areaLabel}. This is a starting point for a conversation—not a pre-approval, program approval, or guarantee of property eligibility.`,
+      };
+  }
+}
+
 export function buildListingEmailDraft(input: ListingEmailDraftInput) {
   const propertyDetails = formatPropertyEmailDetails(input.listings);
   const recipientEmails = Array.from(new Set([input.email, ...(input.recipientEmails ?? [])].map((email) => email.trim()).filter(Boolean)));
   const isMultiRecipient = recipientEmails.length > 1;
-  const subject = `Properties to consider in ${input.areaLabel}, ${input.firstName}`;
+  const template = input.template ?? "property_shortlist_with_agent_follow_up";
+  const templateCopy = getPropertyEmailTemplateCopy(template, input.areaLabel);
+  const subject = isMultiRecipient ? templateCopy.subject : `${templateCopy.subject}, ${input.firstName}`;
   const body = `Hi ${isMultiRecipient ? "there" : input.firstName},
 
-Based on the home-search area you selected, I pulled together the following ${input.overlayLabel} properties in ${input.areaLabel}. This is a starting point for a conversation—not a pre-approval, program approval, or guarantee of property eligibility.
+${templateCopy.opening}
 
-PROPERTY LIST — ${input.overlayLabel.toUpperCase()}
+${templateCopy.heading} — ${input.overlayLabel.toUpperCase()}
 ${propertyDetails}
 
 I’d be glad to review your budget, loan options, occupancy requirements, and the details of any property that stands out. If a home catches your attention, I can reach out to the listing agent to check its current status and current price. Just let me know if you would like me to ask the agent any other questions you may have about the property, and I’ll get back to you quickly with any information I can find out. Availability and eligibility can change, so we’ll verify the relevant information before you make any decisions.
