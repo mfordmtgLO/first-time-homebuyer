@@ -98,6 +98,8 @@ export type ListingEmailDraftInput = {
 export type ListingAgentOutreachDraftInput = {
   agentName: string;
   agentEmail: string;
+  /** Additional listing-agent recipients are composed in BCC for bulk outreach privacy. */
+  recipientEmails?: string[];
   areaLabel: string;
   listings: ListingEmailRow[];
   /** Reusable program or custom body copy. The builder always appends the listing variables and signature. */
@@ -350,7 +352,9 @@ Cornerstone First Mortgage | Company NMLS #173855
 }
 
 export function buildListingAgentOutreachDraft(input: ListingAgentOutreachDraftInput) {
-  const firstName = input.agentName.trim().split(/\s+/)[0] || "there";
+  const recipientEmails = Array.from(new Set([input.agentEmail, ...(input.recipientEmails ?? [])].map((email) => email.trim()).filter(Boolean)));
+  const isMultiRecipient = recipientEmails.length > 1;
+  const firstName = isMultiRecipient ? "there" : input.agentName.trim().split(/\s+/)[0] || "there";
   const listingLabel = input.listings.length === 1 ? "listing" : "listings";
   const selectedTemplate = input.bodyTemplate?.trim();
   const listingSummary = input.listings.map((listing) => {
@@ -387,7 +391,9 @@ Cornerstone First Mortgage | Company NMLS #173855
   return {
     subject,
     body,
-    mailto: `mailto:${encodeURIComponent(input.agentEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
+    mailto: isMultiRecipient
+      ? `mailto:?bcc=${encodeURIComponent(recipientEmails.join(","))}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+      : `mailto:${encodeURIComponent(recipientEmails[0] ?? input.agentEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
   };
 }
 

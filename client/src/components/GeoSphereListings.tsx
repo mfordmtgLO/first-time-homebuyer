@@ -36,6 +36,7 @@ const usd = (value: number | null) =>
   value === null ? "—" : value.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
 const ALL_LISTING_AGENTS = "__all_listing_agents__";
+const ALL_SELECTED_AGENT_EMAILS = "__all_selected_agents_bcc__";
 const ADD_CUSTOM_TEMPLATE = "__add_custom_email_template__";
 const ADD_CUSTOM_PROPERTY_EMAIL_TEMPLATE = "__add_custom_property_email_template__";
 const PROPERTY_EMAIL_TEMPLATES: Array<{ value: PropertyEmailTemplateKey; label: string }> = [
@@ -361,8 +362,12 @@ export default function GeoSphereListings() {
   }, [visibleListings]);
 
   useEffect(() => {
-    if (!selectedAgentGroups.some((group) => group.email === selectedAgentEmail)) {
-      setSelectedAgentEmail(selectedAgentGroups[0]?.email ?? "");
+    if (!selectedAgentGroups.length) {
+      if (selectedAgentEmail) setSelectedAgentEmail("");
+      return;
+    }
+    if (!selectedAgentEmail || (selectedAgentEmail !== ALL_SELECTED_AGENT_EMAILS && !selectedAgentGroups.some((group) => group.email === selectedAgentEmail))) {
+      setSelectedAgentEmail(ALL_SELECTED_AGENT_EMAILS);
     }
   }, [selectedAgentEmail, selectedAgentGroups]);
 
@@ -482,12 +487,16 @@ export default function GeoSphereListings() {
   };
 
   const openListingAgentDraft = () => {
-    const group = selectedAgentGroups.find((item) => item.email === selectedAgentEmail);
-    if (!group || !selectedPull) {
+    const selectedGroups = selectedAgentEmail === ALL_SELECTED_AGENT_EMAILS
+      ? selectedAgentGroups
+      : selectedAgentGroups.filter((group) => group.email === selectedAgentEmail);
+    if (!selectedGroups.length || !selectedPull) {
       toast.error("Select at least one listing with a listing-agent email first.");
       return;
     }
-    const rows: ListingEmailRow[] = group.listings.map((listing) => ({
+    const isBulkBcc = selectedAgentEmail === ALL_SELECTED_AGENT_EMAILS;
+    const selectedListings = selectedGroups.flatMap((group) => group.listings);
+    const rows: ListingEmailRow[] = selectedListings.map((listing) => ({
       address: listing.address,
       price: listing.price,
       bedrooms: listing.bedrooms,
@@ -498,13 +507,18 @@ export default function GeoSphereListings() {
       isUsda: listing.isUsda === 1,
     }));
     const draft = buildListingAgentOutreachDraft({
-      agentName: group.name,
-      agentEmail: group.email,
+      agentName: isBulkBcc ? "there" : selectedGroups[0]!.name,
+      agentEmail: selectedGroups[0]!.email,
+      recipientEmails: isBulkBcc ? selectedGroups.map((group) => group.email) : undefined,
       areaLabel: selectedPull.areaLabel,
       bodyTemplate: selectedOutreachTemplate?.bodyTemplate,
       listings: rows,
     });
-    recordAndOpenListingAgentDraft({ listingIds: group.listings.map((listing) => listing.id), mailto: draft.mailto, agentName: group.name });
+    recordAndOpenListingAgentDraft({
+      listingIds: selectedListings.map((listing) => listing.id),
+      mailto: draft.mailto,
+      agentName: isBulkBcc ? `all ${selectedGroups.length} selected agents (BCC)` : selectedGroups[0]!.name,
+    });
   };
 
   const downloadVisibleInventory = () => {
@@ -713,15 +727,16 @@ export default function GeoSphereListings() {
               <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-foreground">Create a listing-agent outreach draft</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Selected listings are grouped by imported listing-agent email. {selectedOutreachTemplate ? `Using “${selectedOutreachTemplate.name}.” ` : "Choose an email template above, or use the current general outreach copy. "}Each draft still automatically adds the recipient, first-name salutation, saved property/program labels, eligibility language, and Mike Ford contact signature.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Selected listings are grouped by imported listing-agent email. The default sends one privacy-safe BCC draft to all selected agents; choose one agent below for a personalized draft limited to that agent’s selected listings. {selectedOutreachTemplate ? `Using “${selectedOutreachTemplate.name}.” ` : "Choose an email template above, or use the current general outreach copy. "}Each draft still automatically adds the relevant properties, saved program labels, eligibility language, and Mike Ford contact signature.</p>
                   <Select value={selectedAgentEmail} onValueChange={setSelectedAgentEmail}>
-                    <SelectTrigger className="mt-3 h-10 bg-card"><SelectValue placeholder="Choose a listing agent" /></SelectTrigger>
+                    <SelectTrigger className="mt-3 h-10 bg-card"><SelectValue placeholder="All selected agents (BCC)" /></SelectTrigger>
                     <SelectContent>
+                      <SelectItem value={ALL_SELECTED_AGENT_EMAILS}>All selected agents (BCC) · {selectedAgentGroups.length} {selectedAgentGroups.length === 1 ? "agent" : "agents"} · {selectedListingIds.size} selected {selectedListingIds.size === 1 ? "listing" : "listings"}</SelectItem>
                       {selectedAgentGroups.map((group) => <SelectItem key={group.email} value={group.email}>{group.name} · {group.email} · {group.listings.length} selected {group.listings.length === 1 ? "listing" : "listings"}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
-                <Button onClick={openListingAgentDraft} disabled={!selectedAgentEmail}>
+                <Button onClick={openListingAgentDraft} disabled={!selectedAgentGroups.length}>
                   <Mail className="mr-1.5 h-4 w-4" /> Open agent outreach draft
                 </Button>
               </div>

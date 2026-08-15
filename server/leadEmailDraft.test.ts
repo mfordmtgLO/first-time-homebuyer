@@ -267,6 +267,22 @@ describe("GeoSphere property-list email drafts", () => {
     expect(draft.mailto).toContain("jamie%40example.com");
   });
 
+  it("uses BCC and a neutral greeting for all-selected listing-agent outreach", () => {
+    const draft = buildListingAgentOutreachDraft({
+      agentName: "Jamie Listing Agent",
+      agentEmail: "jamie@example.com",
+      recipientEmails: ["avery@example.com", "jamie@example.com"],
+      areaLabel: "Coos Bay, OR",
+      listings: [LISTINGS[0], { ...LISTINGS[1], address: "456 Coastal Drive" }],
+    });
+    expect(draft.body).toContain("Hi there,");
+    expect(draft.body).toContain("123 Example Avenue, Portland, OR");
+    expect(draft.body).toContain("456 Coastal Drive");
+    expect(draft.mailto).toContain("mailto:?bcc=");
+    expect(draft.mailto).toContain("jamie%40example.com");
+    expect(draft.mailto).toContain("avery%40example.com");
+  });
+
   it("maps USDA-only and dual flags to their exact saved program options", () => {
     const draft = buildListingAgentOutreachDraft({
       agentName: "Jamie Listing Agent",

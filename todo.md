@@ -275,3 +275,5 @@
 - [x] Add Short property update, USDA RD-focused list, and OHCS Flex Lending-focused list property-email templates
 - [x] Add a saved custom buyer-facing property-email template editor with Add custom email template as the first selector option
 - [x] Preserve automatic recipient, BCC, property, Zillow, listing-agent, buyer-agent, and signature pre-fills for custom property-email templates
+- [x] Make All selected agents (BCC) the default listing-agent outreach target instead of automatically selecting one agent
+- [x] Preserve optional personalized single-agent outreach drafts alongside the bulk BCC workflow
