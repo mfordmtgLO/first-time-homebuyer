@@ -255,3 +255,4 @@
 - [x] Add a provider-ready Text Chain viewer for consented leads with clickable links, timestamps, and attachment cards
 - [x] Prepare inbound and outbound text-history persistence for future SMS/MMS provider webhook synchronization
 - [x] Enhance the GeoSphere inventory workspace with clearer saved-snapshot management, filters, and cache-only sync usability
+- [x] Add grouped listing-agent outreach email drafts for selected GeoSphere listings with cautious low- and no-down-payment program messaging

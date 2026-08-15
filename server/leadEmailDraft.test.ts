@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildLeadWelcomeDraft, buildListingEmailDraft, formatListingTable } from "../shared/leadEmailDraft";
+import { buildLeadWelcomeDraft, buildListingAgentOutreachDraft, buildListingEmailDraft, formatListingTable } from "../shared/leadEmailDraft";
 
 const BUYDOWN = {
   purchasePrice: 425000,
@@ -179,5 +179,19 @@ describe("GeoSphere property-list email drafts", () => {
     expect(draft.body).toContain("This is a starting point for a conversation—not a pre-approval");
     expect(draft.body).toContain("123 Example Avenue, Portland, OR");
     expect(draft.mailto).toMatch(/^mailto:taylor%40example\.com\?subject=/);
+  });
+
+  it("builds a cautious buyer-attraction outreach draft for the listing agent", () => {
+    const draft = buildListingAgentOutreachDraft({
+      agentName: "Jamie Listing Agent",
+      agentEmail: "jamie@example.com",
+      areaLabel: "Coos Bay, OR",
+      listings: [LISTINGS[0]],
+    });
+    expect(draft.body).toContain("Hi Jamie,");
+    expect(draft.body).toContain("OHCS Flex Lending and USDA Rural Development");
+    expect(draft.body).toContain("not a program approval or a guarantee");
+    expect(draft.body).toContain("123 Example Avenue, Portland, OR");
+    expect(draft.mailto).toContain("jamie%40example.com");
   });
 });

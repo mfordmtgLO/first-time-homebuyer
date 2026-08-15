@@ -79,6 +79,13 @@ export type ListingEmailDraftInput = {
   listings: ListingEmailRow[];
 };
 
+export type ListingAgentOutreachDraftInput = {
+  agentName: string;
+  agentEmail: string;
+  areaLabel: string;
+  listings: ListingEmailRow[];
+};
+
 const money = (value: number) =>
   value.toLocaleString("en-US", {
     style: "currency",
@@ -238,6 +245,39 @@ Cornerstone First Mortgage | Company NMLS #173855
     subject,
     body,
     mailto: `mailto:${encodeURIComponent(input.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
+  };
+}
+
+export function buildListingAgentOutreachDraft(input: ListingAgentOutreachDraftInput) {
+  const firstName = input.agentName.trim().split(/\s+/)[0] || "there";
+  const listingLabel = input.listings.length === 1 ? "listing" : "listings";
+  const listingSummary = input.listings.map((listing) => {
+    const price = listing.price === null ? "price not listed" : money(listing.price);
+    const programFlags = [listing.isLmi ? "LMI" : "", listing.isUsda ? "USDA RD" : ""].filter(Boolean).join(" + ");
+    return `• ${listing.address} — ${price}${programFlags ? ` (${programFlags} screening flag)` : ""}`;
+  }).join("\n");
+  const subject = `${input.listings.length} ${listingLabel} in ${input.areaLabel}: buyer-attraction opportunity`;
+  const body = `Hi ${firstName},
+
+I’m Mike Ford, a local loan officer with Cornerstone First Mortgage. I noticed ${input.listings.length === 1 ? "your listing" : "these listings"} in ${input.areaLabel} and thought ${input.listings.length === 1 ? "it" : "they"} may be worth featuring in buyer-attraction marketing that speaks to low- and no-down-payment homeownership options:
+
+${listingSummary}
+
+Depending on the buyer, property, income, location, and current program guidelines, options such as OHCS Flex Lending and USDA Rural Development financing may help broaden the conversation with qualified first-time buyers. I would be glad to discuss a compliant, co-marketed outreach approach that highlights the opportunity for buyers to explore their financing options around these homes.
+
+This is not a program approval or a guarantee of property or borrower eligibility. We would verify all program, borrower, property, occupancy, and availability requirements before making any representations.
+
+Would you be open to a brief conversation about buyer-attraction marketing opportunities for ${input.listings.length === 1 ? "this home" : "these homes"}?
+
+Best,
+Mike Ford
+Loan Officer | NMLS #288455
+Cornerstone First Mortgage | Company NMLS #173855
+(541) 729-0819`;
+  return {
+    subject,
+    body,
+    mailto: `mailto:${encodeURIComponent(input.agentEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
   };
 }
 

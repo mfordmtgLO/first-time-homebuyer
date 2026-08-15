@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { Download, ExternalLink, Layers3, Loader2, Mail, MapPin, RefreshCw, SearchCheck, SlidersHorizontal, X } from "lucide-react";
 import {
+  buildListingAgentOutreachDraft,
   buildListingEmailDraft,
   type ListingEmailRow,
 } from "@shared/leadEmailDraft";
@@ -33,6 +34,23 @@ type Recipient = {
   email: string;
   source: "Roadmap" | "Mortgage intake";
 };
+
+type ListingAgent = {
+  name: string;
+  email: string;
+};
+
+function getListingAgent(raw: string): ListingAgent | null {
+  try {
+    const source = JSON.parse(raw) as Record<string, unknown>;
+    const agent = source.listingAgent as Record<string, unknown> | undefined;
+    const email = typeof agent?.email === "string" ? agent.email.trim() : "";
+    const name = typeof agent?.name === "string" ? agent.name.trim() : "";
+    return email ? { name: name || "Listing agent", email } : null;
+  } catch {
+    return null;
+  }
+}
 
 function getListingDetails(raw: string) {
   try {
@@ -94,6 +112,8 @@ export default function GeoSphereListings() {
   const [recipientValue, setRecipientValue] = useState<string>("");
   const [listingSearch, setListingSearch] = useState("");
   const [listingSort, setListingSort] = useState<GeoSphereInventorySort>("address");
+  const [selectedListingIds, setSelectedListingIds] = useState<Set<number>>(() => new Set());
+  const [selectedAgentEmail, setSelectedAgentEmail] = useState("");
 
   const statusQuery = trpc.geosphere.status.useQuery();
   const pullsQuery = trpc.geosphere.listPulls.useQuery();
@@ -181,11 +201,101 @@ export default function GeoSphereListings() {
     [listings, listingSearch, listingSort]
   );
   const hasInventoryFilters = Boolean(listingSearch.trim()) || listingSort !== "address" || overlay !== "all";
+  const visibleListingAgents = useMemo(
+    () => new Map(visibleListings.map((listing) => [listing.id, getListingAgent(listing.sourceData)])),
+    [visibleListings]
+  );
+  const selectedAgentGroups = useMemo(() => {
+    const groups = new Map<string, { name: string; email: string; listings: Array<(typeof visibleListings)[number]> }>();
+    visibleListings.forEach((listing) => {
+      if (!selectedListingIds.has(listing.id)) return;
+      const agent = visibleListingAgents.get(listing.id);
+      if (!agent) return;
+      const group = groups.get(agent.email) ?? { ...agent, listings: [] };
+      group.listings.push(listing);
+      groups.set(agent.email, group);
+    });
+    return Array.from(groups.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [selectedListingIds, visibleListingAgents, visibleListings]);
+
+  useEffect(() => {
+    setSelectedListingIds((current) => {
+      const visibleIds = new Set(visibleListings.map((listing) => listing.id));
+      const next = new Set(Array.from(current).filter((id) => visibleIds.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [visibleListings]);
+
+  useEffect(() => {
+    if (!selectedAgentGroups.some((group) => group.email === selectedAgentEmail)) {
+      setSelectedAgentEmail(selectedAgentGroups[0]?.email ?? "");
+    }
+  }, [selectedAgentEmail, selectedAgentGroups]);
 
   const clearInventoryFilters = () => {
     setListingSearch("");
     setListingSort("address");
     setOverlay("all");
+  };
+
+  const toggleListingSelection = (listingId: number) => {
+    setSelectedListingIds((current) => {
+      const next = new Set(current);
+      if (next.has(listingId)) next.delete(listingId);
+      else next.add(listingId);
+      return next;
+    });
+  };
+
+  const openSingleListingAgentDraft = (listing: (typeof visibleListings)[number]) => {
+    const agent = visibleListingAgents.get(listing.id);
+    if (!agent || !selectedPull) {
+      toast.error("A listing-agent email is not available for this property.");
+      return;
+    }
+    const draft = buildListingAgentOutreachDraft({
+      agentName: agent.name,
+      agentEmail: agent.email,
+      areaLabel: selectedPull.areaLabel,
+      listings: [{
+        address: listing.address,
+        price: listing.price,
+        bedrooms: listing.bedrooms,
+        bathrooms: listing.bathrooms,
+        squareFootage: listing.squareFootage,
+        propertyType: listing.propertyType,
+        isLmi: listing.isLmi === 1,
+        isUsda: listing.isUsda === 1,
+      }],
+    });
+    window.location.href = draft.mailto;
+    toast.success(`Listing-agent outreach draft opened for ${agent.name}.`);
+  };
+
+  const openListingAgentDraft = () => {
+    const group = selectedAgentGroups.find((item) => item.email === selectedAgentEmail);
+    if (!group || !selectedPull) {
+      toast.error("Select at least one listing with a listing-agent email first.");
+      return;
+    }
+    const rows: ListingEmailRow[] = group.listings.map((listing) => ({
+      address: listing.address,
+      price: listing.price,
+      bedrooms: listing.bedrooms,
+      bathrooms: listing.bathrooms,
+      squareFootage: listing.squareFootage,
+      propertyType: listing.propertyType,
+      isLmi: listing.isLmi === 1,
+      isUsda: listing.isUsda === 1,
+    }));
+    const draft = buildListingAgentOutreachDraft({
+      agentName: group.name,
+      agentEmail: group.email,
+      areaLabel: selectedPull.areaLabel,
+      listings: rows,
+    });
+    window.location.href = draft.mailto;
+    toast.success(`Listing-agent outreach draft opened for ${group.name}.`);
   };
 
   const downloadVisibleInventory = () => {
@@ -322,28 +432,40 @@ export default function GeoSphereListings() {
             </div>
 
             <div className="mt-5 overflow-hidden rounded-xl border border-border">
+              <p className="border-b border-border bg-muted/30 px-4 py-2.5 text-xs text-muted-foreground">Use <strong className="text-foreground">Agent draft</strong> for one property, or select multiple properties to group outreach by listing-agent email.</p>
               {listingsQuery.isLoading ? (
                 <div className="flex items-center justify-center py-14 text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading saved listings…</div>
               ) : visibleListings.length === 0 ? (
                 <div className="py-14 text-center text-sm text-muted-foreground">No listings match the current saved-snapshot search and {OVERLAY_LABELS[overlay]} overlay. <button type="button" onClick={clearInventoryFilters} className="font-semibold text-primary hover:underline">Clear filters</button></div>
               ) : (
                 <div className="max-h-[30rem] overflow-auto overscroll-contain [scrollbar-gutter:stable]">
-                  <table className="w-full min-w-[900px] text-sm">
+                  <table className="w-full min-w-[1020px] text-sm">
                     <thead>
                       <tr className="sticky top-0 z-10 border-b border-border bg-muted/95 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur-sm">
-                        <th className="px-4 py-3">Address</th><th className="px-4 py-3">Price</th><th className="px-4 py-3">Beds/Baths</th><th className="px-4 py-3">Sq. ft.</th><th className="px-4 py-3">Property type</th><th className="px-4 py-3">Eligibility</th><th className="px-4 py-3 text-right">Source</th>
+                        <th className="px-4 py-3">Select</th><th className="px-4 py-3">Address</th><th className="px-4 py-3">Price</th><th className="px-4 py-3">Beds/Baths</th><th className="px-4 py-3">Sq. ft.</th><th className="px-4 py-3">Property type</th><th className="px-4 py-3">Eligibility</th><th className="px-4 py-3 text-right">Source</th>
                       </tr>
                     </thead>
                     <tbody>
                       {visibleListings.map((listing) => (
                         <tr key={listing.id} className="border-b border-border/60 last:border-0 hover:bg-muted/25">
+                          <td className="px-4 py-3 align-top">
+                            {visibleListingAgents.get(listing.id) ? (
+                              <input
+                                type="checkbox"
+                                checked={selectedListingIds.has(listing.id)}
+                                onChange={() => toggleListingSelection(listing.id)}
+                                aria-label={`Select ${listing.address} for listing-agent outreach`}
+                                className="h-4 w-4 rounded border-input accent-primary"
+                              />
+                            ) : <span className="text-[11px] text-muted-foreground">No agent email</span>}
+                          </td>
                           <td className="px-4 py-3 font-medium text-foreground">{listing.address}</td>
                           <td className="px-4 py-3 whitespace-nowrap">{usd(listing.price)}</td>
                           <td className="px-4 py-3 whitespace-nowrap">{listing.bedrooms ?? "—"} / {listing.bathrooms ?? "—"}</td>
                           <td className="px-4 py-3 whitespace-nowrap">{listing.squareFootage?.toLocaleString("en-US") ?? "—"}</td>
                           <td className="px-4 py-3">{listing.propertyType ?? "—"}</td>
                           <td className="px-4 py-3"><div className="flex gap-1.5">{listing.isLmi === 1 ? <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-800">LMI</span> : null}{listing.isUsda === 1 ? <span className="rounded-full bg-emerald-600/15 px-2 py-0.5 text-[11px] font-bold text-emerald-800">USDA RD</span> : null}{listing.isLmi === 0 && listing.isUsda === 0 ? <span className="text-xs text-muted-foreground">General</span> : null}</div></td>
-                          <td className="px-4 py-3 text-right"><ListingDetails sourceData={listing.sourceData} address={listing.address} /></td>
+                          <td className="px-4 py-3 text-right"><div className="flex items-center justify-end gap-3"><ListingDetails sourceData={listing.sourceData} address={listing.address} />{visibleListingAgents.get(listing.id) ? <button type="button" onClick={() => openSingleListingAgentDraft(listing)} className="text-xs font-semibold text-primary hover:underline">Agent draft</button> : null}</div></td>
                         </tr>
                       ))}
                     </tbody>
@@ -351,6 +473,24 @@ export default function GeoSphereListings() {
                 </div>
               )}
             </div>
+
+            {selectedAgentGroups.length ? <div className="mt-5 rounded-xl border border-amber-500/25 bg-amber-500/[0.06] p-4 sm:p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-foreground">Create a listing-agent outreach draft</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Selected listings are grouped by imported listing-agent email. Review the mail draft before sending; it describes possible buyer-attraction opportunities and does not represent eligibility approval.</p>
+                  <Select value={selectedAgentEmail} onValueChange={setSelectedAgentEmail}>
+                    <SelectTrigger className="mt-3 h-10 bg-card"><SelectValue placeholder="Choose a listing agent" /></SelectTrigger>
+                    <SelectContent>
+                      {selectedAgentGroups.map((group) => <SelectItem key={group.email} value={group.email}>{group.name} · {group.email} · {group.listings.length} selected {group.listings.length === 1 ? "listing" : "listings"}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button onClick={openListingAgentDraft} disabled={!selectedAgentEmail}>
+                  <Mail className="mr-1.5 h-4 w-4" /> Open agent outreach draft
+                </Button>
+              </div>
+            </div> : null}
 
             <div className="mt-6 rounded-xl border border-primary/15 bg-primary/[0.035] p-4 sm:p-5">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
