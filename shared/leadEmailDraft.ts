@@ -84,6 +84,8 @@ export type ListingAgentOutreachDraftInput = {
   agentEmail: string;
   areaLabel: string;
   listings: ListingEmailRow[];
+  /** Reusable program or custom body copy. The builder always appends the listing variables and signature. */
+  bodyTemplate?: string | null;
 };
 
 const money = (value: number) =>
@@ -251,6 +253,7 @@ Cornerstone First Mortgage | Company NMLS #173855
 export function buildListingAgentOutreachDraft(input: ListingAgentOutreachDraftInput) {
   const firstName = input.agentName.trim().split(/\s+/)[0] || "there";
   const listingLabel = input.listings.length === 1 ? "listing" : "listings";
+  const selectedTemplate = input.bodyTemplate?.trim();
   const listingSummary = input.listings.map((listing) => {
     const price = listing.price === null ? "price not listed" : money(listing.price);
     const programOption = listing.isLmi && listing.isUsda
@@ -263,10 +266,12 @@ export function buildListingAgentOutreachDraft(input: ListingAgentOutreachDraftI
     return `• ${listing.address} — ${price}\n  Saved program option: ${programOption}`;
   }).join("\n");
   const subject = `${input.listings.length} ${listingLabel} in ${input.areaLabel}: buyer-attraction opportunity`;
+  const introduction = selectedTemplate || `I’m Mike Ford, a local loan officer with Cornerstone First Mortgage. I noticed ${input.listings.length === 1 ? "your listing" : "these listings"} in ${input.areaLabel} and thought ${input.listings.length === 1 ? "it" : "they"} may be worth featuring in buyer-attraction marketing that speaks to low- and no-down-payment homeownership options:`;
   const body = `Hi ${firstName},
 
-I’m Mike Ford, a local loan officer with Cornerstone First Mortgage. I noticed ${input.listings.length === 1 ? "your listing" : "these listings"} in ${input.areaLabel} and thought ${input.listings.length === 1 ? "it" : "they"} may be worth featuring in buyer-attraction marketing that speaks to low- and no-down-payment homeownership options:
+${introduction}
 
+SELECTED PROPERTY DETAILS
 ${listingSummary}
 
 The saved program option for each property is listed above. I would be glad to discuss a compliant, co-marketed outreach approach that highlights the specific buyer-financing conversation indicated for each home.

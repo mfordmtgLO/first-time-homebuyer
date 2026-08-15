@@ -209,4 +209,21 @@ describe("GeoSphere property-list email drafts", () => {
     expect(draft.body).toContain("USDA Only — $385,000\n  Saved program option: USDA RD");
     expect(draft.body).toContain("Both Options — $425,000\n  Saved program option: OHCS Flex Lending or USDA RD");
   });
+
+  it("composes custom outreach body copy with automatic recipient, property labels, disclosure, and signature", () => {
+    const draft = buildListingAgentOutreachDraft({
+      agentName: "Jamie Listing Agent",
+      agentEmail: "jamie@example.com",
+      areaLabel: "Coos Bay, OR",
+      bodyTemplate: "I would love to discuss a custom buyer-attraction campaign for these homes.",
+      listings: [LISTINGS[0]],
+    });
+    expect(draft.body).toContain("Hi Jamie,");
+    expect(draft.body).toContain("I would love to discuss a custom buyer-attraction campaign for these homes.");
+    expect(draft.body).toContain("SELECTED PROPERTY DETAILS");
+    expect(draft.body).toContain("Saved program option: OHCS Flex Lending");
+    expect(draft.body).toContain("not a program approval or a guarantee");
+    expect(draft.body).toContain("Mike Ford\nLoan Officer | NMLS #288455\nCornerstone First Mortgage");
+    expect(draft.mailto).toContain("jamie%40example.com");
+  });
 });

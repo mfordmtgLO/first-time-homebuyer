@@ -260,3 +260,5 @@
 - [x] Add a dynamic imported Listing Agent filter, agent-level select all, and consolidated property-detail outreach drafts in GeoSphere inventory
 - [x] Add A–Z last-name recipient ordering, last-name search, and Roadmap or Chat Intake filters to property-list email drafts
 - [x] Rename Roadmap and Mortgage Chat Intake CSV export buttons to Export visible CSV
+- [x] Add built-in Flex Lending, USDA RD, and dual-program listing-agent outreach email templates with a selector beside Select all
+- [x] Add a saved custom listing-agent outreach template editor with automatic recipient, property details, program labels, and standard signature composition

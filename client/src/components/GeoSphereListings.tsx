@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Popover,
   PopoverContent,
@@ -31,6 +35,7 @@ const usd = (value: number | null) =>
   value === null ? "—" : value.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
 const ALL_LISTING_AGENTS = "__all_listing_agents__";
+const ADD_CUSTOM_TEMPLATE = "__add_custom_email_template__";
 
 function getListingDetails(raw: string) {
   try {
@@ -97,11 +102,16 @@ export default function GeoSphereListings() {
   const [listingAgentKey, setListingAgentKey] = useState(ALL_LISTING_AGENTS);
   const [selectedListingIds, setSelectedListingIds] = useState<Set<number>>(() => new Set());
   const [selectedAgentEmail, setSelectedAgentEmail] = useState("");
+  const [selectedOutreachTemplateId, setSelectedOutreachTemplateId] = useState("");
+  const [customTemplateOpen, setCustomTemplateOpen] = useState(false);
+  const [customTemplateName, setCustomTemplateName] = useState("");
+  const [customTemplateBody, setCustomTemplateBody] = useState("");
 
   const statusQuery = trpc.geosphere.status.useQuery();
   const pullsQuery = trpc.geosphere.listPulls.useQuery();
   const leadsQuery = trpc.leads.list.useQuery();
   const chatsQuery = trpc.chat.list.useQuery();
+  const outreachTemplatesQuery = trpc.geosphere.listListingAgentEmailTemplates.useQuery();
   const selectedPull = useMemo(
     () => (pullsQuery.data ?? []).find((pull) => String(pull.id) === selectedPullId) ?? null,
     [pullsQuery.data, selectedPullId]
@@ -157,6 +167,17 @@ export default function GeoSphereListings() {
       toast.success(`Imported ${result.pullCount} saved pull${result.pullCount === 1 ? "" : "s"} and ${result.listingCount} listings.`);
     },
     onError: (error) => toast.error(error.message || "GeoSphere sync could not complete."),
+  });
+  const saveOutreachTemplate = trpc.geosphere.saveListingAgentEmailTemplate.useMutation({
+    onSuccess: async (template) => {
+      await utils.geosphere.listListingAgentEmailTemplates.invalidate();
+      setSelectedOutreachTemplateId(String(template.id));
+      setCustomTemplateOpen(false);
+      setCustomTemplateName("");
+      setCustomTemplateBody("");
+      toast.success(`${template.name} is now available in the email-template menu.`);
+    },
+    onError: (error) => toast.error(error.message || "The custom email template could not be saved."),
   });
 
   const openListingDraft = () => {
@@ -220,6 +241,10 @@ export default function GeoSphereListings() {
     });
     return Array.from(groups.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [selectedListingIds, visibleListingAgents, visibleListings]);
+  const selectedOutreachTemplate = useMemo(
+    () => (outreachTemplatesQuery.data ?? []).find((template) => String(template.id) === selectedOutreachTemplateId) ?? null,
+    [outreachTemplatesQuery.data, selectedOutreachTemplateId]
+  );
 
   useEffect(() => {
     setSelectedListingIds((current) => {
@@ -266,6 +291,28 @@ export default function GeoSphereListings() {
     });
   };
 
+  const selectOutreachTemplate = (value: string) => {
+    if (value === ADD_CUSTOM_TEMPLATE) {
+      setCustomTemplateOpen(true);
+      return;
+    }
+    setSelectedOutreachTemplateId(value);
+  };
+
+  const saveCustomTemplate = () => {
+    const name = customTemplateName.trim();
+    const bodyTemplate = customTemplateBody.trim();
+    if (!name) {
+      toast.error("Enter a name for the reusable email template.");
+      return;
+    }
+    if (bodyTemplate.length < 20) {
+      toast.error("Write at least 20 characters for the custom email body.");
+      return;
+    }
+    saveOutreachTemplate.mutate({ name, bodyTemplate });
+  };
+
   const openSingleListingAgentDraft = (listing: (typeof visibleListings)[number]) => {
     const agent = visibleListingAgents.get(listing.id);
     if (!agent || !selectedPull) {
@@ -276,6 +323,7 @@ export default function GeoSphereListings() {
       agentName: agent.name,
       agentEmail: agent.email,
       areaLabel: selectedPull.areaLabel,
+      bodyTemplate: selectedOutreachTemplate?.bodyTemplate,
       listings: [{
         address: listing.address,
         price: listing.price,
@@ -311,6 +359,7 @@ export default function GeoSphereListings() {
       agentName: group.name,
       agentEmail: group.email,
       areaLabel: selectedPull.areaLabel,
+      bodyTemplate: selectedOutreachTemplate?.bodyTemplate,
       listings: rows,
     });
     window.location.href = draft.mailto;
@@ -463,10 +512,19 @@ export default function GeoSphereListings() {
             <div className="mt-5 overflow-hidden rounded-xl border border-border">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/30 px-4 py-2.5 text-xs text-muted-foreground">
                 <p>Use <strong className="text-foreground">Agent draft</strong> for one property, or select multiple properties to group outreach by listing-agent email.</p>
-                <label className="inline-flex cursor-pointer items-center gap-2 font-semibold text-foreground">
-                  <input type="checkbox" checked={allSelectableVisibleListingsSelected} onChange={toggleSelectAllVisibleListings} disabled={!selectableVisibleListingIds.length} className="h-4 w-4 rounded border-input accent-primary" />
-                  Select all with agent email ({selectableVisibleListingIds.length})
-                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="inline-flex cursor-pointer items-center gap-2 font-semibold text-foreground">
+                    <input type="checkbox" checked={allSelectableVisibleListingsSelected} onChange={toggleSelectAllVisibleListings} disabled={!selectableVisibleListingIds.length} className="h-4 w-4 rounded border-input accent-primary" />
+                    Select all with agent email ({selectableVisibleListingIds.length})
+                  </label>
+                  <Select value={selectedOutreachTemplateId} onValueChange={selectOutreachTemplate}>
+                    <SelectTrigger className="h-9 w-[245px] bg-card text-xs"><SelectValue placeholder={outreachTemplatesQuery.isLoading ? "Loading email templates…" : "Select email template"} /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ADD_CUSTOM_TEMPLATE}>Add custom email template</SelectItem>
+                      {(outreachTemplatesQuery.data ?? []).map((template) => <SelectItem key={template.id} value={String(template.id)}>{template.isBuiltIn === 1 ? `Built-in · ${template.name}` : `Saved · ${template.name}`}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               {listingsQuery.isLoading ? (
                 <div className="flex items-center justify-center py-14 text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading saved listings…</div>
@@ -513,7 +571,7 @@ export default function GeoSphereListings() {
               <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-foreground">Create a listing-agent outreach draft</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Selected listings are grouped by imported listing-agent email. Review the mail draft before sending; it describes possible buyer-attraction opportunities and does not represent eligibility approval.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Selected listings are grouped by imported listing-agent email. {selectedOutreachTemplate ? `Using “${selectedOutreachTemplate.name}.” ` : "Choose an email template above, or use the current general outreach copy. "}Each draft still automatically adds the recipient, first-name salutation, saved property/program labels, eligibility language, and Mike Ford contact signature.</p>
                   <Select value={selectedAgentEmail} onValueChange={setSelectedAgentEmail}>
                     <SelectTrigger className="mt-3 h-10 bg-card"><SelectValue placeholder="Choose a listing agent" /></SelectTrigger>
                     <SelectContent>
@@ -560,6 +618,29 @@ export default function GeoSphereListings() {
           </>
         ) : null}
       </div>
+      <Dialog open={customTemplateOpen} onOpenChange={setCustomTemplateOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display">Add custom email template</DialogTitle>
+            <DialogDescription>Write only the reusable body copy. Each outreach draft automatically adds the listing-agent recipient, first-name greeting, selected property details with saved program labels, eligibility language, and Mike Ford’s Cornerstone First Mortgage signature.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="listing-agent-template-name">Template name</Label>
+              <Input id="listing-agent-template-name" value={customTemplateName} onChange={(event) => setCustomTemplateName(event.target.value)} maxLength={160} placeholder="e.g., Coastal buyer-attraction outreach" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="listing-agent-template-body">Reusable email body</Label>
+              <Textarea id="listing-agent-template-body" value={customTemplateBody} onChange={(event) => setCustomTemplateBody(event.target.value)} maxLength={6000} className="min-h-56 resize-y" placeholder="Describe the buyer-attraction opportunity in your own words. The greeting, property lines, saved program labels, required eligibility language, and signature are added automatically." />
+              <p className="text-right text-xs text-muted-foreground">{customTemplateBody.length}/6000</p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setCustomTemplateOpen(false)} disabled={saveOutreachTemplate.isPending}>Cancel</Button>
+            <Button onClick={saveCustomTemplate} disabled={saveOutreachTemplate.isPending}>{saveOutreachTemplate.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}Save email template</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

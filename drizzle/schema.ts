@@ -358,6 +358,23 @@ export const geosphereListing = mysqlTable(
 export type GeoSphereListing = typeof geosphereListing.$inferSelect;
 export type InsertGeoSphereListing = typeof geosphereListing.$inferInsert;
 
+/** Reusable listing-agent outreach copy. Built-in rows are seeded and protected from editing. */
+export const listingAgentEmailTemplate = mysqlTable(
+  "listing_agent_email_template",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    name: varchar("name", { length: 160 }).notNull(),
+    bodyTemplate: text("bodyTemplate").notNull(),
+    isBuiltIn: int("isBuiltIn").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [uniqueIndex("listing_agent_email_template_name_unique").on(table.name)]
+);
+
+export type ListingAgentEmailTemplate = typeof listingAgentEmailTemplate.$inferSelect;
+export type InsertListingAgentEmailTemplate = typeof listingAgentEmailTemplate.$inferInsert;
+
 /** Persistent ownership state for the project-level GeoSphere weekly sync job. */
 export const geosphereSyncSetting = mysqlTable(
   "geosphere_sync_setting",

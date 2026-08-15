@@ -16,6 +16,7 @@ import {
   addChatTranscript,
   createChatLead,
   createTextMessageDraft,
+  createListingAgentEmailTemplate,
   createAgent,
   createLoanOfficer,
   deleteAgent,
@@ -35,6 +36,7 @@ import {
   getLoanOfficerBySlug,
   listGeoSphereListings,
   listGeoSphereSavedPulls,
+  listListingAgentEmailTemplates,
   loanOfficerSlugTaken,
   recordChatIntakeResendAttempt,
   insertLead,
@@ -960,6 +962,28 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
         return listGeoSphereListings(input.savedPullId, input.overlay);
+      }),
+    /** Admin-only reusable listing-agent email copy. The builder adds all lead and listing variables separately. */
+    listListingAgentEmailTemplates: protectedProcedure.query(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      return listListingAgentEmailTemplates();
+    }),
+    /** Stores a reusable custom intro; recipient, property details, disclosures, and signature are always composed automatically. */
+    saveListingAgentEmailTemplate: protectedProcedure
+      .input(z.object({
+        name: z.string().trim().min(2, "Enter a template name.").max(160),
+        bodyTemplate: z.string().trim().min(20, "Write at least 20 characters for the email body.").max(6000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        try {
+          return await createListingAgentEmailTemplate(input);
+        } catch (error) {
+          if (error instanceof Error && /duplicate|unique/i.test(error.message)) {
+            throw new TRPCError({ code: "CONFLICT", message: "A template with that name already exists." });
+          }
+          throw error;
+        }
       }),
     /** Manually runs a cache-only import; it never calls Rentcast directly. */
     syncNow: protectedProcedure.mutation(async ({ ctx }) => {

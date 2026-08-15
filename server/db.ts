@@ -1,4 +1,4 @@
-import { and, desc, eq, getTableColumns, isNotNull, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, getTableColumns, isNotNull, ne, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -8,6 +8,7 @@ import {
   geosphereListing,
   geosphereSavedPull,
   geosphereSyncSetting,
+  listingAgentEmailTemplate,
   leads,
   loanOfficer,
   textMessage,
@@ -919,6 +920,33 @@ export async function listGeoSphereListings(
     .from(geosphereListing)
     .where(and(...filters))
     .orderBy(desc(geosphereListing.price), geosphereListing.address);
+}
+
+/** Reusable listing-agent outreach copy, with built-ins displayed before saved custom templates. */
+export async function listListingAgentEmailTemplates() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .select()
+    .from(listingAgentEmailTemplate)
+    .orderBy(desc(listingAgentEmailTemplate.isBuiltIn), asc(listingAgentEmailTemplate.name));
+}
+
+/** Saves a reusable, dashboard-only custom listing-agent outreach body. */
+export async function createListingAgentEmailTemplate(input: { name: string; bodyTemplate: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(listingAgentEmailTemplate).values({
+    name: input.name,
+    bodyTemplate: input.bodyTemplate,
+    isBuiltIn: 0,
+  });
+  const rows = await db
+    .select()
+    .from(listingAgentEmailTemplate)
+    .where(eq(listingAgentEmailTemplate.id, Number(result.insertId)))
+    .limit(1);
+  return rows[0]!;
 }
 
 const GEOSPHERE_SYNC_SETTING_ID = "geosphere-saved-listings";
