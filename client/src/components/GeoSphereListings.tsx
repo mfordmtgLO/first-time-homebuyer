@@ -526,7 +526,7 @@ export default function GeoSphereListings() {
                   </Select>
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" onClick={downloadVisibleInventory} disabled={!visibleListings.length}>
+                  <Button size="sm" onClick={downloadVisibleInventory} disabled={!visibleListings.length}>
                     <Download className="mr-1.5 h-4 w-4" /> Export visible CSV
                   </Button>
                   {hasInventoryFilters ? <Button variant="ghost" size="sm" onClick={clearInventoryFilters}><X className="mr-1.5 h-4 w-4" /> Clear filters</Button> : null}

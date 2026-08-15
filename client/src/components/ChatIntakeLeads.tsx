@@ -212,7 +212,7 @@ export default function ChatIntakeLeads() {
           <h2 className="flex items-center gap-2.5 font-display text-xl font-semibold text-foreground"><MessageCircle className="h-5 w-5 text-primary" /> Mortgage chat intakes</h2>
           <p className="mt-1 text-sm text-muted-foreground">Partial conversations are saved as incomplete; filter by any saved loan officer or agent and export exactly the list currently in view.</p>
         </div>
-        <Button variant="outline" size="sm" onClick={exportCsv} disabled={filtered.length === 0}><Download className="mr-1.5 h-4 w-4" /> Export visible CSV</Button>
+        <Button size="sm" onClick={exportCsv} disabled={filtered.length === 0}><Download className="mr-1.5 h-4 w-4" /> Export visible CSV</Button>
       </div>
       <div className="flex flex-col gap-3 border-b border-border/60 px-6 py-4">
         <div className="relative min-w-0 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name, email, phone, loan officer, or agent…" /></div>
