@@ -15,6 +15,7 @@ describe("GeoSphere property-list recipients", () => {
   it("filters by source and sorts by last name", () => {
     expect(filterPropertyListRecipients(recipients, "", "all").map((recipient) => recipient.name)).toEqual(["Jane Adams", "Chris Baker", "Michael Ford"]);
     expect(filterPropertyListRecipients(recipients, "ba", "roadmap").map((recipient) => recipient.name)).toEqual(["Chris Baker"]);
+    expect(filterPropertyListRecipients(recipients, "ford, baker", "all").map((recipient) => recipient.name)).toEqual(["Chris Baker", "Michael Ford"]);
     expect(filterPropertyListRecipients(recipients, "", "chat").map((recipient) => recipient.name)).toEqual(["Jane Adams"]);
   });
 });

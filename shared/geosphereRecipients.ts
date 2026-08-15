@@ -25,12 +25,16 @@ export function filterPropertyListRecipients(
   lastNameSearch: string,
   sourceFilter: PropertyListRecipientFilter
 ) {
-  const normalizedSearch = lastNameSearch.trim().toLocaleLowerCase();
+  const normalizedSearches = lastNameSearch
+    .split(",")
+    .map((value) => value.trim().toLocaleLowerCase())
+    .filter(Boolean);
   return recipients
     .filter((recipient) => {
       if (sourceFilter === "roadmap" && recipient.source !== "Roadmap") return false;
       if (sourceFilter === "chat" && recipient.source !== "Chat Intake") return false;
-      return !normalizedSearch || getLastName(recipient.name).toLocaleLowerCase().includes(normalizedSearch);
+      const lastName = getLastName(recipient.name).toLocaleLowerCase();
+      return normalizedSearches.length === 0 || normalizedSearches.some((search) => lastName.includes(search));
     })
     .sort((a, b) => {
       const lastNameSort = getLastName(a.name).localeCompare(getLastName(b.name), undefined, { sensitivity: "base" });

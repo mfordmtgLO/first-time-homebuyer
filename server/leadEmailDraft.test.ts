@@ -197,6 +197,20 @@ describe("GeoSphere property-list email drafts", () => {
     expect(draft.mailto).toMatch(/^mailto:taylor%40example\.com\?subject=/);
   });
 
+  it("uses BCC and a neutral greeting when a property list is selected for multiple leads", () => {
+    const draft = buildListingEmailDraft({
+      firstName: "Taylor",
+      email: "taylor@example.com",
+      recipientEmails: ["taylor@example.com", "jamie@example.com"],
+      areaLabel: "Coos Bay · OR",
+      overlayLabel: "USDA RD",
+      listings: [LISTINGS[1]],
+    });
+    expect(draft.body.startsWith("Hi there,")).toBe(true);
+    expect(draft.mailto).toMatch(/^mailto:\?bcc=taylor%40example\.com%2Cjamie%40example\.com&subject=/);
+    expect(draft.mailto).not.toContain("mailto:taylor%40example.com?");
+  });
+
   it("builds a cautious buyer-attraction outreach draft for the listing agent", () => {
     const draft = buildListingAgentOutreachDraft({
       agentName: "Jamie Listing Agent",

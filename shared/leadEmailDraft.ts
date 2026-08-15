@@ -78,6 +78,8 @@ export type ListingEmailRow = {
 export type ListingEmailDraftInput = {
   firstName: string;
   email: string;
+  /** Additional recipients are composed in BCC to preserve lead privacy. */
+  recipientEmails?: string[];
   areaLabel: string;
   overlayLabel: string;
   listings: ListingEmailRow[];
@@ -269,8 +271,10 @@ ${contactSection}`;
 
 export function buildListingEmailDraft(input: ListingEmailDraftInput) {
   const propertyDetails = formatPropertyEmailDetails(input.listings);
+  const recipientEmails = Array.from(new Set([input.email, ...(input.recipientEmails ?? [])].map((email) => email.trim()).filter(Boolean)));
+  const isMultiRecipient = recipientEmails.length > 1;
   const subject = `Properties to consider in ${input.areaLabel}, ${input.firstName}`;
-  const body = `Hi ${input.firstName},
+  const body = `Hi ${isMultiRecipient ? "there" : input.firstName},
 
 Based on the home-search area you selected, I pulled together the following ${input.overlayLabel} properties in ${input.areaLabel}. This is a starting point for a conversation—not a pre-approval, program approval, or guarantee of property eligibility.
 
@@ -289,7 +293,9 @@ Cornerstone First Mortgage | Company NMLS #173855
   return {
     subject,
     body,
-    mailto: `mailto:${encodeURIComponent(input.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
+    mailto: isMultiRecipient
+      ? `mailto:?bcc=${encodeURIComponent(recipientEmails.join(","))}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+      : `mailto:${encodeURIComponent(recipientEmails[0] ?? input.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
   };
 }
 

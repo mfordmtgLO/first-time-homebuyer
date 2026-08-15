@@ -36,6 +36,7 @@ const usd = (value: number | null) =>
 
 const ALL_LISTING_AGENTS = "__all_listing_agents__";
 const ADD_CUSTOM_TEMPLATE = "__add_custom_email_template__";
+const PROPERTY_EMAIL_TEMPLATE = "property_shortlist_with_agent_follow_up";
 
 function getListingDetails(raw: string) {
   try {
@@ -128,9 +129,10 @@ export default function GeoSphereListings() {
   const utils = trpc.useUtils();
   const [selectedPullId, setSelectedPullId] = useState<string>("");
   const [overlay, setOverlay] = useState<GeoSphereOverlayKey>("all");
-  const [recipientValue, setRecipientValue] = useState<string>("");
+  const [selectedRecipientValues, setSelectedRecipientValues] = useState<Set<string>>(() => new Set());
   const [recipientLastNameSearch, setRecipientLastNameSearch] = useState("");
   const [recipientSourceFilter, setRecipientSourceFilter] = useState<PropertyListRecipientFilter>("all");
+  const [propertyEmailTemplate, setPropertyEmailTemplate] = useState(PROPERTY_EMAIL_TEMPLATE);
   const [listingSearch, setListingSearch] = useState("");
   const [listingSort, setListingSort] = useState<GeoSphereInventorySort>("address");
   const [listingAgentKey, setListingAgentKey] = useState(ALL_LISTING_AGENTS);
@@ -185,11 +187,19 @@ export default function GeoSphereListings() {
     [recipientLastNameSearch, recipientSourceFilter, recipients]
   );
 
+  const selectedRecipients = useMemo(
+    () => recipients.filter((recipient) => selectedRecipientValues.has(recipient.value)),
+    [recipients, selectedRecipientValues]
+  );
+
   useEffect(() => {
-    if (recipientValue && !visibleRecipients.some((recipient) => recipient.value === recipientValue)) {
-      setRecipientValue("");
-    }
-  }, [recipientValue, visibleRecipients]);
+    setSelectedRecipientValues((current) => {
+      const currentValues = Array.from(current);
+      const valid = new Set(recipients.map((recipient) => recipient.value));
+      const next = new Set(currentValues.filter((value) => valid.has(value)));
+      return next.size === current.size ? current : next;
+    });
+  }, [recipients]);
 
   const syncNow = trpc.geosphere.syncNow.useMutation({
     onSuccess: async (result) => {
@@ -218,10 +228,9 @@ export default function GeoSphereListings() {
   });
 
   const openListingDraft = () => {
-    const recipient = recipients.find((item) => item.value === recipientValue);
     const listings = visibleListings;
-    if (!recipient) {
-      toast.error("Choose a Roadmap lead or completed Mortgage Intake Specialist lead first.");
+    if (!selectedRecipients.length) {
+      toast.error("Select one or more Roadmap or completed Mortgage Intake Specialist leads first.");
       return;
     }
     if (!selectedPull || !listings.length) {
@@ -248,14 +257,34 @@ export default function GeoSphereListings() {
       isUsda: listing.isUsda === 1,
     }));
     const draft = buildListingEmailDraft({
-      firstName: recipient.name,
-      email: recipient.email,
+      firstName: selectedRecipients.length === 1 ? selectedRecipients[0]!.name : "there",
+      email: selectedRecipients[0]!.email,
+      recipientEmails: selectedRecipients.map((recipient) => recipient.email),
       areaLabel: selectedPull.areaLabel,
       overlayLabel: OVERLAY_LABELS[overlay],
       listings: rows,
     });
     window.location.href = draft.mailto;
-    toast.success(`Property-list email draft opened for ${recipient.name}.`);
+    toast.success(`Property-list email draft opened for ${selectedRecipients.length} ${selectedRecipients.length === 1 ? "lead" : "leads"}${selectedRecipients.length > 1 ? " using BCC to protect recipient privacy" : ""}.`);
+  };
+
+  const toggleRecipientSelection = (value: string) => {
+    setSelectedRecipientValues((current) => {
+      const next = new Set(current);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
+  };
+
+  const visibleRecipientsSelected = visibleRecipients.length > 0 && visibleRecipients.every((recipient) => selectedRecipientValues.has(recipient.value));
+  const toggleVisibleRecipientSelection = () => {
+    setSelectedRecipientValues((current) => {
+      const next = new Set(current);
+      if (visibleRecipientsSelected) visibleRecipients.forEach((recipient) => next.delete(recipient.value));
+      else visibleRecipients.forEach((recipient) => next.add(recipient.value));
+      return next;
+    });
   };
 
   const lastSynced = statusQuery.data?.lastSyncedAt ? new Date(statusQuery.data.lastSyncedAt).toLocaleString() : "Not synced yet";
@@ -649,12 +678,12 @@ export default function GeoSphereListings() {
               <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-foreground">Create a property-list email draft</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Choose a Roadmap or completed Mortgage Intake Specialist lead. The email opens for your review and includes a plain-text, spreadsheet-style listing table.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Search, select one or more Roadmap or completed Mortgage Intake Specialist leads, and prepare the visible property list for review. Multiple recipients are placed in BCC so their email addresses remain private.</p>
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                     <input
                       value={recipientLastNameSearch}
                       onChange={(event) => setRecipientLastNameSearch(event.target.value)}
-                      placeholder="Search by lead last name"
+                      placeholder="Search one or multiple leads by last name (e.g., Smith, Garcia, Nguyen)"
                       className="h-10 min-w-0 flex-1 rounded-md border border-input bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
                     />
                     <div className="flex gap-1.5" role="group" aria-label="Filter property-list email recipients by lead source">
@@ -662,15 +691,22 @@ export default function GeoSphereListings() {
                       <Button type="button" size="sm" variant={recipientSourceFilter === "chat" ? "default" : "outline"} onClick={() => setRecipientSourceFilter(recipientSourceFilter === "chat" ? "all" : "chat")}>Chat Intake</Button>
                     </div>
                   </div>
-                  <Select value={recipientValue} onValueChange={setRecipientValue}>
-                    <SelectTrigger className="mt-3 h-10 bg-card"><SelectValue placeholder="Choose a lead recipient" /></SelectTrigger>
-                    <SelectContent>
-                      {visibleRecipients.length ? visibleRecipients.map((recipient) => <SelectItem key={recipient.value} value={recipient.value}>{formatRecipientLastFirst(recipient.name)} · {recipient.email} · {recipient.source}</SelectItem>) : <SelectItem value="__no_matching_recipients__" disabled>No matching lead recipients</SelectItem>}
-                    </SelectContent>
+                  <div className="mt-3 overflow-hidden rounded-md border border-input bg-card">
+                    <label className="flex cursor-pointer items-center gap-2 border-b border-border bg-muted/30 px-3 py-2 text-xs font-semibold text-foreground">
+                      <input type="checkbox" checked={visibleRecipientsSelected} onChange={toggleVisibleRecipientSelection} disabled={!visibleRecipients.length} className="h-4 w-4 rounded border-input accent-primary" />
+                      Select all matching leads ({visibleRecipients.length})
+                    </label>
+                    <div className="max-h-36 overflow-y-auto">
+                      {visibleRecipients.length ? visibleRecipients.map((recipient) => <label key={recipient.value} className="flex cursor-pointer items-center gap-2 border-b border-border/60 px-3 py-2 text-xs last:border-0 hover:bg-muted/25"><input type="checkbox" checked={selectedRecipientValues.has(recipient.value)} onChange={() => toggleRecipientSelection(recipient.value)} className="h-4 w-4 rounded border-input accent-primary" /><span className="min-w-0 flex-1 truncate font-medium text-foreground">{formatRecipientLastFirst(recipient.name)}</span><span className="truncate text-muted-foreground">{recipient.email} · {recipient.source}</span></label>) : <p className="px-3 py-3 text-xs text-muted-foreground">No matching lead recipients.</p>}
+                    </div>
+                  </div>
+                  <Select value={propertyEmailTemplate} onValueChange={setPropertyEmailTemplate}>
+                    <SelectTrigger className="mt-3 h-10 bg-card"><SelectValue placeholder="Select property email template" /></SelectTrigger>
+                    <SelectContent><SelectItem value={PROPERTY_EMAIL_TEMPLATE}>Property shortlist with agent follow-up</SelectItem></SelectContent>
                   </Select>
-                  <p className="mt-2 text-xs text-muted-foreground" aria-live="polite">{visibleRecipients.length} matching {visibleRecipients.length === 1 ? "lead" : "leads"}, ordered by last name.</p>
+                  <p className="mt-2 text-xs text-muted-foreground" aria-live="polite">{visibleRecipients.length} matching {visibleRecipients.length === 1 ? "lead" : "leads"}, ordered by last name. {selectedRecipients.length} selected. The draft includes all currently visible listings above.</p>
                 </div>
-                <Button onClick={openListingDraft} disabled={!visibleListings.length}>
+                <Button onClick={openListingDraft} disabled={!visibleListings.length || selectedRecipients.length === 0 || !propertyEmailTemplate}>
                   <Mail className="mr-1.5 h-4 w-4" /> Open property email draft
                 </Button>
               </div>

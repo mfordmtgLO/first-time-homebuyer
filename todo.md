@@ -268,3 +268,5 @@
 - [x] Enhance property-list email drafts with scan-friendly listing details, listing-agent contacts, and a tailored agent-status follow-up offer
 - [x] Add direct Zillow listing links to each property section in property-list email drafts
 - [x] Add a warm buyer-agent showing and tailored home-search offer before the standard loan-officer signature in property-list email drafts
+- [x] Add comma-separated multi-last-name recipient search and multi-lead selection to property-list email drafts
+- [x] Add privacy-safe multi-recipient property email composition with a clear template selection step
