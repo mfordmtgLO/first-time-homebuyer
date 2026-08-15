@@ -23,18 +23,12 @@ import {
 import { OVERLAY_LABELS, type GeoSphereOverlayKey } from "@shared/geosphere";
 import { buildGeoSphereInventoryCsv, filterAndSortGeoSphereListings, type GeoSphereInventorySort } from "@shared/geosphereInventory";
 import { filterByImportedListingAgent, getImportedListingAgentOptions, parseImportedListingAgent } from "@shared/geosphereListingAgents";
+import { filterPropertyListRecipients, formatRecipientLastFirst, type PropertyListRecipientFilter } from "@shared/geosphereRecipients";
 
 const OVERLAYS: GeoSphereOverlayKey[] = ["all", "lmi", "usda", "lmiUsda"];
 
 const usd = (value: number | null) =>
   value === null ? "—" : value.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-
-type Recipient = {
-  value: string;
-  name: string;
-  email: string;
-  source: "Roadmap" | "Mortgage intake";
-};
 
 const ALL_LISTING_AGENTS = "__all_listing_agents__";
 
@@ -96,6 +90,8 @@ export default function GeoSphereListings() {
   const [selectedPullId, setSelectedPullId] = useState<string>("");
   const [overlay, setOverlay] = useState<GeoSphereOverlayKey>("all");
   const [recipientValue, setRecipientValue] = useState<string>("");
+  const [recipientLastNameSearch, setRecipientLastNameSearch] = useState("");
+  const [recipientSourceFilter, setRecipientSourceFilter] = useState<PropertyListRecipientFilter>("all");
   const [listingSearch, setListingSearch] = useState("");
   const [listingSort, setListingSort] = useState<GeoSphereInventorySort>("address");
   const [listingAgentKey, setListingAgentKey] = useState(ALL_LISTING_AGENTS);
@@ -123,7 +119,7 @@ export default function GeoSphereListings() {
     if (!selectedPullId && pullsQuery.data?.[0]) setSelectedPullId(String(pullsQuery.data[0].id));
   }, [pullsQuery.data, selectedPullId]);
 
-  const recipients = useMemo<Recipient[]>(() => {
+  const recipients = useMemo(() => {
     const roadmap = (leadsQuery.data ?? []).map((lead) => ({
       value: `roadmap:${lead.id}`,
       name: lead.firstName,
@@ -136,10 +132,20 @@ export default function GeoSphereListings() {
         value: `chat:${lead.id}`,
         name: lead.fullName!,
         email: lead.email!,
-        source: "Mortgage intake" as const,
+      source: "Chat Intake" as const,
       }));
     return [...roadmap, ...intakes];
   }, [leadsQuery.data, chatsQuery.data]);
+  const visibleRecipients = useMemo(
+    () => filterPropertyListRecipients(recipients, recipientLastNameSearch, recipientSourceFilter),
+    [recipientLastNameSearch, recipientSourceFilter, recipients]
+  );
+
+  useEffect(() => {
+    if (recipientValue && !visibleRecipients.some((recipient) => recipient.value === recipientValue)) {
+      setRecipientValue("");
+    }
+  }, [recipientValue, visibleRecipients]);
 
   const syncNow = trpc.geosphere.syncNow.useMutation({
     onSuccess: async (result) => {
@@ -526,12 +532,25 @@ export default function GeoSphereListings() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-foreground">Create a property-list email draft</p>
                   <p className="mt-1 text-xs text-muted-foreground">Choose a Roadmap or completed Mortgage Intake Specialist lead. The email opens for your review and includes a plain-text, spreadsheet-style listing table.</p>
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                    <input
+                      value={recipientLastNameSearch}
+                      onChange={(event) => setRecipientLastNameSearch(event.target.value)}
+                      placeholder="Search by lead last name"
+                      className="h-10 min-w-0 flex-1 rounded-md border border-input bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+                    />
+                    <div className="flex gap-1.5" role="group" aria-label="Filter property-list email recipients by lead source">
+                      <Button type="button" size="sm" variant={recipientSourceFilter === "roadmap" ? "default" : "outline"} onClick={() => setRecipientSourceFilter(recipientSourceFilter === "roadmap" ? "all" : "roadmap")}>Roadmap</Button>
+                      <Button type="button" size="sm" variant={recipientSourceFilter === "chat" ? "default" : "outline"} onClick={() => setRecipientSourceFilter(recipientSourceFilter === "chat" ? "all" : "chat")}>Chat Intake</Button>
+                    </div>
+                  </div>
                   <Select value={recipientValue} onValueChange={setRecipientValue}>
                     <SelectTrigger className="mt-3 h-10 bg-card"><SelectValue placeholder="Choose a lead recipient" /></SelectTrigger>
                     <SelectContent>
-                      {recipients.map((recipient) => <SelectItem key={recipient.value} value={recipient.value}>{recipient.name} · {recipient.email} · {recipient.source}</SelectItem>)}
+                      {visibleRecipients.length ? visibleRecipients.map((recipient) => <SelectItem key={recipient.value} value={recipient.value}>{formatRecipientLastFirst(recipient.name)} · {recipient.email} · {recipient.source}</SelectItem>) : <SelectItem value="__no_matching_recipients__" disabled>No matching lead recipients</SelectItem>}
                     </SelectContent>
                   </Select>
+                  <p className="mt-2 text-xs text-muted-foreground" aria-live="polite">{visibleRecipients.length} matching {visibleRecipients.length === 1 ? "lead" : "leads"}, ordered by last name.</p>
                 </div>
                 <Button onClick={openListingDraft} disabled={!visibleListings.length}>
                   <Mail className="mr-1.5 h-4 w-4" /> Open property email draft
