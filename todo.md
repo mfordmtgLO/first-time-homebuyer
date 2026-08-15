@@ -266,3 +266,5 @@
 - [x] Add a multi-line Communications column to GeoSphere listings with sent/resend badges, dates, resend totals, and latest template name
 - [x] Standardize every Export visible CSV button to the dark-green Roadmap Leads primary style
 - [x] Enhance property-list email drafts with scan-friendly listing details, listing-agent contacts, and a tailored agent-status follow-up offer
+- [x] Add direct Zillow listing links to each property section in property-list email drafts
+- [x] Add a warm buyer-agent showing and tailored home-search offer before the standard loan-officer signature in property-list email drafts

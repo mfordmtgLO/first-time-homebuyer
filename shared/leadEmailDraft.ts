@@ -72,6 +72,7 @@ export type ListingEmailRow = {
   listingAgentName?: string;
   listingAgentEmail?: string;
   listingAgentPhone?: string;
+  zillowUrl?: string;
 };
 
 export type ListingEmailDraftInput = {
@@ -248,6 +249,7 @@ export function formatPropertyEmailDetails(listings: ListingEmailRow[]) {
     const contactSection = agentContact.length
       ? `LISTING AGENT CONTACT\n${agentContact.join("\n")}`
       : "LISTING AGENT CONTACT\n• Contact details were not included in this saved listing.";
+    const listingLink = listing.zillowUrl ? `\n• Zillow listing: ${listing.zillowUrl}` : "";
     return `PROPERTY ${index + 1} OF ${displayed.length}
 ${listing.address}
 ────────────────────────────────
@@ -255,7 +257,7 @@ ${listing.address}
 • Home type: ${listing.propertyType ?? "Not provided"}
 • Beds / baths: ${listing.bedrooms ?? "—"} / ${listing.bathrooms ?? "—"}
 • Square feet: ${listing.squareFootage === null ? "Not provided" : listing.squareFootage.toLocaleString("en-US")}
-• Potential financing conversation: ${listingProgramLabel(listing)}
+• Potential financing conversation: ${listingProgramLabel(listing)}${listingLink}
 
 ${contactSection}`;
   });
@@ -276,6 +278,8 @@ PROPERTY LIST — ${input.overlayLabel.toUpperCase()}
 ${propertyDetails}
 
 I’d be glad to review your budget, loan options, occupancy requirements, and the details of any property that stands out. If a home catches your attention, I can reach out to the listing agent to check its current status and current price. Just let me know if you would like me to ask the agent any other questions you may have about the property, and I’ll get back to you quickly with any information I can find out. Availability and eligibility can change, so we’ll verify the relevant information before you make any decisions.
+
+And when you’re ready, I can connect you with a great local buyer’s agent to help schedule a showing for any property highlighted here. If you are still refining what feels right, we can also dial in your custom home-search criteria and work together to find your first home soon. You will have a local team in your corner every step of the way.
 
 Warmly,
 Mike Ford

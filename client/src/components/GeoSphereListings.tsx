@@ -56,6 +56,16 @@ function getListingDetails(raw: string) {
   }
 }
 
+function getZillowListingUrl(raw: string) {
+  try {
+    const source = JSON.parse(raw) as Record<string, unknown>;
+    const candidates = [source.zillowUrl, source.zillow_url, source.url];
+    return candidates.find((candidate): candidate is string => typeof candidate === "string" && /^https?:\/\/(?:www\.)?zillow\.com\//i.test(candidate.trim()))?.trim();
+  } catch {
+    return undefined;
+  }
+}
+
 function ListingDetails({ sourceData, address }: { sourceData: string; address: string }) {
   const details = getListingDetails(sourceData);
   if (!details.length) return <span className="text-xs text-muted-foreground">Imported source details unavailable</span>;
@@ -225,6 +235,7 @@ export default function GeoSphereListings() {
           listingAgentName: agent?.name,
           listingAgentEmail: agent?.email,
           listingAgentPhone: agent?.phone,
+          zillowUrl: getZillowListingUrl(listing.sourceData),
         };
       })(),
       address: listing.address,
