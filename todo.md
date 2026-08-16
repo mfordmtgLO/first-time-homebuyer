@@ -280,3 +280,6 @@
 - [x] Rename the GeoSphere listing table Source column to Actions
 - [x] Show the selected-agent count beside the listing-agent outreach button
 - [x] Add a BCC recipient and selected-property confirmation preview before opening bulk outreach drafts
+- [x] Assess Meta and Google campaign access, mortgage-advertising compliance requirements, and first-time homebuyer conversion goals
+- [x] Create compliance-oriented Meta and Google ad concepts, keyword/placement strategy, SEO plan, and conversion measurement for the firsttimehomebuyer.manus.space funnel
+- [x] Prepare an optional user-controlled publishing workflow that preserves direct control of platform budgets, billing, and final launch approval
