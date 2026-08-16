@@ -46,6 +46,13 @@ const PROPERTY_EMAIL_TEMPLATES: Array<{ value: PropertyEmailTemplateKey; label: 
   { value: "ohcs_flex_lending_focused_list", label: "OHCS Flex Lending-focused list" },
 ];
 
+type BulkOutreachPreview = {
+  mailto: string;
+  listingIds: number[];
+  agents: Array<{ name: string; email: string }>;
+  listings: Array<{ id: number; address: string }>;
+};
+
 function getListingDetails(raw: string) {
   try {
     const source = JSON.parse(raw) as Record<string, unknown>;
@@ -150,6 +157,7 @@ export default function GeoSphereListings() {
   const [selectedListingIds, setSelectedListingIds] = useState<Set<number>>(() => new Set());
   const [selectedAgentEmail, setSelectedAgentEmail] = useState("");
   const [selectedOutreachTemplateId, setSelectedOutreachTemplateId] = useState("");
+  const [bulkOutreachPreview, setBulkOutreachPreview] = useState<BulkOutreachPreview | null>(null);
   const [customTemplateOpen, setCustomTemplateOpen] = useState(false);
   const [customTemplateName, setCustomTemplateName] = useState("");
   const [customTemplateBody, setCustomTemplateBody] = useState("");
@@ -514,6 +522,15 @@ export default function GeoSphereListings() {
       bodyTemplate: selectedOutreachTemplate?.bodyTemplate,
       listings: rows,
     });
+    if (isBulkBcc) {
+      setBulkOutreachPreview({
+        mailto: draft.mailto,
+        listingIds: selectedListings.map((listing) => listing.id),
+        agents: selectedGroups.map((group) => ({ name: group.name, email: group.email })),
+        listings: selectedListings.map((listing) => ({ id: listing.id, address: listing.address })),
+      });
+      return;
+    }
     recordAndOpenListingAgentDraft({
       listingIds: selectedListings.map((listing) => listing.id),
       mailto: draft.mailto,
@@ -690,7 +707,7 @@ export default function GeoSphereListings() {
                   <table className="w-full min-w-[1270px] text-sm">
                     <thead>
                         <tr className="sticky top-0 z-10 border-b border-border bg-muted/95 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur-sm">
-                          <th className="px-4 py-3"><label className="inline-flex cursor-pointer items-center gap-2 whitespace-nowrap"><input type="checkbox" checked={allSelectableVisibleListingsSelected} onChange={toggleSelectAllVisibleListings} disabled={!selectableVisibleListingIds.length} aria-label="Select all visible addresses with a listing-agent email" className="h-4 w-4 rounded border-input accent-primary" /><span>Select all</span></label></th><th className="px-4 py-3">Address</th><th className="px-4 py-3">Price</th><th className="px-4 py-3">Beds/Baths</th><th className="px-4 py-3">Sq. ft.</th><th className="px-4 py-3">Property type</th><th className="px-4 py-3">Eligibility</th><th className="px-4 py-3">Communications</th><th className="px-4 py-3 text-right">Source</th>
+                          <th className="px-4 py-3"><label className="inline-flex cursor-pointer items-center gap-2 whitespace-nowrap"><input type="checkbox" checked={allSelectableVisibleListingsSelected} onChange={toggleSelectAllVisibleListings} disabled={!selectableVisibleListingIds.length} aria-label="Select all visible addresses with a listing-agent email" className="h-4 w-4 rounded border-input accent-primary" /><span>Select all</span></label></th><th className="px-4 py-3">Address</th><th className="px-4 py-3">Price</th><th className="px-4 py-3">Beds/Baths</th><th className="px-4 py-3">Sq. ft.</th><th className="px-4 py-3">Property type</th><th className="px-4 py-3">Eligibility</th><th className="px-4 py-3">Communications</th><th className="px-4 py-3 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -737,7 +754,7 @@ export default function GeoSphereListings() {
                   </Select>
                 </div>
                 <Button onClick={openListingAgentDraft} disabled={!selectedAgentGroups.length}>
-                  <Mail className="mr-1.5 h-4 w-4" /> Open agent outreach draft
+                  <Mail className="mr-1.5 h-4 w-4" /> Open agent outreach draft <span className="ml-1.5 rounded-full bg-primary-foreground/15 px-1.5 py-0.5 text-[10px] font-bold">{selectedAgentGroups.length} {selectedAgentGroups.length === 1 ? "agent" : "agents"}</span>
                 </Button>
               </div>
             </div> : null}
@@ -829,6 +846,43 @@ export default function GeoSphereListings() {
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setCustomPropertyTemplateOpen(false)} disabled={savePropertyEmailTemplate.isPending}>Cancel</Button>
             <Button onClick={saveCustomPropertyTemplate} disabled={savePropertyEmailTemplate.isPending}>{savePropertyEmailTemplate.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}Save property email template</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={Boolean(bulkOutreachPreview)} onOpenChange={(open) => { if (!open) setBulkOutreachPreview(null); }}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display">Review BCC agent outreach</DialogTitle>
+            <DialogDescription>Review the privacy-safe BCC recipients and selected properties before your email application opens. Recipient addresses will not be visible to one another.</DialogDescription>
+          </DialogHeader>
+          {bulkOutreachPreview ? <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-lg border border-border bg-muted/25 p-3">
+              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">BCC recipients · {bulkOutreachPreview.agents.length}</p>
+              <div className="mt-2 max-h-48 space-y-2 overflow-y-auto pr-1">
+                {bulkOutreachPreview.agents.map((agent) => <div key={agent.email} className="rounded-md bg-card px-2.5 py-2 text-xs"><p className="font-semibold text-foreground">{agent.name}</p><p className="truncate text-muted-foreground">{agent.email}</p></div>)}
+              </div>
+            </div>
+            <div className="rounded-lg border border-border bg-muted/25 p-3">
+              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Selected properties · {bulkOutreachPreview.listings.length}</p>
+              <div className="mt-2 max-h-48 space-y-2 overflow-y-auto pr-1">
+                {bulkOutreachPreview.listings.map((listing) => <p key={listing.id} className="rounded-md bg-card px-2.5 py-2 text-xs font-medium text-foreground">{listing.address}</p>)}
+              </div>
+            </div>
+          </div> : null}
+          <p className="rounded-md border border-primary/15 bg-primary/[0.04] px-3 py-2 text-xs text-muted-foreground">Template: <span className="font-semibold text-foreground">{selectedOutreachTemplate?.name ?? "General buyer-attraction outreach"}</span></p>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setBulkOutreachPreview(null)} disabled={recordListingEmailActivity.isPending}>Cancel</Button>
+            <Button onClick={() => {
+              if (!bulkOutreachPreview) return;
+              recordAndOpenListingAgentDraft({
+                listingIds: bulkOutreachPreview.listingIds,
+                mailto: bulkOutreachPreview.mailto,
+                agentName: `all ${bulkOutreachPreview.agents.length} selected agents (BCC)`,
+              });
+              setBulkOutreachPreview(null);
+            }} disabled={recordListingEmailActivity.isPending}>
+              {recordListingEmailActivity.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Mail className="mr-1.5 h-4 w-4" />} Open BCC email draft
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -277,3 +277,6 @@
 - [x] Preserve automatic recipient, BCC, property, Zillow, listing-agent, buyer-agent, and signature pre-fills for custom property-email templates
 - [x] Make All selected agents (BCC) the default listing-agent outreach target instead of automatically selecting one agent
 - [x] Preserve optional personalized single-agent outreach drafts alongside the bulk BCC workflow
+- [x] Rename the GeoSphere listing table Source column to Actions
+- [x] Show the selected-agent count beside the listing-agent outreach button
+- [x] Add a BCC recipient and selected-property confirmation preview before opening bulk outreach drafts
