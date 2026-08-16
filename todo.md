@@ -289,3 +289,5 @@
 - [x] Add dashboard campaign-source reporting and filtered export visibility for funnel conversion analysis
 - [x] Create compliance-review Meta and Google ad-asset production materials without connecting ad accounts or publishing campaigns
 - [x] Add the supplied Cornerstone First Mortgage disclosure block and Equal Housing Opportunity logo-placement instruction to campaign asset and launch-review materials
+- [x] Review the supplied Oregon census-tract workbook and document the LMI plus USDA RD eligible-area service boundary for campaign approval
+- [x] Create Facebook and Google approval mockups that show the supplied Cornerstone disclosure block and Equal Housing Opportunity logo treatment

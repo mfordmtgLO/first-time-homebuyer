@@ -40,6 +40,12 @@ Use the following supplied language as the source disclosure block for final com
 
 This block is now the campaign kit’s review copy. It has **not** been automatically placed into any public website component or published advertisement.
 
+### Approved property-eligibility service boundary
+
+For this campaign, the approved service boundary is **only property listings that the active GeoSphere map classifies as both LMI and USDA RD eligible**. The supplied Oregon census-tract workbook is retained as a supporting LMI reference, while the GeoSphere map’s current combined LMI + USDA RD property classification remains the operational source of truth for this eligibility rule.
+
+This eligibility boundary is not a direction to use census-tract audience targeting. Final Meta and Google audience configuration must remain within the respective housing and consumer-finance policy restrictions, with compliance approval before launch. The GeoSphere layer is used to inform post-click property eligibility, listing content, and campaign review—not to override platform targeting rules.
+
 ## Meta paid-social concepts
 
 The following concepts are drafted for review as **Financial Products and Services** special-category campaigns. Use the existing landing-page URL with the shown UTM structure after approval.
