@@ -52,6 +52,16 @@ export const leads = mysqlTable("leads", {
   agentSource: mysqlEnum("agentSource", ["link", "manual"]),
   /** ISO timestamp of the last "Send to agent" referral email, null if never sent. */
   sentToAgentAt: timestamp("sentToAgentAt"),
+  /** First-touch UTM source captured from the landing-page URL, if present. */
+  utmSource: varchar("utmSource", { length: 120 }),
+  utmMedium: varchar("utmMedium", { length: 120 }),
+  utmCampaign: varchar("utmCampaign", { length: 160 }),
+  utmContent: varchar("utmContent", { length: 160 }),
+  utmTerm: varchar("utmTerm", { length: 160 }),
+  /** Landing-page path only; query values are kept in individual UTM fields. */
+  landingPath: varchar("landingPath", { length: 500 }),
+  /** Hostname-only referrer context, never a full URL or visitor-entered data. */
+  referrerHost: varchar("referrerHost", { length: 320 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -148,6 +158,17 @@ export const chatIntakeLead = mysqlTable("chat_intake_lead", {
   smsConsentAt: timestamp("smsConsentAt"),
   agentId: int("agentId"),
   loanOfficerId: int("loanOfficerId"),
+  /** Visitor asked the team to make a buyer-agent connection after intake. */
+  buyerAgentRequest: int("buyerAgentRequest").default(0).notNull(),
+  buyerAgentRequestedAt: timestamp("buyerAgentRequestedAt"),
+  /** First-touch campaign context, stored without form answers or other sensitive values. */
+  utmSource: varchar("utmSource", { length: 120 }),
+  utmMedium: varchar("utmMedium", { length: 120 }),
+  utmCampaign: varchar("utmCampaign", { length: 160 }),
+  utmContent: varchar("utmContent", { length: 160 }),
+  utmTerm: varchar("utmTerm", { length: 160 }),
+  landingPath: varchar("landingPath", { length: 500 }),
+  referrerHost: varchar("referrerHost", { length: 320 }),
   /** Private admin follow-up notes; never shown to visitors. */
   notes: text("notes"),
   recipientEmailStatus: mysqlEnum("recipientEmailStatus", ["not_attempted", "sent", "manual_follow_up"])

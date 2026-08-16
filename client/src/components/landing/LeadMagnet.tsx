@@ -7,6 +7,7 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Download, CheckCircle2, Loader2, Calculator, Hourglass, X } from "lucide-react";
 import { formatUsRoadmapPhone, hasUsableRoadmapPhone } from "@shared/roadmapPhone";
+import { emitFunnelConversion, getCampaignAttribution } from "@/lib/campaignTracking";
 
 const fmtUsd = (v: number) =>
   v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -34,6 +35,7 @@ export default function LeadMagnet() {
   const submitLead = trpc.leads.submit.useMutation({
     onSuccess: () => {
       setSubmitted(true);
+      emitFunnelConversion("roadmap_request_submit");
       toast.success("You're in! Check your inbox for the Roadmap.");
     },
     onError: (err) => {
@@ -72,6 +74,7 @@ export default function LeadMagnet() {
       phone: phone.trim(),
       smsConsent: true,
       source: sourceTags.join("+"),
+      campaignAttribution: getCampaignAttribution(),
       scenario: includeScenario,
       costOfWaiting: includeCow,
       agentSlug: agentSlug ?? undefined,

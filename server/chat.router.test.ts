@@ -144,6 +144,25 @@ describe("chat intake router", () => {
     expect(addChatTranscriptMock).toHaveBeenCalledWith(99, "assistant", expect.stringContaining("Mike Ford"));
   });
 
+  it("stores first-touch campaign attribution when a new public chat session starts", async () => {
+    const caller = appRouter.createCaller(context(null));
+    await caller.chat.start({
+      sessionId: "chat-session-1234567890",
+      campaignAttribution: {
+        utmSource: "meta",
+        utmMedium: "paid_social",
+        utmCampaign: "meta_ore_fthb_roadmap_v1",
+        landingPath: "/",
+      },
+    });
+    expect(createChatLeadMock).toHaveBeenCalledWith(expect.objectContaining({
+      utmSource: "meta",
+      utmMedium: "paid_social",
+      utmCampaign: "meta_ore_fthb_roadmap_v1",
+      landingPath: "/",
+    }));
+  });
+
   it("marks a completed contact capture as qualified and saves a completion timestamp", async () => {
     getChatLeadBySessionMock.mockResolvedValue({ ...PHONE_STEP_LEAD, currentStep: "sms_consent", phone: "(541) 555-0101" } as never);
     const caller = appRouter.createCaller(context(null));
@@ -219,6 +238,19 @@ describe("chat intake router", () => {
     const caller = appRouter.createCaller(context("admin"));
     await expect(caller.chat.updateNotes({ chatLeadId: 99, notes: "Call Friday after reviewing payment options." })).resolves.toEqual({ success: true });
     expect(updateChatLeadMock).toHaveBeenCalledWith(99, { notes: "Call Friday after reviewing payment options." });
+  });
+
+  it("allows a qualified purchase intake to explicitly request a buyer-agent connection", async () => {
+    getChatLeadBySessionMock.mockResolvedValue({
+      ...PHONE_STEP_LEAD,
+      status: "qualified",
+      loanPurpose: "purchase",
+      buyerAgentRequest: 0,
+      buyerAgentRequestedAt: null,
+    } as never);
+    const caller = appRouter.createCaller(context(null));
+    await expect(caller.chat.requestBuyerAgent({ sessionId: "chat-session-1234567890" })).resolves.toEqual({ success: true, alreadyRequested: false });
+    expect(updateChatLeadMock).toHaveBeenCalledWith(99, expect.objectContaining({ buyerAgentRequest: 1, buyerAgentRequestedAt: expect.any(Date) }));
   });
 
   it("returns saved LO-agent co-branded attribution to the admin chat intake list", async () => {

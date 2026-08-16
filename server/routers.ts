@@ -168,6 +168,16 @@ const textDraftAttachmentSchema = z.object({
 
 const chatSessionSchema = z.string().trim().min(12).max(72);
 
+const campaignAttributionInputSchema = z.object({
+  utmSource: z.string().trim().max(120).optional(),
+  utmMedium: z.string().trim().max(120).optional(),
+  utmCampaign: z.string().trim().max(160).optional(),
+  utmContent: z.string().trim().max(160).optional(),
+  utmTerm: z.string().trim().max(160).optional(),
+  landingPath: z.string().trim().max(500).optional(),
+  referrerHost: z.string().trim().max(320).optional(),
+});
+
 const loanOfficerInputSchema = z.object({
   name: z.string().trim().min(1, "Loan officer name is required").max(160),
   slug: z
@@ -366,6 +376,7 @@ export const appRouter = router({
           phone: z.string().trim().min(7, "A valid phone number is required").max(40).optional(),
           smsConsent: z.literal(true, { error: "SMS consent is required." }),
           source: z.string().trim().max(64).optional(),
+          campaignAttribution: campaignAttributionInputSchema.optional(),
           scenario: buydownScenarioSchema.optional(),
           costOfWaiting: costOfWaitingScenarioSchema.optional(),
           /** Slug of the co-branded /with/:slug page the visitor submitted from. */
@@ -453,6 +464,7 @@ export const appRouter = router({
           agentId,
           loanOfficerId,
           agentSource: agentId !== undefined ? "link" : undefined,
+          ...input.campaignAttribution,
         });
 
         // Alert the owner (Mike) about the new lead. Notification failure must not
@@ -622,6 +634,7 @@ export const appRouter = router({
             .max(160)
             .refine((v) => v === "" || SLUG_PATTERN.test(v), { message: "Invalid loan officer link." })
             .optional(),
+          campaignAttribution: campaignAttributionInputSchema.optional(),
         })
       )
       .mutation(async ({ input }) => {
@@ -645,6 +658,8 @@ export const appRouter = router({
             agent: existingAgent
               ? { name: existingAgent.name, companyName: existingAgent.companyName, phone: existingAgent.phone, email: existingAgent.email }
               : null,
+            buyerAgentEligible: existing.status === "qualified" && existing.loanPurpose === "purchase",
+            buyerAgentRequested: existing.buyerAgentRequest === 1,
           };
         }
 
@@ -680,6 +695,7 @@ export const appRouter = router({
           currentStep: "loan_purpose",
           agentId: agent?.id,
           loanOfficerId: officer?.id,
+          ...input.campaignAttribution,
         });
         await addChatTranscript(Number(leadId), "assistant", greeting);
 
@@ -693,6 +709,8 @@ export const appRouter = router({
           agent: agent
             ? { name: agent.name, companyName: agent.companyName, phone: agent.phone, email: agent.email }
             : null,
+          buyerAgentEligible: false,
+          buyerAgentRequested: false,
         };
       }),
     /** Processes one answer at a time and persists both the value and transcript turn. */
@@ -706,6 +724,8 @@ export const appRouter = router({
             completed: true as const,
             currentStep: "complete" as const,
             message: completeMessage(lead.fullName ?? "there", lead.phone ?? "your preferred number", lead.lowDownPaymentHomeSearch === 1, lead.searchAreaType as IntakeValues["searchAreaType"], lead.targetArea),
+            homesListRequested: lead.lowDownPaymentHomeSearch === 1,
+            buyerAgentEligible: lead.loanPurpose === "purchase",
           };
         }
 
@@ -756,12 +776,43 @@ export const appRouter = router({
               recipientEmailDetail: "Unexpected error while sending recipient email notifications.",
             });
           }
-          return { completed: true as const, currentStep: "complete" as const, message: completion };
+          return {
+            completed: true as const,
+            currentStep: "complete" as const,
+            message: completion,
+            homesListRequested: updatedValues.lowDownPaymentHomeSearch === 1,
+            buyerAgentEligible: updatedValues.loanPurpose === "purchase",
+          };
         }
 
         await updateChatLead(lead.id, { ...persistedPatch, currentStep: parsed.nextStep });
         await addChatTranscript(lead.id, "assistant", parsed.response);
         return { completed: false as const, currentStep: parsed.nextStep, message: parsed.response };
+      }),
+    /** Public, explicit buyer-agent handoff request after a completed purchase intake. */
+    requestBuyerAgent: publicProcedure
+      .input(z.object({ sessionId: chatSessionSchema }))
+      .mutation(async ({ input }) => {
+        const lead = await getChatLeadBySession(input.sessionId);
+        if (!lead || lead.status !== "qualified") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Complete the purchase intake before requesting a buyer-agent connection." });
+        }
+        if (lead.loanPurpose !== "purchase") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Buyer-agent connections are available for purchase planning conversations." });
+        }
+        const isNewRequest = lead.buyerAgentRequest !== 1;
+        await updateChatLead(lead.id, { buyerAgentRequest: 1, buyerAgentRequestedAt: lead.buyerAgentRequestedAt ?? new Date() });
+        if (isNewRequest) {
+          try {
+            await notifyOwner({
+              title: `Buyer-agent connection requested: ${lead.fullName ?? "visitor"}`,
+              content: `${lead.fullName ?? "A completed purchase intake"} requested a buyer-agent connection. Review the Mortgage chat intakes dashboard for contact information and planning details.`,
+            });
+          } catch (error) {
+            console.error("[Chat] Buyer-agent request notification failed:", error);
+          }
+        }
+        return { success: true as const, alreadyRequested: !isNewRequest };
       }),
     /** Admin-only list used by the dashboard's chat-intake review panel. */
     list: protectedProcedure.query(async ({ ctx }) => {

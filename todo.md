@@ -283,3 +283,8 @@
 - [x] Assess Meta and Google campaign access, mortgage-advertising compliance requirements, and first-time homebuyer conversion goals
 - [x] Create compliance-oriented Meta and Google ad concepts, keyword/placement strategy, SEO plan, and conversion measurement for the firsttimehomebuyer.manus.space funnel
 - [x] Prepare an optional user-controlled publishing workflow that preserves direct control of platform budgets, billing, and final launch approval
+- [x] Audit current Roadmap and chat lead attribution, analytics, and dashboard reporting paths for campaign-funnel readiness
+- [x] Add persistent UTM and campaign attribution to Roadmap and mortgage-chat lead submissions
+- [x] Add privacy-safe browser conversion-event readiness for Roadmap request, completed chat intake, buyer-agent request, and homes-list request actions
+- [x] Add dashboard campaign-source reporting and filtered export visibility for funnel conversion analysis
+- [x] Create compliance-review Meta and Google ad-asset production materials without connecting ad accounts or publishing campaigns

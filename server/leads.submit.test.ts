@@ -71,6 +71,32 @@ describe("leads.submit", () => {
     );
   });
 
+  it("stores privacy-minimized UTM attribution with a Roadmap submission", async () => {
+    const caller = appRouter.createCaller(createPublicContext());
+
+    await caller.leads.submit({
+      firstName: "Avery",
+      email: "avery@example.com",
+      phone: "(541) 555-0100",
+      smsConsent: true,
+      campaignAttribution: {
+        utmSource: "google",
+        utmMedium: "cpc",
+        utmCampaign: "goog_ore_fthb_roadmap_v1",
+        landingPath: "/",
+        referrerHost: "www.google.com",
+      },
+    });
+
+    expect(insertLeadMock).toHaveBeenCalledWith(expect.objectContaining({
+      utmSource: "google",
+      utmMedium: "cpc",
+      utmCampaign: "goog_ore_fthb_roadmap_v1",
+      landingPath: "/",
+      referrerHost: "www.google.com",
+    }));
+  });
+
   it("stores a supplied Roadmap phone number for follow-up", async () => {
     const caller = appRouter.createCaller(createPublicContext());
 

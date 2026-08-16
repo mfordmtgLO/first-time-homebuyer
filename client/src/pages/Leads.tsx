@@ -7,6 +7,7 @@ import { trpc } from "@/lib/trpc";
 import AgentSettings from "@/components/AgentSettings";
 import LoanOfficerSettings from "@/components/LoanOfficerSettings";
 import ChatIntakeLeads from "@/components/ChatIntakeLeads";
+import CampaignFunnelSummary from "@/components/CampaignFunnelSummary";
 import GeoSphereListings from "@/components/GeoSphereListings";
 import TextingWorkspace from "@/components/TextingWorkspace";
 import {
@@ -54,6 +55,7 @@ import {
 const LOGO = "/manus-storage/cornerstone-logo-standard_72b02c9f.png";
 
 const DASHBOARD_SECTIONS = [
+  { id: "campaign-funnel", label: "Funnel" },
   { id: "roadmap-leads", label: "Roadmap" },
   { id: "co-marketing-agents", label: "Agents" },
   { id: "loan-officers", label: "Loan officers" },
@@ -476,6 +478,7 @@ export default function Leads() {
   const [statusFilter, setStatusFilter] = useState<"all" | LeadStatus>("all");
   const [loanOfficerFilter, setLoanOfficerFilter] = useState("all");
   const [agentFilter, setAgentFilter] = useState("all");
+  const [campaignFilter, setCampaignFilter] = useState("all");
 
   const leadsQuery = trpc.leads.list.useQuery(undefined, {
     enabled: isAuthenticated && isAdmin,
@@ -513,6 +516,10 @@ export default function Leads() {
     () => getCoBrandAgentFilterOptions(leads, loanOfficerFilter),
     [leads, loanOfficerFilter]
   );
+  const campaignOptions = useMemo(
+    () => Array.from(new Set(leads.map((lead) => [lead.utmSource, lead.utmMedium, lead.utmCampaign].filter(Boolean).join(" · ") || "Direct / untagged"))).sort(),
+    [leads]
+  );
 
   const filteredLeads = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -520,6 +527,8 @@ export default function Leads() {
       if (statusFilter !== "all" && l.status !== statusFilter) return false;
       if (loanOfficerFilter !== "all" && (l.loanOfficerSlug ?? l.loanOfficerName) !== loanOfficerFilter) return false;
       if (agentFilter !== "all" && !matchesSelectedCoBrandPair(l, loanOfficerFilter, agentFilter)) return false;
+      const campaign = [l.utmSource, l.utmMedium, l.utmCampaign].filter(Boolean).join(" · ") || "Direct / untagged";
+      if (campaignFilter !== "all" && campaign !== campaignFilter) return false;
       if (!q) return true;
       return (
         l.firstName.toLowerCase().includes(q) ||
@@ -530,9 +539,9 @@ export default function Leads() {
         (l.agentName ?? "").toLowerCase().includes(q)
       );
     });
-  }, [leads, search, statusFilter, loanOfficerFilter, agentFilter]);
+  }, [leads, search, statusFilter, loanOfficerFilter, agentFilter, campaignFilter]);
 
-  const isFiltered = search.trim() !== "" || statusFilter !== "all" || loanOfficerFilter !== "all" || agentFilter !== "all";
+  const isFiltered = search.trim() !== "" || statusFilter !== "all" || loanOfficerFilter !== "all" || agentFilter !== "all" || campaignFilter !== "all";
 
   const utils = trpc.useUtils();
   const updateStatus = trpc.leads.updateStatus.useMutation({
@@ -557,7 +566,7 @@ export default function Leads() {
 
   const downloadCsv = () => {
     const header =
-      "First Name,Email,Phone,Source,Co-branded Source,Loan Officer,Loan Officer URL Slug,Agent,Agent URL Slug,Status,Notes,Submitted At,Purchase Price,Down Payment,Note Rate %,Loan Amount,Year 1 Payment,Year 2 Payment,Note Payment,Year 1 Savings/mo,Year 2 Savings/mo,Seller Subsidy,Wait Years,Monthly Rent,CoW Purchase Price,CoW Down Payment,CoW Interest Rate %,CoW Appreciation %,CoW Rent Increase %,CoW Monthly Payment,Rent Paid If Waiting,Equity Missed,Cost Of Waiting";
+      "First Name,Email,Phone,Source,UTM Source,UTM Medium,UTM Campaign,UTM Content,UTM Term,Landing Path,Referrer Host,Co-branded Source,Loan Officer,Loan Officer URL Slug,Agent,Agent URL Slug,Status,Notes,Submitted At,Purchase Price,Down Payment,Note Rate %,Loan Amount,Year 1 Payment,Year 2 Payment,Note Payment,Year 1 Savings/mo,Year 2 Savings/mo,Seller Subsidy,Wait Years,Monthly Rent,CoW Purchase Price,CoW Down Payment,CoW Interest Rate %,CoW Appreciation %,CoW Rent Increase %,CoW Monthly Payment,Rent Paid If Waiting,Equity Missed,Cost Of Waiting";
     const rows = filteredLeads.map((l) =>
       {
         const parsed = parseScenario(l.scenario ?? null);
@@ -568,6 +577,13 @@ export default function Leads() {
         csvEscape(l.email),
         csvEscape(l.phone),
         csvEscape(l.source),
+        csvEscape(l.utmSource ?? ""),
+        csvEscape(l.utmMedium ?? ""),
+        csvEscape(l.utmCampaign ?? ""),
+        csvEscape(l.utmContent ?? ""),
+        csvEscape(l.utmTerm ?? ""),
+        csvEscape(l.landingPath ?? ""),
+        csvEscape(l.referrerHost ?? ""),
         l.agentSource === "link" ? "Yes" : "No",
         csvEscape(l.loanOfficerName ?? ""),
         csvEscape(l.loanOfficerSlug ?? ""),
@@ -672,6 +688,8 @@ export default function Leads() {
             </Link>
           </div>
         ) : (
+          <>
+          <CampaignFunnelSummary />
           <section id="roadmap-leads" className="scroll-mt-24">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
               <div>
@@ -760,6 +778,10 @@ export default function Leads() {
                     {attributionAgentOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                <Select value={campaignFilter} onValueChange={setCampaignFilter}>
+                  <SelectTrigger className="h-9 w-full bg-card text-xs sm:w-[210px]" aria-label="Filter Roadmap leads by campaign attribution"><SelectValue placeholder="All campaigns" /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All campaigns</SelectItem>{campaignOptions.map((campaign) => <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>)}</SelectContent>
+                </Select>
                 {isFiltered && (
                   <Button
                     variant="ghost"
@@ -769,6 +791,7 @@ export default function Leads() {
                       setStatusFilter("all");
                       setLoanOfficerFilter("all");
                       setAgentFilter("all");
+                      setCampaignFilter("all");
                     }}
                   >
                     Clear filters
@@ -810,6 +833,7 @@ export default function Leads() {
                       setStatusFilter("all");
                       setLoanOfficerFilter("all");
                       setAgentFilter("all");
+                      setCampaignFilter("all");
                     }}
                   >
                     Clear filters
@@ -824,6 +848,7 @@ export default function Leads() {
                         <th className="px-5 py-3 font-semibold">First name</th>
                         <th className="px-5 py-3 font-semibold">Email</th>
                         <th className="px-5 py-3 font-semibold">Source</th>
+                        <th className="px-5 py-3 font-semibold">Campaign</th>
                         <th className="px-5 py-3 font-semibold">Co-brand source</th>
                         <th className="px-5 py-3 font-semibold">Status</th>
                         <th className="px-5 py-3 font-semibold">Agent</th>
@@ -847,6 +872,9 @@ export default function Leads() {
                             <span className="inline-flex rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-semibold">
                               {lead.source}
                             </span>
+                          </td>
+                          <td className="px-5 py-3.5 text-xs text-muted-foreground">
+                            {[lead.utmSource, lead.utmMedium, lead.utmCampaign].filter(Boolean).join(" · ") || "Direct / untagged"}
                           </td>
                           <td className="px-5 py-3.5 text-xs">
                             {lead.agentSource === "link" ? (
@@ -922,6 +950,7 @@ export default function Leads() {
             <div id="chat-intakes" className="scroll-mt-24"><ChatIntakeLeads /></div>
             <div id="saved-qualifying-listings" className="scroll-mt-24"><GeoSphereListings /></div>
           </section>
+          </>
         )}
       </main>
     </div>

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { CalendarDays, CheckCircle2, MessageCircle, Minus, RotateCcw, ShieldCheck, X } from "lucide-react";
+import { emitFunnelConversion, getCampaignAttribution } from "@/lib/campaignTracking";
 
 const SESSION_STORAGE_KEY = "mortgage-intake-session";
 const MONEY_FORMATTER = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -49,6 +50,8 @@ export default function MortgageChatWidget() {
   const [agent, setAgent] = useState<Agent>(null);
   const [complete, setComplete] = useState(false);
   const [completionMessage, setCompletionMessage] = useState("");
+  const [buyerAgentEligible, setBuyerAgentEligible] = useState(false);
+  const [buyerAgentRequested, setBuyerAgentRequested] = useState(false);
   const [guidedAmount, setGuidedAmount] = useState(0);
   const startedRef = useRef(false);
   const guidedControlsRef = useRef<HTMLDivElement>(null);
@@ -61,6 +64,8 @@ export default function MortgageChatWidget() {
       setOfficer(data.officer);
       setAgent(data.agent ?? null);
       setComplete(data.status === "qualified");
+      setBuyerAgentEligible(data.status === "qualified" && data.buyerAgentEligible === true);
+      setBuyerAgentRequested(data.buyerAgentRequested === true);
       setCompletionMessage(
         data.status === "qualified"
           ? data.messages.at(-1)?.content ?? "Your intake profile is complete."
@@ -80,12 +85,26 @@ export default function MortgageChatWidget() {
       setMessages((current) => [...current, { role: "assistant", content: data.message }]);
       setCurrentStep(data.currentStep);
       setComplete(data.completed);
-      if (data.completed) setCompletionMessage(data.message);
+      if (data.completed) {
+        setCompletionMessage(data.message);
+        setBuyerAgentEligible(data.buyerAgentEligible === true);
+        emitFunnelConversion("chat_intake_complete");
+        if (data.homesListRequested) emitFunnelConversion("homes_list_request");
+      }
     },
     onError: (error) => {
       toast.error(error.message || "We couldn't save that answer. Please try again.");
       setMessages((current) => current.slice(0, -1));
     },
+  });
+
+  const requestBuyerAgent = trpc.chat.requestBuyerAgent.useMutation({
+    onSuccess: (data) => {
+      setBuyerAgentRequested(true);
+      emitFunnelConversion("buyer_agent_connection_request");
+      toast.success(data.alreadyRequested ? "Your buyer-agent connection request is already saved." : "Your buyer-agent connection request has been sent.");
+    },
+    onError: (error) => toast.error(error.message || "We couldn't save your buyer-agent connection request."),
   });
 
   useEffect(() => {
@@ -97,7 +116,7 @@ export default function MortgageChatWidget() {
     } catch {
       // Storage is optional; a fresh session is safe.
     }
-    start.mutate({ sessionId: savedSession, agentSlug: agentSlug ?? undefined, loanOfficerSlug: loanOfficerSlug ?? undefined });
+    start.mutate({ sessionId: savedSession, agentSlug: agentSlug ?? undefined, loanOfficerSlug: loanOfficerSlug ?? undefined, campaignAttribution: getCampaignAttribution() });
   }, [open, agentSlug, loanOfficerSlug, start]);
 
   useEffect(() => {
@@ -126,7 +145,9 @@ export default function MortgageChatWidget() {
     setComplete(false);
     setCompletionMessage("");
     setGuidedAmount(0);
-    start.mutate({ agentSlug: agentSlug ?? undefined, loanOfficerSlug: loanOfficerSlug ?? undefined });
+    setBuyerAgentEligible(false);
+    setBuyerAgentRequested(false);
+    start.mutate({ agentSlug: agentSlug ?? undefined, loanOfficerSlug: loanOfficerSlug ?? undefined, campaignAttribution: getCampaignAttribution() });
   };
 
   const quickReplies = currentStep ? QUICK_REPLIES[currentStep] ?? [] : [];
@@ -259,6 +280,17 @@ export default function MortgageChatWidget() {
               <a href={CALENDLY_BOOKING_URL} target="_blank" rel="noopener noreferrer" className="btn-press mt-6 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:brightness-110">
                 <CalendarDays className="h-4 w-4" /> Schedule a free 15-minute call
               </a>
+              {buyerAgentEligible && (
+                <Button
+                  variant="outline"
+                  className="mt-3 gap-2"
+                  disabled={buyerAgentRequested || requestBuyerAgent.isPending || !sessionId}
+                  onClick={() => sessionId && requestBuyerAgent.mutate({ sessionId })}
+                >
+                  {buyerAgentRequested ? <CheckCircle2 className="h-4 w-4 text-emerald-700" /> : <MessageCircle className="h-4 w-4" />}
+                  {buyerAgentRequested ? "Buyer-agent connection requested" : "Request a buyer-agent connection"}
+                </Button>
+              )}
               <Button variant="outline" className="mt-3 gap-2" onClick={restart}>
                 <RotateCcw className="h-4 w-4" /> Start a new intake
               </Button>

@@ -56,6 +56,15 @@ type ChatLead = {
   agentName: string | null;
   agentSlug: string | null;
   agentId: number | null;
+  buyerAgentRequest: number;
+  buyerAgentRequestedAt: Date | null;
+  utmSource: string | null;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  utmContent: string | null;
+  utmTerm: string | null;
+  landingPath: string | null;
+  referrerHost: string | null;
   isCoBranded: boolean;
 };
 
@@ -110,6 +119,7 @@ export default function ChatIntakeLeads() {
   const [status, setStatus] = useState<"all" | "incomplete" | "qualified">("all");
   const [loanOfficerFilter, setLoanOfficerFilter] = useState("all");
   const [agentFilter, setAgentFilter] = useState("all");
+  const [campaignFilter, setCampaignFilter] = useState("all");
   const [selected, setSelected] = useState<ChatLead | null>(null);
   const [resendCandidate, setResendCandidate] = useState<ChatLead | null>(null);
   const [notesLead, setNotesLead] = useState<ChatLead | null>(null);
@@ -178,20 +188,23 @@ export default function ChatIntakeLeads() {
   };
   const loanOfficerOptions = useMemo(() => getLoanOfficerFilterOptions(displayLeads), [displayLeads]);
   const agentOptions = useMemo(() => getCoBrandAgentFilterOptions(displayLeads, loanOfficerFilter), [displayLeads, loanOfficerFilter]);
+  const campaignOptions = useMemo(() => Array.from(new Set(displayLeads.map((lead) => [lead.utmSource, lead.utmMedium, lead.utmCampaign].filter(Boolean).join(" · ") || "Direct / untagged"))).sort(), [displayLeads]);
   const filtered = useMemo(() => displayLeads.filter((lead) => {
-    const haystack = `${lead.fullName ?? ""} ${lead.email ?? ""} ${lead.phone ?? ""} ${lead.loanOfficerName ?? ""} ${lead.agentName ?? ""}`.toLowerCase();
+    const campaign = [lead.utmSource, lead.utmMedium, lead.utmCampaign].filter(Boolean).join(" · ") || "Direct / untagged";
+    const haystack = `${lead.fullName ?? ""} ${lead.email ?? ""} ${lead.phone ?? ""} ${lead.loanOfficerName ?? ""} ${lead.agentName ?? ""} ${campaign}`.toLowerCase();
     const officerMatches = loanOfficerFilter === "all" || lead.loanOfficerSlug === loanOfficerFilter || lead.loanOfficerName === loanOfficerFilter;
     const agentMatches = agentFilter === "all" || matchesSelectedCoBrandPair(lead, loanOfficerFilter, agentFilter);
-    return (status === "all" || lead.status === status) && officerMatches && agentMatches && haystack.includes(search.toLowerCase());
-  }), [displayLeads, search, status, loanOfficerFilter, agentFilter]);
+    return (status === "all" || lead.status === status) && officerMatches && agentMatches && (campaignFilter === "all" || campaign === campaignFilter) && haystack.includes(search.toLowerCase());
+  }), [displayLeads, search, status, loanOfficerFilter, agentFilter, campaignFilter]);
   const clearFilters = () => {
     setSearch("");
     setStatus("all");
     setLoanOfficerFilter("all");
     setAgentFilter("all");
+    setCampaignFilter("all");
   };
   const exportCsv = () => {
-    const rows = [["Status", "Co-branded source", "Loan officer", "Loan officer URL slug", "Agent", "Agent URL slug", "Recipient email status", "Resend count", "Last resent", "Name", "Email", "Phone", "Purpose", "Property type", "Property value", "Credit range", "Annual income", "Down payment", "Loan amount", "Low/no-down-payment home search", "Search area type", "Target area", "Started", "Completed"], ...filtered.map((lead) => [lead.status, lead.isCoBranded ? "Yes" : "No", lead.loanOfficerName ?? "", lead.loanOfficerSlug ?? "", lead.agentName ?? "", lead.agentSlug ?? "", lead.recipientEmailStatus, lead.resendCount, lead.lastResentAt ? new Date(lead.lastResentAt).toISOString() : "", lead.fullName ?? "", lead.email ?? "", lead.phone ?? "", lead.loanPurpose ?? "", lead.propertyType ?? "", lead.propertyValue ?? "", lead.creditRange ?? "", lead.annualIncome ?? "", lead.downPayment ?? "", lead.loanAmount ?? "", lead.lowDownPaymentHomeSearch === 1 ? "Yes" : lead.lowDownPaymentHomeSearch === 0 ? "No" : "", lead.searchAreaType ?? "", lead.targetArea ?? "", new Date(lead.createdAt).toISOString(), lead.completedAt ? new Date(lead.completedAt).toISOString() : ""])];
+    const rows = [["Status", "UTM source", "UTM medium", "UTM campaign", "UTM content", "UTM term", "Landing path", "Referrer host", "Buyer-agent requested", "Buyer-agent requested at", "Co-branded source", "Loan officer", "Loan officer URL slug", "Agent", "Agent URL slug", "Recipient email status", "Resend count", "Last resent", "Name", "Email", "Phone", "Purpose", "Property type", "Property value", "Credit range", "Annual income", "Down payment", "Loan amount", "Low/no-down-payment home search", "Search area type", "Target area", "Started", "Completed"], ...filtered.map((lead) => [lead.status, lead.utmSource ?? "", lead.utmMedium ?? "", lead.utmCampaign ?? "", lead.utmContent ?? "", lead.utmTerm ?? "", lead.landingPath ?? "", lead.referrerHost ?? "", lead.buyerAgentRequest === 1 ? "Yes" : "No", lead.buyerAgentRequestedAt ? new Date(lead.buyerAgentRequestedAt).toISOString() : "", lead.isCoBranded ? "Yes" : "No", lead.loanOfficerName ?? "", lead.loanOfficerSlug ?? "", lead.agentName ?? "", lead.agentSlug ?? "", lead.recipientEmailStatus, lead.resendCount, lead.lastResentAt ? new Date(lead.lastResentAt).toISOString() : "", lead.fullName ?? "", lead.email ?? "", lead.phone ?? "", lead.loanPurpose ?? "", lead.propertyType ?? "", lead.propertyValue ?? "", lead.creditRange ?? "", lead.annualIncome ?? "", lead.downPayment ?? "", lead.loanAmount ?? "", lead.lowDownPaymentHomeSearch === 1 ? "Yes" : lead.lowDownPaymentHomeSearch === 0 ? "No" : "", lead.searchAreaType ?? "", lead.targetArea ?? "", new Date(lead.createdAt).toISOString(), lead.completedAt ? new Date(lead.completedAt).toISOString() : ""])];
     const csv = rows.map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(",")).join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
     const a = document.createElement("a");
@@ -220,7 +233,8 @@ export default function ChatIntakeLeads() {
           <div className="flex gap-2">{(["all", "qualified", "incomplete"] as const).map((value) => <Button key={value} size="sm" variant={status === value ? "default" : "outline"} onClick={() => setStatus(value)}>{value === "all" ? "All" : value === "qualified" ? "Qualified" : "Incomplete"}</Button>)}</div>
           <Select value={loanOfficerFilter} onValueChange={(value) => { setLoanOfficerFilter(value); setAgentFilter("all"); }}><SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="All loan officers" /></SelectTrigger><SelectContent><SelectItem value="all">All loan officers</SelectItem>{loanOfficerOptions.map((officer) => <SelectItem key={officer.value} value={officer.value}>{officer.label}</SelectItem>)}</SelectContent></Select>
           <Select value={agentFilter} onValueChange={setAgentFilter} disabled={loanOfficerFilter === "all"}><SelectTrigger className="w-full sm:w-56"><SelectValue placeholder={loanOfficerFilter === "all" ? "Select LO first" : "All co-brand agents"} /></SelectTrigger><SelectContent><SelectItem value="all">All co-brand agents</SelectItem>{agentOptions.map((agent) => <SelectItem key={agent.value} value={agent.value}>{agent.label}</SelectItem>)}</SelectContent></Select>
-          {(search || status !== "all" || loanOfficerFilter !== "all" || agentFilter !== "all") && <Button variant="ghost" size="sm" onClick={clearFilters}>Clear filters</Button>}
+          <Select value={campaignFilter} onValueChange={setCampaignFilter}><SelectTrigger className="w-full sm:w-52"><SelectValue placeholder="All campaigns" /></SelectTrigger><SelectContent><SelectItem value="all">All campaigns</SelectItem>{campaignOptions.map((campaign) => <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>)}</SelectContent></Select>
+          {(search || status !== "all" || loanOfficerFilter !== "all" || agentFilter !== "all" || campaignFilter !== "all") && <Button variant="ghost" size="sm" onClick={clearFilters}>Clear filters</Button>}
         </div>
         <p className="text-xs text-muted-foreground">Showing {filtered.length} of {displayLeads.length} chat intake{displayLeads.length === 1 ? "" : "s"}. CSV export follows these filters.</p>
       </div>
@@ -231,15 +245,16 @@ export default function ChatIntakeLeads() {
       ) : (
         <div className="max-h-[65vh] overflow-auto overscroll-contain [scrollbar-gutter:stable] lg:max-h-[28rem]">
           <table className="w-full text-sm">
-            <thead><tr className="sticky top-0 z-10 border-b border-border bg-muted/95 text-left text-muted-foreground backdrop-blur-sm"><th className="px-5 py-3 font-semibold">Lead</th><th className="px-5 py-3 font-semibold">Co-brand source</th><th className="px-5 py-3 font-semibold">Status</th><th className="px-5 py-3 font-semibold">Recipients</th><th className="px-5 py-3 font-semibold">Resends</th><th className="px-5 py-3 font-semibold">Purpose</th><th className="px-5 py-3 font-semibold">Planning snapshot</th><th className="px-5 py-3 font-semibold">Updated</th><th className="px-5 py-3 text-right font-semibold">Actions</th></tr></thead>
+            <thead><tr className="sticky top-0 z-10 border-b border-border bg-muted/95 text-left text-muted-foreground backdrop-blur-sm"><th className="px-5 py-3 font-semibold">Lead</th><th className="px-5 py-3 font-semibold">Campaign</th><th className="px-5 py-3 font-semibold">Co-brand source</th><th className="px-5 py-3 font-semibold">Status</th><th className="px-5 py-3 font-semibold">Recipients</th><th className="px-5 py-3 font-semibold">Resends</th><th className="px-5 py-3 font-semibold">Purpose</th><th className="px-5 py-3 font-semibold">Planning snapshot</th><th className="px-5 py-3 font-semibold">Updated</th><th className="px-5 py-3 text-right font-semibold">Actions</th></tr></thead>
             <tbody>{filtered.map((lead) => <tr key={lead.id} className="border-b border-border/60 last:border-0">
               <td className="px-5 py-3.5"><div className="flex flex-wrap items-center gap-2"><div className="font-medium text-foreground">{lead.fullName || "Anonymous visitor"}</div><UsdaBadge lead={lead} /></div><div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"><span>{lead.email || "No email"}</span><span>{lead.phone || "No phone"}</span>{hasUsableRoadmapPhone(lead.phone) && <Badge variant="outline" className="border-emerald-600/25 bg-emerald-600/5 text-emerald-700"><Smartphone className="mr-1 h-3 w-3" /> Phone ready</Badge>}{lead.smsConsent === 1 && hasUsableRoadmapPhone(lead.phone) && <Badge variant="outline" className="border-violet-600/25 bg-violet-600/5 text-violet-700"><MessageSquareText className="mr-1 h-3 w-3" /> Text ready</Badge>}</div><div className="mt-2 flex flex-wrap gap-1.5"><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" disabled={!lead.email} title={lead.email ? "Open a welcome email draft" : "This intake needs an email address first"} onClick={() => openEmailDraft(lead)}><Mail className="mr-1 h-3 w-3" /> Email draft</Button><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" onClick={() => { setNotesLead(lead); setNotesDraft(lead.notes ?? ""); }}><NotebookPen className="mr-1 h-3 w-3" /> {lead.notes?.trim() ? "Notes" : "Add note"}</Button><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" disabled={!lead.agentId || sendToAgent.isPending} title={lead.agentId ? "Email this intake to the assigned agent" : "Assign an agent first"} onClick={() => sendToAgent.mutate({ chatLeadId: lead.id })}>{sendToAgent.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-3 w-3" />} Send to agent</Button></div></td>
+              <td className="px-5 py-3.5 text-xs text-muted-foreground">{[lead.utmSource, lead.utmMedium, lead.utmCampaign].filter(Boolean).join(" · ") || "Direct / untagged"}</td>
               <td className="px-5 py-3.5">{lead.isCoBranded ? <div className="min-w-44"><Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Co-branded</Badge><div className="mt-1.5 text-xs font-medium text-foreground">LO: {lead.loanOfficerName || "—"}</div><div className="text-xs text-muted-foreground">Agent: {lead.agentName || "—"}</div></div> : <Badge variant="outline" className="text-muted-foreground">Direct site</Badge>}</td>
               <td className="px-5 py-3.5"><Badge variant="outline" className={lead.status === "qualified" ? "border-emerald-600/30 bg-emerald-600/10 text-emerald-700" : "border-accent/40 bg-accent/15 text-accent-foreground"}>{lead.status === "qualified" ? "Qualified" : "Incomplete"}</Badge></td>
               <td className="px-5 py-3.5">{recipientStatus(lead)}</td>
               <td className="px-5 py-3.5"><div className="font-medium text-foreground">{lead.resendCount === 0 ? "Not resent" : `${lead.resendCount} resend${lead.resendCount === 1 ? "" : "s"}`}</div><div className="mt-0.5 text-xs text-muted-foreground">{lead.lastResentAt ? `Last: ${formatDateTime(lead.lastResentAt)}` : "—"}</div></td>
               <td className="px-5 py-3.5 capitalize">{lead.loanPurpose || "—"}</td>
-              <td className="px-5 py-3.5 text-xs text-muted-foreground"><div>{lead.propertyType || "—"} · {money(lead.propertyValue)} · {lead.creditRange || "—"} · Income {money(lead.annualIncome)}</div>{lead.lowDownPaymentHomeSearch === 1 && <div className="mt-1 flex items-center gap-1 text-emerald-700"><MapPin className="h-3 w-3" /> Low/no-down search{lead.targetArea ? ` · ${lead.searchAreaType ?? "Area"}: ${lead.targetArea}` : " requested"}</div>}</td>
+              <td className="px-5 py-3.5 text-xs text-muted-foreground"><div>{lead.propertyType || "—"} · {money(lead.propertyValue)} · {lead.creditRange || "—"} · Income {money(lead.annualIncome)}</div>{lead.lowDownPaymentHomeSearch === 1 && <div className="mt-1 flex items-center gap-1 text-emerald-700"><MapPin className="h-3 w-3" /> Low/no-down search{lead.targetArea ? ` · ${lead.searchAreaType ?? "Area"}: ${lead.targetArea}` : " requested"}</div>}{lead.buyerAgentRequest === 1 && <div className="mt-1 text-amber-800">Buyer-agent connection requested</div>}</td>
               <td className="px-5 py-3.5 whitespace-nowrap text-muted-foreground">{new Date(lead.updatedAt).toLocaleString()}</td>
               <td className="px-5 py-3.5 text-right"><div className="flex min-w-[180px] flex-wrap justify-end gap-2"><Button variant="outline" size="sm" onClick={() => setSelected(lead)}><FileText className="mr-1.5 h-3.5 w-3.5" /> View</Button><Select value={lead.agentId ? String(lead.agentId) : "none"} onValueChange={(value) => assignAgent.mutate({ chatLeadId: lead.id, agentId: value === "none" ? null : Number(value) })} disabled={assignAgent.isPending}><SelectTrigger className="h-8 w-[145px] text-xs"><SelectValue placeholder="No agent" /></SelectTrigger><SelectContent><SelectItem value="none">No agent</SelectItem>{agents.map((agent) => <SelectItem key={agent.id} value={String(agent.id)}>{agent.name}</SelectItem>)}</SelectContent></Select>{lead.status === "qualified" && <Button variant="outline" size="sm" disabled={resend.isPending} onClick={() => setResendCandidate(lead)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Resend</Button>}</div></td>
             </tr>)}</tbody>
