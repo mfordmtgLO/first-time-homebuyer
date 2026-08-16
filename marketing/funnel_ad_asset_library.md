@@ -26,6 +26,20 @@ For U.S. Meta campaigns, classify eligible campaigns under the applicable **Fina
 
 All final ads should retain the approved Equal Housing Opportunity, NMLS, company, and any required state disclosure treatments prescribed by the lender’s compliance team. The ad manager should use approved source documents, not assumptions, for every license, company, rate, payment, down-payment, program, and availability statement.
 
+### Approved disclosure block for final creative and landing-page review
+
+Use the following supplied language as the source disclosure block for final compliance review. The creative-production team should place the **approved Equal Housing Opportunity logo immediately after “Equal Opportunity Lender”** rather than substituting a text-only mark.
+
+> For licensing information go to: [www.nmlsconsumeraccess.org](https://www.nmlsconsumeraccess.org/) · Cornerstone First Mortgage, LLC · NMLS ID #173855
+>
+> Cornerstone First Mortgage, LLC · 2655 Camino Del Rio N., Suite 100, San Diego, CA 92108 · (866) 815-1803 · info@cfmtg.com
+>
+> This is not a commitment to lend. All loans are subject to credit approval, underwriting, and program guidelines. Program availability, rates, and terms are subject to change without notice and may vary by location, income, and credit profile. USDA, VA, FHA, and conventional loan eligibility requirements apply.
+>
+> © 2026 Cornerstone First Mortgage, LLC. All Rights Reserved. NMLS ID #173855 Equal Opportunity Lender. **[Insert approved Equal Housing Opportunity logo immediately here.]**
+
+This block is now the campaign kit’s review copy. It has **not** been automatically placed into any public website component or published advertisement.
+
 ## Meta paid-social concepts
 
 The following concepts are drafted for review as **Financial Products and Services** special-category campaigns. Use the existing landing-page URL with the shown UTM structure after approval.
@@ -131,7 +145,7 @@ The website now captures first-touch UTM fields with submitted Roadmap and chat 
 
 ## Required approval packet before launch
 
-The account owner should collect the following before any paid campaign is created: approved company/NMLS/EHO disclosure block; approved service area; approved program language; approved prohibited-claim list; Meta special-category classification; Google restricted-category targeting plan; approved creative files; first test budget; desired conversion priority; and final destination URLs.
+The account owner should collect the following before any paid campaign is created: the supplied company/NMLS/EHO disclosure block; approved service area; approved program language; approved prohibited-claim list; Meta special-category classification; Google restricted-category targeting plan; approved creative files; first test budget; desired conversion priority; and final destination URLs.
 
 ### References
 

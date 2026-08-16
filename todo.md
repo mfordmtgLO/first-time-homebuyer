@@ -288,3 +288,4 @@
 - [x] Add privacy-safe browser conversion-event readiness for Roadmap request, completed chat intake, buyer-agent request, and homes-list request actions
 - [x] Add dashboard campaign-source reporting and filtered export visibility for funnel conversion analysis
 - [x] Create compliance-review Meta and Google ad-asset production materials without connecting ad accounts or publishing campaigns
+- [x] Add the supplied Cornerstone First Mortgage disclosure block and Equal Housing Opportunity logo-placement instruction to campaign asset and launch-review materials
