@@ -109,6 +109,7 @@ export type ChatIntakeNotificationInput = {
   lowDownPaymentHomeSearch: number | null;
   searchAreaType: string | null;
   targetArea: string | null;
+  calculatorContext?: string | null;
   coBrandedAgentName?: string | null;
   coBrandedSourceUrl?: string | null;
 };
@@ -152,7 +153,7 @@ Property type: ${input.propertyType || "Not provided"}
 Estimated property value: ${intakeMoney(input.propertyValue)}
 Credit range: ${input.creditRange || "Not provided"}
 Annual household income: ${intakeMoney(input.annualIncome)}
-  ${financingDetails}${homeSearchDetails}${coBrandContext}
+  ${financingDetails}${homeSearchDetails}${input.calculatorContext ? `\n\nCalculator planning context\n${input.calculatorContext}` : ""}${coBrandContext}
 
 Please follow up within one business day. This intake is an educational starting point and is not a loan approval.
 

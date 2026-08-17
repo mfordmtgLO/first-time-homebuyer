@@ -20,6 +20,7 @@ describe("chat intake agent notification drafts", () => {
       lowDownPaymentHomeSearch: 0,
       searchAreaType: null,
       targetArea: null,
+      calculatorContext: "2-1 buydown: $450,000 purchase; Year 1 savings $536/mo.\nCost of waiting: $105,578 estimated over 3 year(s).",
       coBrandedAgentName: "Kaandice McLean",
       coBrandedSourceUrl: "https://firsttimehomebuyer.manus.space/with/mford/kaandice-mclean",
     });
@@ -27,5 +28,8 @@ describe("chat intake agent notification drafts", () => {
     expect(draft.text).toContain("Hi Kaandice,");
     expect(draft.text).not.toContain("Hi Kaandice McLean,");
     expect(draft.text).toContain("Co-branded source: https://firsttimehomebuyer.manus.space/with/mford/kaandice-mclean");
+    expect(draft.text).toContain("Calculator planning context");
+    expect(draft.text).toContain("2-1 buydown: $450,000 purchase");
+    expect(draft.text).toContain("Cost of waiting: $105,578 estimated over 3 year(s).");
   });
 });

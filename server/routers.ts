@@ -18,6 +18,8 @@ import {
   createTextMessageDraft,
   createListingAgentEmailTemplate,
   createPropertyEmailTemplate,
+  createPropertyLandingPage,
+  createPropertyPageAgentEmailTemplate,
   createAgent,
   createLoanOfficer,
   deleteAgent,
@@ -35,10 +37,13 @@ import {
   getLeadById,
   getLoanOfficerById,
   getLoanOfficerBySlug,
+  getPropertyLandingPageBySlug,
   listGeoSphereListings,
   listGeoSphereSavedPulls,
   listListingAgentEmailTemplates,
   listPropertyEmailTemplates,
+  listPropertyLandingPages,
+  listPropertyPageAgentEmailTemplates,
   loanOfficerSlugTaken,
   recordChatIntakeResendAttempt,
   recordGeoSphereListingEmailActivity,
@@ -60,6 +65,7 @@ import {
   updateLeadStatus,
   updateLeadNotes,
   updateLoanOfficer,
+  updatePropertyLandingPagePair,
 } from "./db";
 import { syncGeoSphereSavedListings } from "./geosphere";
 import { createHeartbeatJob, updateHeartbeatJob } from "./_core/heartbeat";
@@ -178,6 +184,18 @@ const campaignAttributionInputSchema = z.object({
   referrerHost: z.string().trim().max(320).optional(),
 });
 
+const propertyPageSlugSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .max(240)
+  .refine((v) => SLUG_PATTERN.test(v), { message: "Invalid property page link." });
+
+const propertyScenarioInputSchema = z.object({
+  buydown: buydownScenarioSchema.optional(),
+  costOfWaiting: costOfWaitingScenarioSchema.optional(),
+});
+
 const loanOfficerInputSchema = z.object({
   name: z.string().trim().min(1, "Loan officer name is required").max(160),
   slug: z
@@ -265,6 +283,7 @@ type CompletedChatIntake = {
   fullName: string | null;
   email: string | null;
   phone: string | null;
+  scenario: string | null;
 };
 
 /** Sends (or re-sends) a qualified intake to its loan officer and co-branded agent. */
@@ -298,6 +317,7 @@ async function deliverChatIntakeRecipientEmails(lead: CompletedChatIntake) {
     lowDownPaymentHomeSearch: lead.lowDownPaymentHomeSearch,
     searchAreaType: lead.searchAreaType,
     targetArea: lead.targetArea,
+    calculatorContext: summarizeChatCalculatorContext(lead.scenario),
     coBrandedAgentName: coBrandedAgent?.name ?? null,
     coBrandedSourceUrl,
   })));
@@ -323,7 +343,25 @@ async function deliverChatIntakeRecipientEmails(lead: CompletedChatIntake) {
   return { recipientEmailStatus: "sent" as const, recipientEmailDetail: null };
 }
 
+function summarizeChatCalculatorContext(raw: string | null) {
+  if (!raw) return null;
+  try {
+    const snapshot = JSON.parse(raw) as { buydown?: Record<string, number>; costOfWaiting?: Record<string, number> };
+    const lines: string[] = [];
+    if (snapshot.buydown?.purchasePrice) {
+      lines.push(`2-1 buydown: $${snapshot.buydown.purchasePrice.toLocaleString()} purchase; Year 1 savings $${(snapshot.buydown.year1MonthlySavings ?? 0).toLocaleString()}/mo; Year 2 savings $${(snapshot.buydown.year2MonthlySavings ?? 0).toLocaleString()}/mo; seller subsidy $${(snapshot.buydown.totalSubsidy ?? 0).toLocaleString()}.`);
+    }
+    if (snapshot.costOfWaiting?.costOfWaiting) {
+      lines.push(`Cost of waiting: $${snapshot.costOfWaiting.costOfWaiting.toLocaleString()} estimated over ${snapshot.costOfWaiting.waitYears ?? "the selected"} year(s).`);
+    }
+    return lines.length ? lines.join("\n") : null;
+  } catch {
+    return null;
+  }
+}
+
 function buildChatAgentMailto(lead: CompletedChatIntake, agent: { name: string; email: string }, coBrandedSourceUrl: string | null) {
+  const calculatorContext = summarizeChatCalculatorContext(lead.scenario);
   const { subject, text } = buildChatIntakeNotification({
     recipientName: agent.name,
     recipientEmail: agent.email,
@@ -341,6 +379,7 @@ function buildChatAgentMailto(lead: CompletedChatIntake, agent: { name: string; 
     lowDownPaymentHomeSearch: lead.lowDownPaymentHomeSearch,
     searchAreaType: lead.searchAreaType,
     targetArea: lead.targetArea,
+    calculatorContext,
     coBrandedAgentName: agent.name,
     coBrandedSourceUrl,
   });
@@ -379,6 +418,7 @@ export const appRouter = router({
           campaignAttribution: campaignAttributionInputSchema.optional(),
           scenario: buydownScenarioSchema.optional(),
           costOfWaiting: costOfWaitingScenarioSchema.optional(),
+          propertyPageSlug: propertyPageSlugSchema.optional(),
           /** Slug of the co-branded /with/:slug page the visitor submitted from. */
           agentSlug: z
             .string()
@@ -417,6 +457,7 @@ export const appRouter = router({
         let agentId: number | undefined;
         let agentName: string | undefined;
         let loanOfficerId: number | undefined;
+        let propertyPageId: number | undefined;
         if (input.agentSlug) {
           try {
             const agent = await getAgentBySlug(input.agentSlug);
@@ -454,15 +495,29 @@ export const appRouter = router({
           }
         }
 
+        if (input.propertyPageSlug) {
+          try {
+            const propertyPage = await getPropertyLandingPageBySlug(input.propertyPageSlug);
+            if (propertyPage?.page) {
+              propertyPageId = propertyPage.page.id;
+              agentId = propertyPage.page.agentId ?? agentId;
+              loanOfficerId = propertyPage.page.loanOfficerId ?? loanOfficerId;
+            }
+          } catch (error) {
+            console.warn("[Leads] Property page lookup failed:", error);
+          }
+        }
+
         await insertLead({
           firstName: input.firstName,
           email: input.email,
           phone: input.phone,
           smsConsent: 1,
-          source: input.source ?? "roadmap",
+          source: propertyPageId ? "property-page" : input.source ?? "roadmap",
           scenario: scenarioPayload,
           agentId,
           loanOfficerId,
+          propertyPageId,
           agentSource: agentId !== undefined ? "link" : undefined,
           ...input.campaignAttribution,
         });
@@ -635,6 +690,8 @@ export const appRouter = router({
             .refine((v) => v === "" || SLUG_PATTERN.test(v), { message: "Invalid loan officer link." })
             .optional(),
           campaignAttribution: campaignAttributionInputSchema.optional(),
+          propertyPageSlug: propertyPageSlugSchema.optional(),
+          scenario: propertyScenarioInputSchema.optional(),
         })
       )
       .mutation(async ({ input }) => {
@@ -665,6 +722,7 @@ export const appRouter = router({
 
         let agent: Awaited<ReturnType<typeof getAgentBySlug>> | undefined;
         let officer = defaultOfficer;
+        let propertyPageId: number | undefined;
         if (input.agentSlug) {
           const found = await getAgentBySlug(input.agentSlug);
           if (found?.visible === 1) agent = found;
@@ -683,6 +741,15 @@ export const appRouter = router({
           if (standaloneOfficer?.visible === 1) officer = standaloneOfficer;
         }
 
+        if (input.propertyPageSlug) {
+          const propertyPage = await getPropertyLandingPageBySlug(input.propertyPageSlug);
+          if (propertyPage?.page) {
+            propertyPageId = propertyPage.page.id;
+            if (propertyPage.agent?.visible === 1) agent = propertyPage.agent;
+            if (propertyPage.loanOfficer?.visible === 1) officer = propertyPage.loanOfficer;
+          }
+        }
+
         const contact = chatContact(officer);
         const greeting = openingMessage(
           contact,
@@ -695,6 +762,8 @@ export const appRouter = router({
           currentStep: "loan_purpose",
           agentId: agent?.id,
           loanOfficerId: officer?.id,
+          propertyPageId,
+          scenario: input.scenario ? JSON.stringify(input.scenario) : undefined,
           ...input.campaignAttribution,
         });
         await addChatTranscript(Number(leadId), "assistant", greeting);
@@ -903,6 +972,7 @@ export const appRouter = router({
           lowDownPaymentHomeSearch: lead.lowDownPaymentHomeSearch,
           searchAreaType: lead.searchAreaType,
           targetArea: lead.targetArea,
+          calculatorContext: summarizeChatCalculatorContext(lead.scenario),
           coBrandedAgentName: agent.name,
           coBrandedSourceUrl,
         });
@@ -1103,6 +1173,68 @@ export const appRouter = router({
         );
         await updateGeoSphereSyncSetting({ scheduleCronTaskUid: job.taskUid });
         return job;
+      }),
+  }),
+
+  propertyPages: router({
+    /** Public saved-snapshot lookup for a /property/:slug marketing page. */
+    getPublic: publicProcedure
+      .input(z.object({ slug: propertyPageSlugSchema }))
+      .query(async ({ input }) => (await getPropertyLandingPageBySlug(input.slug)) ?? null),
+    /** Dashboard inventory of public property pages and their current co-brand assignment. */
+    list: protectedProcedure.query(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      return listPropertyLandingPages();
+    }),
+    /** Creates or refreshes a public page from one immutable saved-listing snapshot. */
+    createFromListing: protectedProcedure
+      .input(z.object({
+        geosphereListingId: z.number().int().positive(),
+        loanOfficerId: z.number().int().positive(),
+        agentId: z.number().int().positive(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const [officer, agent] = await Promise.all([getLoanOfficerById(input.loanOfficerId), getAgentById(input.agentId)]);
+        if (!officer || officer.visible !== 1 || !agent || agent.visible !== 1) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Choose an available loan officer and co-branded agent." });
+        }
+        return createPropertyLandingPage(input);
+      }),
+    /** Reassigns a saved property page to any selected dashboard LO + agent pairing. */
+    updatePair: protectedProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        loanOfficerId: z.number().int().positive(),
+        agentId: z.number().int().positive(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const [officer, agent] = await Promise.all([getLoanOfficerById(input.loanOfficerId), getAgentById(input.agentId)]);
+        if (!officer || officer.visible !== 1 || !agent || agent.visible !== 1) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Choose an available loan officer and co-branded agent." });
+        }
+        return updatePropertyLandingPagePair(input);
+      }),
+    listAgentEmailTemplates: protectedProcedure.query(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      return listPropertyPageAgentEmailTemplates();
+    }),
+    saveAgentEmailTemplate: protectedProcedure
+      .input(z.object({
+        name: z.string().trim().min(2, "Enter a template name.").max(160),
+        bodyTemplate: z.string().trim().min(20, "Write at least 20 characters for the email body.").max(6000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        try {
+          return await createPropertyPageAgentEmailTemplate(input);
+        } catch (error) {
+          if (error instanceof Error && /duplicate|unique/i.test(error.message)) {
+            throw new TRPCError({ code: "CONFLICT", message: "A template with that name already exists." });
+          }
+          throw error;
+        }
       }),
   }),
 

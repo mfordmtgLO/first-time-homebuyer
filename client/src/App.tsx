@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import AgentHome from "./pages/AgentHome";
 import LoanOfficerHome from "./pages/LoanOfficerHome";
+import PropertyLandingPage from "./pages/PropertyLandingPage";
 import Leads from "./pages/Leads";
 
 function Router() {
@@ -17,6 +18,7 @@ function Router() {
       <Route path={"/loan-officer/:loanOfficerSlug"} component={LoanOfficerHome} />
       <Route path={"/with/:loanOfficerSlug/:agentSlug"} component={AgentHome} />
       <Route path={"/with/:slug"} component={AgentHome} />
+      <Route path={"/property/:slug"} component={PropertyLandingPage} />
       <Route path={"/leads"} component={Leads} />
       <Route path={"/admin/leads"} component={Leads} />
       <Route path={"/404"} component={NotFound} />

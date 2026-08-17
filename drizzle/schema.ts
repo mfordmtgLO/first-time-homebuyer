@@ -45,6 +45,8 @@ export const leads = mysqlTable("leads", {
   agentId: int("agentId"),
   /** Loan officer selected by a paired /with/:loanOfficerSlug/:agentSlug co-branded page. */
   loanOfficerId: int("loanOfficerId"),
+  /** Saved snapshot-backed single-property page that captured this Roadmap lead. */
+  propertyPageId: int("propertyPageId"),
   /**
    * How the lead got its agent: "link" = submitted via the agent's /with/:slug
    * co-branded page; "manual" = assigned from the dashboard. Null when no agent.
@@ -158,6 +160,10 @@ export const chatIntakeLead = mysqlTable("chat_intake_lead", {
   smsConsentAt: timestamp("smsConsentAt"),
   agentId: int("agentId"),
   loanOfficerId: int("loanOfficerId"),
+  /** Saved snapshot-backed single-property page that captured this chat intake. */
+  propertyPageId: int("propertyPageId"),
+  /** Optional calculator snapshot attached when the visitor began the intake. */
+  scenario: text("scenario"),
   /** Visitor asked the team to make a buyer-agent connection after intake. */
   buyerAgentRequest: int("buyerAgentRequest").default(0).notNull(),
   buyerAgentRequestedAt: timestamp("buyerAgentRequestedAt"),
@@ -417,6 +423,52 @@ export const propertyEmailTemplate = mysqlTable(
 
 export type PropertyEmailTemplate = typeof propertyEmailTemplate.$inferSelect;
 export type InsertPropertyEmailTemplate = typeof propertyEmailTemplate.$inferInsert;
+
+/** A public, snapshot-backed landing page for one saved GeoSphere property. */
+export const propertyLandingPage = mysqlTable(
+  "property_landing_page",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    /** Canonical /property/:slug URL segment. One page is maintained per saved listing. */
+    slug: varchar("slug", { length: 240 }).notNull(),
+    geosphereListingId: int("geosphereListingId").notNull(),
+    savedPullId: int("savedPullId").notNull(),
+    /** Custom pairing is stored directly so a page may use any LO + agent dashboard combination. */
+    loanOfficerId: int("loanOfficerId"),
+    agentId: int("agentId"),
+    address: varchar("address", { length: 700 }).notNull(),
+    /** Immutable saved-listing data available when the page was created or refreshed. */
+    listingSnapshot: text("listingSnapshot").notNull(),
+    sourceSavedAt: timestamp("sourceSavedAt"),
+    isActive: int("isActive").default(1).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("property_landing_page_slug_unique").on(table.slug),
+    uniqueIndex("property_landing_page_listing_unique").on(table.geosphereListingId),
+    index("property_landing_page_pair_idx").on(table.loanOfficerId, table.agentId),
+  ]
+);
+
+export type PropertyLandingPage = typeof propertyLandingPage.$inferSelect;
+export type InsertPropertyLandingPage = typeof propertyLandingPage.$inferInsert;
+
+/** Reusable listing-agent outreach introductions for a saved single-property page. */
+export const propertyPageAgentEmailTemplate = mysqlTable(
+  "property_page_agent_email_template",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    name: varchar("name", { length: 160 }).notNull(),
+    bodyTemplate: text("bodyTemplate").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [uniqueIndex("property_page_agent_email_template_name_unique").on(table.name)]
+);
+
+export type PropertyPageAgentEmailTemplate = typeof propertyPageAgentEmailTemplate.$inferSelect;
+export type InsertPropertyPageAgentEmailTemplate = typeof propertyPageAgentEmailTemplate.$inferInsert;
 
 /** Persistent ownership state for the project-level GeoSphere weekly sync job. */
 export const geosphereSyncSetting = mysqlTable(

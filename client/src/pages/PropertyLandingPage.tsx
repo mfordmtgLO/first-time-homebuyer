@@ -1,0 +1,134 @@
+import { useMemo, useRef } from "react";
+import { useRoute } from "wouter";
+import { AgentPageProvider } from "@/contexts/AgentPageContext";
+import { ScenarioProvider } from "@/contexts/ScenarioContext";
+import LeadMagnet from "@/components/landing/LeadMagnet";
+import Buydown from "@/components/landing/Buydown";
+import CostOfWaiting from "@/components/landing/CostOfWaiting";
+import Footer from "@/components/landing/Footer";
+import MortgageChatWidget from "@/components/MortgageChatWidget";
+import { MapView } from "@/components/Map";
+import { trpc } from "@/lib/trpc";
+import { parsePropertyLandingSnapshot, propertyEligibilityLabel } from "@shared/propertyLandingPage";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { BedDouble, Bath, CalendarDays, ExternalLink, Home, MapPin, Maximize, Ruler, ShieldCheck, SquareStack, Trees } from "lucide-react";
+
+const money = (value: number | null) => value === null ? "Not in saved snapshot" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
+const number = (value: number | null) => value === null ? "Not in saved snapshot" : value.toLocaleString("en-US");
+
+function SavedLocationMap({ latitude, longitude, address }: { latitude: number; longitude: number; address: string }) {
+  const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
+  return (
+    <MapView
+      className="h-[320px] overflow-hidden rounded-xl border border-border shadow-sm"
+      initialCenter={{ lat: latitude, lng: longitude }}
+      initialZoom={15}
+      onMapReady={(map) => {
+        const marker = new google.maps.marker.AdvancedMarkerElement({
+          map,
+          position: { lat: latitude, lng: longitude },
+          title: address,
+        });
+        const info = new google.maps.InfoWindow({
+          content: `<div style="max-width:220px;font-family:Arial,sans-serif"><strong>Saved GeoSphere location</strong><br/>${address}<br/><span style="font-size:12px">Point-in-time location from the saved listing snapshot. Confirm current listing details.</span></div>`,
+        });
+        marker.addListener("click", () => info.open({ map, anchor: marker }));
+        markerRef.current = marker;
+      }}
+    />
+  );
+}
+
+export default function PropertyLandingPage() {
+  const [, params] = useRoute("/property/:slug");
+  const slug = params?.slug?.toLowerCase() ?? "";
+  const { data, isLoading } = trpc.propertyPages.getPublic.useQuery({ slug }, { enabled: Boolean(slug) });
+  const snapshot = useMemo(() => data?.page ? parsePropertyLandingSnapshot(data.page.listingSnapshot) : null, [data?.page?.listingSnapshot]);
+
+  if (isLoading) return <div className="min-h-screen grid place-items-center text-muted-foreground">Loading saved property details…</div>;
+  if (!data?.page || !snapshot) return <div className="min-h-screen grid place-items-center px-6 text-center"><div><h1 className="font-display text-3xl font-semibold">Property page unavailable</h1><p className="mt-3 text-muted-foreground">This saved property page may have been retired or its snapshot is unavailable.</p></div></div>;
+
+  const officer = data.loanOfficer;
+  const agent = data.agent;
+  const propertyUrl = `https://firsttimehomebuyer.manus.space/property/${data.page.slug}`;
+  const eligibility = propertyEligibilityLabel(snapshot);
+  const facts = [
+    { label: "Beds", value: snapshot.bedrooms ?? "—", icon: BedDouble },
+    { label: "Baths", value: snapshot.bathrooms ?? "—", icon: Bath },
+    { label: "Living area", value: snapshot.squareFootage ? `${number(snapshot.squareFootage)} sq ft` : "—", icon: Ruler },
+    { label: "Lot", value: snapshot.acreage ? `${snapshot.acreage.toFixed(2)} acres` : snapshot.lotSize ? `${number(snapshot.lotSize)} sq ft` : "—", icon: Trees },
+    { label: "Year built", value: snapshot.yearBuilt?.toString() ?? "—", icon: CalendarDays },
+    { label: "Property type", value: snapshot.manufacturedHomeType || snapshot.propertyType || "—", icon: Home },
+  ];
+
+  return (
+    <AgentPageProvider agentSlug={agent?.slug ?? null} loanOfficerSlug={officer?.slug ?? null} propertyPageSlug={data.page.slug}>
+      <ScenarioProvider>
+        <div className="min-h-screen bg-background text-foreground">
+          <header className="border-b border-border bg-card/95 backdrop-blur">
+            <div className="container flex flex-wrap items-center justify-between gap-3 py-4">
+              <a href="/" className="font-display text-lg font-semibold text-primary">First-Time Homebuyer</a>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                Saved property snapshot · educational marketing page
+              </div>
+            </div>
+          </header>
+          <main>
+            <section className="border-b border-border bg-[linear-gradient(135deg,oklch(0.96_0.025_84),oklch(0.91_0.04_145))] py-10 md:py-16">
+              <div className="container grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+                <div>
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    {snapshot.isLmi && <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-100">LMI · OHCS Flex Lending screen</Badge>}
+                    {snapshot.isUsda && <Badge className="bg-emerald-100 text-emerald-900 hover:bg-emerald-100">USDA RD screen</Badge>}
+                  </div>
+                  <p className="text-sm font-medium uppercase tracking-[0.18em] text-primary">Saved property spotlight</p>
+                  <h1 className="mt-3 font-display text-4xl font-semibold leading-tight md:text-5xl">{snapshot.address}</h1>
+                  <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted-foreground">Explore a first-time-buyer plan around this saved property snapshot, including mortgage questions, estimated payment scenarios, and a personalized Roadmap.</p>
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <Button size="lg" onClick={() => document.getElementById("roadmap")?.scrollIntoView({ behavior: "smooth" })}>Get the Roadmap</Button>
+                    <Button size="lg" variant="outline" onClick={() => document.getElementById("payment-scenarios")?.scrollIntoView({ behavior: "smooth" })}>Explore payment scenarios</Button>
+                  </div>
+                  <p className="mt-6 text-xs leading-relaxed text-muted-foreground">Saved {snapshot.sourceSavedAt ? new Date(snapshot.sourceSavedAt).toLocaleString() : "snapshot date unavailable"}. Price, availability, details, program fit, and lending terms require current verification and approval.</p>
+                </div>
+                <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-xl">
+                  {snapshot.photoUrls[0] ? <img src={snapshot.photoUrls[0]} alt={`Saved listing view of ${snapshot.address}`} className="h-[330px] w-full object-cover" /> : <div className="grid h-[330px] place-items-center bg-[radial-gradient(circle_at_30%_20%,oklch(0.83_0.1_84),transparent_38%),linear-gradient(135deg,oklch(0.31_0.05_155),oklch(0.17_0.03_152))] px-8 text-center text-primary-foreground"><Home className="mb-3 h-12 w-12"/><p className="font-display text-2xl">Saved property details</p><p className="mt-2 text-sm text-primary-foreground/80">Listing imagery was not included in this saved snapshot.</p></div>}
+                  <div className="grid grid-cols-2 gap-4 p-5 sm:grid-cols-3">
+                    {facts.map(({ label, value, icon: Icon }) => <div key={label} className="min-w-0"><div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Icon className="h-3.5 w-3.5" />{label}</div><div className="mt-1 truncate font-semibold">{value}</div></div>)}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="py-12 md:py-16">
+              <div className="container grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm md:p-8">
+                  <div className="flex items-center gap-2"><SquareStack className="h-5 w-5 text-primary" /><h2 className="font-display text-2xl font-semibold">Saved property details</h2></div>
+                  <dl className="mt-6 grid gap-x-8 gap-y-5 sm:grid-cols-2">
+                    <div><dt className="text-sm text-muted-foreground">Saved snapshot price</dt><dd className="mt-1 text-xl font-semibold">{money(snapshot.price)}</dd></div>
+                    <div><dt className="text-sm text-muted-foreground">Screening context</dt><dd className="mt-1 font-semibold">{eligibility}</dd></div>
+                    <div><dt className="text-sm text-muted-foreground">MLS reference</dt><dd className="mt-1 font-medium">{[snapshot.mlsName, snapshot.mlsNumber].filter(Boolean).join(" · ") || "Not in saved snapshot"}</dd></div>
+                    <div><dt className="text-sm text-muted-foreground">Units</dt><dd className="mt-1 font-medium">{snapshot.units ?? "Not in saved snapshot"}</dd></div>
+                    <div><dt className="text-sm text-muted-foreground">Property taxes</dt><dd className="mt-1 font-medium">{money(snapshot.propertyTaxes)}</dd></div>
+                    <div><dt className="text-sm text-muted-foreground">Saved status</dt><dd className="mt-1 font-medium">{snapshot.status ?? "Not in saved snapshot"}</dd></div>
+                  </dl>
+                  {snapshot.description && <div className="mt-8 border-t border-border pt-6"><h3 className="font-semibold">Saved listing description</h3><p className="mt-3 whitespace-pre-line leading-relaxed text-muted-foreground">{snapshot.description}</p></div>}
+                  <p className="mt-8 rounded-lg bg-muted p-4 text-sm leading-relaxed text-muted-foreground">This page uses a saved GeoSphere listing snapshot, not a live MLS or listing feed. Confirm current status, price, property condition, features, and eligibility with the listing professional and the applicable program requirements before relying on any information.</p>
+                </div>
+                <aside className="space-y-6">
+                  {snapshot.latitude !== null && snapshot.longitude !== null ? <div><div className="mb-3 flex items-center gap-2"><MapPin className="h-5 w-5 text-primary" /><h2 className="font-display text-2xl font-semibold">Saved map location</h2></div><SavedLocationMap latitude={snapshot.latitude} longitude={snapshot.longitude} address={snapshot.address} /><a className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline" href="https://geosphere-map-oregon.vercel.app/" target="_blank" rel="noreferrer">Open the GeoSphere map <ExternalLink className="h-3.5 w-3.5" /></a></div> : null}
+                  <div className="rounded-2xl border border-border bg-card p-6 shadow-sm"><h2 className="font-display text-2xl font-semibold">Your local team</h2><div className="mt-5 space-y-4">{officer && <div><div className="font-semibold">{officer.name}</div><div className="text-sm text-muted-foreground">{officer.title} · NMLS #{officer.nmls}</div><div className="text-sm text-muted-foreground">{officer.companyName} · {officer.phone}</div></div>}{agent && <div className="border-t border-border pt-4"><div className="font-semibold">{agent.name}</div><div className="text-sm text-muted-foreground">{agent.companyName}</div><div className="text-sm text-muted-foreground">{agent.phone}</div></div>}</div></div>
+                </aside>
+              </div>
+            </section>
+            <div id="payment-scenarios"><Buydown /><CostOfWaiting /></div>
+            <LeadMagnet />
+          </main>
+          <Footer />
+          <MortgageChatWidget />
+        </div>
+      </ScenarioProvider>
+    </AgentPageProvider>
+  );
+}

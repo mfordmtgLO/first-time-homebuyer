@@ -16,7 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Download, FileText, Loader2, Mail, MapPin, MessageCircle, MessageSquareText, NotebookPen, Search, Send, Smartphone } from "lucide-react";
+import { Calculator, Download, FileText, Loader2, Mail, MapPin, MessageCircle, MessageSquareText, NotebookPen, Search, Send, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { getCoBrandAgentFilterOptions, getLoanOfficerFilterOptions, matchesSelectedCoBrandPair } from "@shared/roadmapPairFilters";
 import { buildLeadWelcomeDraft } from "@shared/leadEmailDraft";
@@ -65,6 +65,9 @@ type ChatLead = {
   utmTerm: string | null;
   landingPath: string | null;
   referrerHost: string | null;
+  propertyPageAddress: string | null;
+  propertyPageSlug: string | null;
+  scenario: string | null;
   isCoBranded: boolean;
 };
 
@@ -80,6 +83,19 @@ const formatDateTime = (value: Date | null) => (value ? new Date(value).toLocale
 function UsdaBadge({ lead }: { lead: ChatLead }) {
   if (!qualifiesForUsdaDashboardBadge(lead)) return null;
   return <Badge title="USDA screening indicator based on the configured city and income criteria; program and property eligibility require verification." variant="outline" className="border-emerald-600/30 bg-emerald-600/10 text-emerald-700">USDA</Badge>;
+}
+
+function CalculatorScenarioSummary({ scenario }: { scenario: string | null }) {
+  if (!scenario) return null;
+  try {
+    const parsed = JSON.parse(scenario) as { buydown?: Record<string, number>; costOfWaiting?: Record<string, number> };
+    const buydown = parsed.buydown;
+    const costOfWaiting = parsed.costOfWaiting;
+    if (!buydown && !costOfWaiting) return null;
+    return <div className="mt-1.5 rounded-md border border-primary/15 bg-primary/[0.04] px-2 py-1.5 text-[11px] text-muted-foreground"><div className="flex items-center gap-1 font-semibold text-primary"><Calculator className="h-3 w-3" /> Saved calculator context</div>{buydown?.purchasePrice ? <div className="mt-0.5">2-1: ${buydown.purchasePrice.toLocaleString()} purchase · Year 1 save ${(buydown.year1MonthlySavings ?? 0).toLocaleString()}/mo</div> : null}{costOfWaiting?.costOfWaiting ? <div className="mt-0.5">Cost of waiting: ${costOfWaiting.costOfWaiting.toLocaleString()} over {costOfWaiting.waitYears ?? "selected"} yr(s)</div> : null}</div>;
+  } catch {
+    return null;
+  }
 }
 
 function TranscriptDialog({ lead, onOpenChange }: { lead: ChatLead | null; onOpenChange: (open: boolean) => void }) {
@@ -191,7 +207,7 @@ export default function ChatIntakeLeads() {
   const campaignOptions = useMemo(() => Array.from(new Set(displayLeads.map((lead) => [lead.utmSource, lead.utmMedium, lead.utmCampaign].filter(Boolean).join(" · ") || "Direct / untagged"))).sort(), [displayLeads]);
   const filtered = useMemo(() => displayLeads.filter((lead) => {
     const campaign = [lead.utmSource, lead.utmMedium, lead.utmCampaign].filter(Boolean).join(" · ") || "Direct / untagged";
-    const haystack = `${lead.fullName ?? ""} ${lead.email ?? ""} ${lead.phone ?? ""} ${lead.loanOfficerName ?? ""} ${lead.agentName ?? ""} ${campaign}`.toLowerCase();
+    const haystack = `${lead.fullName ?? ""} ${lead.email ?? ""} ${lead.phone ?? ""} ${lead.loanOfficerName ?? ""} ${lead.agentName ?? ""} ${lead.propertyPageAddress ?? ""} ${campaign}`.toLowerCase();
     const officerMatches = loanOfficerFilter === "all" || lead.loanOfficerSlug === loanOfficerFilter || lead.loanOfficerName === loanOfficerFilter;
     const agentMatches = agentFilter === "all" || matchesSelectedCoBrandPair(lead, loanOfficerFilter, agentFilter);
     return (status === "all" || lead.status === status) && officerMatches && agentMatches && (campaignFilter === "all" || campaign === campaignFilter) && haystack.includes(search.toLowerCase());
@@ -249,12 +265,12 @@ export default function ChatIntakeLeads() {
             <tbody>{filtered.map((lead) => <tr key={lead.id} className="border-b border-border/60 last:border-0">
               <td className="px-5 py-3.5"><div className="flex flex-wrap items-center gap-2"><div className="font-medium text-foreground">{lead.fullName || "Anonymous visitor"}</div><UsdaBadge lead={lead} /></div><div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"><span>{lead.email || "No email"}</span><span>{lead.phone || "No phone"}</span>{hasUsableRoadmapPhone(lead.phone) && <Badge variant="outline" className="border-emerald-600/25 bg-emerald-600/5 text-emerald-700"><Smartphone className="mr-1 h-3 w-3" /> Phone ready</Badge>}{lead.smsConsent === 1 && hasUsableRoadmapPhone(lead.phone) && <Badge variant="outline" className="border-violet-600/25 bg-violet-600/5 text-violet-700"><MessageSquareText className="mr-1 h-3 w-3" /> Text ready</Badge>}</div><div className="mt-2 flex flex-wrap gap-1.5"><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" disabled={!lead.email} title={lead.email ? "Open a welcome email draft" : "This intake needs an email address first"} onClick={() => openEmailDraft(lead)}><Mail className="mr-1 h-3 w-3" /> Email draft</Button><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" onClick={() => { setNotesLead(lead); setNotesDraft(lead.notes ?? ""); }}><NotebookPen className="mr-1 h-3 w-3" /> {lead.notes?.trim() ? "Notes" : "Add note"}</Button><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" disabled={!lead.agentId || sendToAgent.isPending} title={lead.agentId ? "Email this intake to the assigned agent" : "Assign an agent first"} onClick={() => sendToAgent.mutate({ chatLeadId: lead.id })}>{sendToAgent.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-3 w-3" />} Send to agent</Button></div></td>
               <td className="px-5 py-3.5 text-xs text-muted-foreground">{[lead.utmSource, lead.utmMedium, lead.utmCampaign].filter(Boolean).join(" · ") || "Direct / untagged"}</td>
-              <td className="px-5 py-3.5">{lead.isCoBranded ? <div className="min-w-44"><Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Co-branded</Badge><div className="mt-1.5 text-xs font-medium text-foreground">LO: {lead.loanOfficerName || "—"}</div><div className="text-xs text-muted-foreground">Agent: {lead.agentName || "—"}</div></div> : <Badge variant="outline" className="text-muted-foreground">Direct site</Badge>}</td>
+              <td className="px-5 py-3.5">{lead.propertyPageAddress ? <div className="min-w-44"><Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Single-property page</Badge><div className="mt-1.5 text-xs font-medium text-foreground">{lead.propertyPageAddress}</div><div className="text-xs text-muted-foreground">LO: {lead.loanOfficerName || "—"}</div><div className="text-xs text-muted-foreground">Agent: {lead.agentName || "—"}</div></div> : lead.isCoBranded ? <div className="min-w-44"><Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Co-branded</Badge><div className="mt-1.5 text-xs font-medium text-foreground">LO: {lead.loanOfficerName || "—"}</div><div className="text-xs text-muted-foreground">Agent: {lead.agentName || "—"}</div></div> : <Badge variant="outline" className="text-muted-foreground">Direct site</Badge>}</td>
               <td className="px-5 py-3.5"><Badge variant="outline" className={lead.status === "qualified" ? "border-emerald-600/30 bg-emerald-600/10 text-emerald-700" : "border-accent/40 bg-accent/15 text-accent-foreground"}>{lead.status === "qualified" ? "Qualified" : "Incomplete"}</Badge></td>
               <td className="px-5 py-3.5">{recipientStatus(lead)}</td>
               <td className="px-5 py-3.5"><div className="font-medium text-foreground">{lead.resendCount === 0 ? "Not resent" : `${lead.resendCount} resend${lead.resendCount === 1 ? "" : "s"}`}</div><div className="mt-0.5 text-xs text-muted-foreground">{lead.lastResentAt ? `Last: ${formatDateTime(lead.lastResentAt)}` : "—"}</div></td>
               <td className="px-5 py-3.5 capitalize">{lead.loanPurpose || "—"}</td>
-              <td className="px-5 py-3.5 text-xs text-muted-foreground"><div>{lead.propertyType || "—"} · {money(lead.propertyValue)} · {lead.creditRange || "—"} · Income {money(lead.annualIncome)}</div>{lead.lowDownPaymentHomeSearch === 1 && <div className="mt-1 flex items-center gap-1 text-emerald-700"><MapPin className="h-3 w-3" /> Low/no-down search{lead.targetArea ? ` · ${lead.searchAreaType ?? "Area"}: ${lead.targetArea}` : " requested"}</div>}{lead.buyerAgentRequest === 1 && <div className="mt-1 text-amber-800">Buyer-agent connection requested</div>}</td>
+              <td className="px-5 py-3.5 text-xs text-muted-foreground"><div>{lead.propertyType || "—"} · {money(lead.propertyValue)} · {lead.creditRange || "—"} · Income {money(lead.annualIncome)}</div>{lead.lowDownPaymentHomeSearch === 1 && <div className="mt-1 flex items-center gap-1 text-emerald-700"><MapPin className="h-3 w-3" /> Low/no-down search{lead.targetArea ? ` · ${lead.searchAreaType ?? "Area"}: ${lead.targetArea}` : " requested"}</div>}{lead.buyerAgentRequest === 1 && <div className="mt-1 text-amber-800">Buyer-agent connection requested</div>}<CalculatorScenarioSummary scenario={lead.scenario} /></td>
               <td className="px-5 py-3.5 whitespace-nowrap text-muted-foreground">{new Date(lead.updatedAt).toLocaleString()}</td>
               <td className="px-5 py-3.5 text-right"><div className="flex min-w-[180px] flex-wrap justify-end gap-2"><Button variant="outline" size="sm" onClick={() => setSelected(lead)}><FileText className="mr-1.5 h-3.5 w-3.5" /> View</Button><Select value={lead.agentId ? String(lead.agentId) : "none"} onValueChange={(value) => assignAgent.mutate({ chatLeadId: lead.id, agentId: value === "none" ? null : Number(value) })} disabled={assignAgent.isPending}><SelectTrigger className="h-8 w-[145px] text-xs"><SelectValue placeholder="No agent" /></SelectTrigger><SelectContent><SelectItem value="none">No agent</SelectItem>{agents.map((agent) => <SelectItem key={agent.id} value={String(agent.id)}>{agent.name}</SelectItem>)}</SelectContent></Select>{lead.status === "qualified" && <Button variant="outline" size="sm" disabled={resend.isPending} onClick={() => setResendCandidate(lead)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Resend</Button>}</div></td>
             </tr>)}</tbody>

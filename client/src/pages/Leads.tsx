@@ -535,6 +535,7 @@ export default function Leads() {
         l.email.toLowerCase().includes(q) ||
         l.phone.toLowerCase().includes(q) ||
         l.source.toLowerCase().includes(q) ||
+        (l.propertyPageAddress ?? "").toLowerCase().includes(q) ||
         (l.loanOfficerName ?? "").toLowerCase().includes(q) ||
         (l.agentName ?? "").toLowerCase().includes(q)
       );
@@ -566,7 +567,7 @@ export default function Leads() {
 
   const downloadCsv = () => {
     const header =
-      "First Name,Email,Phone,Source,UTM Source,UTM Medium,UTM Campaign,UTM Content,UTM Term,Landing Path,Referrer Host,Co-branded Source,Loan Officer,Loan Officer URL Slug,Agent,Agent URL Slug,Status,Notes,Submitted At,Purchase Price,Down Payment,Note Rate %,Loan Amount,Year 1 Payment,Year 2 Payment,Note Payment,Year 1 Savings/mo,Year 2 Savings/mo,Seller Subsidy,Wait Years,Monthly Rent,CoW Purchase Price,CoW Down Payment,CoW Interest Rate %,CoW Appreciation %,CoW Rent Increase %,CoW Monthly Payment,Rent Paid If Waiting,Equity Missed,Cost Of Waiting";
+      "First Name,Email,Phone,Source,Property Page Address,Property Page URL Slug,UTM Source,UTM Medium,UTM Campaign,UTM Content,UTM Term,Landing Path,Referrer Host,Co-branded Source,Loan Officer,Loan Officer URL Slug,Agent,Agent URL Slug,Status,Notes,Submitted At,Purchase Price,Down Payment,Note Rate %,Loan Amount,Year 1 Payment,Year 2 Payment,Note Payment,Year 1 Savings/mo,Year 2 Savings/mo,Seller Subsidy,Wait Years,Monthly Rent,CoW Purchase Price,CoW Down Payment,CoW Interest Rate %,CoW Appreciation %,CoW Rent Increase %,CoW Monthly Payment,Rent Paid If Waiting,Equity Missed,Cost Of Waiting";
     const rows = filteredLeads.map((l) =>
       {
         const parsed = parseScenario(l.scenario ?? null);
@@ -577,6 +578,8 @@ export default function Leads() {
         csvEscape(l.email),
         csvEscape(l.phone),
         csvEscape(l.source),
+        csvEscape(l.propertyPageAddress ?? ""),
+        csvEscape(l.propertyPageSlug ?? ""),
         csvEscape(l.utmSource ?? ""),
         csvEscape(l.utmMedium ?? ""),
         csvEscape(l.utmCampaign ?? ""),
@@ -877,7 +880,14 @@ export default function Leads() {
                             {[lead.utmSource, lead.utmMedium, lead.utmCampaign].filter(Boolean).join(" · ") || "Direct / untagged"}
                           </td>
                           <td className="px-5 py-3.5 text-xs">
-                            {lead.agentSource === "link" ? (
+                            {lead.propertyPageAddress ? (
+                              <div className="space-y-1">
+                                <span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 font-semibold text-primary">Single-property page</span>
+                                <div className="font-medium text-foreground">{lead.propertyPageAddress}</div>
+                                <div className="text-muted-foreground">LO: <span className="font-medium text-foreground">{lead.loanOfficerName ?? "Not linked"}</span></div>
+                                <div className="text-muted-foreground">Agent: <span className="font-medium text-foreground">{lead.agentName ?? "Not linked"}</span></div>
+                              </div>
+                            ) : lead.agentSource === "link" ? (
                               <div className="space-y-1">
                                 <span className="inline-flex rounded-full bg-emerald-600/10 px-2 py-0.5 font-semibold text-emerald-700">Co-branded</span>
                                 <div className="text-muted-foreground">LO: <span className="font-medium text-foreground">{lead.loanOfficerName ?? "Not linked"}</span></div>

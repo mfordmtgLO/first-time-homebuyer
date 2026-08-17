@@ -9,7 +9,9 @@ import {
   geosphereSavedPull,
   geosphereSyncSetting,
   listingAgentEmailTemplate,
+  propertyLandingPage,
   propertyEmailTemplate,
+  propertyPageAgentEmailTemplate,
   leads,
   loanOfficer,
   textMessage,
@@ -24,6 +26,7 @@ import {
   type InsertLead,
   type InsertGeoSphereListing,
 } from "../drizzle/schema";
+import { buildPropertyLandingSnapshot, slugifyPropertyAddress } from "../shared/propertyLandingPage";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -132,10 +135,13 @@ export async function listLeads() {
       loanOfficerSlug: loanOfficer.slug,
       agentName: agentProfile.name,
       agentSlug: agentProfile.slug,
+      propertyPageAddress: propertyLandingPage.address,
+      propertyPageSlug: propertyLandingPage.slug,
     })
     .from(leads)
     .leftJoin(loanOfficer, eq(leads.loanOfficerId, loanOfficer.id))
     .leftJoin(agentProfile, eq(leads.agentId, agentProfile.id))
+    .leftJoin(propertyLandingPage, eq(leads.propertyPageId, propertyLandingPage.id))
     .orderBy(leads.createdAt);
 }
 
@@ -403,18 +409,23 @@ export async function listChatIntakeLeads() {
       loanOfficerSlug: loanOfficer.slug,
       agentName: agentProfile.name,
       agentSlug: agentProfile.slug,
+      propertyPageAddress: propertyLandingPage.address,
+      propertyPageSlug: propertyLandingPage.slug,
     })
     .from(chatIntakeLead)
     .leftJoin(loanOfficer, eq(chatIntakeLead.loanOfficerId, loanOfficer.id))
     .leftJoin(agentProfile, eq(chatIntakeLead.agentId, agentProfile.id))
+    .leftJoin(propertyLandingPage, eq(chatIntakeLead.propertyPageId, propertyLandingPage.id))
     .orderBy(desc(chatIntakeLead.updatedAt));
 
-  return rows.map(({ lead, loanOfficerName, loanOfficerSlug, agentName, agentSlug }) => ({
+  return rows.map(({ lead, loanOfficerName, loanOfficerSlug, agentName, agentSlug, propertyPageAddress, propertyPageSlug }) => ({
     ...lead,
     loanOfficerName: loanOfficerName ?? null,
     loanOfficerSlug: loanOfficerSlug ?? null,
     agentName: agentName ?? null,
     agentSlug: agentSlug ?? null,
+    propertyPageAddress: propertyPageAddress ?? null,
+    propertyPageSlug: propertyPageSlug ?? null,
     isCoBranded: Boolean(lead.loanOfficerId && lead.agentId),
   }));
 }
@@ -921,6 +932,111 @@ export async function listGeoSphereListings(
     .from(geosphereListing)
     .where(and(...filters))
     .orderBy(desc(geosphereListing.price), geosphereListing.address);
+}
+
+/** Creates or refreshes a public property page from one saved GeoSphere listing snapshot. */
+export async function createPropertyLandingPage(input: {
+  geosphereListingId: number;
+  loanOfficerId: number;
+  agentId: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db
+    .select({ listing: geosphereListing, sourceSavedAt: geosphereSavedPull.sourceSavedAt })
+    .from(geosphereListing)
+    .leftJoin(geosphereSavedPull, eq(geosphereListing.savedPullId, geosphereSavedPull.id))
+    .where(eq(geosphereListing.id, input.geosphereListingId))
+    .limit(1);
+  const row = rows[0];
+  if (!row) throw new Error("The saved listing is no longer available.");
+  const snapshot = buildPropertyLandingSnapshot(row.listing, row.sourceSavedAt);
+  const existing = await db
+    .select()
+    .from(propertyLandingPage)
+    .where(eq(propertyLandingPage.geosphereListingId, input.geosphereListingId))
+    .limit(1);
+  if (existing[0]) {
+    await db
+      .update(propertyLandingPage)
+      .set({
+        loanOfficerId: input.loanOfficerId,
+        agentId: input.agentId,
+        address: snapshot.address,
+        listingSnapshot: JSON.stringify(snapshot),
+        sourceSavedAt: row.sourceSavedAt ?? null,
+        isActive: 1,
+      })
+      .where(eq(propertyLandingPage.id, existing[0].id));
+    return { ...existing[0], loanOfficerId: input.loanOfficerId, agentId: input.agentId, address: snapshot.address, listingSnapshot: JSON.stringify(snapshot), sourceSavedAt: row.sourceSavedAt ?? null, isActive: 1 };
+  }
+  const slug = `${slugifyPropertyAddress(snapshot.address)}-${input.geosphereListingId}`;
+  const [result] = await db.insert(propertyLandingPage).values({
+    slug,
+    geosphereListingId: input.geosphereListingId,
+    savedPullId: row.listing.savedPullId,
+    loanOfficerId: input.loanOfficerId,
+    agentId: input.agentId,
+    address: snapshot.address,
+    listingSnapshot: JSON.stringify(snapshot),
+    sourceSavedAt: row.sourceSavedAt ?? null,
+    isActive: 1,
+  });
+  const created = await db.select().from(propertyLandingPage).where(eq(propertyLandingPage.id, Number(result.insertId))).limit(1);
+  return created[0]!;
+}
+
+export async function listPropertyLandingPages() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .select({
+      ...getTableColumns(propertyLandingPage),
+      loanOfficerName: loanOfficer.name,
+      loanOfficerSlug: loanOfficer.slug,
+      agentName: agentProfile.name,
+      agentSlug: agentProfile.slug,
+    })
+    .from(propertyLandingPage)
+    .leftJoin(loanOfficer, eq(propertyLandingPage.loanOfficerId, loanOfficer.id))
+    .leftJoin(agentProfile, eq(propertyLandingPage.agentId, agentProfile.id))
+    .orderBy(desc(propertyLandingPage.updatedAt));
+}
+
+export async function updatePropertyLandingPagePair(input: { id: number; loanOfficerId: number; agentId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(propertyLandingPage).set({ loanOfficerId: input.loanOfficerId, agentId: input.agentId }).where(eq(propertyLandingPage.id, input.id));
+  const rows = await db.select().from(propertyLandingPage).where(eq(propertyLandingPage.id, input.id)).limit(1);
+  if (!rows[0]) throw new Error("Property page not found.");
+  return rows[0];
+}
+
+export async function getPropertyLandingPageBySlug(slug: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db
+    .select({ page: propertyLandingPage, loanOfficer, agent: agentProfile })
+    .from(propertyLandingPage)
+    .leftJoin(loanOfficer, eq(propertyLandingPage.loanOfficerId, loanOfficer.id))
+    .leftJoin(agentProfile, eq(propertyLandingPage.agentId, agentProfile.id))
+    .where(and(eq(propertyLandingPage.slug, slug), eq(propertyLandingPage.isActive, 1)))
+    .limit(1);
+  return rows[0];
+}
+
+export async function listPropertyPageAgentEmailTemplates() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(propertyPageAgentEmailTemplate).orderBy(asc(propertyPageAgentEmailTemplate.name));
+}
+
+export async function createPropertyPageAgentEmailTemplate(input: { name: string; bodyTemplate: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(propertyPageAgentEmailTemplate).values(input);
+  const rows = await db.select().from(propertyPageAgentEmailTemplate).where(eq(propertyPageAgentEmailTemplate.id, Number(result.insertId))).limit(1);
+  return rows[0]!;
 }
 
 /**

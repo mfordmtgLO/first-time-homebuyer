@@ -26,11 +26,18 @@ vi.mock("./db", async (importOriginal) => {
       emailResendCount: index === 1 ? 2 : 0,
       templateName: input.templateName,
     }))),
+    listPropertyLandingPages: vi.fn(async () => []),
+    createPropertyLandingPage: vi.fn(async (input: { geosphereListingId: number; loanOfficerId: number; agentId: number }) => ({ id: 71, slug: "1024-s-5th-st", address: "1024 S 5th St, Coos Bay, OR 97420", ...input })),
+    updatePropertyLandingPagePair: vi.fn(async (input: { id: number; loanOfficerId: number; agentId: number }) => input),
+    listPropertyPageAgentEmailTemplates: vi.fn(async () => []),
+    createPropertyPageAgentEmailTemplate: vi.fn(async (input: { name: string; bodyTemplate: string }) => ({ id: 81, ...input, createdAt: new Date(), updatedAt: new Date() })),
+    getLoanOfficerById: vi.fn(async () => ({ id: 12, visible: 1 })),
+    getAgentById: vi.fn(async () => ({ id: 7, visible: 1 })),
   };
 });
 
 import { appRouter } from "./routers";
-import { createListingAgentEmailTemplate, createPropertyEmailTemplate, listListingAgentEmailTemplates, listPropertyEmailTemplates, recordGeoSphereListingEmailActivity } from "./db";
+import { createListingAgentEmailTemplate, createPropertyEmailTemplate, listListingAgentEmailTemplates, listPropertyEmailTemplates, recordGeoSphereListingEmailActivity, createPropertyLandingPage, updatePropertyLandingPagePair, createPropertyPageAgentEmailTemplate } from "./db";
 import type { TrpcContext } from "./_core/context";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
@@ -59,6 +66,9 @@ const createTemplateMock = vi.mocked(createListingAgentEmailTemplate);
 const listPropertyTemplatesMock = vi.mocked(listPropertyEmailTemplates);
 const createPropertyTemplateMock = vi.mocked(createPropertyEmailTemplate);
 const recordEmailActivityMock = vi.mocked(recordGeoSphereListingEmailActivity);
+const createPropertyPageMock = vi.mocked(createPropertyLandingPage);
+const updatePropertyPagePairMock = vi.mocked(updatePropertyLandingPagePair);
+const createPropertyPageTemplateMock = vi.mocked(createPropertyPageAgentEmailTemplate);
 
 describe("geosphere listing-agent email templates", () => {
   beforeEach(() => {
@@ -129,5 +139,22 @@ describe("geosphere listing-agent email templates", () => {
     await expect(appRouter.createCaller(createContext("user")).geosphere.listPropertyEmailTemplates()).rejects.toMatchObject({
       code: "FORBIDDEN",
     });
+  });
+
+  it("creates a saved property page, allows a custom available LO-agent pairing, and saves reusable page-agent copy", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    const page = await caller.propertyPages.createFromListing({ geosphereListingId: 44, loanOfficerId: 12, agentId: 7 });
+    const paired = await caller.propertyPages.updatePair({ id: 71, loanOfficerId: 12, agentId: 7 });
+    const template = await caller.propertyPages.saveAgentEmailTemplate({
+      name: "Co-branded property launch",
+      bodyTemplate: "I created a first-time buyer property page and would welcome a conversation about shared buyer attraction.",
+    });
+
+    expect(createPropertyPageMock).toHaveBeenCalledWith({ geosphereListingId: 44, loanOfficerId: 12, agentId: 7 });
+    expect(page).toMatchObject({ id: 71, slug: "1024-s-5th-st" });
+    expect(updatePropertyPagePairMock).toHaveBeenCalledWith({ id: 71, loanOfficerId: 12, agentId: 7 });
+    expect(paired).toEqual({ id: 71, loanOfficerId: 12, agentId: 7 });
+    expect(createPropertyPageTemplateMock).toHaveBeenCalledWith(expect.objectContaining({ name: "Co-branded property launch" }));
+    expect(template).toMatchObject({ id: 81, name: "Co-branded property launch" });
   });
 });

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AIChatBox, type Message } from "@/components/AIChatBox";
-import { useAgentSlug, useLoanOfficerSlug } from "@/contexts/AgentPageContext";
+import { useAgentSlug, useLoanOfficerSlug, usePropertyPageSlug } from "@/contexts/AgentPageContext";
+import { useScenario } from "@/contexts/ScenarioContext";
 import { trpc } from "@/lib/trpc";
 import { CALENDLY_BOOKING_URL } from "@/lib/booking";
 import { getNextQuestionFocusTarget } from "@shared/chatFocus";
@@ -41,6 +42,8 @@ type Agent = { name: string; companyName: string; phone: string; email: string }
 export default function MortgageChatWidget() {
   const agentSlug = useAgentSlug();
   const loanOfficerSlug = useLoanOfficerSlug();
+  const propertyPageSlug = usePropertyPageSlug();
+  const { scenario, cowScenario } = useScenario();
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -116,8 +119,15 @@ export default function MortgageChatWidget() {
     } catch {
       // Storage is optional; a fresh session is safe.
     }
-    start.mutate({ sessionId: savedSession, agentSlug: agentSlug ?? undefined, loanOfficerSlug: loanOfficerSlug ?? undefined, campaignAttribution: getCampaignAttribution() });
-  }, [open, agentSlug, loanOfficerSlug, start]);
+    start.mutate({
+      sessionId: savedSession,
+      agentSlug: agentSlug ?? undefined,
+      loanOfficerSlug: loanOfficerSlug ?? undefined,
+      propertyPageSlug: propertyPageSlug ?? undefined,
+      scenario: scenario || cowScenario ? { buydown: scenario ?? undefined, costOfWaiting: cowScenario ?? undefined } : undefined,
+      campaignAttribution: getCampaignAttribution(),
+    });
+  }, [open, agentSlug, loanOfficerSlug, propertyPageSlug, start]);
 
   useEffect(() => {
     const config = currentStep ? MONEY_SLIDER_CONFIG[currentStep] : undefined;
@@ -147,7 +157,13 @@ export default function MortgageChatWidget() {
     setGuidedAmount(0);
     setBuyerAgentEligible(false);
     setBuyerAgentRequested(false);
-    start.mutate({ agentSlug: agentSlug ?? undefined, loanOfficerSlug: loanOfficerSlug ?? undefined, campaignAttribution: getCampaignAttribution() });
+    start.mutate({
+      agentSlug: agentSlug ?? undefined,
+      loanOfficerSlug: loanOfficerSlug ?? undefined,
+      propertyPageSlug: propertyPageSlug ?? undefined,
+      scenario: scenario || cowScenario ? { buydown: scenario ?? undefined, costOfWaiting: cowScenario ?? undefined } : undefined,
+      campaignAttribution: getCampaignAttribution(),
+    });
   };
 
   const quickReplies = currentStep ? QUICK_REPLIES[currentStep] ?? [] : [];

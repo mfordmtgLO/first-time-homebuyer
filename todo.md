@@ -300,3 +300,8 @@
 - [x] Create a consolidated PDF compliance review packet covering the mission, approved ad assets, disclosures, website/chat funnel, dashboard reporting, lead/agent communication workflows, and approval gates
 - [x] Add authoritative calculator-methodology sources and non-guarantee language for the cost-of-waiting and 2-1 buydown educational tools to the compliance packet
 - [x] Add government-data provenance and non-live-listing disclosures for the GeoSphere LMI plus USDA RD property-screening workflow to the compliance packet
+- [x] Audit saved GeoSphere listing fields, co-brand routes, property imagery, lead capture, and existing email-template workflows for single-property page support
+- [x] Add persistent single-property page snapshots with LO-agent pairing assignments and reusable property-page listing-agent email templates
+- [x] Build public single-property co-branded pages from saved listing snapshots with guarded property details, LMI/USDA context, Roadmap, chat, and buyer-agent lead capture
+- [x] Add dashboard controls to create, save, pair, share, and draft listing-agent outreach for single-property pages
+- [x] Route property-page Roadmap and chat leads through existing dashboard sections with address, LO-agent co-brand, and capture-date attribution while retaining calculator scenarios for agent drafts

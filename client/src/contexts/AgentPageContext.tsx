@@ -7,20 +7,23 @@ import { createContext, useContext, type ReactNode } from "react";
 type CoBrandContextValue = {
   agentSlug: string | null;
   loanOfficerSlug: string | null;
+  propertyPageSlug: string | null;
 };
 
-const AgentPageContext = createContext<CoBrandContextValue>({ agentSlug: null, loanOfficerSlug: null });
+const AgentPageContext = createContext<CoBrandContextValue>({ agentSlug: null, loanOfficerSlug: null, propertyPageSlug: null });
 
 export function AgentPageProvider({
   agentSlug,
   loanOfficerSlug = null,
+  propertyPageSlug = null,
   children,
 }: {
   agentSlug: string | null;
   loanOfficerSlug?: string | null;
+  propertyPageSlug?: string | null;
   children: ReactNode;
 }) {
-  return <AgentPageContext.Provider value={{ agentSlug, loanOfficerSlug }}>{children}</AgentPageContext.Provider>;
+  return <AgentPageContext.Provider value={{ agentSlug, loanOfficerSlug, propertyPageSlug }}>{children}</AgentPageContext.Provider>;
 }
 
 export function useAgentSlug() {
@@ -29,4 +32,8 @@ export function useAgentSlug() {
 
 export function useLoanOfficerSlug() {
   return useContext(AgentPageContext).loanOfficerSlug;
+}
+
+export function usePropertyPageSlug() {
+  return useContext(AgentPageContext).propertyPageSlug;
 }

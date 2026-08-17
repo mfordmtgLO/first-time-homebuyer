@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useReveal } from "@/hooks/useReveal";
 import { useScenario } from "@/contexts/ScenarioContext";
-import { useAgentSlug, useLoanOfficerSlug } from "@/contexts/AgentPageContext";
+import { useAgentSlug, useLoanOfficerSlug, usePropertyPageSlug } from "@/contexts/AgentPageContext";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Download, CheckCircle2, Loader2, Calculator, Hourglass, X } from "lucide-react";
@@ -26,6 +26,7 @@ export default function LeadMagnet() {
   const { scenario, attached, setAttached, cowScenario, cowAttached, setCowAttached } = useScenario();
   const agentSlug = useAgentSlug();
   const loanOfficerSlug = useLoanOfficerSlug();
+  const propertyPageSlug = usePropertyPageSlug();
   const [submitted, setSubmitted] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
@@ -68,6 +69,7 @@ export default function LeadMagnet() {
     if (includeCow) sourceTags.push("waiting");
     if (agentSlug) sourceTags.push(`agent:${agentSlug}`.slice(0, 24));
     if (loanOfficerSlug) sourceTags.push(`lo:${loanOfficerSlug}`.slice(0, 24));
+    if (propertyPageSlug) sourceTags.push("property-page");
     submitLead.mutate({
       firstName: firstName.trim(),
       email: email.trim(),
@@ -79,6 +81,7 @@ export default function LeadMagnet() {
       costOfWaiting: includeCow,
       agentSlug: agentSlug ?? undefined,
       loanOfficerSlug: loanOfficerSlug ?? undefined,
+      propertyPageSlug: propertyPageSlug ?? undefined,
     });
   };
 
