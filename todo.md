@@ -292,3 +292,5 @@
 - [x] Review the supplied Oregon census-tract workbook and document the LMI plus USDA RD eligible-area service boundary for campaign approval
 - [x] Create Facebook and Google approval mockups that show the supplied Cornerstone disclosure block and Equal Housing Opportunity logo treatment
 - [x] Record the proposed $450, 60-day first-campaign pacing and Roadmap/chat conversion targets in the compliance-pending launch package
+- [x] Create a compliance-pending Meta and Google account-owner ad-spend setup guide with $7.50 daily pacing and direct billing control
+- [x] Define completed mortgage-chat intake as the proposed primary conversion and Roadmap request as the secondary campaign event
