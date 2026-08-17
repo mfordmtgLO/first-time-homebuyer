@@ -317,3 +317,5 @@
 - [x] Design MLS import attribution, refresh, withdrawal, and page-retirement safeguards for compliance review
 - [x] Validate enterprise listing-syndication provider terms for MLS-number property pages, photos, remarks, attribution, and downstream sharing
 - [x] Document unresolved RESPA, fair-lending, data-license, and corporate-compliance decisions for zero-cost lender-realtor co-branding and lead-routing behavior
+- [x] Research RMLS and WVMLS authorized data-access, licensing, media, public-remarks, attribution, and status/withdrawal requirements for single-property sites
+- [x] Design a two-MLS single-property import architecture and partner onboarding sequence without public-web scraping

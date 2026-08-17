@@ -46,6 +46,29 @@ The platform can support a lender-paid, zero-dollar single-property site only af
 
 The clearest implementation route is to obtain the vendor’s written product/data-use confirmation for the intended lender-branded single-property pages, have corporate compliance approve the zero-cost agent-display and routing model, then add an optional provider adapter. That adapter will query by MLS number and MLS source, save only provider-approved fields, attach the supplied attribution and expiration metadata, and automatically retire a page when the provider reports a withdrawal, restriction, or changed display permission.
 
+## RMLS and WVMLS two-source implementation assessment
+
+RMLS has a documented path that fits this project: RMLS says it licenses data for CRM products, digital listing marketing materials, IDX, VOW, and other products. Its documented onboarding requires a partnership with an RMLS subscriber, an agreement signed by the subscriber, the firm’s Participant Broker, and the product company, then a product review before full API access. Its RESO Web API exposes Property, Member, Office, Media, and Deleted resources; it supports media expansion and modification-timestamp queries. This provides an implementable, authorized route for the partner’s RMLS listings once the LCLA, data-feed type, product review, and required display terms are approved.
+
+WVMLS confirms that it is the local primary listing source for Marion, Polk, Linn, and Benton counties, but its public site does not publish a comparable developer/API licensing workflow. The partner should request written confirmation from WVMLS for the authorized data-delivery method, public-display permissions, media/remarks rights, broker/agent attribution format, permitted status display, required refresh cadence, and withdrawal handling before any integration is built. The public WVMLS website alone is not an integration authorization.
+
+### Two-MLS adapter design
+
+| Control | RMLS adapter | WVMLS adapter | Shared property-page behavior |
+|---|---|---|---|
+| Authorized lookup | RESO Property query scoped by the approved RMLS feed and listing key/MLS number. | Provider-approved API, IDX vendor feed, or export only after written permission. | Select source MLS before import; never query public search pages. |
+| Photos and remarks | Request only fields/media made available by the approved RMLS license and product review. | Store only explicitly approved media and public-remarks fields. | Preserve provider attribution, field provenance, media rights, and snapshot time. |
+| Status refresh | Use approved modification/status fields and media timestamps. | Use the provider-approved change feed or refresh interval. | Update or retire based on source status and display rights; never claim a live feed unless the active adapter is licensed. |
+| Public display | Follow RMLS product-review requirements and approved feed rules. | Follow written WVMLS display and attribution rules. | Display the source/attribution required by the selected MLS; retain current snapshot disclaimer until enrichment is authorized. |
+
+### Partner onboarding checklist
+
+1. The Realtor partner identifies their RMLS and/or WVMLS membership, Participant Broker, brokerage, and which MLS feed or IDX vendor they are authorized to sponsor.
+2. The partner requests written approval for this lender-branded single-property product, including the exact permitted use of photos, public remarks, agent/broker fields, sharing, lead capture, and update/withdrawal processing.
+3. The partner, Participant Broker, Cornerstone/corporate compliance, and provider execute the applicable license or vendor agreement.
+4. The data provider issues non-production credentials; the project builds against the permitted metadata and submits the product for MLS/vendor review.
+5. Only after written approval do production credentials activate the adapter; the dashboard records source MLS, license status, attribution, source listing key, last refresh, and page retirement reason.
+
 ## Sources
 
 1. RentCast Property Listings: https://developers.rentcast.io/reference/property-listings
@@ -56,3 +79,7 @@ The clearest implementation route is to obtain the vendor’s written product/da
 6. Total Expert, Co-Marketing & Referral Relationships: https://www.totalexpert.com/blog/fostering-co-marketing-referral-relationships
 7. ICE Mortgage Technology Data: https://mortgagetech.ice.com/solutions/data
 8. Bridge Data Output API Documentation: https://bridgedataoutput.com/docs/platform/API/bridge
+9. RMLS Web API Documentation: https://rmlscentral.com/reso-api-documentation/
+10. Willamette Valley MLS: https://www.wvmls.com/
+11. RESO Web API: https://www.reso.org/reso-web-api/
+12. NAR Handbook on Multiple Listing Policy: https://www.nar.realtor/handbook-on-multiple-listing-policy/c-model-rules-and-regulations-for-an-mls-operated-as-a-committee-of-realtors
