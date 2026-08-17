@@ -313,3 +313,5 @@
 - [x] Add property-page activity timeline filters for page views, calculator usage, lead milestones, sharing, and print/PDF export
 - [x] Fix the React hook-order runtime error on public single-property page URLs and verify the route in production
 - [x] Add qualified OHCS Flex Lending and USDA RD low- or no-down-payment financing context to AI property-summary drafts and single-property listing-agent email drafts
+- [x] Assess authorized MLS-number import options for permitted listing photos and REALTOR® remarks on single-property pages
+- [x] Design MLS import attribution, refresh, withdrawal, and page-retirement safeguards for compliance review
