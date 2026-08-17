@@ -30,6 +30,8 @@ vi.mock("./db", async (importOriginal) => {
     getPropertyLandingPageBySlug: vi.fn(async () => ({ page: { id: 71, slug: "1024-s-5th-st", listingSnapshot: "{}", isActive: 1 }, loanOfficer: null, agent: null })),
     createPropertyLandingPage: vi.fn(async (input: { geosphereListingId: number; loanOfficerId: number; agentId: number }) => ({ id: 71, slug: "1024-s-5th-st", address: "1024 S 5th St, Coos Bay, OR 97420", ...input })),
     updatePropertyLandingPagePair: vi.fn(async (input: { id: number; loanOfficerId: number; agentId: number }) => input),
+    updatePropertyLandingPageStatus: vi.fn(async (input: { id: number; isActive: boolean }) => ({ ...input, updatedAt: new Date() })),
+    refreshPropertyLandingPage: vi.fn(async (id: number) => ({ id, address: "1024 S 5th St, Coos Bay, OR 97420", sourceSavedAt: new Date() })),
     listPropertyPageAgentEmailTemplates: vi.fn(async () => []),
     createPropertyPageAgentEmailTemplate: vi.fn(async (input: { name: string; bodyTemplate: string }) => ({ id: 81, ...input, createdAt: new Date(), updatedAt: new Date() })),
     recordPropertyPageActivity: vi.fn(async (input: { propertyLandingPageId: number; eventType: string; detail?: string | null }) => ({ id: 201, ...input, createdAt: new Date() })),
@@ -41,7 +43,7 @@ vi.mock("./db", async (importOriginal) => {
 });
 
 import { appRouter } from "./routers";
-import { createListingAgentEmailTemplate, createPropertyEmailTemplate, listListingAgentEmailTemplates, listPropertyEmailTemplates, recordGeoSphereListingEmailActivity, createPropertyLandingPage, updatePropertyLandingPagePair, createPropertyPageAgentEmailTemplate, recordPropertyPageActivity, listPropertyPageActivity, updatePropertyLandingPageAiSummary } from "./db";
+import { createListingAgentEmailTemplate, createPropertyEmailTemplate, listListingAgentEmailTemplates, listPropertyEmailTemplates, recordGeoSphereListingEmailActivity, createPropertyLandingPage, updatePropertyLandingPagePair, updatePropertyLandingPageStatus, refreshPropertyLandingPage, createPropertyPageAgentEmailTemplate, recordPropertyPageActivity, listPropertyPageActivity, updatePropertyLandingPageAiSummary } from "./db";
 import type { TrpcContext } from "./_core/context";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
@@ -72,6 +74,8 @@ const createPropertyTemplateMock = vi.mocked(createPropertyEmailTemplate);
 const recordEmailActivityMock = vi.mocked(recordGeoSphereListingEmailActivity);
 const createPropertyPageMock = vi.mocked(createPropertyLandingPage);
 const updatePropertyPagePairMock = vi.mocked(updatePropertyLandingPagePair);
+const updatePropertyPageStatusMock = vi.mocked(updatePropertyLandingPageStatus);
+const refreshPropertyPageMock = vi.mocked(refreshPropertyLandingPage);
 const createPropertyPageTemplateMock = vi.mocked(createPropertyPageAgentEmailTemplate);
 const recordPropertyPageActivityMock = vi.mocked(recordPropertyPageActivity);
 const listPropertyPageActivityMock = vi.mocked(listPropertyPageActivity);
@@ -181,5 +185,21 @@ describe("geosphere listing-agent email templates", () => {
     expect(updatePropertyPageAiSummaryMock).toHaveBeenCalledWith({ id: 71, aiSummary: "A concise reviewed snapshot-based property highlight." });
     expect(saved).toMatchObject({ id: 71, aiSummary: "A concise reviewed snapshot-based property highlight." });
     await expect(appRouter.createCaller(createContext("user")).propertyPages.saveAiSummary({ id: 71, summary: "Not allowed" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("retires or restores a property page and refreshes only from its saved snapshot", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    const retired = await caller.propertyPages.setActive({ id: 71, isActive: false });
+    const refreshed = await caller.propertyPages.refreshSnapshot({ id: 71 });
+
+    expect(updatePropertyPageStatusMock).toHaveBeenCalledWith({ id: 71, isActive: false });
+    expect(retired).toMatchObject({ id: 71, isActive: false });
+    expect(refreshPropertyPageMock).toHaveBeenCalledWith(71);
+    expect(refreshed).toMatchObject({ id: 71, address: "1024 S 5th St, Coos Bay, OR 97420" });
+    await expect(appRouter.createCaller(createContext("user")).propertyPages.setActive({ id: 71, isActive: true })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("restricts AI-summary tone choices before a model is invoked", async () => {
+    await expect(appRouter.createCaller(createContext("admin")).propertyPages.generateAiSummary({ id: 71, tone: "casual" as never })).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 });

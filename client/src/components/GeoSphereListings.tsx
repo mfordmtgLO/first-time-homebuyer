@@ -72,13 +72,22 @@ const PROPERTY_ACTIVITY_LABELS: Record<string, string> = {
 
 function PropertyPageTimeline({ propertyLandingPageId }: { propertyLandingPageId: number }) {
   const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState<"all" | "page" | "calculator" | "lead" | "distribution">("all");
   const activityQuery = trpc.propertyPages.activity.useQuery({ propertyLandingPageId }, { enabled: open });
+  const activity = (activityQuery.data ?? []).filter((event) => {
+    if (filter === "all") return true;
+    if (filter === "page") return event.eventType === "page_view";
+    if (filter === "calculator") return event.eventType === "buydown_calculator" || event.eventType === "cost_of_waiting_calculator";
+    if (filter === "lead") return ["roadmap_request", "chat_started", "chat_completed", "homes_list_request", "buyer_agent_request"].includes(event.eventType);
+    return event.eventType === "social_share" || event.eventType === "print_export";
+  });
   return <div className="mt-4 border-t border-border pt-4">
     <button type="button" className="flex w-full items-center justify-between text-left text-sm font-medium text-primary" onClick={() => setOpen((value) => !value)}>
       <span className="flex items-center gap-1.5"><Activity className="h-4 w-4" />Activity timeline</span><span>{open ? "Hide" : "Show"}</span>
     </button>
     {open && <div className="mt-3 space-y-2 rounded-lg bg-muted/50 p-3">
-      {activityQuery.isLoading ? <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" />Loading activity…</div> : activityQuery.data?.length ? activityQuery.data.map((event) => <div key={event.id} className="flex items-start justify-between gap-3 text-xs"><span className="font-medium text-foreground">{PROPERTY_ACTIVITY_LABELS[event.eventType] ?? event.eventType}{event.detail ? ` · ${event.detail}` : ""}</span><span className="shrink-0 text-muted-foreground">{new Date(event.createdAt).toLocaleString()}</span></div>) : <p className="text-xs text-muted-foreground">No activity has been recorded yet.</p>}
+      <Select value={filter} onValueChange={(value) => setFilter(value as typeof filter)}><SelectTrigger className="h-8 bg-background text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All activity</SelectItem><SelectItem value="page">Page visits</SelectItem><SelectItem value="calculator">Calculator usage</SelectItem><SelectItem value="lead">Lead milestones</SelectItem><SelectItem value="distribution">Sharing & PDF export</SelectItem></SelectContent></Select>
+      {activityQuery.isLoading ? <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" />Loading activity…</div> : activity.length ? activity.map((event) => <div key={event.id} className="flex items-start justify-between gap-3 text-xs"><span className="font-medium text-foreground">{PROPERTY_ACTIVITY_LABELS[event.eventType] ?? event.eventType}{event.detail ? ` · ${event.detail}` : ""}</span><span className="shrink-0 text-muted-foreground">{new Date(event.createdAt).toLocaleString()}</span></div>) : <p className="text-xs text-muted-foreground">No matching activity has been recorded yet.</p>}
     </div>}
   </div>;
 }
@@ -86,6 +95,7 @@ function PropertyPageTimeline({ propertyLandingPageId }: { propertyLandingPageId
 function PropertyPageAiSummaryEditor({ page }: { page: { id: number; aiSummary: string | null } }) {
   const utils = trpc.useUtils();
   const [draft, setDraft] = useState(page.aiSummary ?? "");
+  const [tone, setTone] = useState<"professional" | "exciting">("professional");
   const generate = trpc.propertyPages.generateAiSummary.useMutation({
     onSuccess: (result) => { setDraft(result.summary); toast.success("AI draft generated. Review it before saving it to the public page."); },
     onError: (error) => toast.error(error.message || "The AI draft could not be generated."),
@@ -95,7 +105,7 @@ function PropertyPageAiSummaryEditor({ page }: { page: { id: number; aiSummary: 
     onError: (error) => toast.error(error.message || "The property highlights could not be saved."),
   });
   return <div className="mt-4 border-t border-border pt-4">
-    <div className="flex flex-wrap items-center justify-between gap-2"><p className="flex items-center gap-1.5 text-sm font-medium"><Sparkles className="h-4 w-4 text-primary" />AI property highlights</p><Button size="sm" variant="outline" disabled={generate.isPending} onClick={() => generate.mutate({ id: page.id })}>{generate.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1.5 h-3.5 w-3.5" />}Generate draft</Button></div>
+    <div className="flex flex-wrap items-center justify-between gap-2"><p className="flex items-center gap-1.5 text-sm font-medium"><Sparkles className="h-4 w-4 text-primary" />AI property highlights</p><div className="flex items-center gap-2"><Select value={tone} onValueChange={(value) => setTone(value as typeof tone)}><SelectTrigger className="h-8 w-28 bg-background text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="professional">Professional</SelectItem><SelectItem value="exciting">Exciting</SelectItem></SelectContent></Select><Button size="sm" variant="outline" disabled={generate.isPending} onClick={() => generate.mutate({ id: page.id, tone })}>{generate.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1.5 h-3.5 w-3.5" />}Generate draft</Button></div></div>
     <p className="mt-1 text-xs text-muted-foreground">Generated only from the saved imported snapshot. Review and edit before publishing to the public property page.</p>
     <Textarea className="mt-3 min-h-24 text-sm" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Generate a snapshot-based draft, then review it here." />
     <div className="mt-2 flex gap-2"><Button size="sm" disabled={save.isPending} onClick={() => save.mutate({ id: page.id, summary: draft.trim() || null })}>Save reviewed summary</Button>{page.aiSummary && <Button size="sm" variant="ghost" disabled={save.isPending} onClick={() => { setDraft(""); save.mutate({ id: page.id, summary: null }); }}>Remove from page</Button>}</div>
@@ -334,6 +344,20 @@ export default function GeoSphereListings() {
       toast.success("Property-page co-brand pairing saved.");
     },
     onError: (error) => toast.error(error.message || "The property-page pairing could not be saved."),
+  });
+  const setPropertyPageActive = trpc.propertyPages.setActive.useMutation({
+    onSuccess: async (page) => {
+      await utils.propertyPages.list.invalidate();
+      toast.success(page.isActive === 1 ? "Property page restored." : "Property page retired. Its public URL is now unavailable.");
+    },
+    onError: (error) => toast.error(error.message || "The property-page status could not be updated."),
+  });
+  const refreshPropertyPageSnapshot = trpc.propertyPages.refreshSnapshot.useMutation({
+    onSuccess: async (page) => {
+      await utils.propertyPages.list.invalidate();
+      toast.success(`Property page refreshed from the saved snapshot: ${page.address}`);
+    },
+    onError: (error) => toast.error(error.message || "The saved property snapshot could not be refreshed."),
   });
   const savePropertyPageTemplate = trpc.propertyPages.saveAgentEmailTemplate.useMutation({
     onSuccess: async (template) => {
@@ -934,14 +958,14 @@ export default function GeoSphereListings() {
                   const url = publicSiteUrl(`/property/${page.slug}`);
                   return <div key={page.id} className="rounded-xl border border-border bg-card p-4 shadow-sm">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0"><p className="font-semibold text-foreground">{page.address}</p><p className="mt-1 text-xs text-muted-foreground">Saved snapshot {page.sourceSavedAt ? new Date(page.sourceSavedAt).toLocaleString() : "date unavailable"} · {snapshot?.isLmi && snapshot?.isUsda ? "LMI + USDA RD screen" : snapshot?.isLmi ? "LMI screen" : snapshot?.isUsda ? "USDA RD screen" : "general financing review"}</p></div>
+                      <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-semibold text-foreground">{page.address}</p><span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${page.isActive === 1 ? "bg-emerald-100 text-emerald-800" : "bg-muted text-muted-foreground"}`}>{page.isActive === 1 ? "Public" : "Retired"}</span></div><p className="mt-1 text-xs text-muted-foreground">Saved snapshot {page.sourceSavedAt ? new Date(page.sourceSavedAt).toLocaleString() : "date unavailable"} · {snapshot?.isLmi && snapshot?.isUsda ? "LMI + USDA RD screen" : snapshot?.isLmi ? "LMI screen" : snapshot?.isUsda ? "USDA RD screen" : "general financing review"}</p></div>
                       <div className="flex shrink-0 gap-2"><Button variant="outline" size="sm" asChild><a href={url} target="_blank" rel="noreferrer"><ExternalLink className="mr-1.5 h-3.5 w-3.5" /> View</a></Button><Button variant="outline" size="sm" onClick={async () => { try { await navigator.clipboard.writeText(url); toast.success("Property-page URL copied."); } catch { toast.error("Copy failed; select the URL from View instead."); } }}><Copy className="mr-1.5 h-3.5 w-3.5" /> Copy</Button></div>
                     </div>
                     <div className="mt-4 grid gap-3 sm:grid-cols-2">
                       <label className="text-xs font-semibold text-muted-foreground">Loan officer<Select value={pairDraft.loanOfficerId} onValueChange={(value) => setPropertyPagePairDrafts((current) => ({ ...current, [page.id]: { ...pairDraft, loanOfficerId: value } }))}><SelectTrigger className="mt-1.5 h-9 bg-background text-xs"><SelectValue placeholder="Choose loan officer" /></SelectTrigger><SelectContent>{officers.map((officer) => <SelectItem key={officer.id} value={String(officer.id)}>{officer.name}</SelectItem>)}</SelectContent></Select></label>
                       <label className="text-xs font-semibold text-muted-foreground">Co-branded agent<Select value={pairDraft.agentId} onValueChange={(value) => setPropertyPagePairDrafts((current) => ({ ...current, [page.id]: { ...pairDraft, agentId: value } }))}><SelectTrigger className="mt-1.5 h-9 bg-background text-xs"><SelectValue placeholder="Choose agent" /></SelectTrigger><SelectContent>{agents.map((agent) => <SelectItem key={agent.id} value={String(agent.id)}>{agent.name}</SelectItem>)}</SelectContent></Select></label>
                     </div>
-                    <div className="mt-4 flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => savePropertyPagePair(page.id, page)} disabled={updatePropertyPagePair.isPending}><Link2 className="mr-1.5 h-3.5 w-3.5" /> Save pairing</Button><Button size="sm" onClick={() => openPropertyPageAgentDraft(page)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Agent email draft</Button></div>
+                    <div className="mt-4 flex flex-wrap items-center gap-2"><Button size="sm" variant="outline" onClick={() => savePropertyPagePair(page.id, page)} disabled={updatePropertyPagePair.isPending}><Link2 className="mr-1.5 h-3.5 w-3.5" /> Save pairing</Button><Button size="sm" onClick={() => openPropertyPageAgentDraft(page)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Agent email draft</Button><Button size="sm" variant="outline" disabled={refreshPropertyPageSnapshot.isPending} onClick={() => refreshPropertyPageSnapshot.mutate({ id: page.id })}><RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Refresh saved snapshot</Button><label className="ml-auto flex items-center gap-2 text-xs font-medium text-muted-foreground">{page.isActive === 1 ? "Public" : "Retired"}<input type="checkbox" role="switch" aria-label={`Make ${page.address} ${page.isActive === 1 ? "retired" : "public"}`} checked={page.isActive === 1} disabled={setPropertyPageActive.isPending} onChange={(event) => setPropertyPageActive.mutate({ id: page.id, isActive: event.target.checked })} className="h-4 w-8 cursor-pointer accent-primary" /></label></div>
                     <PropertyPageAiSummaryEditor page={page} />
                     <PropertyPageTimeline propertyLandingPageId={page.id} />
                   </div>;

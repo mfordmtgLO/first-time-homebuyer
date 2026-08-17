@@ -1013,6 +1013,30 @@ export async function updatePropertyLandingPagePair(input: { id: number; loanOff
   return rows[0];
 }
 
+export async function updatePropertyLandingPageStatus(input: { id: number; isActive: boolean }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(propertyLandingPage).set({ isActive: input.isActive ? 1 : 0 }).where(eq(propertyLandingPage.id, input.id));
+  const rows = await db.select().from(propertyLandingPage).where(eq(propertyLandingPage.id, input.id)).limit(1);
+  if (!rows[0]) throw new Error("Property page not found.");
+  return rows[0];
+}
+
+/** Rebuilds the public snapshot from the latest saved GeoSphere record; it never calls a live listing provider. */
+export async function refreshPropertyLandingPage(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db.select().from(propertyLandingPage).where(eq(propertyLandingPage.id, id)).limit(1);
+  const page = rows[0];
+  if (!page) throw new Error("Property page not found.");
+  if (!page.loanOfficerId || !page.agentId) throw new Error("Assign a loan officer and co-branded agent before refreshing this property page.");
+  return createPropertyLandingPage({
+    geosphereListingId: page.geosphereListingId,
+    loanOfficerId: page.loanOfficerId,
+    agentId: page.agentId,
+  });
+}
+
 export async function getPropertyLandingPageBySlug(slug: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

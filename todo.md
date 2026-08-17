@@ -308,3 +308,6 @@
 - [x] Add persistent single-property page interaction events and a dashboard activity timeline for visits, calculators, Roadmap, chat, homes-list, and buyer-agent milestones
 - [x] Add social media sharing controls and a printable property snapshot PDF export to public single-property pages
 - [x] Add a review-gated AI property-description summary generator based only on saved imported listing snapshots
+- [x] Add dashboard controls to retire or refresh single-property pages from saved GeoSphere listing snapshots
+- [x] Add Professional and Exciting tone options to review-gated AI property-summary generation
+- [x] Add property-page activity timeline filters for page views, calculator usage, lead milestones, sharing, and print/PDF export

@@ -49,6 +49,7 @@ import {
   recordChatIntakeResendAttempt,
   recordGeoSphereListingEmailActivity,
   recordPropertyPageActivity,
+  refreshPropertyLandingPage,
   listPropertyPageActivity,
   insertLead,
   listAgents,
@@ -70,6 +71,7 @@ import {
   updateLoanOfficer,
   updatePropertyLandingPageAiSummary,
   updatePropertyLandingPagePair,
+  updatePropertyLandingPageStatus,
 } from "./db";
 import { syncGeoSphereSavedListings } from "./geosphere";
 import { createHeartbeatJob, updateHeartbeatJob } from "./_core/heartbeat";
@@ -1265,9 +1267,22 @@ export const appRouter = router({
         }
         return updatePropertyLandingPagePair(input);
       }),
+    setActive: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), isActive: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return updatePropertyLandingPageStatus(input);
+      }),
+    /** Refreshes only from the existing saved GeoSphere record; it never invokes a live listing provider. */
+    refreshSnapshot: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return refreshPropertyLandingPage(input.id);
+      }),
     /** Creates a factual draft from the saved snapshot only; dashboard review is required before it appears publicly. */
     generateAiSummary: protectedProcedure
-      .input(z.object({ id: z.number().int().positive() }))
+      .input(z.object({ id: z.number().int().positive(), tone: z.enum(["professional", "exciting"]).default("professional") }))
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
         const page = await getPropertyLandingPageById(input.id);
@@ -1295,7 +1310,7 @@ export const appRouter = router({
         const response = await invokeLLM({
           model,
           messages: [
-            { role: "system", content: "Write a 55-90 word engaging but strictly factual property-description draft. Use only the supplied saved snapshot. Do not invent facts. Do not say the property is available, current, eligible, approved, guaranteed, live, or perfect. Do not mention loans, rates, financing, schools, neighborhoods, investment returns, or protected audiences. Output JSON only." },
+            { role: "system", content: `Write a 55-90 word ${input.tone === "exciting" ? "warm and energetic" : "professional and measured"} but strictly factual property-description draft. Use only the supplied saved snapshot. Do not invent facts. Do not say the property is available, current, eligible, approved, guaranteed, live, or perfect. Do not mention loans, rates, financing, schools, neighborhoods, investment returns, or protected audiences. Output JSON only.` },
             { role: "user", content: `Saved property snapshot:\n${JSON.stringify(source)}` },
           ],
           response_format: {
