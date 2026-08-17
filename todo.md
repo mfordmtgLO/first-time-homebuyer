@@ -291,3 +291,4 @@
 - [x] Add the supplied Cornerstone First Mortgage disclosure block and Equal Housing Opportunity logo-placement instruction to campaign asset and launch-review materials
 - [x] Review the supplied Oregon census-tract workbook and document the LMI plus USDA RD eligible-area service boundary for campaign approval
 - [x] Create Facebook and Google approval mockups that show the supplied Cornerstone disclosure block and Equal Housing Opportunity logo treatment
+- [x] Record the proposed $450, 60-day first-campaign pacing and Roadmap/chat conversion targets in the compliance-pending launch package

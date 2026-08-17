@@ -140,6 +140,21 @@ The site should earn relevant organic traffic through practical education rather
 
 The website now captures first-touch UTM fields with submitted Roadmap and chat leads and dispatches privacy-safe browser conversion events. It does **not** add a Meta Pixel, Google tag, Enhanced Conversions, offline-conversion upload, API token, third-party request, or automatic ad spend.
 
+### Proposed first-campaign planning targets — compliance pending
+
+The account owner’s planning target is a **$450 total budget** paced evenly across **60 days**. This equals a proposed average pacing amount of **$7.50 per day**. The lead-volume goals below are campaign benchmarks, not forecasts or guaranteed outcomes; they remain subject to compliance approval, platform policy, audience availability, creative approval, landing-page performance, and the account owner’s final launch decision.
+
+| Planning measure | Proposed target | Benchmark calculation |
+|---|---:|---:|
+| Total media budget | $450 | User-directed first test budget; no spend is activated by this document. |
+| Test duration | 60 days | Even pacing period. |
+| Average daily pacing | $7.50/day | $450 ÷ 60 days. |
+| Roadmap requests | At least 20 website requests | Planning benchmark of up to $22.50 per Roadmap request. |
+| Completed mortgage chat intakes | At least 40 website completions | Planning benchmark of up to $11.25 per completed chat intake. |
+| Combined tracked conversion events | At least 60 events | Planning benchmark of up to $7.50 per tracked event, recognizing that Roadmap and chat events may overlap for the same person. |
+
+The recommended optimization hierarchy is: first validate accurate UTM attribution and conversion-event firing; then monitor completed chat intake volume as the primary quality signal and Roadmap requests as the secondary education-lead signal. Any change to budget, duration, conversion priority, or optimization goal must be approved by the account owner before it is entered in Meta or Google.
+
 | Item | Status | Required owner/compliance action |
 |---|---|---|
 | UTM attribution | Ready in website and dashboard | Use the approved UTM naming in final destination URLs. |
