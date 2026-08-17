@@ -297,3 +297,4 @@
 - [x] Create 6–10 compliance-review chat-first Meta and Google ad variants tied to the existing landing page and chat completion goal
 - [x] Create a compliance-pending 30-day nurture sequence for Roadmap, cost-of-waiting, 2-1 buydown, completed-chat, homes-list, and buyer-agent engagement
 - [x] Add dashboard funnel cohort reporting organized by campaign and scenario engagement
+- [x] Create a consolidated PDF compliance review packet covering the mission, approved ad assets, disclosures, website/chat funnel, dashboard reporting, lead/agent communication workflows, and approval gates
