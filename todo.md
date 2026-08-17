@@ -294,3 +294,6 @@
 - [x] Record the proposed $450, 60-day first-campaign pacing and Roadmap/chat conversion targets in the compliance-pending launch package
 - [x] Create a compliance-pending Meta and Google account-owner ad-spend setup guide with $7.50 daily pacing and direct billing control
 - [x] Define completed mortgage-chat intake as the proposed primary conversion and Roadmap request as the secondary campaign event
+- [x] Create 6–10 compliance-review chat-first Meta and Google ad variants tied to the existing landing page and chat completion goal
+- [x] Create a compliance-pending 30-day nurture sequence for Roadmap, cost-of-waiting, 2-1 buydown, completed-chat, homes-list, and buyer-agent engagement
+- [x] Add dashboard funnel cohort reporting organized by campaign and scenario engagement
