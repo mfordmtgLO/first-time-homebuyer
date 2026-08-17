@@ -62,6 +62,7 @@ export default function PropertyLandingPage() {
   const slug = params?.slug?.toLowerCase() ?? "";
   const { data, isLoading } = trpc.propertyPages.getPublic.useQuery({ slug }, { enabled: Boolean(slug) });
   const snapshot = useMemo(() => data?.page ? parsePropertyLandingSnapshot(data.page.listingSnapshot) : null, [data?.page?.listingSnapshot]);
+  const track = trpc.propertyPages.trackActivity.useMutation();
 
   if (isLoading) return <div className="min-h-screen grid place-items-center text-muted-foreground">Loading saved property details…</div>;
   if (!data?.page || !snapshot) return <div className="min-h-screen grid place-items-center px-6 text-center"><div><h1 className="font-display text-3xl font-semibold">Property page unavailable</h1><p className="mt-3 text-muted-foreground">This saved property page may have been retired or its snapshot is unavailable.</p></div></div>;
@@ -70,7 +71,6 @@ export default function PropertyLandingPage() {
   const agent = data.agent;
   const propertyUrl = `https://firsttimehomebuyer.manus.space/property/${data.page.slug}`;
   const eligibility = propertyEligibilityLabel(snapshot);
-  const track = trpc.propertyPages.trackActivity.useMutation();
   const facts = [
     { label: "Beds", value: snapshot.bedrooms ?? "—", icon: BedDouble },
     { label: "Baths", value: snapshot.bathrooms ?? "—", icon: Bath },

@@ -311,3 +311,4 @@
 - [x] Add dashboard controls to retire or refresh single-property pages from saved GeoSphere listing snapshots
 - [x] Add Professional and Exciting tone options to review-gated AI property-summary generation
 - [x] Add property-page activity timeline filters for page views, calculator usage, lead milestones, sharing, and print/PDF export
+- [x] Fix the React hook-order runtime error on public single-property page URLs and verify the route in production
