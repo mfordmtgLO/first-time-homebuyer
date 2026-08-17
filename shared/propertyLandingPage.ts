@@ -159,6 +159,20 @@ export function propertyEligibilityLabel(snapshot: Pick<PropertyLandingSnapshot,
   return "Financing options to review";
 }
 
+/** Conservative education copy for saved map screens; this is not a program approval or property eligibility determination. */
+export function propertyFinancingContext(snapshot: Pick<PropertyLandingSnapshot, "isLmi" | "isUsda">) {
+  if (snapshot.isLmi && snapshot.isUsda) {
+    return "This saved screening may make it worth exploring OHCS Flex Lending or USDA RD as potential low- or no-down-payment first-time-buyer pathways, subject to current program rules and borrower, property, income, credit, and loan approval requirements.";
+  }
+  if (snapshot.isLmi) {
+    return "This saved LMI screen may make OHCS Flex Lending worth exploring as a potential low-down-payment first-time-buyer pathway, subject to current program rules and borrower, property, income, credit, and loan approval requirements.";
+  }
+  if (snapshot.isUsda) {
+    return "This saved USDA RD screen may make USDA Rural Development financing worth exploring as a potential low- or no-down-payment first-time-buyer pathway, subject to current program rules and borrower, property, income, credit, and loan approval requirements.";
+  }
+  return null;
+}
+
 export function slugifyPropertyAddress(address: string) {
   return address
     .toLowerCase()

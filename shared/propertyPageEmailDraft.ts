@@ -1,4 +1,4 @@
-import { propertyEligibilityLabel, type PropertyLandingSnapshot } from "./propertyLandingPage";
+import { propertyEligibilityLabel, propertyFinancingContext, type PropertyLandingSnapshot } from "./propertyLandingPage";
 
 type OfficerSignature = { name: string; email: string; phone: string; nmls: string; companyName: string };
 
@@ -12,6 +12,7 @@ export function buildPropertyPageAgentDraft(input: {
 }) {
   const firstName = input.listingAgentName.trim().split(/\s+/)[0] || "there";
   const program = propertyEligibilityLabel(input.snapshot);
+  const financingContext = propertyFinancingContext(input.snapshot);
   const facts = [
     `Address: ${input.snapshot.address}`,
     input.snapshot.price ? `Saved snapshot price: ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(input.snapshot.price)}` : null,
@@ -29,6 +30,8 @@ export function buildPropertyPageAgentDraft(input: {
     "",
     facts,
     "",
+    financingContext,
+    financingContext ? "" : null,
     "The property information above is based on a saved snapshot and is not a live listing feed. Before sharing current availability, price, or program fit with a buyer, please help us confirm the latest property details.",
     "",
     "If you are open to it, I would enjoy strategizing about first-time-buyer attraction for this property and helping interested buyers understand their next financing and home-search questions.",

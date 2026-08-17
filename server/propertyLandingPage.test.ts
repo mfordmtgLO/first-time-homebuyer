@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPropertyLandingSnapshot, propertyEligibilityLabel } from "@shared/propertyLandingPage";
+import { buildPropertyLandingSnapshot, propertyEligibilityLabel, propertyFinancingContext } from "@shared/propertyLandingPage";
 import { buildPropertyPageAgentDraft } from "@shared/propertyPageEmailDraft";
 
 const snapshot = buildPropertyLandingSnapshot({
@@ -32,6 +32,8 @@ describe("single-property saved snapshots", () => {
     expect(snapshot.photoUrls).toEqual(["https://images.example.com/home.jpg"]);
     expect(snapshot.listingAgent?.email).toBe("taylor@example.com");
     expect(propertyEligibilityLabel(snapshot)).toBe("OHCS Flex Lending or USDA RD potential");
+    expect(propertyFinancingContext(snapshot)).toContain("OHCS Flex Lending or USDA RD");
+    expect(propertyFinancingContext(snapshot)).toContain("subject to current program rules");
   });
 
   it("adds the saved property URL, screening context, snapshot limitation, and signature to every agent draft", () => {
@@ -47,6 +49,8 @@ describe("single-property saved snapshots", () => {
     expect(draft).toContain("Hi Taylor,");
     expect(draft).toContain("https://firsttimehomebuyer.manus.space/property/1024-s-5th-st-coos-bay-or-97420");
     expect(draft).toContain("OHCS Flex Lending or USDA RD potential");
+    expect(draft).toContain("potential low- or no-down-payment first-time-buyer pathways");
+    expect(draft).toContain("borrower, property, income, credit, and loan approval requirements");
     expect(draft).toContain("not a live listing feed");
     expect(draft).toContain("NMLS #288455");
   });

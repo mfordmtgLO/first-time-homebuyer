@@ -84,7 +84,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { invokeLLM, listLLMModels } from "./_core/llm";
-import { parsePropertyLandingSnapshot, propertyEligibilityLabel } from "../shared/propertyLandingPage";
+import { parsePropertyLandingSnapshot, propertyEligibilityLabel, propertyFinancingContext } from "../shared/propertyLandingPage";
 
 const ADMIN_ONLY_MESSAGE = "Only the site owner can manage agents.";
 
@@ -1306,11 +1306,12 @@ export const appRouter = router({
           description: snapshot.description,
           savedStatus: snapshot.status,
           eligibilityScreening: propertyEligibilityLabel(snapshot),
+          financingContext: propertyFinancingContext(snapshot),
         };
         const response = await invokeLLM({
           model,
           messages: [
-            { role: "system", content: `Write a 55-90 word ${input.tone === "exciting" ? "warm and energetic" : "professional and measured"} but strictly factual property-description draft. Use only the supplied saved snapshot. Do not invent facts. Do not say the property is available, current, eligible, approved, guaranteed, live, or perfect. Do not mention loans, rates, financing, schools, neighborhoods, investment returns, or protected audiences. Output JSON only.` },
+            { role: "system", content: `Write a 55-90 word ${input.tone === "exciting" ? "warm and energetic" : "professional and measured"} but strictly factual property-description draft. Use only the supplied saved snapshot. Do not invent facts. Do not say the property is available, current, eligible, approved, guaranteed, live, or perfect. Do not mention loans, rates, schools, neighborhoods, investment returns, or protected audiences. If financingContext is supplied, include its qualified first-time-buyer financing message in one concise sentence without adding other financing claims. If financingContext is null, do not mention financing. Output JSON only.` },
             { role: "user", content: `Saved property snapshot:\n${JSON.stringify(source)}` },
           ],
           response_format: {
