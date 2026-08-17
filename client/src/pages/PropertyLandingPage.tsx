@@ -1,7 +1,7 @@
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useRoute } from "wouter";
 import { AgentPageProvider } from "@/contexts/AgentPageContext";
-import { ScenarioProvider } from "@/contexts/ScenarioContext";
+import { ScenarioProvider, useScenario } from "@/contexts/ScenarioContext";
 import LeadMagnet from "@/components/landing/LeadMagnet";
 import Buydown from "@/components/landing/Buydown";
 import CostOfWaiting from "@/components/landing/CostOfWaiting";
@@ -12,7 +12,7 @@ import { trpc } from "@/lib/trpc";
 import { parsePropertyLandingSnapshot, propertyEligibilityLabel } from "@shared/propertyLandingPage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { BedDouble, Bath, CalendarDays, ExternalLink, Home, MapPin, Maximize, Ruler, ShieldCheck, SquareStack, Trees } from "lucide-react";
+import { BedDouble, Bath, CalendarDays, ExternalLink, Facebook, Home, Linkedin, MapPin, Printer, Ruler, Share2, ShieldCheck, SquareStack, Trees } from "lucide-react";
 
 const money = (value: number | null) => value === null ? "Not in saved snapshot" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
 const number = (value: number | null) => value === null ? "Not in saved snapshot" : value.toLocaleString("en-US");
@@ -40,6 +40,23 @@ function SavedLocationMap({ latitude, longitude, address }: { latitude: number; 
   );
 }
 
+function PropertyActivityTracker({ slug }: { slug: string }) {
+  const { scenario, cowScenario } = useScenario();
+  const track = trpc.propertyPages.trackActivity.useMutation();
+  const seen = useRef(new Set<string>());
+
+  const recordOnce = (eventType: "page_view" | "buydown_calculator" | "cost_of_waiting_calculator") => {
+    if (seen.current.has(eventType)) return;
+    seen.current.add(eventType);
+    track.mutate({ slug, eventType });
+  };
+
+  useEffect(() => { recordOnce("page_view"); }, [slug]);
+  useEffect(() => { if (scenario) recordOnce("buydown_calculator"); }, [scenario]);
+  useEffect(() => { if (cowScenario) recordOnce("cost_of_waiting_calculator"); }, [cowScenario]);
+  return null;
+}
+
 export default function PropertyLandingPage() {
   const [, params] = useRoute("/property/:slug");
   const slug = params?.slug?.toLowerCase() ?? "";
@@ -53,6 +70,7 @@ export default function PropertyLandingPage() {
   const agent = data.agent;
   const propertyUrl = `https://firsttimehomebuyer.manus.space/property/${data.page.slug}`;
   const eligibility = propertyEligibilityLabel(snapshot);
+  const track = trpc.propertyPages.trackActivity.useMutation();
   const facts = [
     { label: "Beds", value: snapshot.bedrooms ?? "—", icon: BedDouble },
     { label: "Baths", value: snapshot.bathrooms ?? "—", icon: Bath },
@@ -66,7 +84,9 @@ export default function PropertyLandingPage() {
     <AgentPageProvider agentSlug={agent?.slug ?? null} loanOfficerSlug={officer?.slug ?? null} propertyPageSlug={data.page.slug}>
       <ScenarioProvider>
         <div className="min-h-screen bg-background text-foreground">
-          <header className="border-b border-border bg-card/95 backdrop-blur">
+          <PropertyActivityTracker slug={data.page.slug} />
+          <style>{`@media print { header, footer, #payment-scenarios, .property-print-hide, [data-chat-launcher] { display: none !important; } main { color: #111 !important; } }`}</style>
+          <header className="property-print-hide border-b border-border bg-card/95 backdrop-blur">
             <div className="container flex flex-wrap items-center justify-between gap-3 py-4">
               <a href="/" className="font-display text-lg font-semibold text-primary">First-Time Homebuyer</a>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -89,6 +109,16 @@ export default function PropertyLandingPage() {
                   <div className="mt-6 flex flex-wrap gap-3">
                     <Button size="lg" onClick={() => document.getElementById("roadmap")?.scrollIntoView({ behavior: "smooth" })}>Get the Roadmap</Button>
                     <Button size="lg" variant="outline" onClick={() => document.getElementById("payment-scenarios")?.scrollIntoView({ behavior: "smooth" })}>Explore payment scenarios</Button>
+                  </div>
+                  <div className="property-print-hide mt-4 flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => { track.mutate({ slug: data.page.slug, eventType: "print_export" }); window.print(); }}><Printer className="mr-1.5 h-4 w-4" />Print / save PDF</Button>
+                    <Button size="sm" variant="outline" onClick={async () => {
+                      track.mutate({ slug: data.page.slug, eventType: "social_share", detail: "native_share" });
+                      if (navigator.share) await navigator.share({ title: snapshot.address, text: `Saved property spotlight: ${snapshot.address}`, url: propertyUrl });
+                      else await navigator.clipboard?.writeText(propertyUrl);
+                    }}><Share2 className="mr-1.5 h-4 w-4" />Share</Button>
+                    <Button size="icon" variant="outline" asChild><a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(propertyUrl)}`} target="_blank" rel="noreferrer" onClick={() => track.mutate({ slug: data.page.slug, eventType: "social_share", detail: "facebook" })} aria-label="Share on Facebook"><Facebook className="h-4 w-4" /></a></Button>
+                    <Button size="icon" variant="outline" asChild><a href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(propertyUrl)}`} target="_blank" rel="noreferrer" onClick={() => track.mutate({ slug: data.page.slug, eventType: "social_share", detail: "linkedin" })} aria-label="Share on LinkedIn"><Linkedin className="h-4 w-4" /></a></Button>
                   </div>
                   <p className="mt-6 text-xs leading-relaxed text-muted-foreground">Saved {snapshot.sourceSavedAt ? new Date(snapshot.sourceSavedAt).toLocaleString() : "snapshot date unavailable"}. Price, availability, details, program fit, and lending terms require current verification and approval.</p>
                 </div>
@@ -113,6 +143,7 @@ export default function PropertyLandingPage() {
                     <div><dt className="text-sm text-muted-foreground">Property taxes</dt><dd className="mt-1 font-medium">{money(snapshot.propertyTaxes)}</dd></div>
                     <div><dt className="text-sm text-muted-foreground">Saved status</dt><dd className="mt-1 font-medium">{snapshot.status ?? "Not in saved snapshot"}</dd></div>
                   </dl>
+                  {data.page.aiSummary && <div className="mt-8 rounded-xl border border-primary/20 bg-primary/5 p-5"><h3 className="font-semibold text-primary">Property highlights</h3><p className="mt-3 leading-relaxed text-muted-foreground">{data.page.aiSummary}</p><p className="mt-3 text-xs text-muted-foreground">Dashboard-reviewed draft based only on the saved property snapshot; verify current details independently.</p></div>}
                   {snapshot.description && <div className="mt-8 border-t border-border pt-6"><h3 className="font-semibold">Saved listing description</h3><p className="mt-3 whitespace-pre-line leading-relaxed text-muted-foreground">{snapshot.description}</p></div>}
                   <p className="mt-8 rounded-lg bg-muted p-4 text-sm leading-relaxed text-muted-foreground">This page uses a saved GeoSphere listing snapshot, not a live MLS or listing feed. Confirm current status, price, property condition, features, and eligibility with the listing professional and the applicable program requirements before relying on any information.</p>
                 </div>

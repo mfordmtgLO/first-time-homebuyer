@@ -37,6 +37,7 @@ import {
   getLeadById,
   getLoanOfficerById,
   getLoanOfficerBySlug,
+  getPropertyLandingPageById,
   getPropertyLandingPageBySlug,
   listGeoSphereListings,
   listGeoSphereSavedPulls,
@@ -47,6 +48,8 @@ import {
   loanOfficerSlugTaken,
   recordChatIntakeResendAttempt,
   recordGeoSphereListingEmailActivity,
+  recordPropertyPageActivity,
+  listPropertyPageActivity,
   insertLead,
   listAgents,
   listChatIntakeLeads,
@@ -65,6 +68,7 @@ import {
   updateLeadStatus,
   updateLeadNotes,
   updateLoanOfficer,
+  updatePropertyLandingPageAiSummary,
   updatePropertyLandingPagePair,
 } from "./db";
 import { syncGeoSphereSavedListings } from "./geosphere";
@@ -77,6 +81,8 @@ import { storagePut } from "./storage";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { invokeLLM, listLLMModels } from "./_core/llm";
+import { parsePropertyLandingSnapshot, propertyEligibilityLabel } from "../shared/propertyLandingPage";
 
 const ADMIN_ONLY_MESSAGE = "Only the site owner can manage agents.";
 
@@ -522,6 +528,16 @@ export const appRouter = router({
           ...input.campaignAttribution,
         });
 
+        if (propertyPageId) {
+          await recordPropertyPageActivity({ propertyLandingPageId: propertyPageId, eventType: "roadmap_request" });
+          if (input.scenario) {
+            await recordPropertyPageActivity({ propertyLandingPageId: propertyPageId, eventType: "buydown_calculator" });
+          }
+          if (input.costOfWaiting) {
+            await recordPropertyPageActivity({ propertyLandingPageId: propertyPageId, eventType: "cost_of_waiting_calculator" });
+          }
+        }
+
         // Alert the owner (Mike) about the new lead. Notification failure must not
         // block the lead from being stored, but we log it for observability — the
         // lead is still recoverable from the database/dashboard.
@@ -767,6 +783,11 @@ export const appRouter = router({
           ...input.campaignAttribution,
         });
         await addChatTranscript(Number(leadId), "assistant", greeting);
+        if (propertyPageId) {
+          await recordPropertyPageActivity({ propertyLandingPageId: propertyPageId, eventType: "chat_started" });
+          if (input.scenario?.buydown) await recordPropertyPageActivity({ propertyLandingPageId: propertyPageId, eventType: "buydown_calculator" });
+          if (input.scenario?.costOfWaiting) await recordPropertyPageActivity({ propertyLandingPageId: propertyPageId, eventType: "cost_of_waiting_calculator" });
+        }
 
         return {
           sessionId,
@@ -827,6 +848,12 @@ export const appRouter = router({
             completedAt: new Date(),
           });
           await addChatTranscript(lead.id, "assistant", completion);
+          if (lead.propertyPageId) {
+            await recordPropertyPageActivity({ propertyLandingPageId: lead.propertyPageId, eventType: "chat_completed" });
+            if (updatedValues.lowDownPaymentHomeSearch === 1) {
+              await recordPropertyPageActivity({ propertyLandingPageId: lead.propertyPageId, eventType: "homes_list_request" });
+            }
+          }
           try {
             await notifyOwner({
               title: `Qualified chat intake: ${fullName}`,
@@ -871,6 +898,9 @@ export const appRouter = router({
         }
         const isNewRequest = lead.buyerAgentRequest !== 1;
         await updateChatLead(lead.id, { buyerAgentRequest: 1, buyerAgentRequestedAt: lead.buyerAgentRequestedAt ?? new Date() });
+        if (isNewRequest && lead.propertyPageId) {
+          await recordPropertyPageActivity({ propertyLandingPageId: lead.propertyPageId, eventType: "buyer_agent_request" });
+        }
         if (isNewRequest) {
           try {
             await notifyOwner({
@@ -1181,11 +1211,30 @@ export const appRouter = router({
     getPublic: publicProcedure
       .input(z.object({ slug: propertyPageSlugSchema }))
       .query(async ({ input }) => (await getPropertyLandingPageBySlug(input.slug)) ?? null),
+    /** Records page-level interactions only; visitor identity stays in protected lead tables. */
+    trackActivity: publicProcedure
+      .input(z.object({
+        slug: propertyPageSlugSchema,
+        eventType: z.enum(["page_view", "buydown_calculator", "cost_of_waiting_calculator", "social_share", "print_export"]),
+        detail: z.string().trim().max(500).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const page = await getPropertyLandingPageBySlug(input.slug);
+        if (!page?.page) return { recorded: false as const };
+        await recordPropertyPageActivity({ propertyLandingPageId: page.page.id, eventType: input.eventType, detail: input.detail ?? null });
+        return { recorded: true as const };
+      }),
     /** Dashboard inventory of public property pages and their current co-brand assignment. */
     list: protectedProcedure.query(async ({ ctx }) => {
       requireAdmin(ctx.user.role);
       return listPropertyLandingPages();
     }),
+    activity: protectedProcedure
+      .input(z.object({ propertyLandingPageId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return listPropertyPageActivity(input.propertyLandingPageId);
+      }),
     /** Creates or refreshes a public page from one immutable saved-listing snapshot. */
     createFromListing: protectedProcedure
       .input(z.object({
@@ -1215,6 +1264,71 @@ export const appRouter = router({
           throw new TRPCError({ code: "BAD_REQUEST", message: "Choose an available loan officer and co-branded agent." });
         }
         return updatePropertyLandingPagePair(input);
+      }),
+    /** Creates a factual draft from the saved snapshot only; dashboard review is required before it appears publicly. */
+    generateAiSummary: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const page = await getPropertyLandingPageById(input.id);
+        if (!page?.page) throw new TRPCError({ code: "NOT_FOUND", message: "Property page not found." });
+        const snapshot = parsePropertyLandingSnapshot(page.page.listingSnapshot);
+        if (!snapshot) throw new TRPCError({ code: "BAD_REQUEST", message: "This saved property snapshot cannot be summarized." });
+        const { data: models } = await listLLMModels();
+        const model = models.find((entry) => entry.id === "gpt-5-mini")?.id ?? models.find((entry) => entry.id.startsWith("gpt-5"))?.id;
+        const source = {
+          address: snapshot.address,
+          savedPrice: snapshot.price,
+          bedrooms: snapshot.bedrooms,
+          bathrooms: snapshot.bathrooms,
+          squareFootage: snapshot.squareFootage,
+          lotSize: snapshot.lotSize,
+          acreage: snapshot.acreage,
+          propertyType: snapshot.propertyType,
+          manufacturedHomeType: snapshot.manufacturedHomeType,
+          yearBuilt: snapshot.yearBuilt,
+          units: snapshot.units,
+          description: snapshot.description,
+          savedStatus: snapshot.status,
+          eligibilityScreening: propertyEligibilityLabel(snapshot),
+        };
+        const response = await invokeLLM({
+          model,
+          messages: [
+            { role: "system", content: "Write a 55-90 word engaging but strictly factual property-description draft. Use only the supplied saved snapshot. Do not invent facts. Do not say the property is available, current, eligible, approved, guaranteed, live, or perfect. Do not mention loans, rates, financing, schools, neighborhoods, investment returns, or protected audiences. Output JSON only." },
+            { role: "user", content: `Saved property snapshot:\n${JSON.stringify(source)}` },
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "property_summary",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: { summary: { type: "string", minLength: 20, maxLength: 900 } },
+                required: ["summary"],
+                additionalProperties: false,
+              },
+            },
+          },
+        });
+        let draft: { summary?: string };
+        try {
+          const content = response.choices[0]?.message?.content;
+          draft = JSON.parse(typeof content === "string" ? content : "{}");
+        } catch {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "The AI draft response could not be read. Please try again." });
+        }
+        const summary = draft.summary?.trim();
+        if (!summary) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "The AI draft was empty. Please try again." });
+        return { summary };
+      }),
+    /** Saves the dashboard-reviewed draft for optional public display, or clears it when passed null. */
+    saveAiSummary: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), summary: z.string().trim().max(1200).nullable() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return updatePropertyLandingPageAiSummary({ id: input.id, aiSummary: input.summary || null });
       }),
     listAgentEmailTemplates: protectedProcedure.query(async ({ ctx }) => {
       requireAdmin(ctx.user.role);

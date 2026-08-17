@@ -10,6 +10,7 @@ import {
   geosphereSyncSetting,
   listingAgentEmailTemplate,
   propertyLandingPage,
+  propertyPageActivity,
   propertyEmailTemplate,
   propertyPageAgentEmailTemplate,
   leads,
@@ -1022,6 +1023,54 @@ export async function getPropertyLandingPageBySlug(slug: string) {
     .leftJoin(agentProfile, eq(propertyLandingPage.agentId, agentProfile.id))
     .where(and(eq(propertyLandingPage.slug, slug), eq(propertyLandingPage.isActive, 1)))
     .limit(1);
+  return rows[0];
+}
+
+export async function getPropertyLandingPageById(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db
+    .select({ page: propertyLandingPage, loanOfficer, agent: agentProfile })
+    .from(propertyLandingPage)
+    .leftJoin(loanOfficer, eq(propertyLandingPage.loanOfficerId, loanOfficer.id))
+    .leftJoin(agentProfile, eq(propertyLandingPage.agentId, agentProfile.id))
+    .where(eq(propertyLandingPage.id, id))
+    .limit(1);
+  return rows[0];
+}
+
+export type PropertyPageActivityType = "page_view" | "buydown_calculator" | "cost_of_waiting_calculator" | "roadmap_request" | "chat_started" | "chat_completed" | "homes_list_request" | "buyer_agent_request" | "social_share" | "print_export";
+
+/** Stores only page-level interaction metadata; visitor contact data remains in protected lead tables. */
+export async function recordPropertyPageActivity(input: { propertyLandingPageId: number; eventType: PropertyPageActivityType; detail?: string | null }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(propertyPageActivity).values({
+    propertyLandingPageId: input.propertyLandingPageId,
+    eventType: input.eventType,
+    detail: input.detail?.slice(0, 500) || null,
+  });
+  const rows = await db.select().from(propertyPageActivity).where(eq(propertyPageActivity.id, Number(result.insertId))).limit(1);
+  return rows[0]!;
+}
+
+export async function listPropertyPageActivity(propertyLandingPageId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .select()
+    .from(propertyPageActivity)
+    .where(eq(propertyPageActivity.propertyLandingPageId, propertyLandingPageId))
+    .orderBy(desc(propertyPageActivity.createdAt), desc(propertyPageActivity.id))
+    .limit(100);
+}
+
+export async function updatePropertyLandingPageAiSummary(input: { id: number; aiSummary: string | null }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(propertyLandingPage).set({ aiSummary: input.aiSummary, aiSummaryUpdatedAt: input.aiSummary ? new Date() : null }).where(eq(propertyLandingPage.id, input.id));
+  const rows = await db.select().from(propertyLandingPage).where(eq(propertyLandingPage.id, input.id)).limit(1);
+  if (!rows[0]) throw new Error("Property page not found.");
   return rows[0];
 }
 

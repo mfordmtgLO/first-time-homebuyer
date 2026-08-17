@@ -305,3 +305,6 @@
 - [x] Build public single-property co-branded pages from saved listing snapshots with guarded property details, LMI/USDA context, Roadmap, chat, and buyer-agent lead capture
 - [x] Add dashboard controls to create, save, pair, share, and draft listing-agent outreach for single-property pages
 - [x] Route property-page Roadmap and chat leads through existing dashboard sections with address, LO-agent co-brand, and capture-date attribution while retaining calculator scenarios for agent drafts
+- [x] Add persistent single-property page interaction events and a dashboard activity timeline for visits, calculators, Roadmap, chat, homes-list, and buyer-agent milestones
+- [x] Add social media sharing controls and a printable property snapshot PDF export to public single-property pages
+- [x] Add a review-gated AI property-description summary generator based only on saved imported listing snapshots

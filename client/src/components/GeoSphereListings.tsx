@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Copy, Download, ExternalLink, Layers3, Link2, Loader2, Mail, MapPin, Plus, RefreshCw, SearchCheck, SlidersHorizontal, X } from "lucide-react";
+import { Activity, Copy, Download, ExternalLink, Layers3, Link2, Loader2, Mail, MapPin, Plus, RefreshCw, SearchCheck, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import {
   buildListingAgentOutreachDraft,
   buildListingEmailDraft,
@@ -56,6 +56,51 @@ type BulkOutreachPreview = {
   agents: Array<{ name: string; email: string }>;
   listings: Array<{ id: number; address: string }>;
 };
+
+const PROPERTY_ACTIVITY_LABELS: Record<string, string> = {
+  page_view: "Page viewed",
+  buydown_calculator: "2-1 buydown explored",
+  cost_of_waiting_calculator: "Cost of waiting explored",
+  roadmap_request: "Roadmap requested",
+  chat_started: "Mortgage chat started",
+  chat_completed: "Mortgage chat completed",
+  homes_list_request: "Homes-list request",
+  buyer_agent_request: "Buyer-agent request",
+  social_share: "Shared property page",
+  print_export: "Print / PDF export",
+};
+
+function PropertyPageTimeline({ propertyLandingPageId }: { propertyLandingPageId: number }) {
+  const [open, setOpen] = useState(false);
+  const activityQuery = trpc.propertyPages.activity.useQuery({ propertyLandingPageId }, { enabled: open });
+  return <div className="mt-4 border-t border-border pt-4">
+    <button type="button" className="flex w-full items-center justify-between text-left text-sm font-medium text-primary" onClick={() => setOpen((value) => !value)}>
+      <span className="flex items-center gap-1.5"><Activity className="h-4 w-4" />Activity timeline</span><span>{open ? "Hide" : "Show"}</span>
+    </button>
+    {open && <div className="mt-3 space-y-2 rounded-lg bg-muted/50 p-3">
+      {activityQuery.isLoading ? <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" />Loading activity…</div> : activityQuery.data?.length ? activityQuery.data.map((event) => <div key={event.id} className="flex items-start justify-between gap-3 text-xs"><span className="font-medium text-foreground">{PROPERTY_ACTIVITY_LABELS[event.eventType] ?? event.eventType}{event.detail ? ` · ${event.detail}` : ""}</span><span className="shrink-0 text-muted-foreground">{new Date(event.createdAt).toLocaleString()}</span></div>) : <p className="text-xs text-muted-foreground">No activity has been recorded yet.</p>}
+    </div>}
+  </div>;
+}
+
+function PropertyPageAiSummaryEditor({ page }: { page: { id: number; aiSummary: string | null } }) {
+  const utils = trpc.useUtils();
+  const [draft, setDraft] = useState(page.aiSummary ?? "");
+  const generate = trpc.propertyPages.generateAiSummary.useMutation({
+    onSuccess: (result) => { setDraft(result.summary); toast.success("AI draft generated. Review it before saving it to the public page."); },
+    onError: (error) => toast.error(error.message || "The AI draft could not be generated."),
+  });
+  const save = trpc.propertyPages.saveAiSummary.useMutation({
+    onSuccess: async () => { await utils.propertyPages.list.invalidate(); toast.success(draft.trim() ? "Reviewed property highlights saved to the public page." : "Public property highlights removed."); },
+    onError: (error) => toast.error(error.message || "The property highlights could not be saved."),
+  });
+  return <div className="mt-4 border-t border-border pt-4">
+    <div className="flex flex-wrap items-center justify-between gap-2"><p className="flex items-center gap-1.5 text-sm font-medium"><Sparkles className="h-4 w-4 text-primary" />AI property highlights</p><Button size="sm" variant="outline" disabled={generate.isPending} onClick={() => generate.mutate({ id: page.id })}>{generate.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1.5 h-3.5 w-3.5" />}Generate draft</Button></div>
+    <p className="mt-1 text-xs text-muted-foreground">Generated only from the saved imported snapshot. Review and edit before publishing to the public property page.</p>
+    <Textarea className="mt-3 min-h-24 text-sm" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Generate a snapshot-based draft, then review it here." />
+    <div className="mt-2 flex gap-2"><Button size="sm" disabled={save.isPending} onClick={() => save.mutate({ id: page.id, summary: draft.trim() || null })}>Save reviewed summary</Button>{page.aiSummary && <Button size="sm" variant="ghost" disabled={save.isPending} onClick={() => { setDraft(""); save.mutate({ id: page.id, summary: null }); }}>Remove from page</Button>}</div>
+  </div>;
+}
 
 function getListingDetails(raw: string) {
   try {
@@ -897,6 +942,8 @@ export default function GeoSphereListings() {
                       <label className="text-xs font-semibold text-muted-foreground">Co-branded agent<Select value={pairDraft.agentId} onValueChange={(value) => setPropertyPagePairDrafts((current) => ({ ...current, [page.id]: { ...pairDraft, agentId: value } }))}><SelectTrigger className="mt-1.5 h-9 bg-background text-xs"><SelectValue placeholder="Choose agent" /></SelectTrigger><SelectContent>{agents.map((agent) => <SelectItem key={agent.id} value={String(agent.id)}>{agent.name}</SelectItem>)}</SelectContent></Select></label>
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => savePropertyPagePair(page.id, page)} disabled={updatePropertyPagePair.isPending}><Link2 className="mr-1.5 h-3.5 w-3.5" /> Save pairing</Button><Button size="sm" onClick={() => openPropertyPageAgentDraft(page)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Agent email draft</Button></div>
+                    <PropertyPageAiSummaryEditor page={page} />
+                    <PropertyPageTimeline propertyLandingPageId={page.id} />
                   </div>;
                 })}
               </div>}

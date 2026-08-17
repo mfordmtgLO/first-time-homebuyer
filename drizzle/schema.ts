@@ -440,6 +440,9 @@ export const propertyLandingPage = mysqlTable(
     /** Immutable saved-listing data available when the page was created or refreshed. */
     listingSnapshot: text("listingSnapshot").notNull(),
     sourceSavedAt: timestamp("sourceSavedAt"),
+    /** Drafted from the saved snapshot only and published only after dashboard review. */
+    aiSummary: text("aiSummary"),
+    aiSummaryUpdatedAt: timestamp("aiSummaryUpdatedAt"),
     isActive: int("isActive").default(1).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -453,6 +456,34 @@ export const propertyLandingPage = mysqlTable(
 
 export type PropertyLandingPage = typeof propertyLandingPage.$inferSelect;
 export type InsertPropertyLandingPage = typeof propertyLandingPage.$inferInsert;
+
+/** Privacy-minimized, page-level engagement history for snapshot-backed property sites. */
+export const propertyPageActivity = mysqlTable(
+  "property_page_activity",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    propertyLandingPageId: int("propertyLandingPageId").notNull(),
+    eventType: mysqlEnum("eventType", [
+      "page_view",
+      "buydown_calculator",
+      "cost_of_waiting_calculator",
+      "roadmap_request",
+      "chat_started",
+      "chat_completed",
+      "homes_list_request",
+      "buyer_agent_request",
+      "social_share",
+      "print_export",
+    ]).notNull(),
+    /** Non-identifying detail such as the share destination; do not store visitor contact data here. */
+    detail: varchar("detail", { length: 500 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [index("property_page_activity_page_time_idx").on(table.propertyLandingPageId, table.createdAt)]
+);
+
+export type PropertyPageActivity = typeof propertyPageActivity.$inferSelect;
+export type InsertPropertyPageActivity = typeof propertyPageActivity.$inferInsert;
 
 /** Reusable listing-agent outreach introductions for a saved single-property page. */
 export const propertyPageAgentEmailTemplate = mysqlTable(
