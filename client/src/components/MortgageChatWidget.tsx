@@ -255,7 +255,7 @@ export default function MortgageChatWidget() {
       {open && !minimized && (
         <section
           aria-label="Mortgage Intake Specialist"
-          className="fixed bottom-[5.5rem] right-3 z-50 flex h-[min(680px,calc(100dvh-7rem))] w-[calc(100vw-1.5rem)] max-w-[420px] flex-col overflow-hidden rounded-2xl border border-primary/20 bg-card shadow-2xl sm:bottom-24 sm:right-6"
+          className="fixed inset-x-3 top-32 bottom-[5.5rem] z-50 flex w-auto max-w-[420px] flex-col overflow-hidden rounded-2xl border border-primary/20 bg-card shadow-2xl sm:inset-x-auto sm:top-32 sm:right-6 sm:bottom-24 sm:w-[420px]"
         >
           <header className="flex items-start justify-between gap-4 bg-primary px-5 py-4 text-primary-foreground">
             <div className="min-w-0">

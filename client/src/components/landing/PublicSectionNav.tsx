@@ -1,4 +1,6 @@
-import { ChevronUp, MessageCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CalendarDays, ChevronUp, MessageCircle } from "lucide-react";
+import { CALENDLY_BOOKING_URL } from "@/lib/booking";
 
 export const publicSectionNavigationItems = [
   { id: "top", label: "Top", icon: ChevronUp },
@@ -15,7 +17,41 @@ function scrollToPublicSection(sectionId: string) {
   document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+export function getActivePublicSectionId(
+  scrollY: number,
+  getSectionTop: (sectionId: string) => number | undefined,
+): (typeof publicSectionNavigationItems)[number]["id"] {
+  if (scrollY < 96) return "top";
+
+  const scrollOffset = 156;
+  return publicSectionNavigationItems
+    .slice(1)
+    .filter(({ id }) => (getSectionTop(id) ?? Number.POSITIVE_INFINITY) <= scrollOffset)
+    .at(-1)?.id ?? "top";
+}
+
 export default function PublicSectionNav() {
+  const [activeSectionId, setActiveSectionId] = useState<(typeof publicSectionNavigationItems)[number]["id"]>("top");
+
+  useEffect(() => {
+    const updateActiveSection = () => {
+      setActiveSectionId(
+        getActivePublicSectionId(
+          window.scrollY,
+          (sectionId) => document.getElementById(sectionId)?.getBoundingClientRect().top,
+        ),
+      );
+    };
+
+    updateActiveSection();
+    window.addEventListener("scroll", updateActiveSection, { passive: true });
+    window.addEventListener("resize", updateActiveSection);
+    return () => {
+      window.removeEventListener("scroll", updateActiveSection);
+      window.removeEventListener("resize", updateActiveSection);
+    };
+  }, []);
+
   return (
     <nav
       aria-label="Explore this page"
@@ -29,9 +65,15 @@ export default function PublicSectionNav() {
               href={`#${id}`}
               onClick={(event) => {
                 event.preventDefault();
+                setActiveSectionId(id);
                 scrollToPublicSection(id);
               }}
-              className="btn-press inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold text-foreground/75 transition-colors hover:bg-primary/8 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              aria-current={activeSectionId === id ? "location" : undefined}
+              className={`btn-press inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${id === "top" ? "order-0" : "order-2"} ${
+                activeSectionId === id
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-foreground/75 hover:bg-primary/8 hover:text-primary"
+              }`}
             >
               {Icon ? <Icon className="h-3.5 w-3.5" aria-hidden="true" /> : null}
               {label}
@@ -45,6 +87,15 @@ export default function PublicSectionNav() {
             <MessageCircle className="h-3.5 w-3.5" aria-hidden="true" />
             Mortgage Chat
           </button>
+          <a
+            href={CALENDLY_BOOKING_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-press order-1 inline-flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-3 py-2 text-xs font-semibold text-accent-foreground shadow-sm transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 md:hidden"
+          >
+            <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+            Book a call
+          </a>
         </div>
       </div>
     </nav>
