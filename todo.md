@@ -328,3 +328,4 @@
 - [x] Ensure the full Roadmap request success confirmation is automatically visible after mobile submission
 - [x] Add graphical post-Roadmap navigation choices to return to the prior context or explore the next educational section
 - [x] Keep Top permanently visible in the public snap navigation and signal that additional section buttons can be explored horizontally
+- [x] Remove the duplicate Book a call shortcut from the public section navigator while preserving the header booking control

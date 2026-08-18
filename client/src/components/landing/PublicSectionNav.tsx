@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { CalendarDays, ChevronUp, ChevronsLeftRight, MessageCircle } from "lucide-react";
-import { CALENDLY_BOOKING_URL } from "@/lib/booking";
+import { ChevronUp, ChevronsLeftRight, MessageCircle } from "lucide-react";
 
 export const publicSectionNavigationItems = [
   { id: "top", label: "Top", icon: ChevronUp },
@@ -105,15 +104,6 @@ export default function PublicSectionNav() {
             <MessageCircle className="h-3.5 w-3.5" aria-hidden="true" />
             Mortgage Chat
           </button>
-          <a
-            href={CALENDLY_BOOKING_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-press inline-flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-3 py-2 text-xs font-semibold text-accent-foreground shadow-sm transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 md:hidden"
-          >
-            <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
-            Book a call
-          </a>
           </div>
           <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center gap-0.5 bg-gradient-to-l from-cream via-cream/95 to-transparent pl-5 pr-1 text-[10px] font-semibold text-primary md:hidden" aria-hidden="true">
             <ChevronsLeftRight className="h-3.5 w-3.5" />
