@@ -13,6 +13,8 @@ import {
   propertyPageActivity,
   propertyEmailTemplate,
   propertyPageAgentEmailTemplate,
+  loAgentSpendEntry,
+  loAgentSpendPairing,
   leads,
   loanOfficer,
   textMessage,
@@ -828,6 +830,87 @@ export async function setFeaturedLoanOfficer(id: number | null) {
   if (id !== null) {
     await db.update(loanOfficer).set({ featured: 1 }).where(eq(loanOfficer.id, id));
   }
+}
+
+// ---------------------------------------------------------------------------
+// Private LO + agent pairing spend tracker
+
+export async function listLoAgentSpendTrackers(ownerUserId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const pairings = await db
+    .select()
+    .from(loAgentSpendPairing)
+    .where(eq(loAgentSpendPairing.ownerUserId, ownerUserId))
+    .orderBy(desc(loAgentSpendPairing.updatedAt));
+  if (pairings.length === 0) return [];
+  const pairingIds = pairings.map((pairing) => pairing.id);
+  const entries = await db
+    .select()
+    .from(loAgentSpendEntry)
+    .where(inArray(loAgentSpendEntry.pairingId, pairingIds))
+    .orderBy(desc(loAgentSpendEntry.spentOn), desc(loAgentSpendEntry.id));
+  return pairings.map((pairing) => ({ ...pairing, entries: entries.filter((entry) => entry.pairingId === pairing.id) }));
+}
+
+export async function getLoAgentSpendPairingForOwner(id: number, ownerUserId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db
+    .select()
+    .from(loAgentSpendPairing)
+    .where(and(eq(loAgentSpendPairing.id, id), eq(loAgentSpendPairing.ownerUserId, ownerUserId)))
+    .limit(1);
+  return rows[0];
+}
+
+export async function createLoAgentSpendPairing(input: { ownerUserId: number; loanOfficerId: number; agentId: number }) {
+  const existing = await getDb().then(async (db) => {
+    if (!db) throw new Error("Database not available");
+    return db.select().from(loAgentSpendPairing).where(and(
+      eq(loAgentSpendPairing.ownerUserId, input.ownerUserId),
+      eq(loAgentSpendPairing.loanOfficerId, input.loanOfficerId),
+      eq(loAgentSpendPairing.agentId, input.agentId),
+    )).limit(1);
+  });
+  if (existing[0]) return existing[0];
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(loAgentSpendPairing).values(input);
+  const created = await getLoAgentSpendPairingForOwner(Number(result.insertId), input.ownerUserId);
+  if (!created) throw new Error("Couldn't create pairing tracker.");
+  return created;
+}
+
+export async function addLoAgentSpendEntry(input: {
+  pairingId: number;
+  spentOn: Date;
+  category: "ad_spend" | "event" | "print" | "digital" | "other";
+  description: string;
+  loanOfficerCents: number;
+  agentCents: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(loAgentSpendEntry).values(input);
+  await db.update(loAgentSpendPairing).set({ updatedAt: new Date() }).where(eq(loAgentSpendPairing.id, input.pairingId));
+  const rows = await db.select().from(loAgentSpendEntry).where(eq(loAgentSpendEntry.id, Number(result.insertId))).limit(1);
+  if (!rows[0]) throw new Error("Couldn't create spend entry.");
+  return rows[0];
+}
+
+export async function deleteLoAgentSpendEntry(input: { pairingId: number; entryId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(loAgentSpendEntry).where(and(eq(loAgentSpendEntry.id, input.entryId), eq(loAgentSpendEntry.pairingId, input.pairingId)));
+  await db.update(loAgentSpendPairing).set({ updatedAt: new Date() }).where(eq(loAgentSpendPairing.id, input.pairingId));
+}
+
+export async function deleteLoAgentSpendPairing(input: { id: number; ownerUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(loAgentSpendEntry).where(eq(loAgentSpendEntry.pairingId, input.id));
+  await db.delete(loAgentSpendPairing).where(and(eq(loAgentSpendPairing.id, input.id), eq(loAgentSpendPairing.ownerUserId, input.ownerUserId)));
 }
 
 // ---------------------------------------------------------------------------

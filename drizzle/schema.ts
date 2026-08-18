@@ -501,6 +501,47 @@ export const propertyPageAgentEmailTemplate = mysqlTable(
 export type PropertyPageAgentEmailTemplate = typeof propertyPageAgentEmailTemplate.$inferSelect;
 export type InsertPropertyPageAgentEmailTemplate = typeof propertyPageAgentEmailTemplate.$inferInsert;
 
+/** Private, owner-scoped LO and agent pairing used only for internal spend management. */
+export const loAgentSpendPairing = mysqlTable(
+  "lo_agent_spend_pairing",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerUserId: int("ownerUserId").notNull(),
+    loanOfficerId: int("loanOfficerId").notNull(),
+    agentId: int("agentId").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("lo_agent_spend_pairing_owner_unique").on(table.ownerUserId, table.loanOfficerId, table.agentId),
+    index("lo_agent_spend_pairing_owner_idx").on(table.ownerUserId),
+  ]
+);
+
+export type LoAgentSpendPairing = typeof loAgentSpendPairing.$inferSelect;
+export type InsertLoAgentSpendPairing = typeof loAgentSpendPairing.$inferInsert;
+
+/** One internal expense allocation row; all values are stored as integer cents. */
+export const loAgentSpendEntry = mysqlTable(
+  "lo_agent_spend_entry",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    pairingId: int("pairingId").notNull(),
+    spentOn: timestamp("spentOn").notNull(),
+    category: mysqlEnum("category", ["ad_spend", "event", "print", "digital", "other"]).notNull(),
+    description: varchar("description", { length: 300 }).notNull(),
+    loanOfficerCents: int("loanOfficerCents").default(0).notNull(),
+    agentCents: int("agentCents").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [
+    index("lo_agent_spend_entry_pairing_date_idx").on(table.pairingId, table.spentOn),
+  ]
+);
+
+export type LoAgentSpendEntry = typeof loAgentSpendEntry.$inferSelect;
+export type InsertLoAgentSpendEntry = typeof loAgentSpendEntry.$inferInsert;
+
 /** Persistent ownership state for the project-level GeoSphere weekly sync job. */
 export const geosphereSyncSetting = mysqlTable(
   "geosphere_sync_setting",

@@ -10,6 +10,7 @@ import ChatIntakeLeads from "@/components/ChatIntakeLeads";
 import CampaignFunnelSummary from "@/components/CampaignFunnelSummary";
 import GeoSphereListings from "@/components/GeoSphereListings";
 import TextingWorkspace from "@/components/TextingWorkspace";
+import PairingSpendTracker from "@/components/PairingSpendTracker";
 import {
   buildLeadWelcomeDraft,
   type LeadEmailAgent,
@@ -62,6 +63,7 @@ const DASHBOARD_SECTIONS = [
   { id: "texting-workspace", label: "Texting" },
   { id: "chat-intakes", label: "Chat intakes" },
   { id: "saved-qualifying-listings", label: "Listings" },
+  { id: "pairing-spend-tracker", label: "Spend tracker" },
 ] as const;
 
 type LeadStatus = "new" | "contacted" | "booked";
@@ -959,6 +961,7 @@ export default function Leads() {
             <div id="texting-workspace" className="scroll-mt-24"><TextingWorkspace /></div>
             <div id="chat-intakes" className="scroll-mt-24"><ChatIntakeLeads /></div>
             <div id="saved-qualifying-listings" className="scroll-mt-24"><GeoSphereListings /></div>
+            <div id="pairing-spend-tracker" className="scroll-mt-24"><PairingSpendTracker /></div>
           </section>
           </>
         )}

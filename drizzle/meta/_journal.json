@@ -169,6 +169,13 @@
       "when": 1786986427637,
       "tag": "0023_graceful_sentinels",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1787072515422,
+      "tag": "0024_mean_kree",
+      "breakpoints": true
     }
   ]
 }

@@ -22,6 +22,10 @@ import {
   createPropertyPageAgentEmailTemplate,
   createAgent,
   createLoanOfficer,
+  createLoAgentSpendPairing,
+  addLoAgentSpendEntry,
+  deleteLoAgentSpendEntry,
+  deleteLoAgentSpendPairing,
   deleteAgent,
   deleteLoanOfficer,
   ensureGeoSphereSyncSetting,
@@ -39,6 +43,7 @@ import {
   getLoanOfficerBySlug,
   getPropertyLandingPageById,
   getPropertyLandingPageBySlug,
+  getLoAgentSpendPairingForOwner,
   listGeoSphereListings,
   listGeoSphereSavedPulls,
   listListingAgentEmailTemplates,
@@ -56,6 +61,7 @@ import {
   listChatIntakeLeads,
   listLoanOfficers,
   listLeads,
+  listLoAgentSpendTrackers,
   listTextMessageDrafts,
   listTextChainByLead,
   listTextReadyRecipients,
@@ -1365,6 +1371,56 @@ export const appRouter = router({
           }
           throw error;
         }
+      }),
+  }),
+
+  pairingSpendTracker: router({
+    /** Private owner-only dashboard data; never exposed to public pages or agent accounts. */
+    list: protectedProcedure.query(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      return listLoAgentSpendTrackers(ctx.user.id);
+    }),
+    createPairing: protectedProcedure
+      .input(z.object({ loanOfficerId: z.number().int().positive(), agentId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const [officer, agent] = await Promise.all([getLoanOfficerById(input.loanOfficerId), getAgentById(input.agentId)]);
+        if (!officer) throw new TRPCError({ code: "NOT_FOUND", message: "Loan officer not found." });
+        if (!agent) throw new TRPCError({ code: "NOT_FOUND", message: "Agent not found." });
+        return createLoAgentSpendPairing({ ownerUserId: ctx.user.id, ...input });
+      }),
+    addEntry: protectedProcedure
+      .input(z.object({
+        pairingId: z.number().int().positive(),
+        spentOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a valid date."),
+        category: z.enum(["ad_spend", "event", "print", "digital", "other"]),
+        description: z.string().trim().min(1, "Enter a description.").max(300),
+        loanOfficerCents: z.number().int().min(0).max(100_000_000),
+        agentCents: z.number().int().min(0).max(100_000_000),
+      }).refine((value) => value.loanOfficerCents + value.agentCents > 0, { message: "Enter a contribution from at least one side." }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const pairing = await getLoAgentSpendPairingForOwner(input.pairingId, ctx.user.id);
+        if (!pairing) throw new TRPCError({ code: "NOT_FOUND", message: "Pairing tracker not found." });
+        return addLoAgentSpendEntry({ ...input, spentOn: new Date(`${input.spentOn}T12:00:00.000Z`) });
+      }),
+    deleteEntry: protectedProcedure
+      .input(z.object({ pairingId: z.number().int().positive(), entryId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const pairing = await getLoAgentSpendPairingForOwner(input.pairingId, ctx.user.id);
+        if (!pairing) throw new TRPCError({ code: "NOT_FOUND", message: "Pairing tracker not found." });
+        await deleteLoAgentSpendEntry(input);
+        return { success: true } as const;
+      }),
+    deletePairing: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const pairing = await getLoAgentSpendPairingForOwner(input.id, ctx.user.id);
+        if (!pairing) throw new TRPCError({ code: "NOT_FOUND", message: "Pairing tracker not found." });
+        await deleteLoAgentSpendPairing({ id: input.id, ownerUserId: ctx.user.id });
+        return { success: true } as const;
       }),
   }),
 
