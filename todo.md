@@ -335,3 +335,4 @@
 - [x] Reproduce and correct the mobile opened Mortgage Chat panel cutoff below the fixed header and section navigator
 - [x] Align mobile Mortgage Chat follow-up questions lower in the visible transcript and show a down-arrow cue only when more content is below
 - [x] Strip a leading U.S. country code from Roadmap phone input and always display the local 10-digit format
+- [x] Add visual website navigation choices after a visitor completes the Mortgage Chat intake

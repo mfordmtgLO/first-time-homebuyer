@@ -5,10 +5,11 @@ import { useScenario } from "@/contexts/ScenarioContext";
 import { trpc } from "@/lib/trpc";
 import { CALENDLY_BOOKING_URL } from "@/lib/booking";
 import { getNextQuestionFocusTarget } from "@shared/chatFocus";
+import { chatCompletionNavigation, type ChatCompletionNavigationTarget } from "@shared/chatCompletionNavigation";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
-import { CalendarDays, CheckCircle2, MessageCircle, Minus, RotateCcw, ShieldCheck, X } from "lucide-react";
+import { BookOpen, Calculator, CalendarDays, CheckCircle2, Clock3, MessageCircle, Minus, RotateCcw, ShieldCheck, X } from "lucide-react";
 import { emitFunnelConversion, getCampaignAttribution } from "@/lib/campaignTracking";
 
 const SESSION_STORAGE_KEY = "mortgage-intake-session";
@@ -147,6 +148,14 @@ export default function MortgageChatWidget() {
     if (!sessionId || answer.isPending || complete) return;
     setMessages((current) => [...current, { role: "user", content }]);
     answer.mutate({ sessionId, message: content });
+  };
+
+  const continueToSiteSection = (targetId: ChatCompletionNavigationTarget) => {
+    setOpen(false);
+    setMinimized(false);
+    window.requestAnimationFrame(() => {
+      document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   const restart = () => {
@@ -305,6 +314,29 @@ export default function MortgageChatWidget() {
               <a href={CALENDLY_BOOKING_URL} target="_blank" rel="noopener noreferrer" className="btn-press mt-6 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:brightness-110">
                 <CalendarDays className="h-4 w-4" /> Schedule a free 15-minute call
               </a>
+              <div className="mt-6 w-full max-w-sm border-t border-border/70 pt-5 text-left">
+                <p className="text-center text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Keep exploring</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {chatCompletionNavigation.map((option) => {
+                    const Icon = option.targetId === "buydown" ? Calculator : option.targetId === "cost-of-waiting" ? Clock3 : BookOpen;
+                    return (
+                      <Button
+                        key={option.targetId}
+                        type="button"
+                        variant="outline"
+                        className={option.targetId === "roadmap" ? "h-auto min-h-14 justify-start gap-3 px-3 py-3 text-left sm:col-span-2" : "h-auto min-h-14 justify-start gap-3 px-3 py-3 text-left"}
+                        onClick={() => continueToSiteSection(option.targetId)}
+                      >
+                        <Icon className="h-4 w-4 shrink-0 text-primary" />
+                        <span>
+                          <span className="block text-sm font-semibold">{option.label}</span>
+                          <span className="mt-0.5 block text-xs font-normal text-muted-foreground">{option.description}</span>
+                        </span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
               {buyerAgentEligible && (
                 <Button
                   variant="outline"
