@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getNextQuestionFocusTarget, getQuestionSnapScrollTop } from "../shared/chatFocus";
+import { getNextQuestionFocusTarget, getQuestionSnapScrollTop, hasTranscriptContentBelow } from "../shared/chatFocus";
 
 describe("getNextQuestionFocusTarget", () => {
   it("focuses a guided control for quick-reply and slider intake steps", () => {
@@ -18,15 +18,22 @@ describe("getNextQuestionFocusTarget", () => {
 });
 
 describe("getQuestionSnapScrollTop", () => {
-  it("places the complete active question just above the fixed response area", () => {
-    expect(getQuestionSnapScrollTop(480, 150, 400)).toBe(246);
+  it("places a follow-up question below a readable transcript-top gutter", () => {
+    expect(getQuestionSnapScrollTop(480)).toBe(424);
   });
 
   it("never returns a negative scroll position for early questions", () => {
-    expect(getQuestionSnapScrollTop(12, 90, 400)).toBe(0);
+    expect(getQuestionSnapScrollTop(12)).toBe(0);
   });
 
   it("keeps the opening greeting at the top of the transcript even when it is long", () => {
-    expect(getQuestionSnapScrollTop(140, 240, 355, 16, true)).toBe(0);
+    expect(getQuestionSnapScrollTop(140, 56, true)).toBe(0);
+  });
+});
+
+describe("hasTranscriptContentBelow", () => {
+  it("shows a down-arrow cue only while content remains below the transcript viewport", () => {
+    expect(hasTranscriptContentBelow(377, 263, 720, 8, 80)).toBe(false);
+    expect(hasTranscriptContentBelow(200, 263, 720, 8, 80)).toBe(true);
   });
 });

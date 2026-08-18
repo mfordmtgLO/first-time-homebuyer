@@ -333,3 +333,5 @@
 - [x] Fix the public 2-1 Buydown menu button so it always lands on the buydown calculator rather than Loan Programs
 - [x] Reproduce and correct the remaining mobile 2-1 Buydown tap flow that routes from Cost of Waiting to Loan Programs
 - [x] Reproduce and correct the mobile opened Mortgage Chat panel cutoff below the fixed header and section navigator
+- [ ] Align mobile Mortgage Chat follow-up questions lower in the visible transcript and show a down-arrow cue only when more content is below
+- [x] Strip a leading U.S. country code from Roadmap phone input and always display the local 10-digit format

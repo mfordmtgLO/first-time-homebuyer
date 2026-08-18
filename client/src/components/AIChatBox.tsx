@@ -2,10 +2,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { Loader2, Send, User, Sparkles } from "lucide-react";
+import { ChevronDown, Loader2, Send, User, Sparkles } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { Streamdown } from "streamdown";
-import { getQuestionSnapScrollTop } from "@shared/chatFocus";
+import { getQuestionSnapScrollTop, hasTranscriptContentBelow } from "@shared/chatFocus";
+
+const TRANSCRIPT_BOTTOM_SPACER = 80;
 
 /**
  * Message type matching server-side LLM Message interface
@@ -143,6 +145,7 @@ export function AIChatBox({
   const inputAreaRef = useRef<HTMLFormElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const currentQuestionRef = useRef<HTMLDivElement>(null);
+  const [hasContentBelow, setHasContentBelow] = useState(false);
 
   // Filter out system messages
   const displayMessages = messages.filter((msg) => msg.role !== "system");
@@ -163,6 +166,17 @@ export function AIChatBox({
     }
   };
 
+  const refreshContentBelowCue = () => {
+    const viewport = scrollAreaRef.current?.querySelector(
+      '[data-radix-scroll-area-viewport]'
+    ) as HTMLDivElement | null;
+    if (!viewport) {
+      setHasContentBelow(false);
+      return;
+    }
+    setHasContentBelow(hasTranscriptContentBelow(viewport.scrollTop, viewport.clientHeight, viewport.scrollHeight, 8, TRANSCRIPT_BOTTOM_SPACER));
+  };
+
   const snapCurrentQuestion = () => {
     const viewport = scrollAreaRef.current?.querySelector(
       '[data-radix-scroll-area-viewport]'
@@ -172,9 +186,10 @@ export function AIChatBox({
     const isOpeningQuestion = displayMessages.length === 1 && displayMessages[0]?.role === "assistant";
     requestAnimationFrame(() => {
       viewport.scrollTo({
-        top: getQuestionSnapScrollTop(question.offsetTop, question.offsetHeight, viewport.clientHeight, 16, isOpeningQuestion),
+        top: getQuestionSnapScrollTop(question.offsetTop, 56, isOpeningQuestion),
         behavior: isOpeningQuestion ? "auto" : "smooth",
       });
+      requestAnimationFrame(refreshContentBelowCue);
     });
   };
 
@@ -184,6 +199,24 @@ export function AIChatBox({
     if (displayMessages.length === 0) return;
     if (isLoading) scrollToBottom();
     else snapCurrentQuestion();
+  }, [displayMessages.length, isLoading, questionSnapKey]);
+
+  useEffect(() => {
+    if (displayMessages.length === 0) {
+      setHasContentBelow(false);
+      return;
+    }
+    const viewport = scrollAreaRef.current?.querySelector(
+      '[data-radix-scroll-area-viewport]'
+    ) as HTMLDivElement | null;
+    if (!viewport) return;
+    const updateCue = () => setHasContentBelow(hasTranscriptContentBelow(viewport.scrollTop, viewport.clientHeight, viewport.scrollHeight, 8, TRANSCRIPT_BOTTOM_SPACER));
+    const frame = requestAnimationFrame(updateCue);
+    viewport.addEventListener("scroll", updateCue, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      viewport.removeEventListener("scroll", updateCue);
+    };
   }, [displayMessages.length, isLoading, questionSnapKey]);
 
   // Free-form questions should return focus to the text input once the next
@@ -229,7 +262,7 @@ export function AIChatBox({
       style={{ height }}
     >
       {/* Messages Area */}
-      <div ref={scrollAreaRef} className="flex-1 overflow-hidden">
+      <div ref={scrollAreaRef} className="relative flex-1 overflow-hidden">
         {displayMessages.length === 0 ? (
           <div className="flex h-full flex-col p-4">
             <div className="flex flex-1 flex-col items-center justify-center gap-6 text-muted-foreground">
@@ -256,7 +289,7 @@ export function AIChatBox({
           </div>
         ) : (
           <ScrollArea className="h-full">
-            <div className="flex flex-col space-y-4 p-4">
+            <div className="flex flex-col space-y-4 p-4 pb-20">
               {displayMessages.map((message, index) => {
                 const isCurrentQuestion = message.role === "assistant" && index === displayMessages.length - 1 && !isLoading;
                 return (
@@ -324,6 +357,17 @@ export function AIChatBox({
               )}
             </div>
           </ScrollArea>
+        )}
+        {hasContentBelow && displayMessages.length > 0 && (
+          <button
+            type="button"
+            onClick={scrollToBottom}
+            className="btn-press absolute bottom-3 right-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full border border-primary/20 bg-card/95 text-primary shadow-md backdrop-blur-sm transition hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            aria-label="More of this chat message is below. Scroll down to continue reading."
+            title="More below"
+          >
+            <ChevronDown className="h-4 w-4" aria-hidden="true" />
+          </button>
         )}
       </div>
 

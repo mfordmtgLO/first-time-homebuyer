@@ -19,17 +19,26 @@ export function getNextQuestionFocusTarget(step: string | null): "guided" | "tex
 }
 
 /**
- * Positions the newest complete question near the bottom of the transcript,
- * immediately above the fixed response area. This keeps the entire prompt in
- * view instead of blindly scrolling the transcript bottom under guided controls.
+ * Positions each new question below a small transcript-top gutter. This makes
+ * the beginning of every follow-up prompt immediately readable; a conditional
+ * down-arrow cue handles questions that extend beyond the mobile viewport.
  */
 export function getQuestionSnapScrollTop(
   questionTop: number,
-  questionHeight: number,
-  viewportHeight: number,
-  bottomGutter = 16,
+  topGutter = 56,
   isOpeningQuestion = false,
 ): number {
   if (isOpeningQuestion) return 0;
-  return Math.max(0, questionTop + questionHeight - viewportHeight + bottomGutter);
+  return Math.max(0, questionTop - topGutter);
+}
+
+/** True only when transcript content remains below the visible viewport. */
+export function hasTranscriptContentBelow(
+  scrollTop: number,
+  clientHeight: number,
+  scrollHeight: number,
+  tolerance = 8,
+  trailingSpacer = 0,
+): boolean {
+  return scrollTop + clientHeight < scrollHeight - trailingSpacer - tolerance;
 }
