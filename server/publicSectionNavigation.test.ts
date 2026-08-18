@@ -22,11 +22,11 @@ describe("publicSectionNavigationItems", () => {
     expect(new Set(destinations).size).toBe(destinations.length);
   });
 
-  it("selects the last destination that has passed the fixed-header offset", () => {
+  it("selects the destination closest above the fixed-header offset, independent of menu order", () => {
     const positions = {
-      "cost-of-waiting": 310,
-      buydown: 142,
-      programs: 610,
+      "cost-of-waiting": -900,
+      buydown: 160,
+      programs: -280,
       roadmap: 900,
       "how-it-works": 1200,
       about: 1500,

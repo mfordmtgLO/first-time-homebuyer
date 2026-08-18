@@ -22,11 +22,18 @@ export function getActivePublicSectionId(
 ): (typeof publicSectionNavigationItems)[number]["id"] {
   if (scrollY < 96) return "top";
 
-  const scrollOffset = 156;
-  return publicSectionNavigationItems
+  const scrollOffset = 192;
+  const eligibleSections = publicSectionNavigationItems
     .slice(1)
-    .filter(({ id }) => (getSectionTop(id) ?? Number.POSITIVE_INFINITY) <= scrollOffset)
-    .at(-1)?.id ?? "top";
+    .map(({ id }) => ({ id, top: getSectionTop(id) }))
+    .filter((section): section is { id: (typeof publicSectionNavigationItems)[number]["id"]; top: number } =>
+      typeof section.top === "number" && section.top <= scrollOffset,
+    );
+
+  return eligibleSections.reduce(
+    (closest, section) => (!closest || section.top > closest.top ? section : closest),
+    undefined as (typeof eligibleSections)[number] | undefined,
+  )?.id ?? "top";
 }
 
 export default function PublicSectionNav() {

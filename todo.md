@@ -331,3 +331,4 @@
 - [x] Remove the duplicate Book a call shortcut from the public section navigator while preserving the header booking control
 - [x] Add a visual Roadmap completion-card option that jumps directly to the 2-1 Buydown scenario tool
 - [x] Fix the public 2-1 Buydown menu button so it always lands on the buydown calculator rather than Loan Programs
+- [x] Reproduce and correct the remaining mobile 2-1 Buydown tap flow that routes from Cost of Waiting to Loan Programs
