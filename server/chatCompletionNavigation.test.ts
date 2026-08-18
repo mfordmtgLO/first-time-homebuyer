@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { chatCompletionNavigation } from "../shared/chatCompletionNavigation";
 
 describe("chat completion navigation", () => {
@@ -16,5 +18,13 @@ describe("chat completion navigation", () => {
       "Free Roadmap",
       "Your Guide",
     ]);
+  });
+
+  it("keeps Free Roadmap and Your Guide in the compact two-column completion grid", () => {
+    const projectRoot = path.resolve(import.meta.dirname, "..");
+    const componentSource = readFileSync(path.join(projectRoot, "client/src/components/MortgageChatWidget.tsx"), "utf8");
+
+    expect(componentSource).toContain('className="mt-3 grid grid-cols-2 gap-2"');
+    expect(componentSource).not.toContain('option.targetId === "roadmap" ? "h-11');
   });
 });

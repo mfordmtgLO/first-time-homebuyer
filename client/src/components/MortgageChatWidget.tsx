@@ -387,7 +387,7 @@ export default function MortgageChatWidget() {
                         key={option.targetId}
                         type="button"
                         variant="outline"
-                        className={option.targetId === "roadmap" ? "h-11 justify-start gap-2 px-2.5 text-left text-xs sm:col-span-2" : "h-11 justify-start gap-2 px-2.5 text-left text-xs"}
+                        className="h-10 min-w-0 justify-start gap-1.5 px-2 text-left text-xs"
                         onClick={() => continueToSiteSection(option.targetId)}
                       >
                         <Icon className="h-4 w-4 shrink-0 text-primary" />
