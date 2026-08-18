@@ -329,3 +329,4 @@
 - [x] Add graphical post-Roadmap navigation choices to return to the prior context or explore the next educational section
 - [x] Keep Top permanently visible in the public snap navigation and signal that additional section buttons can be explored horizontally
 - [x] Remove the duplicate Book a call shortcut from the public section navigator while preserving the header booking control
+- [x] Add a visual Roadmap completion-card option that jumps directly to the 2-1 Buydown scenario tool

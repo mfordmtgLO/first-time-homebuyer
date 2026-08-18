@@ -179,6 +179,20 @@ export default function LeadMagnet() {
                   </span>
                   <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
                 </button>
+                <button
+                  type="button"
+                  onClick={() => scrollToSection("buydown")}
+                  className="btn-press group flex min-h-20 items-center gap-3 rounded-lg border border-accent/35 bg-accent/[0.08] p-4 text-left transition hover:border-accent/60 hover:bg-accent/[0.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:col-span-2"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/20 text-accent-foreground transition group-hover:scale-105">
+                    <Calculator className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground">Try the 2-1 Buydown scenario tool</span>
+                    <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">See how a seller-paid temporary rate buydown could change the first two years of payments.</span>
+                  </span>
+                  <ArrowRight className="h-4 w-4 shrink-0 text-accent-foreground" aria-hidden="true" />
+                </button>
               </div>
             </div>
           ) : (
