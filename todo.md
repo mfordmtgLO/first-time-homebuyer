@@ -337,3 +337,4 @@
 - [x] Strip a leading U.S. country code from Roadmap phone input and always display the local 10-digit format
 - [x] Add visual website navigation choices after a visitor completes the Mortgage Chat intake
 - [x] Ensure all completed-chat navigation choices are reachable within the mobile chat panel
+- [x] Prevent the collapsed mobile Mortgage Chat launcher from covering hero call-to-action buttons on initial page load

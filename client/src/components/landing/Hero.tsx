@@ -30,7 +30,7 @@ export default function Hero() {
             <strong className="text-foreground font-semibold"> 0% down</strong> through USDA, VA, and
             specialized conventional programs. Stop paying your landlord's mortgage — let's map out yours.
           </p>
-          <div className="mt-8 flex flex-col sm:flex-row gap-4 reveal in-view" style={{ transitionDelay: "140ms" }}>
+          <div id="hero-primary-actions" className="mt-8 flex flex-col sm:flex-row gap-4 reveal in-view" style={{ transitionDelay: "140ms" }}>
             <a
               href="#book-call"
               className="btn-press inline-flex items-center justify-center gap-2 rounded-md bg-accent px-6 py-3.5 text-base font-semibold text-accent-foreground shadow-md hover:brightness-105"

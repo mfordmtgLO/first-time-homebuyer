@@ -6,6 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { CALENDLY_BOOKING_URL } from "@/lib/booking";
 import { getNextQuestionFocusTarget } from "@shared/chatFocus";
 import { chatCompletionNavigation, type ChatCompletionNavigationTarget } from "@shared/chatCompletionNavigation";
+import { shouldHideMobileChatLauncher } from "@shared/chatLauncherVisibility";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
@@ -57,6 +58,7 @@ export default function MortgageChatWidget() {
   const [buyerAgentEligible, setBuyerAgentEligible] = useState(false);
   const [buyerAgentRequested, setBuyerAgentRequested] = useState(false);
   const [guidedAmount, setGuidedAmount] = useState(0);
+  const [heroActionsVisible, setHeroActionsVisible] = useState(true);
   const startedRef = useRef(false);
   const guidedControlsRef = useRef<HTMLDivElement>(null);
 
@@ -140,6 +142,20 @@ export default function MortgageChatWidget() {
   }, []);
 
   useEffect(() => {
+    const heroActions = document.getElementById("hero-primary-actions");
+    if (!heroActions || !("IntersectionObserver" in window)) {
+      setHeroActionsVisible(false);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => setHeroActionsVisible(entry?.isIntersecting === true),
+      { threshold: 0.45 },
+    );
+    observer.observe(heroActions);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
     const config = currentStep ? MONEY_SLIDER_CONFIG[currentStep] : undefined;
     if (config) setGuidedAmount(config.defaultValue);
   }, [currentStep]);
@@ -191,6 +207,7 @@ export default function MortgageChatWidget() {
   const displayStep = currentStep;
   const displayMessages = messages;
   const displayQuickReplies = displayStep ? QUICK_REPLIES[displayStep] ?? [] : [];
+  const hideCollapsedLauncherDuringHero = shouldHideMobileChatLauncher(heroActionsVisible, open);
 
   useEffect(() => {
     if (isProcessing || complete || nextQuestionFocusTarget !== "guided") return;
@@ -386,7 +403,7 @@ export default function MortgageChatWidget() {
             if (!open) { setOpen(true); setMinimized(false); return; }
             setMinimized(false);
           }}
-          className="btn-press fixed bottom-[5.5rem] right-5 z-50 inline-flex h-14 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-xl transition hover:brightness-110 sm:bottom-24 sm:right-6"
+          className={`btn-press fixed bottom-[5.5rem] right-5 z-50 inline-flex h-14 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-xl transition hover:brightness-110 sm:bottom-24 sm:right-6 ${hideCollapsedLauncherDuringHero ? "max-md:pointer-events-none max-md:translate-y-4 max-md:opacity-0" : ""}`}
           aria-expanded={open && !minimized}
           aria-label={!open ? "Open mortgage intake chat" : "Resume mortgage intake chat"}
         >
