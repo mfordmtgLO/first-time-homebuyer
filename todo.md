@@ -338,3 +338,5 @@
 - [x] Add visual website navigation choices after a visitor completes the Mortgage Chat intake
 - [x] Ensure all completed-chat navigation choices are reachable within the mobile chat panel
 - [x] Prevent the collapsed mobile Mortgage Chat launcher from covering hero call-to-action buttons on initial page load
+- [x] Compact the Roadmap completion navigation, adding Cost of Waiting and Meet Your Guide destinations
+- [x] Replace the public section navigator’s More label with explicit left and right horizontal scroll controls

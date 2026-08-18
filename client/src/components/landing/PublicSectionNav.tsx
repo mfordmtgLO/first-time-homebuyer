@@ -1,5 +1,11 @@
-import { useEffect, useState } from "react";
-import { ChevronUp, ChevronsLeftRight, MessageCircle } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, ChevronUp, MessageCircle } from "lucide-react";
+
+export const HORIZONTAL_SECTION_NAV_SCROLL_STEP = 220;
+
+export function getHorizontalSectionNavScrollAmount(direction: "left" | "right") {
+  return direction === "left" ? -HORIZONTAL_SECTION_NAV_SCROLL_STEP : HORIZONTAL_SECTION_NAV_SCROLL_STEP;
+}
 
 export const publicSectionNavigationItems = [
   { id: "top", label: "Top", icon: ChevronUp },
@@ -38,6 +44,14 @@ export function getActivePublicSectionId(
 
 export default function PublicSectionNav() {
   const [activeSectionId, setActiveSectionId] = useState<(typeof publicSectionNavigationItems)[number]["id"]>("top");
+  const sectionScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollSectionMenu = (direction: "left" | "right") => {
+    sectionScrollRef.current?.scrollBy({
+      left: getHorizontalSectionNavScrollAmount(direction),
+      behavior: "smooth",
+    });
+  };
 
   useEffect(() => {
     const updateActiveSection = () => {
@@ -63,7 +77,7 @@ export default function PublicSectionNav() {
       aria-label="Explore this page"
       className="fixed inset-x-0 top-16 z-40 px-3 md:top-[4.6rem] md:px-5"
     >
-      <div className="mx-auto flex max-w-fit items-center gap-1 overflow-hidden rounded-full border border-primary/15 bg-cream/95 px-1.5 py-1.5 shadow-[0_14px_28px_-20px_rgb(32_38_27/0.55)] backdrop-blur-md">
+      <div className="mx-auto flex w-full max-w-[calc(100vw-1.5rem)] items-center gap-1 overflow-hidden rounded-full border border-primary/15 bg-cream/95 px-1.5 py-1.5 shadow-[0_14px_28px_-20px_rgb(32_38_27/0.55)] backdrop-blur-md md:w-auto md:max-w-fit">
         <a
           href="#top"
           onClick={(event) => {
@@ -81,8 +95,17 @@ export default function PublicSectionNav() {
           <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
           Top
         </a>
+        <button
+          type="button"
+          onClick={() => scrollSectionMenu("left")}
+          className="btn-press inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-primary transition hover:bg-primary/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary md:hidden"
+          aria-label="Scroll section menu left"
+          title="Previous sections"
+        >
+          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+        </button>
         <div className="relative min-w-0 flex-1">
-          <div className="flex max-w-[calc(100vw-5.5rem)] items-center gap-0.5 overflow-x-auto overscroll-contain pr-12 [scrollbar-width:none] md:max-w-none md:pr-0 [&::-webkit-scrollbar]:hidden">
+          <div ref={sectionScrollRef} className="flex max-w-[calc(100vw-10rem)] items-center gap-0.5 overflow-x-auto overscroll-contain [scrollbar-width:none] md:max-w-none [&::-webkit-scrollbar]:hidden">
           {publicSectionNavigationItems.filter(({ id }) => id !== "top").map(({ id, label, icon: Icon }) => (
             <a
               key={id}
@@ -112,11 +135,16 @@ export default function PublicSectionNav() {
             Mortgage Chat
           </button>
           </div>
-          <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center gap-0.5 bg-gradient-to-l from-cream via-cream/95 to-transparent pl-5 pr-1 text-[10px] font-semibold text-primary md:hidden" aria-hidden="true">
-            <ChevronsLeftRight className="h-3.5 w-3.5" />
-            More
-          </span>
         </div>
+        <button
+          type="button"
+          onClick={() => scrollSectionMenu("right")}
+          className="btn-press inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-primary transition hover:bg-primary/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary md:hidden"
+          aria-label="Scroll section menu right"
+          title="More sections"
+        >
+          <ChevronRight className="h-4 w-4" aria-hidden="true" />
+        </button>
       </div>
     </nav>
   );

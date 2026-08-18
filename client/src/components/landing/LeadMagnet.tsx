@@ -5,7 +5,7 @@ import { useScenario } from "@/contexts/ScenarioContext";
 import { useAgentSlug, useLoanOfficerSlug, usePropertyPageSlug } from "@/contexts/AgentPageContext";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, Download, CheckCircle2, Loader2, Calculator, Compass, Hourglass, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Download, CheckCircle2, Loader2, Calculator, Compass, Hourglass, UserRound, X } from "lucide-react";
 import { formatUsRoadmapPhone, hasUsableRoadmapPhone } from "@shared/roadmapPhone";
 import { emitFunnelConversion, getCampaignAttribution } from "@/lib/campaignTracking";
 
@@ -14,6 +14,13 @@ const fmtUsd = (v: number) =>
 
 const COVER_IMG = "/manus-storage/roadmap-cover_04621272.png";
 export const roadmapSuccessScrollOptions: ScrollIntoViewOptions = { behavior: "smooth", block: "center" };
+
+export const roadmapSuccessNavigationItems = [
+  { id: "buydown", label: "2-1 Buydown", icon: Calculator },
+  { id: "cost-of-waiting", label: "Cost of Waiting", icon: Hourglass },
+  { id: "how-it-works", label: "How It Works", icon: Compass },
+  { id: "about", label: "Meet Your Guide", icon: UserRound },
+] as const;
 
 export function getRoadmapSuccessReturnDestination(hasBuydownScenario: boolean, hasCostOfWaitingScenario: boolean) {
   if (hasBuydownScenario) return { id: "buydown", label: "Back to my 2-1 numbers", description: "Review your payment savings" };
@@ -41,6 +48,13 @@ export default function LeadMagnet() {
   const [smsConsent, setSmsConsent] = useState(false);
   const successMessageRef = useRef<HTMLDivElement>(null);
   const returnDestination = getRoadmapSuccessReturnDestination(attached, cowAttached);
+  const successNavigationItems = [
+    {
+      ...returnDestination,
+      icon: attached || cowAttached ? Calculator : Compass,
+    },
+    ...roadmapSuccessNavigationItems,
+  ];
 
   const scrollToSection = (sectionId: string) => {
     document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -150,49 +164,31 @@ export default function LeadMagnet() {
                   </p>
                 </div>
               </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => scrollToSection(returnDestination.id)}
-                  className="btn-press group flex min-h-24 items-center gap-3 rounded-lg border border-primary/20 bg-primary/[0.045] p-4 text-left transition hover:border-primary/40 hover:bg-primary/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary transition group-hover:-translate-x-0.5">
-                    {attached || cowAttached ? <Calculator className="h-5 w-5" aria-hidden="true" /> : <Compass className="h-5 w-5" aria-hidden="true" />}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold text-foreground">{returnDestination.label}</span>
-                    <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">{returnDestination.description}</span>
-                  </span>
-                  <ArrowLeft className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => scrollToSection("how-it-works")}
-                  className="btn-press group flex min-h-24 items-center gap-3 rounded-lg bg-primary p-4 text-left text-primary-foreground shadow-sm transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/15 text-primary-foreground transition group-hover:translate-x-0.5">
-                    <Compass className="h-5 w-5" aria-hidden="true" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold">Next: see how it works</span>
-                    <span className="mt-0.5 block text-xs leading-relaxed text-primary-foreground/80">Explore the next step in your homebuying plan</span>
-                  </span>
-                  <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => scrollToSection("buydown")}
-                  className="btn-press group flex min-h-20 items-center gap-3 rounded-lg border border-accent/35 bg-accent/[0.08] p-4 text-left transition hover:border-accent/60 hover:bg-accent/[0.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:col-span-2"
-                >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/20 text-accent-foreground transition group-hover:scale-105">
-                    <Calculator className="h-5 w-5" aria-hidden="true" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold text-foreground">Try the 2-1 Buydown scenario tool</span>
-                    <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">See how a seller-paid temporary rate buydown could change the first two years of payments.</span>
-                  </span>
-                  <ArrowRight className="h-4 w-4 shrink-0 text-accent-foreground" aria-hidden="true" />
-                </button>
+              <div className="mt-5 border-t border-border/70 pt-4">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Keep exploring</p>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {successNavigationItems.map((item, index) => {
+                    const Icon = item.icon;
+                    const isReturn = index === 0;
+                    return (
+                      <button
+                        key={`${item.id}-${item.label}`}
+                        type="button"
+                        title={"description" in item ? item.description : item.label}
+                        onClick={() => scrollToSection(item.id)}
+                        className={`btn-press inline-flex min-h-14 items-center justify-start gap-2 rounded-md border px-2.5 py-2 text-left text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                          isReturn
+                            ? "border-primary/25 bg-primary/[0.06] text-primary hover:bg-primary/[0.12]"
+                            : "border-border bg-card text-foreground hover:border-primary/35 hover:bg-primary/[0.04]"
+                        }`}
+                      >
+                        <Icon className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                        <span className="min-w-0 leading-tight">{item.label}</span>
+                        {isReturn ? <ArrowLeft className="ml-auto h-3.5 w-3.5 shrink-0" aria-hidden="true" /> : <ArrowRight className="ml-auto h-3.5 w-3.5 shrink-0 text-primary/75" aria-hidden="true" />}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           ) : (

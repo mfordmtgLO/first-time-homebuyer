@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { getActivePublicSectionId, publicSectionNavigationItems } from "../client/src/components/landing/PublicSectionNav";
+import { getActivePublicSectionId, getHorizontalSectionNavScrollAmount, publicSectionNavigationItems } from "../client/src/components/landing/PublicSectionNav";
 
 describe("publicSectionNavigationItems", () => {
   it("keeps the principal educational and lead-capture destinations available", () => {
@@ -20,6 +20,11 @@ describe("publicSectionNavigationItems", () => {
   it("does not define duplicate section targets", () => {
     const destinations = publicSectionNavigationItems.map((item) => item.id);
     expect(new Set(destinations).size).toBe(destinations.length);
+  });
+
+  it("provides explicit equal-size scroll increments in both horizontal menu directions", () => {
+    expect(getHorizontalSectionNavScrollAmount("left")).toBe(-220);
+    expect(getHorizontalSectionNavScrollAmount("right")).toBe(220);
   });
 
   it("selects the destination closest above the fixed-header offset, independent of menu order", () => {
