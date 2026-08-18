@@ -353,3 +353,7 @@
 - [x] Ensure the desktop-browser completed Mortgage Chat message starts fully below the chat header without changing mobile behavior
 - [x] Add a desktop-only top gutter so the completed Mortgage Chat message clears the fixed header in every desktop browser view
 - [x] Add independent scrollbars to Pairing Trackers and active-pair spend history to keep the dashboard compact as records grow
+- [x] Add protected storage and provenance for on-demand state-based synced top-agent profiles, starting with Oregon
+- [x] Add an Oregon Sync Top Agents dashboard control that imports authorized source profiles on demand
+- [x] Add synced-agent selection to the Add Agent workflow for quick creation with retained profile details, headshot, and links
+- [x] Add and validate a protected read-only Oregon agent export endpoint in the supplied Oregon Agent Leads repository

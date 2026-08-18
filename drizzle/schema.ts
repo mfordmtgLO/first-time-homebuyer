@@ -90,6 +90,8 @@ export const agentProfile = mysqlTable("agent_profile", {
   headshotUrl: varchar("headshotUrl", { length: 500 }).default("").notNull(),
   /** /manus-storage/... URL of the uploaded company logo image. */
   companyLogoUrl: varchar("companyLogoUrl", { length: 500 }).default("").notNull(),
+  /** Optional private source-profile record used to prefill this co-marketing agent. */
+  syncedTopAgentId: int("syncedTopAgentId"),
   visible: int("visible").default(1).notNull(),
   /** 1 = show this agent on the default landing page (/). At most one featured agent. */
   featured: int("featured").default(0).notNull(),
@@ -99,6 +101,46 @@ export const agentProfile = mysqlTable("agent_profile", {
 
 export type AgentProfile = typeof agentProfile.$inferSelect;
 export type InsertAgentProfile = typeof agentProfile.$inferInsert;
+
+/**
+ * Owner-scoped, source-provenance records synced from an authorized state agent
+ * directory. These records are private dashboard working data, not public agent
+ * profiles, until the owner deliberately creates a co-marketing partner from one.
+ */
+export const syncedTopAgent = mysqlTable(
+  "synced_top_agent",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerUserId: int("ownerUserId").notNull(),
+    sourceKey: varchar("sourceKey", { length: 80 }).default("oregon-agent-leads").notNull(),
+    sourceAgentId: int("sourceAgentId").notNull(),
+    state: varchar("state", { length: 8 }).notNull(),
+    fullName: varchar("fullName", { length: 160 }).notNull(),
+    brokerage: varchar("brokerage", { length: 240 }),
+    cityArea: varchar("cityArea", { length: 240 }),
+    phone: varchar("phone", { length: 40 }),
+    email: varchar("email", { length: 320 }),
+    websiteBioUrl: varchar("websiteBioUrl", { length: 500 }),
+    zillowUrl: varchar("zillowUrl", { length: 500 }),
+    headshotUrl: varchar("headshotUrl", { length: 500 }),
+    sourceRank: int("sourceRank"),
+    /** Complete authorized source record retained for preview and prefill. */
+    profileData: text("profileData").notNull(),
+    sourceUpdatedAt: timestamp("sourceUpdatedAt"),
+    /** Created co-marketing profile, if the owner has promoted this source record. */
+    createdAgentId: int("createdAgentId"),
+    syncedAt: timestamp("syncedAt").defaultNow().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("synced_top_agent_owner_source_unique").on(table.ownerUserId, table.sourceKey, table.sourceAgentId),
+    index("synced_top_agent_owner_state_rank_idx").on(table.ownerUserId, table.state, table.sourceRank),
+  ]
+);
+
+export type SyncedTopAgent = typeof syncedTopAgent.$inferSelect;
+export type InsertSyncedTopAgent = typeof syncedTopAgent.$inferInsert;
 
 /**
  * Loan officers shown in the public Mortgage Intake Specialist widget. One

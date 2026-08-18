@@ -43,6 +43,7 @@ import {
   getLoanOfficerBySlug,
   getPropertyLandingPageById,
   getPropertyLandingPageBySlug,
+  getSyncedTopAgent,
   getLoAgentSpendPairingForOwner,
   listGeoSphereListings,
   listGeoSphereSavedPulls,
@@ -62,6 +63,7 @@ import {
   listLoanOfficers,
   listLeads,
   listLoAgentSpendTrackers,
+  listSyncedTopAgents,
   listTextMessageDrafts,
   listTextChainByLead,
   listTextReadyRecipients,
@@ -69,6 +71,8 @@ import {
   setFeaturedAgent,
   setFeaturedLoanOfficer,
   slugTaken,
+  upsertSyncedTopAgents,
+  markSyncedTopAgentCreated,
   updateAgent,
   updateChatLead,
   updateLeadAgent,
@@ -119,8 +123,46 @@ const agentProfileInputSchema = z.object({
   companyName: z.string().trim().max(200).default(""),
   headshotUrl: z.string().trim().max(500).default(""),
   companyLogoUrl: z.string().trim().max(500).default(""),
+  syncedTopAgentId: z.number().int().positive().nullable().default(null),
   visible: z.boolean().default(true),
 });
+
+const oregonAgentSourceProfileSchema = z.object({
+  sourceAgentId: z.number().int().positive(),
+  fullName: z.string().trim().min(1).max(160),
+  state: z.literal("Oregon"),
+  brokerage: z.string().nullable(),
+  cityArea: z.string().nullable(),
+  phone: z.string().nullable(),
+  email: z.string().nullable(),
+  websiteBioUrl: z.string().nullable(),
+  zillowUrl: z.string().nullable(),
+  headshotUrl: z.string().nullable(),
+  realtrendsRank: z.number().int().nullable(),
+  sourceUpdatedAt: z.string().datetime(),
+}).passthrough();
+
+const oregonAgentSourceExportSchema = z.object({
+  version: z.literal(1),
+  source: z.literal("oregon-agent-leads"),
+  state: z.literal("Oregon"),
+  exportedAt: z.string().datetime(),
+  count: z.number().int().nonnegative(),
+  agents: z.array(oregonAgentSourceProfileSchema),
+});
+
+const OREGON_AGENT_SYNC_URL = process.env.OREGON_AGENT_SYNC_URL ?? "https://oregonleads-bqkuz5cc.manus.space/api/sync/agents?state=Oregon";
+
+function syncedAgentBio(profile: z.infer<typeof oregonAgentSourceProfileSchema>) {
+  const details = [
+    profile.brokerage ? `Brokerage: ${profile.brokerage}` : null,
+    profile.cityArea ? `Service area: ${profile.cityArea}` : null,
+    typeof profile.realtrendsRank === "number" ? `Source ranking: #${profile.realtrendsRank}` : null,
+    profile.zillowUrl ? `Zillow profile: ${profile.zillowUrl}` : null,
+    typeof profile.notes === "string" && profile.notes.trim() ? profile.notes.trim() : null,
+  ].filter((value): value is string => Boolean(value));
+  return details.join("\n\n");
+}
 
 /** Resolve a unique slug for an agent, appending -2, -3... on collisions. */
 async function resolveUniqueSlug(desired: string, name: string, excludeId?: number) {
@@ -1541,6 +1583,10 @@ export const appRouter = router({
       .input(agentProfileInputSchema.extend({ name: z.string().trim().min(1, "Agent name is required").max(160) }))
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
+        if (input.syncedTopAgentId !== null) {
+          const synced = await getSyncedTopAgent(ctx.user.id, input.syncedTopAgentId);
+          if (!synced) throw new TRPCError({ code: "NOT_FOUND", message: "That synced agent profile is unavailable." });
+        }
         const slug = await resolveUniqueSlug(input.slug, input.name);
         const id = await createAgent({
           name: input.name,
@@ -1552,8 +1598,12 @@ export const appRouter = router({
           companyName: input.companyName,
           headshotUrl: input.headshotUrl,
           companyLogoUrl: input.companyLogoUrl,
+          syncedTopAgentId: input.syncedTopAgentId,
           visible: input.visible ? 1 : 0,
         });
+        if (input.syncedTopAgentId !== null) {
+          await markSyncedTopAgentCreated(ctx.user.id, input.syncedTopAgentId, Number(id));
+        }
         return { id, slug } as const;
       }),
     /** Admin-only: update an existing agent. */
@@ -1581,6 +1631,7 @@ export const appRouter = router({
           companyName: input.companyName,
           headshotUrl: input.headshotUrl,
           companyLogoUrl: input.companyLogoUrl,
+          syncedTopAgentId: input.syncedTopAgentId,
           visible: input.visible ? 1 : 0,
         });
         return { success: true, slug } as const;
@@ -1630,6 +1681,52 @@ export const appRouter = router({
         const { url } = await storagePut(key, buffer, input.mimeType);
         return { url } as const;
       }),
+  }),
+
+  agentSync: router({
+    /** Admin-only, owner-scoped copy of the authorized state source records. */
+    list: protectedProcedure
+      .input(z.object({ state: z.literal("Oregon").optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return listSyncedTopAgents(ctx.user.id, input?.state ?? "Oregon");
+      }),
+    /** Admin-only live pull from the read-only Oregon directory export endpoint. */
+    syncOregon: protectedProcedure.mutation(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      const token = process.env.OREGON_AGENT_SYNC_TOKEN;
+      if (!token) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Oregon sync token is not configured." });
+      let response: Response;
+      try {
+        response = await fetch(OREGON_AGENT_SYNC_URL, { headers: { Authorization: `Bearer ${token}` } });
+      } catch {
+        throw new TRPCError({ code: "BAD_GATEWAY", message: "Could not reach the Oregon agent directory." });
+      }
+      if (!response.ok) {
+        throw new TRPCError({ code: "BAD_GATEWAY", message: "The Oregon agent directory rejected the sync request." });
+      }
+      const raw = await response.json().catch(() => null);
+      const payload = oregonAgentSourceExportSchema.safeParse(raw);
+      if (!payload.success) {
+        throw new TRPCError({ code: "BAD_GATEWAY", message: "The Oregon agent directory returned an unexpected export format." });
+      }
+      const result = await upsertSyncedTopAgents(ctx.user.id, payload.data.agents.map((profile) => ({
+        sourceAgentId: profile.sourceAgentId,
+        state: profile.state,
+        fullName: profile.fullName,
+        brokerage: profile.brokerage,
+        cityArea: profile.cityArea,
+        phone: profile.phone,
+        email: profile.email,
+        websiteBioUrl: profile.websiteBioUrl,
+        zillowUrl: profile.zillowUrl,
+        headshotUrl: profile.headshotUrl,
+        sourceRank: profile.realtrendsRank,
+        profileData: JSON.stringify(profile),
+        sourceUpdatedAt: new Date(profile.sourceUpdatedAt),
+      })));
+      return { ...result, source: payload.data.source, state: payload.data.state, exportedAt: payload.data.exportedAt } as const;
+    }),
   }),
 });
 

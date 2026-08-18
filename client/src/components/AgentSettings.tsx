@@ -45,6 +45,7 @@ import {
   MailCheck,
   Pencil,
   Plus,
+  RefreshCw,
   Save,
   Star,
   Trash2,
@@ -65,6 +66,7 @@ type AgentRow = {
   companyName: string;
   headshotUrl: string;
   companyLogoUrl: string;
+  syncedTopAgentId: number | null;
   visible: number;
   featured: number;
 };
@@ -79,6 +81,7 @@ type FormState = {
   companyName: string;
   headshotUrl: string;
   companyLogoUrl: string;
+  syncedTopAgentId: number | null;
   visible: boolean;
 };
 
@@ -92,8 +95,43 @@ const EMPTY: FormState = {
   companyName: "",
   headshotUrl: "",
   companyLogoUrl: "",
+  syncedTopAgentId: null,
   visible: true,
 };
+
+type SyncedTopAgentRow = {
+  id: number;
+  fullName: string;
+  brokerage: string | null;
+  cityArea: string | null;
+  phone: string | null;
+  email: string | null;
+  websiteBioUrl: string | null;
+  zillowUrl: string | null;
+  headshotUrl: string | null;
+  sourceRank: number | null;
+  profileData: string;
+  createdAgentId: number | null;
+  syncedAt: Date;
+};
+
+function buildSyncedAgentBio(profile: SyncedTopAgentRow) {
+  let source: Record<string, unknown> = {};
+  try {
+    source = JSON.parse(profile.profileData) as Record<string, unknown>;
+  } catch {
+    // An explicit profile field can still be used even when optional source detail is unavailable.
+  }
+  return [
+    profile.brokerage ? `Brokerage: ${profile.brokerage}` : null,
+    profile.cityArea ? `Service area: ${profile.cityArea}` : null,
+    typeof profile.sourceRank === "number" ? `Oregon Top Agent source rank: #${profile.sourceRank}` : null,
+    typeof source.buyerSideTransactions === "string" && source.buyerSideTransactions ? `Buyer-side transactions: ${source.buyerSideTransactions}` : null,
+    typeof source.salesLast12Months === "string" && source.salesLast12Months ? `Sales in the last 12 months: ${source.salesLast12Months}` : null,
+    profile.zillowUrl ? `Zillow profile: ${profile.zillowUrl}` : null,
+    typeof source.notes === "string" && source.notes.trim() ? source.notes.trim() : null,
+  ].filter((detail): detail is string => Boolean(detail)).join("\n\n");
+}
 
 const MAX_FILE_BYTES = 4 * 1024 * 1024;
 
@@ -213,10 +251,12 @@ function AgentFormDialog({
   open,
   onOpenChange,
   editing,
+  syncedProfiles,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editing: AgentRow | null;
+  syncedProfiles: SyncedTopAgentRow[];
 }) {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [slugTouched, setSlugTouched] = useState(false);
@@ -239,6 +279,7 @@ function AgentFormDialog({
             companyName: editing.companyName,
             headshotUrl: editing.headshotUrl,
             companyLogoUrl: editing.companyLogoUrl,
+            syncedTopAgentId: editing.syncedTopAgentId,
             visible: editing.visible === 1,
           }
         : EMPTY
@@ -283,6 +324,7 @@ function AgentFormDialog({
       companyName: form.companyName,
       headshotUrl: form.headshotUrl,
       companyLogoUrl: form.companyLogoUrl,
+      syncedTopAgentId: form.syncedTopAgentId,
       visible: form.visible,
     };
     if (editing) {
@@ -293,6 +335,25 @@ function AgentFormDialog({
   };
 
   const previewSlug = form.slug.trim() || slugify(form.name) || "agent-name";
+  const applySyncedProfile = (sourceId: string) => {
+    const selected = syncedProfiles.find((profile) => profile.id === Number(sourceId));
+    if (!selected) {
+      set({ syncedTopAgentId: null });
+      return;
+    }
+    const name = selected.fullName;
+    set({
+      syncedTopAgentId: selected.id,
+      name,
+      slug: slugTouched ? form.slug : slugify(name),
+      email: selected.email ?? "",
+      phone: selected.phone ?? "",
+      companyName: selected.brokerage ?? "",
+      website: selected.websiteBioUrl ?? "",
+      headshotUrl: selected.headshotUrl ?? "",
+      bio: buildSyncedAgentBio(selected),
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -306,6 +367,33 @@ function AgentFormDialog({
             <span className="font-medium text-foreground">/with/{previewSlug}</span>
           </DialogDescription>
         </DialogHeader>
+
+        {!editing && (
+          <div className="rounded-md border border-primary/20 bg-primary/5 p-3">
+            <Label htmlFor="synced-top-agent" className="text-sm font-semibold text-foreground">
+              Start from a synced Oregon Top Agent
+            </Label>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Prefills the approved source profile, headshot, contact details, and profile links. You can review or edit every field before saving.
+            </p>
+            <select
+              id="synced-top-agent"
+              value={form.syncedTopAgentId ?? ""}
+              onChange={(event) => applySyncedProfile(event.target.value)}
+              className="mt-2 h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">Choose a synced Oregon agent (optional)</option>
+              {syncedProfiles.map((profile) => (
+                <option key={profile.id} value={profile.id}>
+                  {profile.sourceRank ? `#${profile.sourceRank} · ` : ""}{profile.fullName}{profile.brokerage ? ` — ${profile.brokerage}` : ""}
+                </option>
+              ))}
+            </select>
+            {syncedProfiles.length === 0 && (
+              <p className="mt-2 text-xs font-medium text-amber-800">Use Sync Top Agents first to load the authorized Oregon directory.</p>
+            )}
+          </div>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
@@ -439,6 +527,8 @@ function AgentFormDialog({
 export default function AgentSettings() {
   const agentsQuery = trpc.agent.list.useQuery();
   const agents = agentsQuery.data ?? [];
+  const syncedProfilesQuery = trpc.agentSync.list.useQuery({ state: "Oregon" });
+  const syncedProfiles = (syncedProfilesQuery.data ?? []) as SyncedTopAgentRow[];
   const officersQuery = trpc.loanOfficer.list.useQuery();
   const pairedOfficerByAgent = new Map(
     (officersQuery.data ?? [])
@@ -461,6 +551,14 @@ export default function AgentSettings() {
     utils.agent.getFeatured.invalidate();
     utils.agent.getBySlug.invalidate();
   };
+
+  const syncTopAgents = trpc.agentSync.syncOregon.useMutation({
+    onSuccess: (result) => {
+      syncedProfilesQuery.refetch();
+      toast.success(`Synced ${result.count} Oregon Top Agent profiles.`);
+    },
+    onError: (err) => toast.error(err.message || "Oregon agent sync could not be completed."),
+  });
 
   const remove = trpc.agent.delete.useMutation({
     onSuccess: () => {
@@ -516,16 +614,36 @@ export default function AgentSettings() {
             </div>
           )}
         </div>
-        <Button
-          size="sm"
-          className="shrink-0"
-          onClick={() => {
-            setEditing(null);
-            setDialogOpen(true);
-          }}
-        >
-          <Plus className="h-4 w-4 mr-1.5" /> Add agent
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1 rounded-md border border-border bg-background p-1">
+            <select
+              aria-label="Top agent source state"
+              className="h-8 rounded-sm bg-transparent px-2 text-sm font-medium outline-none"
+              defaultValue="Oregon"
+              disabled
+            >
+              <option value="Oregon">OR · Oregon</option>
+            </select>
+            <Button size="sm" variant="outline" onClick={() => syncTopAgents.mutate()} disabled={syncTopAgents.isPending}>
+              {syncTopAgents.isPending ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
+              Sync Top Agents
+            </Button>
+          </div>
+          <Button
+            size="sm"
+            className="shrink-0"
+            onClick={() => {
+              setEditing(null);
+              setDialogOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4 mr-1.5" /> Add agent
+          </Button>
+        </div>
+      </div>
+
+      <div className="border-b border-border bg-muted/20 px-6 py-2 text-xs text-muted-foreground">
+        <strong className="font-semibold text-foreground">Oregon sync:</strong> {syncedProfiles.length} private source profile{syncedProfiles.length === 1 ? "" : "s"} available for prefill. Synced information stays inside this owner dashboard until you create a partner.
       </div>
 
       {agentsQuery.isLoading || officersQuery.isLoading ? (
@@ -671,7 +789,7 @@ export default function AgentSettings() {
         </ul>
       )}
 
-      <AgentFormDialog open={dialogOpen} onOpenChange={setDialogOpen} editing={editing} />
+      <AgentFormDialog open={dialogOpen} onOpenChange={setDialogOpen} editing={editing} syncedProfiles={syncedProfiles} />
 
       <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
         <AlertDialogContent>

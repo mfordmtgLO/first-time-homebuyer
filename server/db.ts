@@ -17,6 +17,7 @@ import {
   loAgentSpendPairing,
   leads,
   loanOfficer,
+  syncedTopAgent,
   textMessage,
   textMessageAttachment,
   textMessageRecipient,
@@ -28,6 +29,7 @@ import {
   type InsertLoanOfficer,
   type InsertLead,
   type InsertGeoSphereListing,
+  type InsertSyncedTopAgent,
 } from "../drizzle/schema";
 import { buildPropertyLandingSnapshot, slugifyPropertyAddress } from "../shared/propertyLandingPage";
 import { ENV } from './_core/env';
@@ -318,6 +320,96 @@ export async function updateAgent(
     throw new Error("Database not available");
   }
   return db.update(agentProfile).set(values).where(eq(agentProfile.id, id));
+}
+
+export type SyncedTopAgentProfileInput = {
+  sourceAgentId: number;
+  state: string;
+  fullName: string;
+  brokerage: string | null;
+  cityArea: string | null;
+  phone: string | null;
+  email: string | null;
+  websiteBioUrl: string | null;
+  zillowUrl: string | null;
+  headshotUrl: string | null;
+  sourceRank: number | null;
+  profileData: string;
+  sourceUpdatedAt: Date | null;
+};
+
+/** Owner-scoped upsert for the authorized state agent directory sync. */
+export async function upsertSyncedTopAgents(ownerUserId: number, profiles: SyncedTopAgentProfileInput[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  for (const profile of profiles) {
+    const values: Omit<InsertSyncedTopAgent, "id" | "createdAt" | "updatedAt"> = {
+      ownerUserId,
+      sourceKey: "oregon-agent-leads",
+      sourceAgentId: profile.sourceAgentId,
+      state: profile.state,
+      fullName: profile.fullName,
+      brokerage: profile.brokerage,
+      cityArea: profile.cityArea,
+      phone: profile.phone,
+      email: profile.email,
+      websiteBioUrl: profile.websiteBioUrl,
+      zillowUrl: profile.zillowUrl,
+      headshotUrl: profile.headshotUrl,
+      sourceRank: profile.sourceRank,
+      profileData: profile.profileData,
+      sourceUpdatedAt: profile.sourceUpdatedAt,
+      syncedAt: new Date(),
+    };
+    await db.insert(syncedTopAgent).values(values).onDuplicateKeyUpdate({
+      set: {
+        state: values.state,
+        fullName: values.fullName,
+        brokerage: values.brokerage,
+        cityArea: values.cityArea,
+        phone: values.phone,
+        email: values.email,
+        websiteBioUrl: values.websiteBioUrl,
+        zillowUrl: values.zillowUrl,
+        headshotUrl: values.headshotUrl,
+        sourceRank: values.sourceRank,
+        profileData: values.profileData,
+        sourceUpdatedAt: values.sourceUpdatedAt,
+        syncedAt: values.syncedAt,
+      },
+    });
+  }
+  return { count: profiles.length };
+}
+
+export async function listSyncedTopAgents(ownerUserId: number, state?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .select()
+    .from(syncedTopAgent)
+    .where(state ? and(eq(syncedTopAgent.ownerUserId, ownerUserId), eq(syncedTopAgent.state, state)) : eq(syncedTopAgent.ownerUserId, ownerUserId))
+    .orderBy(syncedTopAgent.sourceRank, syncedTopAgent.fullName);
+}
+
+export async function getSyncedTopAgent(ownerUserId: number, id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db
+    .select()
+    .from(syncedTopAgent)
+    .where(and(eq(syncedTopAgent.ownerUserId, ownerUserId), eq(syncedTopAgent.id, id)))
+    .limit(1);
+  return rows[0];
+}
+
+export async function markSyncedTopAgentCreated(ownerUserId: number, syncedTopAgentId: number, createdAgentId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .update(syncedTopAgent)
+    .set({ createdAgentId })
+    .where(and(eq(syncedTopAgent.ownerUserId, ownerUserId), eq(syncedTopAgent.id, syncedTopAgentId)));
 }
 
 export async function deleteAgent(id: number) {
