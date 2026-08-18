@@ -4,6 +4,10 @@
 
 The existing GeoSphere snapshot contract already preserves a listing identifier, optional MLS name and MLS number, address, price, beds, baths, square footage, property type, coordinates, listing-agent contact information, description, and optional photo URLs. The current public property-page builder safely uses only the fields present in that saved snapshot.
 
+### Current property-page exterior-media fallback
+
+When an existing saved snapshot includes a retained `photoUrls` value, the single-property page may display that saved image as snapshot media. The current saved page for this project does not retain a photo URL, so no listing photo is being pulled from RentCast, an MLS, a consumer portal, or a public web page. The page continues to show its required blank-state notice until an authorized saved photo is supplied through the approved source path below.
+
 ## RentCast path
 
 RentCast documents nationwide sale and rental listing endpoints with address, property attributes, status, price, MLS name/number, agent and office information, and listing history. Its documentation states that listing data is gathered from public sources rather than directly from MLS systems, is typically updated at least daily, and may appear 12–24 hours after publication. The reviewed listing schema shows MLS metadata and agent fields, but does not document public remarks or listing-photo fields in the returned schema. An MLS number is therefore useful for matching a saved record, but should not be treated as authorization to republish MLS photos or REALTOR® remarks.
@@ -23,6 +27,10 @@ RESO supplies the data-transport standards, not listing data. RESO states that d
 3. Query by MLS number plus MLS name, import only fields permitted by the provider response and license, retain source name, source listing key, retrieval time, attribution, media copyright/display instruction, and content expiration/withdrawal status.
 4. Never scrape other CRMs, MLS public pages, consumer portals, photos, or remarks.
 5. On an active enrichment, use provider modification status and media update time to refresh, retire, or remove the public page according to the license; retain the existing saved-snapshot disclaimer while enrichment is not active.
+
+### Future RMLS/WVMLS partner-membership upgrade gate
+
+The dashboard’s future `MLS enrichment` adapter remains disabled. When a Realtor partner supplies active RMLS and/or WVMLS membership details, sponsoring broker information, executed license or provider approval, and the approved credential path, the adapter may be configured to import only the provider-authorized main photo, permitted public description, property details, required attribution, and listing-status actions. The adapter must not activate until Cornerstone corporate compliance, the applicable MLS/provider, and the partner/broker workflow approve the intended media display, co-branding, lead capture, update cadence, and retirement behavior. Until then, the GeoSphere cache remains the listing source of record and no live listing, MLS photo, or status claim is made.
 
 ## Enterprise-platform validation
 

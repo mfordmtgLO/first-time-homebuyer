@@ -32,6 +32,10 @@ export type PropertyLandingSnapshot = {
   sourceSavedAt: string | null;
 };
 
+export type PropertyHeroMedia =
+  | { kind: "saved_listing_photo"; url: string }
+  | { kind: "unavailable" };
+
 type SavedListingLike = {
   id: number;
   savedPullId: number;
@@ -157,6 +161,13 @@ export function propertyEligibilityLabel(snapshot: Pick<PropertyLandingSnapshot,
   if (snapshot.isLmi) return "OHCS Flex Lending potential";
   if (snapshot.isUsda) return "USDA RD potential";
   return "Financing options to review";
+}
+
+/** Chooses only listing media already retained in the saved snapshot. */
+export function getPropertyHeroMedia(snapshot: Pick<PropertyLandingSnapshot, "photoUrls" | "latitude" | "longitude">): PropertyHeroMedia {
+  const savedPhotoUrl = snapshot.photoUrls.find((url) => /^https:\/\//i.test(url));
+  if (savedPhotoUrl) return { kind: "saved_listing_photo", url: savedPhotoUrl };
+  return { kind: "unavailable" };
 }
 
 /** Conservative education copy for saved map screens; this is not a program approval or property eligibility determination. */

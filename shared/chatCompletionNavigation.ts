@@ -14,6 +14,11 @@ export const chatCompletionNavigation = [
     label: "Free Roadmap",
     description: "Review the homebuying steps at your pace.",
   },
+  {
+    targetId: "about",
+    label: "Your Guide",
+    description: "Meet Mike and see how he can help.",
+  },
 ] as const;
 
 export type ChatCompletionNavigationTarget = (typeof chatCompletionNavigation)[number]["targetId"];

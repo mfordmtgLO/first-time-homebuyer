@@ -7,12 +7,14 @@ describe("chat completion navigation", () => {
       "buydown",
       "cost-of-waiting",
       "roadmap",
+      "about",
     ]);
     expect(new Set(chatCompletionNavigation.map((option) => option.targetId)).size).toBe(chatCompletionNavigation.length);
     expect(chatCompletionNavigation.map((option) => option.label)).toEqual([
       "2-1 Buydown",
       "Cost of Waiting",
       "Free Roadmap",
+      "Your Guide",
     ]);
   });
 });

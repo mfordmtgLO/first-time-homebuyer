@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPropertyLandingSnapshot, propertyEligibilityLabel, propertyFinancingContext } from "@shared/propertyLandingPage";
+import { buildPropertyLandingSnapshot, getPropertyHeroMedia, propertyEligibilityLabel, propertyFinancingContext } from "@shared/propertyLandingPage";
 import { buildPropertyPageAgentDraft } from "@shared/propertyPageEmailDraft";
 
 const snapshot = buildPropertyLandingSnapshot({
@@ -34,6 +34,12 @@ describe("single-property saved snapshots", () => {
     expect(propertyEligibilityLabel(snapshot)).toBe("OHCS Flex Lending or USDA RD potential");
     expect(propertyFinancingContext(snapshot)).toContain("OHCS Flex Lending or USDA RD");
     expect(propertyFinancingContext(snapshot)).toContain("subject to current program rules");
+    expect(getPropertyHeroMedia(snapshot)).toEqual({ kind: "saved_listing_photo", url: "https://images.example.com/home.jpg" });
+  });
+
+  it("does not substitute external imagery when an authorized saved photo is absent", () => {
+    expect(getPropertyHeroMedia({ photoUrls: [], latitude: 43.3665, longitude: -124.2179 })).toEqual({ kind: "unavailable" });
+    expect(getPropertyHeroMedia({ photoUrls: [], latitude: null, longitude: null })).toEqual({ kind: "unavailable" });
   });
 
   it("adds the saved property URL, screening context, snapshot limitation, and signature to every agent draft", () => {

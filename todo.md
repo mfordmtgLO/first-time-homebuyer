@@ -342,3 +342,6 @@
 - [x] Replace the public section navigator’s More label with explicit left and right horizontal scroll controls
 - [x] Make the collapsed mobile Mortgage Chat launcher icon-only while stationary and expand it when the visitor scrolls
 - [x] Compact completed-chat navigation controls, remove overflowing subtext, and show a down-arrow cue when choices continue below the panel
+- [ ] Display an authorized saved main exterior photo in the single-property page hero when the existing snapshot includes one
+- [x] Preserve the RMLS/WVMLS partner-membership listing-media and status import path as an approval-gated future upgrade framework
+- [x] Add a compact Your Guide destination to the completed Mortgage Chat navigation choices

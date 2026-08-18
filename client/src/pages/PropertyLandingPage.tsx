@@ -9,7 +9,7 @@ import Footer from "@/components/landing/Footer";
 import MortgageChatWidget from "@/components/MortgageChatWidget";
 import { MapView } from "@/components/Map";
 import { trpc } from "@/lib/trpc";
-import { parsePropertyLandingSnapshot, propertyEligibilityLabel } from "@shared/propertyLandingPage";
+import { getPropertyHeroMedia, parsePropertyLandingSnapshot, propertyEligibilityLabel } from "@shared/propertyLandingPage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BedDouble, Bath, CalendarDays, ExternalLink, Facebook, Home, Linkedin, MapPin, Printer, Ruler, Share2, ShieldCheck, SquareStack, Trees } from "lucide-react";
@@ -38,6 +38,10 @@ function SavedLocationMap({ latitude, longitude, address }: { latitude: number; 
       }}
     />
   );
+}
+
+function PropertyImageUnavailable() {
+  return <div className="grid h-[330px] place-items-center bg-[radial-gradient(circle_at_30%_20%,oklch(0.83_0.1_84),transparent_38%),linear-gradient(135deg,oklch(0.31_0.05_155),oklch(0.17_0.03_152))] px-8 text-center text-primary-foreground"><div><Home className="mx-auto mb-3 h-12 w-12"/><p className="font-display text-2xl">Saved property details</p><p className="mt-2 text-sm text-primary-foreground/80">Listing imagery was not included in this saved snapshot.</p></div></div>;
 }
 
 function PropertyActivityTracker({ slug }: { slug: string }) {
@@ -71,6 +75,7 @@ export default function PropertyLandingPage() {
   const agent = data.agent;
   const propertyUrl = `https://firsttimehomebuyer.manus.space/property/${data.page.slug}`;
   const eligibility = propertyEligibilityLabel(snapshot);
+  const heroMedia = getPropertyHeroMedia(snapshot);
   const facts = [
     { label: "Beds", value: snapshot.bedrooms ?? "—", icon: BedDouble },
     { label: "Baths", value: snapshot.bathrooms ?? "—", icon: Bath },
@@ -123,7 +128,7 @@ export default function PropertyLandingPage() {
                   <p className="mt-6 text-xs leading-relaxed text-muted-foreground">Saved {snapshot.sourceSavedAt ? new Date(snapshot.sourceSavedAt).toLocaleString() : "snapshot date unavailable"}. Price, availability, details, program fit, and lending terms require current verification and approval.</p>
                 </div>
                 <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-xl">
-                  {snapshot.photoUrls[0] ? <img src={snapshot.photoUrls[0]} alt={`Saved listing view of ${snapshot.address}`} className="h-[330px] w-full object-cover" /> : <div className="grid h-[330px] place-items-center bg-[radial-gradient(circle_at_30%_20%,oklch(0.83_0.1_84),transparent_38%),linear-gradient(135deg,oklch(0.31_0.05_155),oklch(0.17_0.03_152))] px-8 text-center text-primary-foreground"><Home className="mb-3 h-12 w-12"/><p className="font-display text-2xl">Saved property details</p><p className="mt-2 text-sm text-primary-foreground/80">Listing imagery was not included in this saved snapshot.</p></div>}
+                  {heroMedia.kind === "saved_listing_photo" ? <img src={heroMedia.url} alt={`Saved listing view of ${snapshot.address}`} className="h-[330px] w-full object-cover" /> : <PropertyImageUnavailable />}
                   <div className="grid grid-cols-2 gap-4 p-5 sm:grid-cols-3">
                     {facts.map(({ label, value, icon: Icon }) => <div key={label} className="min-w-0"><div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Icon className="h-3.5 w-3.5" />{label}</div><div className="mt-1 truncate font-semibold">{value}</div></div>)}
                   </div>
