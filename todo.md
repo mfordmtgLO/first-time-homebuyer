@@ -325,3 +325,4 @@
 - [x] Highlight the active public landing-page section in the persistent navigator
 - [x] Add a compact call shortcut to the public navigator on mobile screens
 - [x] Ensure the default opened Mortgage Chat panel is fully visible and not clipped at the top of the viewport
+- [x] Ensure the full Roadmap request success confirmation is automatically visible after mobile submission

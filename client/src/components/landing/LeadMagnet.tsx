@@ -1,5 +1,5 @@
 /* GOLDEN HOUR PORCH — roadmap download form (primary lead capture, wired to backend) */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useReveal } from "@/hooks/useReveal";
 import { useScenario } from "@/contexts/ScenarioContext";
 import { useAgentSlug, useLoanOfficerSlug, usePropertyPageSlug } from "@/contexts/AgentPageContext";
@@ -13,6 +13,7 @@ const fmtUsd = (v: number) =>
   v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
 const COVER_IMG = "/manus-storage/roadmap-cover_04621272.png";
+export const roadmapSuccessScrollOptions: ScrollIntoViewOptions = { behavior: "smooth", block: "center" };
 
 const bullets = [
   "A step-by-step breakdown of the entire process — from setting your budget to grabbing your keys",
@@ -32,6 +33,7 @@ export default function LeadMagnet() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [smsConsent, setSmsConsent] = useState(false);
+  const successMessageRef = useRef<HTMLDivElement>(null);
 
   const submitLead = trpc.leads.submit.useMutation({
     onSuccess: () => {
@@ -85,6 +87,15 @@ export default function LeadMagnet() {
     });
   };
 
+  useEffect(() => {
+    if (!submitted) return;
+    const frame = requestAnimationFrame(() => {
+      successMessageRef.current?.scrollIntoView(roadmapSuccessScrollOptions);
+      successMessageRef.current?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [submitted]);
+
   return (
     <section id="roadmap" ref={ref} className="py-20 md:py-28" style={{ background: "oklch(0.945 0.018 85)" }}>
       <div className="container grid lg:grid-cols-[5fr_7fr] gap-12 lg:gap-16 items-center">
@@ -117,7 +128,7 @@ export default function LeadMagnet() {
             ))}
           </ul>
           {submitted ? (
-            <div className="mt-8 rounded-lg bg-card border border-border p-6 reveal in-view">
+            <div ref={successMessageRef} tabIndex={-1} className="mt-8 rounded-lg bg-card border border-border p-6 reveal in-view focus:outline-none">
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="h-7 w-7 text-primary" />
                 <div>
