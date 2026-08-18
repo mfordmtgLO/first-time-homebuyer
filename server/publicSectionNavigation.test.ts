@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { getActivePublicSectionId, publicSectionNavigationItems } from "../client/src/components/landing/PublicSectionNav";
 
 describe("publicSectionNavigationItems", () => {
@@ -33,5 +35,14 @@ describe("publicSectionNavigationItems", () => {
 
     expect(getActivePublicSectionId(340, (id) => positions[id as keyof typeof positions])).toBe("buydown");
     expect(getActivePublicSectionId(40, (id) => positions[id as keyof typeof positions])).toBe("top");
+  });
+
+  it("keeps each shared public destination ID on its page-level wrapper only", () => {
+    const projectRoot = path.resolve(import.meta.dirname, "..");
+    const buydownSource = readFileSync(path.join(projectRoot, "client/src/components/landing/Buydown.tsx"), "utf8");
+    const roadmapSource = readFileSync(path.join(projectRoot, "client/src/components/landing/LeadMagnet.tsx"), "utf8");
+
+    expect(buydownSource).not.toContain('id="buydown"');
+    expect(roadmapSource).not.toContain('id="roadmap"');
   });
 });

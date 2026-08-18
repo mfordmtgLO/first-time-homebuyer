@@ -110,7 +110,7 @@ export default function Buydown() {
   };
 
   return (
-    <section id="buydown" ref={ref} className="py-20 md:py-28 bg-card/60 border-y border-foreground/10">
+    <section ref={ref} className="py-20 md:py-28 bg-card/60 border-y border-foreground/10">
       <div className="container">
         <div className="max-w-2xl reveal">
           <span className="key-tag bg-secondary text-secondary-foreground">Affordability play</span>

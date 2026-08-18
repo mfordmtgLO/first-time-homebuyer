@@ -108,7 +108,7 @@ export default function LeadMagnet() {
   }, [submitted]);
 
   return (
-    <section id="roadmap" ref={ref} className="py-20 md:py-28" style={{ background: "oklch(0.945 0.018 85)" }}>
+    <section ref={ref} className="py-20 md:py-28" style={{ background: "oklch(0.945 0.018 85)" }}>
       <div className="container grid lg:grid-cols-[5fr_7fr] gap-12 lg:gap-16 items-center">
         <div className="relative reveal order-last lg:order-first">
           <div
