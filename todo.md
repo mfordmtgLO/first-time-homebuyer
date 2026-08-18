@@ -340,3 +340,4 @@
 - [x] Prevent the collapsed mobile Mortgage Chat launcher from covering hero call-to-action buttons on initial page load
 - [x] Compact the Roadmap completion navigation, adding Cost of Waiting and Meet Your Guide destinations
 - [x] Replace the public section navigator’s More label with explicit left and right horizontal scroll controls
+- [x] Make the collapsed mobile Mortgage Chat launcher icon-only while stationary and expand it when the visitor scrolls

@@ -7,6 +7,7 @@ import { CALENDLY_BOOKING_URL } from "@/lib/booking";
 import { getNextQuestionFocusTarget } from "@shared/chatFocus";
 import { chatCompletionNavigation, type ChatCompletionNavigationTarget } from "@shared/chatCompletionNavigation";
 import { shouldHideMobileChatLauncher } from "@shared/chatLauncherVisibility";
+import { getMobileChatLauncherPresentation } from "@shared/chatLauncherPresentation";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
@@ -59,8 +60,10 @@ export default function MortgageChatWidget() {
   const [buyerAgentRequested, setBuyerAgentRequested] = useState(false);
   const [guidedAmount, setGuidedAmount] = useState(0);
   const [heroActionsVisible, setHeroActionsVisible] = useState(true);
+  const [pageRecentlyScrolled, setPageRecentlyScrolled] = useState(false);
   const startedRef = useRef(false);
   const guidedControlsRef = useRef<HTMLDivElement>(null);
+  const launcherCollapseTimerRef = useRef<number | null>(null);
 
   const start = trpc.chat.start.useMutation({
     onSuccess: (data) => {
@@ -156,6 +159,22 @@ export default function MortgageChatWidget() {
   }, []);
 
   useEffect(() => {
+    const revealLauncherOnScroll = () => {
+      setPageRecentlyScrolled(true);
+      if (launcherCollapseTimerRef.current) window.clearTimeout(launcherCollapseTimerRef.current);
+      launcherCollapseTimerRef.current = window.setTimeout(() => {
+        setPageRecentlyScrolled(false);
+        launcherCollapseTimerRef.current = null;
+      }, 1400);
+    };
+    window.addEventListener("scroll", revealLauncherOnScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", revealLauncherOnScroll);
+      if (launcherCollapseTimerRef.current) window.clearTimeout(launcherCollapseTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
     const config = currentStep ? MONEY_SLIDER_CONFIG[currentStep] : undefined;
     if (config) setGuidedAmount(config.defaultValue);
   }, [currentStep]);
@@ -208,6 +227,7 @@ export default function MortgageChatWidget() {
   const displayMessages = messages;
   const displayQuickReplies = displayStep ? QUICK_REPLIES[displayStep] ?? [] : [];
   const hideCollapsedLauncherDuringHero = shouldHideMobileChatLauncher(heroActionsVisible, open);
+  const launcherPresentation = getMobileChatLauncherPresentation(open, pageRecentlyScrolled);
 
   useEffect(() => {
     if (isProcessing || complete || nextQuestionFocusTarget !== "guided") return;
@@ -403,12 +423,16 @@ export default function MortgageChatWidget() {
             if (!open) { setOpen(true); setMinimized(false); return; }
             setMinimized(false);
           }}
-          className={`btn-press fixed bottom-[5.5rem] right-5 z-50 inline-flex h-14 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-xl transition hover:brightness-110 sm:bottom-24 sm:right-6 ${hideCollapsedLauncherDuringHero ? "max-md:pointer-events-none max-md:translate-y-4 max-md:opacity-0" : ""}`}
+          className={`btn-press fixed bottom-[5.5rem] right-5 z-50 inline-flex h-14 items-center gap-2 rounded-full bg-primary text-sm font-semibold text-primary-foreground shadow-xl transition-[width,padding,opacity,transform,filter] duration-200 hover:brightness-110 sm:bottom-24 sm:right-6 sm:px-5 ${
+            launcherPresentation === "expanded" ? "max-md:w-auto max-md:px-5" : "max-md:w-14 max-md:justify-center max-md:px-0"
+          } ${hideCollapsedLauncherDuringHero ? "max-md:pointer-events-none max-md:translate-y-4 max-md:opacity-0" : ""}`}
           aria-expanded={open && !minimized}
           aria-label={!open ? "Open mortgage intake chat" : "Resume mortgage intake chat"}
         >
           <MessageCircle className="h-5 w-5" />
-          {!open ? "Ask about buying" : "Resume chat"}
+          <span className={`overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-200 ${launcherPresentation === "expanded" ? "max-md:max-w-40 max-md:opacity-100" : "max-md:max-w-0 max-md:opacity-0"}`}>
+            {!open ? "Ask about buying" : "Resume chat"}
+          </span>
         </button>
       )}
     </>
