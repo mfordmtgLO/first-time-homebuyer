@@ -25,4 +25,8 @@ describe("getQuestionSnapScrollTop", () => {
   it("never returns a negative scroll position for early questions", () => {
     expect(getQuestionSnapScrollTop(12, 90, 400)).toBe(0);
   });
+
+  it("keeps the opening greeting at the top of the transcript even when it is long", () => {
+    expect(getQuestionSnapScrollTop(140, 240, 355, 16, true)).toBe(0);
+  });
 });

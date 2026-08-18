@@ -27,7 +27,9 @@ export function getQuestionSnapScrollTop(
   questionTop: number,
   questionHeight: number,
   viewportHeight: number,
-  bottomGutter = 16
+  bottomGutter = 16,
+  isOpeningQuestion = false,
 ): number {
+  if (isOpeningQuestion) return 0;
   return Math.max(0, questionTop + questionHeight - viewportHeight + bottomGutter);
 }

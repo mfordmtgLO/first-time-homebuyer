@@ -169,10 +169,11 @@ export function AIChatBox({
     ) as HTMLDivElement | null;
     const question = currentQuestionRef.current;
     if (!viewport || !question) return;
+    const isOpeningQuestion = displayMessages.length === 1 && displayMessages[0]?.role === "assistant";
     requestAnimationFrame(() => {
       viewport.scrollTo({
-        top: getQuestionSnapScrollTop(question.offsetTop, question.offsetHeight, viewport.clientHeight),
-        behavior: "smooth",
+        top: getQuestionSnapScrollTop(question.offsetTop, question.offsetHeight, viewport.clientHeight, 16, isOpeningQuestion),
+        behavior: isOpeningQuestion ? "auto" : "smooth",
       });
     });
   };
