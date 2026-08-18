@@ -350,3 +350,4 @@
 - [x] Add protected pairing and spend-entry persistence for the private LO+Agent Pairings 50/50 Spend Tracker
 - [x] Add private tracker totals, contribution percentages, balance indicators, and 40%–60% attention flags
 - [x] Add the LO+Agent Pairings 50/50 Spend Tracker as the permanent final dashboard section with a top navigation shortcut
+- [x] Ensure the desktop-browser completed Mortgage Chat message starts fully below the chat header without changing mobile behavior

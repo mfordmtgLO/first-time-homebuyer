@@ -27,4 +27,12 @@ describe("chat completion navigation", () => {
     expect(componentSource).toContain('className="mt-3 grid grid-cols-2 gap-2"');
     expect(componentSource).not.toContain('option.targetId === "roadmap" ? "h-11');
   });
+
+  it("resets the reused completion panel to the top before presenting the finished intake message", () => {
+    const projectRoot = path.resolve(import.meta.dirname, "..");
+    const componentSource = readFileSync(path.join(projectRoot, "client/src/components/MortgageChatWidget.tsx"), "utf8");
+
+    expect(componentSource).toContain("completionContent.scrollTop = 0;");
+    expect(componentSource.indexOf("completionContent.scrollTop = 0;")).toBeLessThan(componentSource.indexOf("updateCompletionOverflow();"));
+  });
 });

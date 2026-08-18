@@ -192,7 +192,12 @@ export default function MortgageChatWidget() {
         ),
       );
     };
-    const frame = requestAnimationFrame(updateCompletionOverflow);
+    const frame = requestAnimationFrame(() => {
+      // The transcript and completion views reuse this scrolling container on desktop.
+      // Reset the previous chat-step offset so the completion message starts below the header.
+      completionContent.scrollTop = 0;
+      updateCompletionOverflow();
+    });
     completionContent.addEventListener("scroll", updateCompletionOverflow, { passive: true });
     return () => {
       cancelAnimationFrame(frame);
