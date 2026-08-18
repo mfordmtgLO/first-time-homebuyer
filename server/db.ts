@@ -18,6 +18,7 @@ import {
   leads,
   loanOfficer,
   syncedTopAgent,
+  syncedTopAgentReview,
   textMessage,
   textMessageAttachment,
   textMessageRecipient,
@@ -343,6 +344,17 @@ export async function upsertSyncedTopAgents(ownerUserId: number, profiles: Synce
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   for (const profile of profiles) {
+    const existingRows = await db
+      .select()
+      .from(syncedTopAgent)
+      .where(and(
+        eq(syncedTopAgent.ownerUserId, ownerUserId),
+        eq(syncedTopAgent.sourceKey, "oregon-agent-leads"),
+        eq(syncedTopAgent.sourceAgentId, profile.sourceAgentId)
+      ))
+      .limit(1);
+    const existing = existingRows[0];
+    const requiresReview = Boolean(existing?.createdAgentId && existing.profileData !== profile.profileData);
     const values: Omit<InsertSyncedTopAgent, "id" | "createdAt" | "updatedAt"> = {
       ownerUserId,
       sourceKey: "oregon-agent-leads",
@@ -359,8 +371,37 @@ export async function upsertSyncedTopAgents(ownerUserId: number, profiles: Synce
       sourceRank: profile.sourceRank,
       profileData: profile.profileData,
       sourceUpdatedAt: profile.sourceUpdatedAt,
+      hasPendingReview: requiresReview ? 1 : (existing?.hasPendingReview ?? 0),
       syncedAt: new Date(),
     };
+    if (requiresReview && existing) {
+      const changedFields = JSON.stringify(getChangedSourceFields(existing.profileData, profile.profileData));
+      const pendingRows = await db
+        .select()
+        .from(syncedTopAgentReview)
+        .where(and(
+          eq(syncedTopAgentReview.ownerUserId, ownerUserId),
+          eq(syncedTopAgentReview.syncedTopAgentId, existing.id),
+          eq(syncedTopAgentReview.status, "pending")
+        ))
+        .limit(1);
+      if (pendingRows[0]) {
+        await db.update(syncedTopAgentReview).set({
+          proposedProfileData: profile.profileData,
+          changedFields,
+        }).where(eq(syncedTopAgentReview.id, pendingRows[0].id));
+      } else {
+        await db.insert(syncedTopAgentReview).values({
+          ownerUserId,
+          syncedTopAgentId: existing.id,
+          agentId: existing.createdAgentId!,
+          previousProfileData: existing.profileData,
+          proposedProfileData: profile.profileData,
+          changedFields,
+          status: "pending",
+        });
+      }
+    }
     await db.insert(syncedTopAgent).values(values).onDuplicateKeyUpdate({
       set: {
         state: values.state,
@@ -375,11 +416,23 @@ export async function upsertSyncedTopAgents(ownerUserId: number, profiles: Synce
         sourceRank: values.sourceRank,
         profileData: values.profileData,
         sourceUpdatedAt: values.sourceUpdatedAt,
+        hasPendingReview: values.hasPendingReview,
         syncedAt: values.syncedAt,
       },
     });
   }
   return { count: profiles.length };
+}
+
+export function getChangedSourceFields(previousData: string, proposedData: string): string[] {
+  try {
+    const previous = JSON.parse(previousData) as Record<string, unknown>;
+    const proposed = JSON.parse(proposedData) as Record<string, unknown>;
+    return Array.from(new Set([...Object.keys(previous), ...Object.keys(proposed)]))
+      .filter((field) => JSON.stringify(previous[field] ?? null) !== JSON.stringify(proposed[field] ?? null));
+  } catch {
+    return ["source profile"];
+  }
 }
 
 export async function listSyncedTopAgents(ownerUserId: number, state?: string) {
@@ -410,6 +463,77 @@ export async function markSyncedTopAgentCreated(ownerUserId: number, syncedTopAg
     .update(syncedTopAgent)
     .set({ createdAgentId })
     .where(and(eq(syncedTopAgent.ownerUserId, ownerUserId), eq(syncedTopAgent.id, syncedTopAgentId)));
+}
+
+export async function listSyncedTopAgentReviews(ownerUserId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .select({
+      id: syncedTopAgentReview.id,
+      syncedTopAgentId: syncedTopAgentReview.syncedTopAgentId,
+      agentId: syncedTopAgentReview.agentId,
+      previousProfileData: syncedTopAgentReview.previousProfileData,
+      proposedProfileData: syncedTopAgentReview.proposedProfileData,
+      changedFields: syncedTopAgentReview.changedFields,
+      createdAt: syncedTopAgentReview.createdAt,
+      fullName: syncedTopAgent.fullName,
+      brokerage: syncedTopAgent.brokerage,
+      headshotUrl: syncedTopAgent.headshotUrl,
+      agentName: agentProfile.name,
+    })
+    .from(syncedTopAgentReview)
+    .innerJoin(syncedTopAgent, eq(syncedTopAgentReview.syncedTopAgentId, syncedTopAgent.id))
+    .innerJoin(agentProfile, eq(syncedTopAgentReview.agentId, agentProfile.id))
+    .where(and(eq(syncedTopAgentReview.ownerUserId, ownerUserId), eq(syncedTopAgentReview.status, "pending")))
+    .orderBy(syncedTopAgentReview.createdAt);
+}
+
+export async function resolveSyncedTopAgentReview(ownerUserId: number, reviewId: number, decision: "approved" | "rejected") {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db
+    .select({ review: syncedTopAgentReview, profile: syncedTopAgent, agent: agentProfile })
+    .from(syncedTopAgentReview)
+    .innerJoin(syncedTopAgent, eq(syncedTopAgentReview.syncedTopAgentId, syncedTopAgent.id))
+    .innerJoin(agentProfile, eq(syncedTopAgentReview.agentId, agentProfile.id))
+    .where(and(
+      eq(syncedTopAgentReview.ownerUserId, ownerUserId),
+      eq(syncedTopAgentReview.id, reviewId),
+      eq(syncedTopAgentReview.status, "pending")
+    ))
+    .limit(1);
+  const row = rows[0];
+  if (!row) return undefined;
+  if (decision === "approved") {
+    const source = parseSourceProfile(row.profile.profileData);
+    await db.update(agentProfile).set({
+      name: row.profile.fullName,
+      email: row.profile.email ?? row.agent.email,
+      phone: row.profile.phone ?? row.agent.phone,
+      website: row.profile.websiteBioUrl ?? row.agent.website,
+      companyName: row.profile.brokerage ?? row.agent.companyName,
+      headshotUrl: row.profile.headshotUrl ?? row.agent.headshotUrl,
+      bio: buildSyncedSourceBio(row.profile, source),
+    }).where(eq(agentProfile.id, row.agent.id));
+  }
+  await db.update(syncedTopAgentReview).set({ status: decision, reviewedAt: new Date() }).where(eq(syncedTopAgentReview.id, reviewId));
+  await db.update(syncedTopAgent).set({ hasPendingReview: 0 }).where(and(eq(syncedTopAgent.id, row.profile.id), eq(syncedTopAgent.ownerUserId, ownerUserId)));
+  return { agentId: row.agent.id, decision };
+}
+
+function parseSourceProfile(profileData: string): Record<string, unknown> {
+  try { return JSON.parse(profileData) as Record<string, unknown>; } catch { return {}; }
+}
+
+function buildSyncedSourceBio(profile: { brokerage: string | null; cityArea: string | null; sourceRank: number | null; zillowUrl: string | null }, source: Record<string, unknown>) {
+  return [
+    profile.brokerage ? `Brokerage: ${profile.brokerage}` : null,
+    profile.cityArea ? `Service area: ${profile.cityArea}` : null,
+    typeof profile.sourceRank === "number" ? `Oregon Top Agent source rank: #${profile.sourceRank}` : null,
+    profile.zillowUrl ? `Zillow profile: ${profile.zillowUrl}` : null,
+    typeof source.notes === "string" && source.notes.trim() ? source.notes.trim() : null,
+  ].filter((value): value is string => Boolean(value)).join("\n\n");
 }
 
 export async function deleteAgent(id: number) {

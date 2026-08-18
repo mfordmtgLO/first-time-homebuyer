@@ -64,6 +64,7 @@ import {
   listLeads,
   listLoAgentSpendTrackers,
   listSyncedTopAgents,
+  listSyncedTopAgentReviews,
   listTextMessageDrafts,
   listTextChainByLead,
   listTextReadyRecipients,
@@ -73,6 +74,7 @@ import {
   slugTaken,
   upsertSyncedTopAgents,
   markSyncedTopAgentCreated,
+  resolveSyncedTopAgentReview,
   updateAgent,
   updateChatLead,
   updateLeadAgent,
@@ -1690,6 +1692,18 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
         return listSyncedTopAgents(ctx.user.id, input?.state ?? "Oregon");
+      }),
+    reviewQueue: protectedProcedure.query(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      return listSyncedTopAgentReviews(ctx.user.id);
+    }),
+    resolveReview: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), decision: z.enum(["approved", "rejected"]) }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const result = await resolveSyncedTopAgentReview(ctx.user.id, input.id, input.decision);
+        if (!result) throw new TRPCError({ code: "NOT_FOUND", message: "This source update is no longer awaiting review." });
+        return result;
       }),
     /** Admin-only live pull from the read-only Oregon directory export endpoint. */
     syncOregon: protectedProcedure.mutation(async ({ ctx }) => {

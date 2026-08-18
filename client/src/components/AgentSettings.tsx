@@ -114,6 +114,7 @@ type SyncedTopAgentRow = {
   sourceRank: number | null;
   profileData: string;
   createdAgentId: number | null;
+  hasPendingReview: number;
   syncedAt: Date;
 };
 
@@ -262,6 +263,7 @@ function AgentFormDialog({
 }) {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [syncedSearch, setSyncedSearch] = useState("");
+  const [onlyUncreated, setOnlyUncreated] = useState(true);
   const [slugTouched, setSlugTouched] = useState(false);
   const [initializedFor, setInitializedFor] = useState<number | "new" | null>(null);
 
@@ -338,10 +340,12 @@ function AgentFormDialog({
   };
 
   const previewSlug = form.slug.trim() || slugify(form.name) || "agent-name";
-  const matchingSyncedProfiles = useMemo(
-    () => filterSyncedTopAgents(syncedProfiles, syncedSearch),
-    [syncedProfiles, syncedSearch]
-  );
+  const matchingSyncedProfiles = useMemo(() => {
+    const searchable = onlyUncreated
+      ? syncedProfiles.filter((profile) => profile.createdAgentId === null)
+      : syncedProfiles;
+    return filterSyncedTopAgents(searchable, syncedSearch);
+  }, [onlyUncreated, syncedProfiles, syncedSearch]);
   const selectedSyncedProfile = syncedProfiles.find((profile) => profile.id === form.syncedTopAgentId) ?? null;
   const applySyncedProfile = (sourceId: string) => {
     const selected = syncedProfiles.find((profile) => profile.id === Number(sourceId));
@@ -394,6 +398,15 @@ function AgentFormDialog({
                 placeholder="Search synced agent by name, brokerage, or city"
               />
             </div>
+            <label className="mt-2 inline-flex items-center gap-2 text-xs font-medium text-foreground">
+              <input
+                type="checkbox"
+                checked={onlyUncreated}
+                onChange={(event) => setOnlyUncreated(event.target.checked)}
+                className="h-3.5 w-3.5 rounded border-input accent-primary"
+              />
+              Only show uncreated profiles
+            </label>
             <select
               id="synced-top-agent"
               value={form.syncedTopAgentId ?? ""}
@@ -407,8 +420,8 @@ function AgentFormDialog({
                 </option>
               ))}
             </select>
-            {syncedSearch.trim() && matchingSyncedProfiles.length === 0 && (
-              <p className="mt-2 text-xs font-medium text-amber-800">No synced Oregon profile matches “{syncedSearch.trim()}”.</p>
+            {matchingSyncedProfiles.length === 0 && syncedProfiles.length > 0 && (
+              <p className="mt-2 text-xs font-medium text-amber-800">No synced Oregon profile matches the current search or creation filter.</p>
             )}
             {syncedProfiles.length === 0 && (
               <p className="mt-2 text-xs font-medium text-amber-800">Use Sync Top Agents first to load the authorized Oregon directory.</p>
@@ -571,6 +584,9 @@ export default function AgentSettings() {
   const syncedProfilesQuery = trpc.agentSync.list.useQuery({ state: "Oregon" });
   const syncedProfiles = (syncedProfilesQuery.data ?? []) as SyncedTopAgentRow[];
   const syncedSummary = getSyncedTopAgentSummary(syncedProfiles);
+  const reviewQueueQuery = trpc.agentSync.reviewQueue.useQuery();
+  const reviewQueue = reviewQueueQuery.data ?? [];
+  const pendingReviewAgentIds = new Set(reviewQueue.map((review) => review.agentId));
   const officersQuery = trpc.loanOfficer.list.useQuery();
   const pairedOfficerByAgent = new Map(
     (officersQuery.data ?? [])
@@ -597,9 +613,20 @@ export default function AgentSettings() {
   const syncTopAgents = trpc.agentSync.syncOregon.useMutation({
     onSuccess: (result) => {
       syncedProfilesQuery.refetch();
+      reviewQueueQuery.refetch();
       toast.success(`Synced ${result.count} Oregon Top Agent profiles.`);
     },
     onError: (err) => toast.error(err.message || "Oregon agent sync could not be completed."),
+  });
+
+  const resolveReview = trpc.agentSync.resolveReview.useMutation({
+    onSuccess: (result) => {
+      reviewQueueQuery.refetch();
+      syncedProfilesQuery.refetch();
+      refreshAgents();
+      toast.success(result.decision === "approved" ? "Source update applied to the partner profile." : "Source update rejected; the partner profile was left unchanged.");
+    },
+    onError: (err) => toast.error(err.message || "Could not resolve this source update."),
   });
 
   const remove = trpc.agent.delete.useMutation({
@@ -692,6 +719,36 @@ export default function AgentSettings() {
         <strong className="font-semibold text-foreground">Oregon sync:</strong> {syncedSummary.count} private source profile{syncedSummary.count === 1 ? "" : "s"} available for prefill. Synced information stays inside this owner dashboard until you create a partner.
       </div>
 
+      {reviewQueue.length > 0 && (
+        <div className="border-b border-amber-500/30 bg-amber-500/5 px-6 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground"><AlertTriangle className="h-4 w-4 text-amber-700" /> Synced profile review queue</h3>
+              <p className="mt-0.5 text-xs text-muted-foreground">Approve to apply the latest authorized source fields to an existing partner, or reject to keep the current partner profile unchanged.</p>
+            </div>
+            <span className="rounded-full border border-amber-600/30 bg-background px-2 py-0.5 text-xs font-semibold text-amber-800">{reviewQueue.length} pending</span>
+          </div>
+          <div className="mt-3 grid gap-2">
+            {reviewQueue.map((review) => {
+              let changedFields: string[] = [];
+              try { changedFields = JSON.parse(review.changedFields) as string[]; } catch { changedFields = ["source profile"]; }
+              return <div key={review.id} className="flex flex-wrap items-center gap-3 rounded-md border border-amber-500/25 bg-background p-3">
+                {review.headshotUrl ? <img src={review.headshotUrl} alt="" className="h-9 w-9 rounded-full border border-border object-cover" /> : <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"><UserRound className="h-4 w-4 text-muted-foreground" /></div>}
+                <div className="min-w-[180px] flex-1">
+                  <p className="text-sm font-semibold text-foreground">{review.agentName}</p>
+                  <p className="text-xs text-muted-foreground">Latest source: {review.fullName}{review.brokerage ? ` · ${review.brokerage}` : ""}</p>
+                  <p className="mt-1 text-xs text-amber-800">Changed: {changedFields.join(", ") || "source profile"}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => resolveReview.mutate({ id: review.id, decision: "approved" })} disabled={resolveReview.isPending}>Approve</Button>
+                  <Button size="sm" variant="outline" onClick={() => resolveReview.mutate({ id: review.id, decision: "rejected" })} disabled={resolveReview.isPending}>Reject</Button>
+                </div>
+              </div>;
+            })}
+          </div>
+        </div>
+      )}
+
       {agentsQuery.isLoading || officersQuery.isLoading ? (
         <div className="flex items-center justify-center py-14 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading agents...
@@ -738,6 +795,11 @@ export default function AgentSettings() {
                   {unpairedAgentIds.has(agent.id) && (
                     <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-800" title="This agent has no active loan-officer pairing">
                       <AlertTriangle className="h-3 w-3" aria-hidden="true" /> Unpaired LO
+                    </span>
+                  )}
+                  {pendingReviewAgentIds.has(agent.id) && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-800" title="A synced source-profile update is awaiting your review">
+                      <RefreshCw className="h-3 w-3" aria-hidden="true" /> Source update ready
                     </span>
                   )}
                 </div>

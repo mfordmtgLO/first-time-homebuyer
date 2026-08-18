@@ -129,6 +129,8 @@ export const syncedTopAgent = mysqlTable(
     sourceUpdatedAt: timestamp("sourceUpdatedAt"),
     /** Created co-marketing profile, if the owner has promoted this source record. */
     createdAgentId: int("createdAgentId"),
+    /** 1 when the latest source refresh differs from a source record already promoted to a partner profile. */
+    hasPendingReview: int("hasPendingReview").default(0).notNull(),
     syncedAt: timestamp("syncedAt").defaultNow().notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -141,6 +143,29 @@ export const syncedTopAgent = mysqlTable(
 
 export type SyncedTopAgent = typeof syncedTopAgent.$inferSelect;
 export type InsertSyncedTopAgent = typeof syncedTopAgent.$inferInsert;
+
+/** Private owner review queue for source changes to an already-created co-marketing partner. */
+export const syncedTopAgentReview = mysqlTable(
+  "synced_top_agent_review",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerUserId: int("ownerUserId").notNull(),
+    syncedTopAgentId: int("syncedTopAgentId").notNull(),
+    agentId: int("agentId").notNull(),
+    previousProfileData: text("previousProfileData").notNull(),
+    proposedProfileData: text("proposedProfileData").notNull(),
+    changedFields: text("changedFields").notNull(),
+    status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+    reviewedAt: timestamp("reviewedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [
+    index("synced_top_agent_review_owner_status_idx").on(table.ownerUserId, table.status),
+    index("synced_top_agent_review_profile_idx").on(table.syncedTopAgentId),
+  ]
+);
+
+export type SyncedTopAgentReview = typeof syncedTopAgentReview.$inferSelect;
 
 /**
  * Loan officers shown in the public Mortgage Intake Specialist widget. One

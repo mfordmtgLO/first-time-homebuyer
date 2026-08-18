@@ -360,3 +360,6 @@
 - [x] Add a synced-agent profile preview card before partner-profile creation
 - [x] Display last-synced time and imported-record count next to the Oregon Sync Top Agents control
 - [x] Add name search within the synced-agent selection flow in Add Agent
+- [x] Add an uncreated-only filter to the synced-agent selection flow to prevent duplicate partner creation
+- [x] Detect source-profile changes on sync and show update badges on linked partner profiles
+- [x] Add an owner-only review queue for approving or rejecting detected synced-agent profile updates
