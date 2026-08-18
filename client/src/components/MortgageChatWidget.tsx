@@ -4,14 +4,14 @@ import { useAgentSlug, useLoanOfficerSlug, usePropertyPageSlug } from "@/context
 import { useScenario } from "@/contexts/ScenarioContext";
 import { trpc } from "@/lib/trpc";
 import { CALENDLY_BOOKING_URL } from "@/lib/booking";
-import { getNextQuestionFocusTarget } from "@shared/chatFocus";
+import { getNextQuestionFocusTarget, hasTranscriptContentBelow } from "@shared/chatFocus";
 import { chatCompletionNavigation, type ChatCompletionNavigationTarget } from "@shared/chatCompletionNavigation";
 import { shouldHideMobileChatLauncher } from "@shared/chatLauncherVisibility";
 import { getMobileChatLauncherPresentation } from "@shared/chatLauncherPresentation";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
-import { BookOpen, Calculator, CalendarDays, CheckCircle2, Clock3, MessageCircle, Minus, RotateCcw, ShieldCheck, X } from "lucide-react";
+import { ArrowRight, BookOpen, Calculator, CalendarDays, CheckCircle2, ChevronDown, Clock3, MessageCircle, Minus, RotateCcw, ShieldCheck, X } from "lucide-react";
 import { emitFunnelConversion, getCampaignAttribution } from "@/lib/campaignTracking";
 
 const SESSION_STORAGE_KEY = "mortgage-intake-session";
@@ -61,8 +61,10 @@ export default function MortgageChatWidget() {
   const [guidedAmount, setGuidedAmount] = useState(0);
   const [heroActionsVisible, setHeroActionsVisible] = useState(true);
   const [pageRecentlyScrolled, setPageRecentlyScrolled] = useState(false);
+  const [hasCompletionContentBelow, setHasCompletionContentBelow] = useState(false);
   const startedRef = useRef(false);
   const guidedControlsRef = useRef<HTMLDivElement>(null);
+  const completionContentRef = useRef<HTMLDivElement>(null);
   const launcherCollapseTimerRef = useRef<number | null>(null);
 
   const start = trpc.chat.start.useMutation({
@@ -173,6 +175,30 @@ export default function MortgageChatWidget() {
       if (launcherCollapseTimerRef.current) window.clearTimeout(launcherCollapseTimerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (!complete) {
+      setHasCompletionContentBelow(false);
+      return;
+    }
+    const completionContent = completionContentRef.current;
+    if (!completionContent) return;
+    const updateCompletionOverflow = () => {
+      setHasCompletionContentBelow(
+        hasTranscriptContentBelow(
+          completionContent.scrollTop,
+          completionContent.clientHeight,
+          completionContent.scrollHeight,
+        ),
+      );
+    };
+    const frame = requestAnimationFrame(updateCompletionOverflow);
+    completionContent.addEventListener("scroll", updateCompletionOverflow, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      completionContent.removeEventListener("scroll", updateCompletionOverflow);
+    };
+  }, [complete, completionMessage, buyerAgentEligible, buyerAgentRequested]);
 
   useEffect(() => {
     const config = currentStep ? MONEY_SLIDER_CONFIG[currentStep] : undefined;
@@ -340,7 +366,7 @@ export default function MortgageChatWidget() {
           </header>
 
           {complete ? (
-            <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto overscroll-contain p-5 pb-8 text-center sm:justify-center sm:p-7">
+            <div ref={completionContentRef} className="relative flex min-h-0 flex-1 flex-col items-center overflow-y-auto overscroll-contain p-5 pb-14 text-center sm:justify-center sm:p-7">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600/10 text-emerald-700">
                 <CheckCircle2 className="h-7 w-7" />
               </div>
@@ -351,9 +377,9 @@ export default function MortgageChatWidget() {
               <a href={CALENDLY_BOOKING_URL} target="_blank" rel="noopener noreferrer" className="btn-press mt-6 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:brightness-110">
                 <CalendarDays className="h-4 w-4" /> Schedule a free 15-minute call
               </a>
-              <div className="mt-6 w-full max-w-sm border-t border-border/70 pt-5 text-left">
+              <div className="mt-5 w-full max-w-sm border-t border-border/70 pt-4 text-left">
                 <p className="text-center text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Keep exploring</p>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <div className="mt-3 grid grid-cols-2 gap-2">
                   {chatCompletionNavigation.map((option) => {
                     const Icon = option.targetId === "buydown" ? Calculator : option.targetId === "cost-of-waiting" ? Clock3 : BookOpen;
                     return (
@@ -361,14 +387,12 @@ export default function MortgageChatWidget() {
                         key={option.targetId}
                         type="button"
                         variant="outline"
-                        className={option.targetId === "roadmap" ? "h-auto min-h-14 justify-start gap-3 px-3 py-3 text-left sm:col-span-2" : "h-auto min-h-14 justify-start gap-3 px-3 py-3 text-left"}
+                        className={option.targetId === "roadmap" ? "h-11 justify-start gap-2 px-2.5 text-left text-xs sm:col-span-2" : "h-11 justify-start gap-2 px-2.5 text-left text-xs"}
                         onClick={() => continueToSiteSection(option.targetId)}
                       >
                         <Icon className="h-4 w-4 shrink-0 text-primary" />
-                        <span>
-                          <span className="block text-sm font-semibold">{option.label}</span>
-                          <span className="mt-0.5 block text-xs font-normal text-muted-foreground">{option.description}</span>
-                        </span>
+                        <span className="min-w-0 flex-1 truncate text-xs font-semibold">{option.label}</span>
+                        <ArrowRight className="h-3.5 w-3.5 shrink-0 text-primary/75" aria-hidden="true" />
                       </Button>
                     );
                   })}
@@ -388,6 +412,17 @@ export default function MortgageChatWidget() {
               <Button variant="outline" className="mt-3 gap-2" onClick={restart}>
                 <RotateCcw className="h-4 w-4" /> Start a new intake
               </Button>
+              {hasCompletionContentBelow && (
+                <button
+                  type="button"
+                  onClick={() => completionContentRef.current?.scrollTo({ top: completionContentRef.current.scrollHeight, behavior: "smooth" })}
+                  className="btn-press sticky bottom-2 mt-3 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-card/95 text-primary shadow-md backdrop-blur-sm transition hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  aria-label="More completed-chat navigation choices are below. Scroll down to continue."
+                  title="More below"
+                >
+                  <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                </button>
+              )}
             </div>
           ) : (
             <div className="flex min-h-0 flex-1 flex-col">

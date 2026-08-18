@@ -341,3 +341,4 @@
 - [x] Compact the Roadmap completion navigation, adding Cost of Waiting and Meet Your Guide destinations
 - [x] Replace the public section navigator’s More label with explicit left and right horizontal scroll controls
 - [x] Make the collapsed mobile Mortgage Chat launcher icon-only while stationary and expand it when the visitor scrolls
+- [x] Compact completed-chat navigation controls, remove overflowing subtext, and show a down-arrow cue when choices continue below the panel
