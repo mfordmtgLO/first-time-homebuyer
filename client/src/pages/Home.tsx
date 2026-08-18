@@ -2,6 +2,7 @@
 import { ScenarioProvider } from "@/contexts/ScenarioContext";
 import { AgentPageProvider } from "@/contexts/AgentPageContext";
 import Nav from "@/components/landing/Nav";
+import PublicSectionNav from "@/components/landing/PublicSectionNav";
 import Hero from "@/components/landing/Hero";
 import MythBuster from "@/components/landing/MythBuster";
 import Programs from "@/components/landing/Programs";
@@ -25,19 +26,20 @@ export default function Home({
   return (
     <AgentPageProvider agentSlug={agentSlug} loanOfficerSlug={loanOfficerSlug}>
       <ScenarioProvider>
-        <div className="min-h-screen">
+        <div id="top" className="min-h-screen">
           <Nav />
+          <PublicSectionNav />
           <main>
-            <Hero />
-            <MythBuster />
-            <Programs />
-            <Buydown />
-            <LeadMagnet />
-            <HowItWorks />
-            <About />
-            <Faq />
-            <FinalCta />
-            <LocalAgent />
+            <div className="scroll-mt-36 md:scroll-mt-40"><Hero /></div>
+            <div id="cost-of-waiting" className="scroll-mt-36 md:scroll-mt-40"><MythBuster /></div>
+            <div id="programs" className="scroll-mt-36 md:scroll-mt-40"><Programs /></div>
+            <div id="buydown" className="scroll-mt-36 md:scroll-mt-40"><Buydown /></div>
+            <div id="roadmap" className="scroll-mt-36 md:scroll-mt-40"><LeadMagnet /></div>
+            <div id="how-it-works" className="scroll-mt-36 md:scroll-mt-40"><HowItWorks /></div>
+            <div id="about" className="scroll-mt-36 md:scroll-mt-40"><About /></div>
+            <div id="faq" className="scroll-mt-36 md:scroll-mt-40"><Faq /></div>
+            <div id="contact" className="scroll-mt-36 md:scroll-mt-40"><FinalCta /></div>
+            <div id="local-agent" className="scroll-mt-36 md:scroll-mt-40"><LocalAgent /></div>
             <Footer />
           </main>
           <MortgageChatWidget />

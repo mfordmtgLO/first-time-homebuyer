@@ -130,6 +130,15 @@ export default function MortgageChatWidget() {
   }, [open, agentSlug, loanOfficerSlug, propertyPageSlug, start]);
 
   useEffect(() => {
+    const openMortgageChat = () => {
+      setOpen(true);
+      setMinimized(false);
+    };
+    window.addEventListener("open-mortgage-chat", openMortgageChat);
+    return () => window.removeEventListener("open-mortgage-chat", openMortgageChat);
+  }, []);
+
+  useEffect(() => {
     const config = currentStep ? MONEY_SLIDER_CONFIG[currentStep] : undefined;
     if (config) setGuidedAmount(config.defaultValue);
   }, [currentStep]);

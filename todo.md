@@ -321,3 +321,4 @@
 - [x] Design a two-MLS single-property import architecture and partner onboarding sequence without public-web scraping
 - [x] Document a neutral lender-realtor co-branding fact-pattern checklist covering exchanged benefits, lead-routing, cost allocation, and approval controls for corporate compliance review
 - [x] Merge the latest co-branding fact-pattern checklist into the consolidated compliance handover PDF and provide a revised download
+- [x] Add a persistent public-facing snap-navigation bar with quick jumps to the first-time-homebuyer website’s key educational and lead-capture sections
