@@ -357,3 +357,6 @@
 - [x] Add an Oregon Sync Top Agents dashboard control that imports authorized source profiles on demand
 - [x] Add synced-agent selection to the Add Agent workflow for quick creation with retained profile details, headshot, and links
 - [x] Add and validate a protected read-only Oregon agent export endpoint in the supplied Oregon Agent Leads repository
+- [x] Add a synced-agent profile preview card before partner-profile creation
+- [x] Display last-synced time and imported-record count next to the Oregon Sync Top Agents control
+- [x] Add name search within the synced-agent selection flow in Add Agent

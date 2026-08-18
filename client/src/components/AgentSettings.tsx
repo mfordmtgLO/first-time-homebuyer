@@ -3,7 +3,7 @@
  * Unlimited agents, each with a paired co-branded URL (/with/:loanOfficer/:agent), a
  * visible toggle, and an optional "featured on homepage" selection.
  */
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,7 @@ import ProfileShareTools from "@/components/ProfileShareTools";
 import { buildCoBrandedShareMailto } from "@shared/coBrandedShareDraft";
 import { getUnpairedAgentIds } from "@shared/agentPairingStatus";
 import { publicSiteUrl } from "@shared/publicSiteUrl";
+import { filterSyncedTopAgents, getSyncedTopAgentSummary } from "@shared/syncedTopAgentUi";
 import {
   AlertTriangle,
   Building2,
@@ -46,6 +47,7 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  Search,
   Save,
   Star,
   Trash2,
@@ -259,6 +261,7 @@ function AgentFormDialog({
   syncedProfiles: SyncedTopAgentRow[];
 }) {
   const [form, setForm] = useState<FormState>(EMPTY);
+  const [syncedSearch, setSyncedSearch] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
   const [initializedFor, setInitializedFor] = useState<number | "new" | null>(null);
 
@@ -335,6 +338,11 @@ function AgentFormDialog({
   };
 
   const previewSlug = form.slug.trim() || slugify(form.name) || "agent-name";
+  const matchingSyncedProfiles = useMemo(
+    () => filterSyncedTopAgents(syncedProfiles, syncedSearch),
+    [syncedProfiles, syncedSearch]
+  );
+  const selectedSyncedProfile = syncedProfiles.find((profile) => profile.id === form.syncedTopAgentId) ?? null;
   const applySyncedProfile = (sourceId: string) => {
     const selected = syncedProfiles.find((profile) => profile.id === Number(sourceId));
     if (!selected) {
@@ -376,6 +384,16 @@ function AgentFormDialog({
             <p className="mt-0.5 text-xs text-muted-foreground">
               Prefills the approved source profile, headshot, contact details, and profile links. You can review or edit every field before saving.
             </p>
+            <div className="relative mt-2">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                aria-label="Search synced Oregon agents by name"
+                value={syncedSearch}
+                onChange={(event) => setSyncedSearch(event.target.value)}
+                className="h-9 pl-9"
+                placeholder="Search synced agent by name, brokerage, or city"
+              />
+            </div>
             <select
               id="synced-top-agent"
               value={form.syncedTopAgentId ?? ""}
@@ -383,14 +401,37 @@ function AgentFormDialog({
               className="mt-2 h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <option value="">Choose a synced Oregon agent (optional)</option>
-              {syncedProfiles.map((profile) => (
+              {matchingSyncedProfiles.map((profile) => (
                 <option key={profile.id} value={profile.id}>
                   {profile.sourceRank ? `#${profile.sourceRank} · ` : ""}{profile.fullName}{profile.brokerage ? ` — ${profile.brokerage}` : ""}
                 </option>
               ))}
             </select>
+            {syncedSearch.trim() && matchingSyncedProfiles.length === 0 && (
+              <p className="mt-2 text-xs font-medium text-amber-800">No synced Oregon profile matches “{syncedSearch.trim()}”.</p>
+            )}
             {syncedProfiles.length === 0 && (
               <p className="mt-2 text-xs font-medium text-amber-800">Use Sync Top Agents first to load the authorized Oregon directory.</p>
+            )}
+            {selectedSyncedProfile && (
+              <div className="mt-3 flex gap-3 rounded-md border border-primary/20 bg-background p-3">
+                {selectedSyncedProfile.headshotUrl ? (
+                  <img src={selectedSyncedProfile.headshotUrl} alt={`${selectedSyncedProfile.fullName} synced profile`} className="h-16 w-16 shrink-0 rounded-full border border-border object-cover" />
+                ) : (
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-border bg-muted">
+                    <UserRound className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="min-w-0 text-sm">
+                  <p className="font-semibold text-foreground">{selectedSyncedProfile.fullName}{selectedSyncedProfile.sourceRank ? ` · #${selectedSyncedProfile.sourceRank}` : ""}</p>
+                  <p className="mt-0.5 text-muted-foreground">{[selectedSyncedProfile.brokerage, selectedSyncedProfile.cityArea].filter(Boolean).join(" · ") || "Oregon source profile"}</p>
+                  <p className="mt-1 text-xs text-muted-foreground break-words">{[selectedSyncedProfile.email, selectedSyncedProfile.phone].filter(Boolean).join(" · ")}</p>
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs font-medium">
+                    {selectedSyncedProfile.websiteBioUrl && <a className="text-primary underline underline-offset-2" href={selectedSyncedProfile.websiteBioUrl} target="_blank" rel="noreferrer">Website / bio</a>}
+                    {selectedSyncedProfile.zillowUrl && <a className="text-primary underline underline-offset-2" href={selectedSyncedProfile.zillowUrl} target="_blank" rel="noreferrer">Zillow profile</a>}
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         )}
@@ -529,6 +570,7 @@ export default function AgentSettings() {
   const agents = agentsQuery.data ?? [];
   const syncedProfilesQuery = trpc.agentSync.list.useQuery({ state: "Oregon" });
   const syncedProfiles = (syncedProfilesQuery.data ?? []) as SyncedTopAgentRow[];
+  const syncedSummary = getSyncedTopAgentSummary(syncedProfiles);
   const officersQuery = trpc.loanOfficer.list.useQuery();
   const pairedOfficerByAgent = new Map(
     (officersQuery.data ?? [])
@@ -629,6 +671,10 @@ export default function AgentSettings() {
               Sync Top Agents
             </Button>
           </div>
+          <div className="text-right text-[11px] leading-tight text-muted-foreground">
+            <p><strong className="font-semibold text-foreground">{syncedSummary.count}</strong> imported</p>
+            <p>{syncedSummary.latestSyncedAt ? `Last synced ${syncedSummary.latestSyncedAt.toLocaleString()}` : "Not synced yet"}</p>
+          </div>
           <Button
             size="sm"
             className="shrink-0"
@@ -643,7 +689,7 @@ export default function AgentSettings() {
       </div>
 
       <div className="border-b border-border bg-muted/20 px-6 py-2 text-xs text-muted-foreground">
-        <strong className="font-semibold text-foreground">Oregon sync:</strong> {syncedProfiles.length} private source profile{syncedProfiles.length === 1 ? "" : "s"} available for prefill. Synced information stays inside this owner dashboard until you create a partner.
+        <strong className="font-semibold text-foreground">Oregon sync:</strong> {syncedSummary.count} private source profile{syncedSummary.count === 1 ? "" : "s"} available for prefill. Synced information stays inside this owner dashboard until you create a partner.
       </div>
 
       {agentsQuery.isLoading || officersQuery.isLoading ? (
