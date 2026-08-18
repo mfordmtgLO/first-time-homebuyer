@@ -35,4 +35,12 @@ describe("chat completion navigation", () => {
     expect(componentSource).toContain("completionContent.scrollTop = 0;");
     expect(componentSource.indexOf("completionContent.scrollTop = 0;")).toBeLessThan(componentSource.indexOf("updateCompletionOverflow();"));
   });
+
+  it("top-aligns the desktop completion view with a readable header gutter", () => {
+    const projectRoot = path.resolve(import.meta.dirname, "..");
+    const componentSource = readFileSync(path.join(projectRoot, "client/src/components/MortgageChatWidget.tsx"), "utf8");
+
+    expect(componentSource).toContain("sm:justify-start sm:px-7 sm:pb-7 sm:pt-8");
+    expect(componentSource).not.toContain("sm:justify-center sm:p-7");
+  });
 });

@@ -371,7 +371,7 @@ export default function MortgageChatWidget() {
           </header>
 
           {complete ? (
-            <div ref={completionContentRef} className="relative flex min-h-0 flex-1 flex-col items-center overflow-y-auto overscroll-contain p-5 pb-14 text-center sm:justify-center sm:p-7">
+            <div ref={completionContentRef} className="relative flex min-h-0 flex-1 flex-col items-center overflow-y-auto overscroll-contain p-5 pb-14 text-center sm:justify-start sm:px-7 sm:pb-7 sm:pt-8">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600/10 text-emerald-700">
                 <CheckCircle2 className="h-7 w-7" />
               </div>
