@@ -345,3 +345,4 @@
 - [ ] Display an authorized saved main exterior photo in the single-property page hero when the existing snapshot includes one
 - [x] Preserve the RMLS/WVMLS partner-membership listing-media and status import path as an approval-gated future upgrade framework
 - [x] Add a compact Your Guide destination to the completed Mortgage Chat navigation choices
+- [x] Place Loan Programs immediately before 2-1 Buydown in the public section navigator
