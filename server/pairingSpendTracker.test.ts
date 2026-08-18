@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { calculatePairingSpendSummary, isMoneySplitAttentionRequired } from "@shared/pairingSpendTracker";
 
 describe("LO + agent pairing spend summary", () => {
@@ -26,5 +28,14 @@ describe("LO + agent pairing spend summary", () => {
 
     expect(summary).toMatchObject({ totalCents: 0, loanOfficerPercent: 50, agentPercent: 50, balanceStatus: "no_spend" });
     expect(isMoneySplitAttentionRequired(summary)).toBe(false);
+  });
+
+  it("keeps pairing selection and active spend history in independent bounded scroll regions", () => {
+    const projectRoot = path.resolve(import.meta.dirname, "..");
+    const componentSource = readFileSync(path.join(projectRoot, "client/src/components/PairingSpendTracker.tsx"), "utf8");
+
+    expect(componentSource).toContain("max-h-[22rem] space-y-2 overflow-y-auto overscroll-contain");
+    expect(componentSource).toContain("max-h-[42rem] overflow-y-auto overscroll-contain");
+    expect(componentSource).toContain("max-h-[22rem] overflow-auto overscroll-contain");
   });
 });

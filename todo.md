@@ -352,3 +352,4 @@
 - [x] Add the LO+Agent Pairings 50/50 Spend Tracker as the permanent final dashboard section with a top navigation shortcut
 - [x] Ensure the desktop-browser completed Mortgage Chat message starts fully below the chat header without changing mobile behavior
 - [x] Add a desktop-only top gutter so the completed Mortgage Chat message clears the fixed header in every desktop browser view
+- [x] Add independent scrollbars to Pairing Trackers and active-pair spend history to keep the dashboard compact as records grow
