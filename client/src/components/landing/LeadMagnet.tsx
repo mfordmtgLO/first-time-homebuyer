@@ -5,7 +5,7 @@ import { useScenario } from "@/contexts/ScenarioContext";
 import { useAgentSlug, useLoanOfficerSlug, usePropertyPageSlug } from "@/contexts/AgentPageContext";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Download, CheckCircle2, Loader2, Calculator, Hourglass, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Download, CheckCircle2, Loader2, Calculator, Compass, Hourglass, X } from "lucide-react";
 import { formatUsRoadmapPhone, hasUsableRoadmapPhone } from "@shared/roadmapPhone";
 import { emitFunnelConversion, getCampaignAttribution } from "@/lib/campaignTracking";
 
@@ -14,6 +14,12 @@ const fmtUsd = (v: number) =>
 
 const COVER_IMG = "/manus-storage/roadmap-cover_04621272.png";
 export const roadmapSuccessScrollOptions: ScrollIntoViewOptions = { behavior: "smooth", block: "center" };
+
+export function getRoadmapSuccessReturnDestination(hasBuydownScenario: boolean, hasCostOfWaitingScenario: boolean) {
+  if (hasBuydownScenario) return { id: "buydown", label: "Back to my 2-1 numbers", description: "Review your payment savings" };
+  if (hasCostOfWaitingScenario) return { id: "cost-of-waiting", label: "Back to my cost-of-waiting numbers", description: "Review your buy-versus-rent comparison" };
+  return { id: "top", label: "Back to the top", description: "Return to the home page" };
+}
 
 const bullets = [
   "A step-by-step breakdown of the entire process — from setting your budget to grabbing your keys",
@@ -34,6 +40,11 @@ export default function LeadMagnet() {
   const [phone, setPhone] = useState("");
   const [smsConsent, setSmsConsent] = useState(false);
   const successMessageRef = useRef<HTMLDivElement>(null);
+  const returnDestination = getRoadmapSuccessReturnDestination(attached, cowAttached);
+
+  const scrollToSection = (sectionId: string) => {
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const submitLead = trpc.leads.submit.useMutation({
     onSuccess: () => {
@@ -138,6 +149,36 @@ export default function LeadMagnet() {
                     couple of days.
                   </p>
                 </div>
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => scrollToSection(returnDestination.id)}
+                  className="btn-press group flex min-h-24 items-center gap-3 rounded-lg border border-primary/20 bg-primary/[0.045] p-4 text-left transition hover:border-primary/40 hover:bg-primary/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary transition group-hover:-translate-x-0.5">
+                    {attached || cowAttached ? <Calculator className="h-5 w-5" aria-hidden="true" /> : <Compass className="h-5 w-5" aria-hidden="true" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground">{returnDestination.label}</span>
+                    <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">{returnDestination.description}</span>
+                  </span>
+                  <ArrowLeft className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollToSection("how-it-works")}
+                  className="btn-press group flex min-h-24 items-center gap-3 rounded-lg bg-primary p-4 text-left text-primary-foreground shadow-sm transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/15 text-primary-foreground transition group-hover:translate-x-0.5">
+                    <Compass className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold">Next: see how it works</span>
+                    <span className="mt-0.5 block text-xs leading-relaxed text-primary-foreground/80">Explore the next step in your homebuying plan</span>
+                  </span>
+                  <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
+                </button>
               </div>
             </div>
           ) : (

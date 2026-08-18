@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CalendarDays, ChevronUp, MessageCircle } from "lucide-react";
+import { CalendarDays, ChevronUp, ChevronsLeftRight, MessageCircle } from "lucide-react";
 import { CALENDLY_BOOKING_URL } from "@/lib/booking";
 
 export const publicSectionNavigationItems = [
@@ -57,9 +57,27 @@ export default function PublicSectionNav() {
       aria-label="Explore this page"
       className="fixed inset-x-0 top-16 z-40 px-3 md:top-[4.6rem] md:px-5"
     >
-      <div className="mx-auto max-w-fit overflow-hidden rounded-full border border-primary/15 bg-cream/95 px-1.5 py-1.5 shadow-[0_14px_28px_-20px_rgb(32_38_27/0.55)] backdrop-blur-md">
-        <div className="flex max-w-[calc(100vw-1.5rem)] items-center gap-0.5 overflow-x-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {publicSectionNavigationItems.map(({ id, label, icon: Icon }) => (
+      <div className="mx-auto flex max-w-fit items-center gap-1 overflow-hidden rounded-full border border-primary/15 bg-cream/95 px-1.5 py-1.5 shadow-[0_14px_28px_-20px_rgb(32_38_27/0.55)] backdrop-blur-md">
+        <a
+          href="#top"
+          onClick={(event) => {
+            event.preventDefault();
+            setActiveSectionId("top");
+            scrollToPublicSection("top");
+          }}
+          aria-current={activeSectionId === "top" ? "location" : undefined}
+          className={`btn-press inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+            activeSectionId === "top"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-foreground/75 hover:bg-primary/8 hover:text-primary"
+          }`}
+        >
+          <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
+          Top
+        </a>
+        <div className="relative min-w-0 flex-1">
+          <div className="flex max-w-[calc(100vw-5.5rem)] items-center gap-0.5 overflow-x-auto overscroll-contain pr-12 [scrollbar-width:none] md:max-w-none md:pr-0 [&::-webkit-scrollbar]:hidden">
+          {publicSectionNavigationItems.filter(({ id }) => id !== "top").map(({ id, label, icon: Icon }) => (
             <a
               key={id}
               href={`#${id}`}
@@ -69,7 +87,7 @@ export default function PublicSectionNav() {
                 scrollToPublicSection(id);
               }}
               aria-current={activeSectionId === id ? "location" : undefined}
-              className={`btn-press inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${id === "top" ? "order-0" : "order-2"} ${
+              className={`btn-press inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
                 activeSectionId === id
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-foreground/75 hover:bg-primary/8 hover:text-primary"
@@ -91,11 +109,16 @@ export default function PublicSectionNav() {
             href={CALENDLY_BOOKING_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-press order-1 inline-flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-3 py-2 text-xs font-semibold text-accent-foreground shadow-sm transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 md:hidden"
+            className="btn-press inline-flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-3 py-2 text-xs font-semibold text-accent-foreground shadow-sm transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 md:hidden"
           >
             <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
             Book a call
           </a>
+          </div>
+          <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center gap-0.5 bg-gradient-to-l from-cream via-cream/95 to-transparent pl-5 pr-1 text-[10px] font-semibold text-primary md:hidden" aria-hidden="true">
+            <ChevronsLeftRight className="h-3.5 w-3.5" />
+            More
+          </span>
         </div>
       </div>
     </nav>
