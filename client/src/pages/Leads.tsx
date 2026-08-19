@@ -11,6 +11,7 @@ import CampaignFunnelSummary from "@/components/CampaignFunnelSummary";
 import GeoSphereListings from "@/components/GeoSphereListings";
 import TextingWorkspace from "@/components/TextingWorkspace";
 import PairingSpendTracker from "@/components/PairingSpendTracker";
+import PropertyPageSourceSummary from "@/components/PropertyPageSourceSummary";
 import {
   buildLeadWelcomeDraft,
   type LeadEmailAgent,
@@ -883,12 +884,12 @@ export default function Leads() {
                           </td>
                           <td className="px-5 py-3.5 text-xs">
                             {lead.propertyPageAddress ? (
-                              <div className="space-y-1">
-                                <span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 font-semibold text-primary">Single-property page</span>
-                                <div className="font-medium text-foreground">{lead.propertyPageAddress}</div>
-                                <div className="text-muted-foreground">LO: <span className="font-medium text-foreground">{lead.loanOfficerName ?? "Not linked"}</span></div>
-                                <div className="text-muted-foreground">Agent: <span className="font-medium text-foreground">{lead.agentName ?? "Not linked"}</span></div>
-                              </div>
+                              <PropertyPageSourceSummary
+                                address={lead.propertyPageAddress}
+                                propertyPageSlug={lead.propertyPageSlug}
+                                loanOfficerName={lead.loanOfficerName}
+                                agentName={lead.agentName}
+                              />
                             ) : lead.agentSource === "link" ? (
                               <div className="space-y-1">
                                 <span className="inline-flex rounded-full bg-emerald-600/10 px-2 py-0.5 font-semibold text-emerald-700">Co-branded</span>

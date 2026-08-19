@@ -385,3 +385,5 @@
 - [x] Diagnose and repair the Oregon Sync Top Agents token failure without overwriting existing synced records
 - [x] Repair non-working completed-chat navigation buttons on public single-property pages
 - [x] Add Cost of Waiting and full First-Time Homebuyer website destinations to single-property completed-chat navigation
+- [x] Compact single-property website source labels in dashboard lead tables to street address and inline LO-agent context
+- [x] Add expandable single-property source details with the full property-page URL and co-brand pairing information
