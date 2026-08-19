@@ -925,9 +925,10 @@ export default function AgentSettings() {
         credentials: "include",
         headers: buildTrpcRequestHeaders(rawSession),
       });
+      const responseType = response.headers.get("content-type") || "unknown response type";
       const payload = await response.json().catch(() => null) as { refreshed?: boolean; error?: string } | null;
       if (!response.ok || !payload?.refreshed) {
-        throw new Error(payload?.error || "Oregon agent sync could not be completed.");
+        throw new Error(payload?.error || `Oregon agent sync returned ${response.status} (${responseType}).`);
       }
       syncedProfilesQuery.refetch();
       reviewQueueQuery.refetch();

@@ -59,3 +59,5 @@ A fresh cache-busting authenticated dashboard session is loaded after checkpoint
 Checkpoint `23414e8d` deployed the final lightweight acknowledgement contract. A fresh authenticated dashboard session is loaded and the owner-only **Sync Top Agents** control is ready for the closing live verification.
 
 The lightweight tRPC acknowledgement still produced `Unable to transform response from server`, confirming the production issue is in the tRPC response path itself rather than the Oregon source payload. A protected JSON-only `POST /api/oregon-sync-refresh` endpoint now reuses the exact same owner-scoped refresh helper while bypassing tRPC response transformation. Its local unauthenticated probe returns `401 application/json`, and the full regression suite passes. Production verification remains pending deployment.
+
+Checkpoint `a60f169c` deployed the protected JSON fallback successfully. A fresh authenticated dashboard session has loaded and the owner-only **Sync Top Agents** control is ready for the closing fallback-route verification.
