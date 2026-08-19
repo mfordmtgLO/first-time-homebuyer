@@ -9,6 +9,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { runGeoSphereScheduledSync } from "../geosphere.schedule";
+import { registerOregonSyncHttp } from "../oregonSyncHttp";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -39,6 +40,7 @@ async function startServer() {
   registerOAuthRoutes(app);
   // Scheduled callbacks must be registered before the Vite/static fallthrough.
   app.post("/api/scheduled/geosphere-sync", runGeoSphereScheduledSync);
+  registerOregonSyncHttp(app);
   // tRPC API
   app.use(
     "/api/trpc",

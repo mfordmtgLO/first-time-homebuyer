@@ -55,3 +55,7 @@ Checkpoint `bea849d1` deployed the explicit `Accept: application/json` tRPC tran
 The JSON-only transport changed the live error from an HTML parsing failure to `Unable to transform response from server`, demonstrating that the protected request now reaches the server and receives JSON. Checkpoint `247c38e7` therefore normalizes the completed refresh response to only plain JSON-safe primitives and arrays, with an empty fallback for omitted movement metadata. Its deployment has completed; the final live retry is now pending.
 
 A fresh cache-busting authenticated dashboard session is loaded after checkpoint `247c38e7`, and the owner-only **Sync Top Agents** control is visible for the closing normalized-response verification.
+
+Checkpoint `23414e8d` deployed the final lightweight acknowledgement contract. A fresh authenticated dashboard session is loaded and the owner-only **Sync Top Agents** control is ready for the closing live verification.
+
+The lightweight tRPC acknowledgement still produced `Unable to transform response from server`, confirming the production issue is in the tRPC response path itself rather than the Oregon source payload. A protected JSON-only `POST /api/oregon-sync-refresh` endpoint now reuses the exact same owner-scoped refresh helper while bypassing tRPC response transformation. Its local unauthenticated probe returns `401 application/json`, and the full regression suite passes. Production verification remains pending deployment.

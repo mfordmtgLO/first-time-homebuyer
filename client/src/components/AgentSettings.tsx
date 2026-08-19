@@ -34,6 +34,7 @@ import ProfileShareTools from "@/components/ProfileShareTools";
 import { buildCoBrandedShareMailto } from "@shared/coBrandedShareDraft";
 import { getUnpairedAgentIds } from "@shared/agentPairingStatus";
 import { publicSiteUrl } from "@shared/publicSiteUrl";
+import { buildTrpcRequestHeaders } from "@shared/trpcRequestHeaders";
 import { filterRankSnapshots, filterSyncedTopAgents, formatRankMovement, getRankMovement, getSourcePoolTotal, getSyncedTopAgentSummary, sortSyncedTopAgents, summarizeOfficeRankMovements, type RankHistoryRange, type SyncedTopAgentSort } from "@shared/syncedTopAgentUi";
 import {
   AlertTriangle,
@@ -914,15 +915,30 @@ export default function AgentSettings() {
     utils.agent.getBySlug.invalidate();
   };
 
-  const syncTopAgents = trpc.agentSync.syncOregonRefresh.useMutation({
-    onSuccess: () => {
+  const [isSyncingTopAgents, setIsSyncingTopAgents] = useState(false);
+  const syncTopAgents = async () => {
+    setIsSyncingTopAgents(true);
+    try {
+      const rawSession = typeof window === "undefined" ? null : sessionStorage.getItem("manus-cookie");
+      const response = await fetch("/api/oregon-sync-refresh", {
+        method: "POST",
+        credentials: "include",
+        headers: buildTrpcRequestHeaders(rawSession),
+      });
+      const payload = await response.json().catch(() => null) as { refreshed?: boolean; error?: string } | null;
+      if (!response.ok || !payload?.refreshed) {
+        throw new Error(payload?.error || "Oregon agent sync could not be completed.");
+      }
       syncedProfilesQuery.refetch();
       reviewQueueQuery.refetch();
       setLastRankMovements([]);
       toast.success("Oregon source profiles refreshed.");
-    },
-    onError: (err) => toast.error(err.message || "Oregon agent sync could not be completed."),
-  });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Oregon agent sync could not be completed.");
+    } finally {
+      setIsSyncingTopAgents(false);
+    }
+  };
 
   const resolveReview = trpc.agentSync.resolveReview.useMutation({
     onSuccess: (result) => {
@@ -998,8 +1014,8 @@ export default function AgentSettings() {
             >
               <option value="Oregon">OR · Oregon</option>
             </select>
-            <Button size="sm" variant="outline" onClick={() => syncTopAgents.mutate()} disabled={syncTopAgents.isPending}>
-              {syncTopAgents.isPending ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
+            <Button size="sm" variant="outline" onClick={syncTopAgents} disabled={isSyncingTopAgents}>
+              {isSyncingTopAgents ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
               Sync Top Agents
             </Button>
           </div>
