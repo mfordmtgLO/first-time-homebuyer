@@ -379,3 +379,6 @@
 - [x] Audit and repair Oregon source directory, search, and export coverage for all expected top agents and principal/managing principal brokers
 - [x] Refresh and verify the dashboard Oregon sync includes the complete corrected agent and principal-broker set
 - [x] Correct principal-broker office-rank labels to use the complete Oregon source pool denominator
+- [x] Add owner-scoped saved Oregon outreach email templates with an Add template editor workflow
+- [x] Add multi-selection of synced Oregon agents and principal/managing brokers for BCC email drafts
+- [x] Add a signature-complete Oregon outreach draft action with recipient validation and template merge support

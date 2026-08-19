@@ -510,6 +510,27 @@ export const propertyEmailTemplate = mysqlTable(
 export type PropertyEmailTemplate = typeof propertyEmailTemplate.$inferSelect;
 export type InsertPropertyEmailTemplate = typeof propertyEmailTemplate.$inferInsert;
 
+/** Private reusable outreach copy for the synced Oregon agent and broker directory. */
+export const syncedAgentOutreachTemplate = mysqlTable(
+  "synced_agent_outreach_template",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerUserId: int("ownerUserId").notNull(),
+    name: varchar("name", { length: 160 }).notNull(),
+    subjectTemplate: varchar("subjectTemplate", { length: 240 }).notNull(),
+    bodyTemplate: text("bodyTemplate").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("synced_agent_outreach_template_owner_name_unique").on(table.ownerUserId, table.name),
+    index("synced_agent_outreach_template_owner_idx").on(table.ownerUserId),
+  ]
+);
+
+export type SyncedAgentOutreachTemplate = typeof syncedAgentOutreachTemplate.$inferSelect;
+export type InsertSyncedAgentOutreachTemplate = typeof syncedAgentOutreachTemplate.$inferInsert;
+
 /** A public, snapshot-backed landing page for one saved GeoSphere property. */
 export const propertyLandingPage = mysqlTable(
   "property_landing_page",

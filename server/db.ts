@@ -13,6 +13,7 @@ import {
   propertyPageActivity,
   propertyEmailTemplate,
   propertyPageAgentEmailTemplate,
+  syncedAgentOutreachTemplate,
   loAgentSpendEntry,
   loAgentSpendPairing,
   leads,
@@ -488,6 +489,38 @@ export async function listSyncedTopAgents(ownerUserId: number, state?: string) {
     .from(syncedTopAgent)
     .where(state ? and(eq(syncedTopAgent.ownerUserId, ownerUserId), eq(syncedTopAgent.state, state)) : eq(syncedTopAgent.ownerUserId, ownerUserId))
     .orderBy(syncedTopAgent.sourceRank, syncedTopAgent.fullName);
+}
+
+/** Private, reusable subject and body templates for outreach to the synced Oregon directory. */
+export async function listSyncedAgentOutreachTemplates(ownerUserId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .select()
+    .from(syncedAgentOutreachTemplate)
+    .where(eq(syncedAgentOutreachTemplate.ownerUserId, ownerUserId))
+    .orderBy(asc(syncedAgentOutreachTemplate.name));
+}
+
+/** Saves a reusable private Oregon outreach template for its dashboard owner. */
+export async function createSyncedAgentOutreachTemplate(input: {
+  ownerUserId: number;
+  name: string;
+  subjectTemplate: string;
+  bodyTemplate: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(syncedAgentOutreachTemplate).values(input);
+  const rows = await db
+    .select()
+    .from(syncedAgentOutreachTemplate)
+    .where(and(
+      eq(syncedAgentOutreachTemplate.id, Number(result.insertId)),
+      eq(syncedAgentOutreachTemplate.ownerUserId, input.ownerUserId)
+    ))
+    .limit(1);
+  return rows[0]!;
 }
 
 export async function getSyncedTopAgent(ownerUserId: number, id: number) {

@@ -44,6 +44,7 @@ import {
   getPropertyLandingPageById,
   getPropertyLandingPageBySlug,
   getSyncedTopAgent,
+  createSyncedAgentOutreachTemplate,
   getLoAgentSpendPairingForOwner,
   listGeoSphereListings,
   listGeoSphereSavedPulls,
@@ -64,6 +65,7 @@ import {
   listLeads,
   listLoAgentSpendTrackers,
   listSyncedTopAgents,
+  listSyncedAgentOutreachTemplates,
   listSyncedTopAgentRankHistory,
   listSyncedTopAgentReviews,
   listTextMessageDrafts,
@@ -98,6 +100,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { invokeLLM, listLLMModels } from "./_core/llm";
 import { parsePropertyLandingSnapshot, propertyEligibilityLabel, propertyFinancingContext } from "../shared/propertyLandingPage";
+import { buildSyncedAgentOutreachDraft } from "../shared/syncedAgentOutreachDraft";
 
 const ADMIN_ONLY_MESSAGE = "Only the site owner can manage agents.";
 
@@ -153,6 +156,12 @@ const oregonAgentSourceProfileSchema = z.object({
   principalBrokerProfileUrl: z.string().url().nullable().optional(),
   sourceUpdatedAt: z.string().datetime(),
 }).passthrough();
+
+const syncedAgentOutreachTemplateInputSchema = z.object({
+  name: z.string().trim().min(1, "Template name is required.").max(160),
+  subjectTemplate: z.string().trim().min(1, "Email subject is required.").max(240),
+  bodyTemplate: z.string().trim().min(1, "Email body is required.").max(8000),
+});
 
 const oregonAgentSourceExportSchema = z.object({
   version: z.literal(1),
@@ -1702,6 +1711,61 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
         return listSyncedTopAgents(ctx.user.id, input?.state ?? "Oregon");
+      }),
+    outreachTemplates: protectedProcedure.query(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      return listSyncedAgentOutreachTemplates(ctx.user.id);
+    }),
+    createOutreachTemplate: protectedProcedure
+      .input(syncedAgentOutreachTemplateInputSchema)
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        try {
+          return await createSyncedAgentOutreachTemplate({ ownerUserId: ctx.user.id, ...input });
+        } catch (error) {
+          if ((error as { code?: string }).code === "ER_DUP_ENTRY") {
+            throw new TRPCError({ code: "CONFLICT", message: "A saved Oregon outreach template already has that name." });
+          }
+          throw error;
+        }
+      }),
+    buildOutreachDraft: protectedProcedure
+      .input(z.object({
+        syncedProfileIds: z.array(z.number().int().positive()).min(1, "Select at least one Oregon profile."),
+        templateId: z.number().int().positive().nullable().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const requestedIds = Array.from(new Set(input.syncedProfileIds));
+        const profiles = await listSyncedTopAgents(ctx.user.id, "Oregon");
+        const selected = profiles.filter((profile) => requestedIds.includes(profile.id));
+        if (selected.length !== requestedIds.length) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "One or more selected Oregon profiles are no longer available." });
+        }
+        const template = input.templateId
+          ? (await listSyncedAgentOutreachTemplates(ctx.user.id)).find((item) => item.id === input.templateId)
+          : null;
+        if (input.templateId && !template) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "That Oregon outreach template is unavailable." });
+        }
+        const missingEmailProfiles = selected.filter((profile) => !profile.email?.trim());
+        const draft = buildSyncedAgentOutreachDraft({
+          recipients: selected
+            .filter((profile) => profile.email?.trim())
+            .map((profile) => {
+              let detail: Record<string, unknown> = {};
+              try { detail = JSON.parse(profile.profileData) as Record<string, unknown>; } catch { /* source detail stays optional */ }
+              return {
+                fullName: profile.fullName,
+                email: profile.email!,
+                brokerage: profile.brokerage,
+                recordType: detail.recordType === "principal_broker" ? "principal_broker" as const : "agent" as const,
+                principalBrokerTitle: typeof detail.principalBrokerTitle === "string" ? detail.principalBrokerTitle : null,
+              };
+            }),
+          template,
+        });
+        return { ...draft, selectedCount: selected.length, skippedNoEmailCount: missingEmailProfiles.length };
       }),
     rankHistory: protectedProcedure
       .input(z.object({ syncedTopAgentId: z.number().int().positive() }))

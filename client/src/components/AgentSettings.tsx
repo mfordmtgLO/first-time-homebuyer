@@ -669,6 +669,215 @@ function AgentFormDialog({
   );
 }
 
+type OutreachDraftPreview = {
+  subject: string;
+  body: string;
+  mailto: string;
+  recipientCount: number;
+  selectedCount: number;
+  skippedNoEmailCount: number;
+  bcc: boolean;
+};
+
+function OregonOutreachWorkspace({ syncedProfiles }: { syncedProfiles: SyncedTopAgentRow[] }) {
+  const utils = trpc.useUtils();
+  const templatesQuery = trpc.agentSync.outreachTemplates.useQuery();
+  const templates = templatesQuery.data ?? [];
+  const [search, setSearch] = useState("");
+  const [principalBrokerOnly, setPrincipalBrokerOnly] = useState(false);
+  const [selectedProfileIds, setSelectedProfileIds] = useState<number[]>([]);
+  const [templateId, setTemplateId] = useState<number | null>(null);
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [templateSubject, setTemplateSubject] = useState("Oregon first-time homebuyer outreach opportunity");
+  const [templateBody, setTemplateBody] = useState("I’m Mike Ford with Cornerstone First Mortgage. I’m reaching out because I’m building practical first-time homebuyer resources and would welcome a conversation about ways we may be able to support buyers in your Oregon market.");
+  const [draftPreview, setDraftPreview] = useState<OutreachDraftPreview | null>(null);
+
+  const selectableProfiles = useMemo(() => {
+    const searched = filterSyncedTopAgents(syncedProfiles, search);
+    return principalBrokerOnly ? searched.filter(isPrincipalBroker) : searched;
+  }, [principalBrokerOnly, search, syncedProfiles]);
+  const visibleEmailProfileIds = useMemo(
+    () => selectableProfiles.filter((profile) => Boolean(profile.email?.trim())).map((profile) => profile.id),
+    [selectableProfiles]
+  );
+  const selectedCount = selectedProfileIds.length;
+  const selectedVisibleCount = visibleEmailProfileIds.filter((id) => selectedProfileIds.includes(id)).length;
+
+  const createTemplate = trpc.agentSync.createOutreachTemplate.useMutation({
+    onSuccess: (template) => {
+      utils.agentSync.outreachTemplates.invalidate();
+      setTemplateId(template.id);
+      setTemplateDialogOpen(false);
+      setTemplateName("");
+      toast.success(`Saved “${template.name}” for Oregon outreach.`);
+    },
+    onError: (error) => toast.error(error.message || "Could not save the Oregon outreach template."),
+  });
+  const buildDraft = trpc.agentSync.buildOutreachDraft.useMutation({
+    onSuccess: (draft) => {
+      setDraftPreview(draft);
+      if (draft.skippedNoEmailCount) {
+        toast.warning(`${draft.skippedNoEmailCount} selected profile${draft.skippedNoEmailCount === 1 ? "" : "s"} had no email address and was skipped.`);
+      }
+    },
+    onError: (error) => toast.error(error.message || "Could not create the Oregon outreach draft."),
+  });
+
+  const toggleProfile = (profileId: number) => {
+    setSelectedProfileIds((current) => current.includes(profileId)
+      ? current.filter((id) => id !== profileId)
+      : [...current, profileId]);
+  };
+  const selectVisible = () => {
+    setSelectedProfileIds((current) => Array.from(new Set([...current, ...visibleEmailProfileIds])));
+  };
+  const clearSelection = () => setSelectedProfileIds([]);
+  const chooseTemplate = (value: string) => {
+    if (value === "add-template") {
+      setTemplateDialogOpen(true);
+      return;
+    }
+    setTemplateId(value === "default" ? null : Number(value));
+  };
+  const saveTemplate = () => {
+    if (!templateName.trim() || !templateSubject.trim() || !templateBody.trim()) {
+      toast.error("Template name, subject, and body are all required.");
+      return;
+    }
+    createTemplate.mutate({ name: templateName, subjectTemplate: templateSubject, bodyTemplate: templateBody });
+  };
+  const createDraft = () => {
+    if (!selectedProfileIds.length) {
+      toast.error("Select at least one Oregon agent or broker with an email address.");
+      return;
+    }
+    buildDraft.mutate({ syncedProfileIds: selectedProfileIds, templateId });
+  };
+  const sourceDetail = (profile: SyncedTopAgentRow) => syncedSourceDetail(profile);
+
+  return (
+    <div className="border-b border-border bg-slate-950/[0.025] px-6 py-5">
+      <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
+        <div className="max-w-2xl">
+          <h3 className="flex items-center gap-2 font-display text-base font-semibold text-foreground">
+            <MailCheck className="h-4.5 w-4.5 text-primary" /> Oregon agent & broker outreach
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Select one or many private Oregon source profiles. A single recipient opens in <strong>To</strong>; multiple recipients are placed in <strong>BCC</strong> so their addresses remain private. Every draft stays editable in your email application before sending.
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2 rounded-lg border border-primary/20 bg-background px-3 py-2 text-xs text-muted-foreground shadow-sm">
+          <span className="font-semibold text-foreground">{selectedCount} selected</span>
+          <span>·</span>
+          <span>{selectedCount > 1 ? "BCC draft" : "Direct draft"}</span>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-end">
+        <div>
+          <Label htmlFor="oregon-outreach-search" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Find recipients</Label>
+          <div className="relative mt-1.5">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input id="oregon-outreach-search" value={search} onChange={(event) => setSearch(event.target.value)} className="h-9 pl-9" placeholder="Search name, brokerage, or city" />
+          </div>
+        </div>
+        <div>
+          <Label htmlFor="oregon-outreach-template" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Template</Label>
+          <select id="oregon-outreach-template" value={templateId === null ? "default" : String(templateId)} onChange={(event) => chooseTemplate(event.target.value)} className="mt-1.5 h-9 min-w-56 rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <option value="add-template">+ Add template</option>
+            <option value="default">Default Oregon introduction</option>
+            {templates.map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}
+          </select>
+        </div>
+        <Button className="h-9" onClick={createDraft} disabled={!selectedCount || buildDraft.isPending}>
+          {buildDraft.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <MailCheck className="mr-1.5 h-4 w-4" />}
+          Create email draft
+        </Button>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <label className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-foreground">
+          <input type="checkbox" checked={principalBrokerOnly} onChange={(event) => setPrincipalBrokerOnly(event.target.checked)} className="h-3.5 w-3.5 rounded border-input accent-primary" />
+          Principal / managing brokers only
+        </label>
+        <Button type="button" variant="outline" size="sm" onClick={selectVisible} disabled={!visibleEmailProfileIds.length || selectedVisibleCount === visibleEmailProfileIds.length}>Select visible with email</Button>
+        <Button type="button" variant="ghost" size="sm" onClick={clearSelection} disabled={!selectedCount}>Clear selection</Button>
+        <span className="text-xs text-muted-foreground">{selectableProfiles.length} matching profiles · profiles without an email cannot be selected</span>
+      </div>
+
+      <div className="mt-3 max-h-72 overflow-y-auto rounded-lg border border-border bg-background">
+        {selectableProfiles.length ? selectableProfiles.map((profile) => {
+          const detail = sourceDetail(profile);
+          const isSelected = selectedProfileIds.includes(profile.id);
+          const hasEmail = Boolean(profile.email?.trim());
+          const broker = isPrincipalBroker(profile);
+          return (
+            <label key={profile.id} className={`flex cursor-pointer items-center gap-3 border-b border-border/70 px-3 py-2.5 last:border-b-0 ${isSelected ? "bg-primary/5" : "hover:bg-muted/40"} ${hasEmail ? "" : "cursor-not-allowed opacity-60"}`}>
+              <input type="checkbox" checked={isSelected} disabled={!hasEmail} onChange={() => toggleProfile(profile.id)} className="h-4 w-4 shrink-0 rounded border-input accent-primary" aria-label={`Select ${profile.fullName} for outreach`} />
+              {profile.headshotUrl ? <img src={profile.headshotUrl} alt="" className="h-8 w-8 shrink-0 rounded-full border border-border object-cover" /> : <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-muted"><UserRound className="h-4 w-4 text-muted-foreground" /></div>}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-foreground">
+                  {broker && <span className="mr-1.5 inline-flex rounded-sm bg-[#0b2d5c] px-1.5 py-0.5 align-middle text-[10px] font-bold text-white">PB</span>}
+                  {profile.fullName} <span className="font-medium text-muted-foreground">· {syncedRankLabel(profile)}</span>
+                </p>
+                <p className="truncate text-xs text-muted-foreground">{[profile.brokerage, broker && typeof detail.principalBrokerTitle === "string" ? detail.principalBrokerTitle : null, profile.email || "No email on file"].filter(Boolean).join(" · ")}</p>
+              </div>
+              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${hasEmail ? "bg-emerald-500/10 text-emerald-800" : "bg-muted text-muted-foreground"}`}>{hasEmail ? "Email ready" : "No email"}</span>
+            </label>
+          );
+        }) : <p className="px-3 py-6 text-center text-sm text-muted-foreground">No synced Oregon profile matches the current outreach filter.</p>}
+      </div>
+
+      <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Create Oregon outreach template</DialogTitle>
+            <DialogDescription>Saved templates are private to this dashboard. The greeting and Mike Ford’s complete signature are added automatically when the email draft opens.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="oregon-template-name">Template name</Label>
+              <Input id="oregon-template-name" className="mt-1.5" value={templateName} onChange={(event) => setTemplateName(event.target.value)} placeholder="e.g., Principal broker introduction" maxLength={160} />
+            </div>
+            <div>
+              <Label htmlFor="oregon-template-subject">Subject</Label>
+              <Input id="oregon-template-subject" className="mt-1.5" value={templateSubject} onChange={(event) => setTemplateSubject(event.target.value)} maxLength={240} />
+            </div>
+            <div>
+              <Label htmlFor="oregon-template-body">Email body</Label>
+              <Textarea id="oregon-template-body" className="mt-1.5 min-h-44" value={templateBody} onChange={(event) => setTemplateBody(event.target.value)} maxLength={8000} />
+              <p className="mt-1.5 text-xs text-muted-foreground">Optional merge tokens: <code>{"{{recipient_name}}"}</code>, <code>{"{{brokerage}}"}</code>, <code>{"{{recipient_type}}"}</code>, and <code>{"{{recipient_count}}"}</code>. For a BCC draft, recipient-specific tokens use neutral wording.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTemplateDialogOpen(false)} disabled={createTemplate.isPending}>Cancel</Button>
+            <Button onClick={saveTemplate} disabled={createTemplate.isPending}>{createTemplate.isPending && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}Save template</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={Boolean(draftPreview)} onOpenChange={(open) => !open && setDraftPreview(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{draftPreview?.bcc ? "Review BCC outreach draft" : "Review Oregon outreach draft"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {draftPreview?.bcc
+                ? `${draftPreview.recipientCount} recipients will be added as BCC, so their email addresses remain hidden from one another.`
+                : "One recipient will be added directly to the To line."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {draftPreview && <div className="max-h-52 overflow-y-auto rounded-md border border-border bg-muted/20 p-3 text-sm whitespace-pre-wrap text-foreground">Subject: {draftPreview.subject}\n\n{draftPreview.body}</div>}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Back</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (draftPreview) window.location.href = draftPreview.mailto; setDraftPreview(null); }}>Open email draft</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
 export default function AgentSettings() {
   const agentsQuery = trpc.agent.list.useQuery();
   const agents = agentsQuery.data ?? [];
@@ -819,6 +1028,8 @@ export default function AgentSettings() {
       <div className="border-b border-border bg-muted/20 px-6 py-2 text-xs text-muted-foreground">
         <strong className="font-semibold text-foreground">Oregon sync:</strong> {topAgentProfileCount} top agent{topAgentProfileCount === 1 ? "" : "s"} and {principalBrokerProfileCount} principal broker{principalBrokerProfileCount === 1 ? "" : "s"} available for private prefill. Synced information stays inside this owner dashboard until you create a partner.
       </div>
+
+      <OregonOutreachWorkspace syncedProfiles={syncedProfiles} />
 
       {lastRankMovements.length > 0 && (
         <div className="border-b border-sky-500/25 bg-sky-500/5 px-6 py-3">
