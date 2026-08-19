@@ -47,3 +47,5 @@ The initial click occurred before the production rollout completed and still rea
 The post-rollout dashboard load at `?syncfix=789de51b-live` rendered without an error toast and exposed the owner-authenticated **Sync Top Agents** control. The next click is the definitive versioned-route verification.
 
 The final post-rollout click completed with the raw parser error still present. The complete served production bundle was downloaded and confirmed to invoke `agentSync.syncOregonRefresh`, so browser caching is no longer a plausible cause. The remaining likely fault is a stale or malformed production source-URL setting reaching the server-side fetch; the next repair will pin the Oregon-only route directly in the server import helper while retaining the bearer token secret.
+
+Checkpoint `656bd73a` deployed the pinned canonical endpoint correction successfully. A fresh cache-busting dashboard load has no error toast and shows the owner-authenticated **Sync Top Agents** control ready for the final server-side refresh verification.
