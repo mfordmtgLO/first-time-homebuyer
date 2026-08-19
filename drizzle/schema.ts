@@ -124,6 +124,7 @@ export const syncedTopAgent = mysqlTable(
     zillowUrl: varchar("zillowUrl", { length: 500 }),
     headshotUrl: varchar("headshotUrl", { length: 500 }),
     sourceRank: int("sourceRank"),
+    previousSourceRank: int("previousSourceRank"),
     /** Complete authorized source record retained for preview and prefill. */
     profileData: text("profileData").notNull(),
     sourceUpdatedAt: timestamp("sourceUpdatedAt"),

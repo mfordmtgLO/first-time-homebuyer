@@ -23,3 +23,19 @@ export function getSyncedTopAgentSummary<T extends SyncedTopAgentSearchRecord>(p
   }, null);
   return { count: profiles.length, latestSyncedAt };
 }
+
+export type SyncedTopAgentSortRecord = SyncedTopAgentSearchRecord & { sourceRank: number | null };
+export type SyncedTopAgentSort = "rank" | "office" | "name";
+
+export function sortSyncedTopAgents<T extends SyncedTopAgentSortRecord>(profiles: T[], sort: SyncedTopAgentSort): T[] {
+  return [...profiles].sort((left, right) => {
+    if (sort === "rank") return (left.sourceRank ?? Number.MAX_SAFE_INTEGER) - (right.sourceRank ?? Number.MAX_SAFE_INTEGER) || left.fullName.localeCompare(right.fullName);
+    if (sort === "office") return (left.brokerage ?? "").localeCompare(right.brokerage ?? "") || left.fullName.localeCompare(right.fullName);
+    return left.fullName.localeCompare(right.fullName);
+  });
+}
+
+export function getRankMovement(previousRank: number | null, currentRank: number | null): "improved" | "dropped" | null {
+  if (previousRank === null || currentRank === null || previousRank === currentRank) return null;
+  return currentRank < previousRank ? "improved" : "dropped";
+}

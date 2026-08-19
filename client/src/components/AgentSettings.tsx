@@ -34,7 +34,7 @@ import ProfileShareTools from "@/components/ProfileShareTools";
 import { buildCoBrandedShareMailto } from "@shared/coBrandedShareDraft";
 import { getUnpairedAgentIds } from "@shared/agentPairingStatus";
 import { publicSiteUrl } from "@shared/publicSiteUrl";
-import { filterSyncedTopAgents, getSyncedTopAgentSummary } from "@shared/syncedTopAgentUi";
+import { filterSyncedTopAgents, getRankMovement, getSyncedTopAgentSummary, sortSyncedTopAgents, type SyncedTopAgentSort } from "@shared/syncedTopAgentUi";
 import {
   AlertTriangle,
   Building2,
@@ -112,6 +112,7 @@ type SyncedTopAgentRow = {
   zillowUrl: string | null;
   headshotUrl: string | null;
   sourceRank: number | null;
+  previousSourceRank: number | null;
   profileData: string;
   createdAgentId: number | null;
   hasPendingReview: number;
@@ -280,6 +281,8 @@ function AgentFormDialog({
   const [syncedSearch, setSyncedSearch] = useState("");
   const [onlyUncreated, setOnlyUncreated] = useState(true);
   const [onlyPrincipalBrokers, setOnlyPrincipalBrokers] = useState(false);
+  const [syncedSort, setSyncedSort] = useState<SyncedTopAgentSort>("rank");
+  const [sourceDetailProfile, setSourceDetailProfile] = useState<SyncedTopAgentRow | null>(null);
   const [slugTouched, setSlugTouched] = useState(false);
   const [initializedFor, setInitializedFor] = useState<number | "new" | null>(null);
 
@@ -363,8 +366,8 @@ function AgentFormDialog({
     const principalBrokerFiltered = onlyPrincipalBrokers
       ? searchable.filter(isPrincipalBroker)
       : searchable;
-    return filterSyncedTopAgents(principalBrokerFiltered, syncedSearch);
-  }, [onlyPrincipalBrokers, onlyUncreated, syncedProfiles, syncedSearch]);
+    return sortSyncedTopAgents(filterSyncedTopAgents(principalBrokerFiltered, syncedSearch), syncedSort);
+  }, [onlyPrincipalBrokers, onlyUncreated, syncedProfiles, syncedSearch, syncedSort]);
   const selectedSyncedProfile = syncedProfiles.find((profile) => profile.id === form.syncedTopAgentId) ?? null;
   const applySyncedProfile = (sourceId: string) => {
     const selected = syncedProfiles.find((profile) => profile.id === Number(sourceId));
@@ -430,6 +433,14 @@ function AgentFormDialog({
               <input type="checkbox" checked={onlyPrincipalBrokers} onChange={(event) => setOnlyPrincipalBrokers(event.target.checked)} className="h-3.5 w-3.5 rounded border-input accent-primary" />
               PB only
             </label>
+            <label className="ml-3 mt-2 inline-flex items-center gap-1 text-xs font-medium text-foreground">
+              Sort
+              <select value={syncedSort} onChange={(event) => setSyncedSort(event.target.value as SyncedTopAgentSort)} className="h-7 rounded border border-input bg-background px-1 text-xs">
+                <option value="rank">Rank</option>
+                <option value="office">Office</option>
+                <option value="name">Name</option>
+              </select>
+            </label>
             <select
               id="synced-top-agent"
               value={form.syncedTopAgentId ?? ""}
@@ -439,7 +450,7 @@ function AgentFormDialog({
               <option value="">Choose a synced Oregon agent (optional)</option>
               {matchingSyncedProfiles.map((profile) => (
                 <option key={profile.id} value={profile.id}>
-                  {profile.fullName} ({syncedRankLabel(profile)}){profile.brokerage ? ` — ${profile.brokerage}` : ""}
+                  {profile.fullName} ({syncedRankLabel(profile)}){profile.previousSourceRank && getRankMovement(profile.previousSourceRank, profile.sourceRank) ? ` · rank ${getRankMovement(profile.previousSourceRank, profile.sourceRank)}` : ""}{profile.brokerage ? ` — ${profile.brokerage}` : ""}
                 </option>
               ))}
             </select>
@@ -469,12 +480,28 @@ function AgentFormDialog({
                     {selectedSyncedProfile.zillowUrl && <a className="text-primary underline underline-offset-2" href={selectedSyncedProfile.zillowUrl} target="_blank" rel="noreferrer">Zillow profile</a>}
                     {typeof syncedSourceDetail(selectedSyncedProfile).sourceProfileUrl === "string" && <a className="text-primary underline underline-offset-2" href={syncedSourceDetail(selectedSyncedProfile).sourceProfileUrl as string} target="_blank" rel="noreferrer">Oregon profile</a>}
                     {typeof syncedSourceDetail(selectedSyncedProfile).principalBrokerProfileUrl === "string" && <a className="text-primary underline underline-offset-2" href={syncedSourceDetail(selectedSyncedProfile).principalBrokerProfileUrl as string} target="_blank" rel="noreferrer">PB profile</a>}
+                    <button type="button" className="text-primary underline underline-offset-2" onClick={() => setSourceDetailProfile(selectedSyncedProfile)}>View source details</button>
                   </div>
                 </div>
               </div>
             )}
           </div>
         )}
+
+        <Dialog open={Boolean(sourceDetailProfile)} onOpenChange={(open) => !open && setSourceDetailProfile(null)}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{sourceDetailProfile?.fullName ?? "Synced Oregon profile"}</DialogTitle>
+              <DialogDescription>Private source snapshot from Oregon Agent Leads.</DialogDescription>
+            </DialogHeader>
+            {sourceDetailProfile && <div className="space-y-3 text-sm">
+              <p><strong>Rank:</strong> {syncedRankLabel(sourceDetailProfile)}{sourceDetailProfile.previousSourceRank && getRankMovement(sourceDetailProfile.previousSourceRank, sourceDetailProfile.sourceRank) ? ` · ${getRankMovement(sourceDetailProfile.previousSourceRank, sourceDetailProfile.sourceRank)}` : ""}</p>
+              <p><strong>Office:</strong> {sourceDetailProfile.brokerage ?? "Not supplied"}</p>
+              <p><strong>Principal broker:</strong> {typeof syncedSourceDetail(sourceDetailProfile).principalBrokerName === "string" ? syncedSourceDetail(sourceDetailProfile).principalBrokerName as string : "Not supplied"}</p>
+              <p><strong>Contact:</strong> {[sourceDetailProfile.email, sourceDetailProfile.phone].filter(Boolean).join(" · ") || "Not supplied"}</p>
+            </div>}
+          </DialogContent>
+        </Dialog>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>

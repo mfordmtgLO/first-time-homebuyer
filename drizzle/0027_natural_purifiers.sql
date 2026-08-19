@@ -1,0 +1,1 @@
+ALTER TABLE `synced_top_agent` ADD `previousSourceRank` int;

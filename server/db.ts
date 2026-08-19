@@ -369,6 +369,9 @@ export async function upsertSyncedTopAgents(ownerUserId: number, profiles: Synce
       zillowUrl: profile.zillowUrl,
       headshotUrl: profile.headshotUrl,
       sourceRank: profile.sourceRank,
+      previousSourceRank: existing && existing.sourceRank !== profile.sourceRank
+        ? existing.sourceRank
+        : (existing?.previousSourceRank ?? null),
       profileData: profile.profileData,
       sourceUpdatedAt: profile.sourceUpdatedAt,
       hasPendingReview: requiresReview ? 1 : (existing?.hasPendingReview ?? 0),
@@ -414,6 +417,7 @@ export async function upsertSyncedTopAgents(ownerUserId: number, profiles: Synce
         zillowUrl: values.zillowUrl,
         headshotUrl: values.headshotUrl,
         sourceRank: values.sourceRank,
+        previousSourceRank: values.previousSourceRank,
         profileData: values.profileData,
         sourceUpdatedAt: values.sourceUpdatedAt,
         hasPendingReview: values.hasPendingReview,

@@ -366,3 +366,6 @@
 - [x] Sync dynamic Oregon agent rank positions with their current total-agent denominator
 - [x] Sync and display principal-broker data, PB designations, office context, and source-profile links
 - [x] Add private Oregon synced-agent filters for agent search and principal-broker-only views
+- [x] Add a compact private source-profile detail drawer for synced Oregon agents
+- [x] Show rank-changed indicators when refreshed Oregon source ranks improve or drop
+- [x] Add synced-agent selector sorting by source rank and office name
