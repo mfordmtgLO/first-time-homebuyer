@@ -211,6 +211,13 @@
       "when": 1787143304272,
       "tag": "0029_stale_stingray",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "5",
+      "when": 1787161337238,
+      "tag": "0030_lyrical_roulette",
+      "breakpoints": true
     }
   ]
 }

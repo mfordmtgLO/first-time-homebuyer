@@ -592,6 +592,20 @@ export const propertyPageActivity = mysqlTable(
 export type PropertyPageActivity = typeof propertyPageActivity.$inferSelect;
 export type InsertPropertyPageActivity = typeof propertyPageActivity.$inferInsert;
 
+/** Private per-owner preferences for the dashboard’s saved-property engagement alerts. */
+export const propertyEngagementSetting = mysqlTable(
+  "property_engagement_setting",
+  {
+    ownerUserId: int("ownerUserId").primaryKey(),
+    highActivityThreshold: int("highActivityThreshold").default(10).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  }
+);
+
+export type PropertyEngagementSetting = typeof propertyEngagementSetting.$inferSelect;
+export type InsertPropertyEngagementSetting = typeof propertyEngagementSetting.$inferInsert;
+
 /** Reusable listing-agent outreach introductions for a saved single-property page. */
 export const propertyPageAgentEmailTemplate = mysqlTable(
   "property_page_agent_email_template",

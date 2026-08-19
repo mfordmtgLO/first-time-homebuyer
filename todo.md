@@ -402,3 +402,6 @@
 - [x] Add quick keyword search inside detailed property engagement timelines
 - [x] Show week-over-week percentage trends in the weekly property engagement widget
 - [x] Highlight high-activity properties in the weekly widget with a visual alert badge
+- [x] Add an owner-configurable weekly high-activity threshold setting for property alerts
+- [x] Show weekly property activity-to-captured-lead conversion metrics in the engagement widget
+- [x] Highlight timeline keyword matches inside displayed activity logs

@@ -34,6 +34,8 @@ describe("compact property-page lead source helpers", () => {
     expect(sourceControl).toContain("eventTypeFilter");
     expect(sourceControl).toContain("timelineSearch");
     expect(sourceControl).toContain("Search events or details");
+    expect(sourceControl).toContain("HighlightedText");
+    expect(sourceControl).toContain("bg-amber-200");
     expect(roadmapTable).toContain('value="single-property"');
     expect(chatTable).toContain('value="single-property"');
     expect(roadmapTable).toContain("propertyAddressFilter");

@@ -13,6 +13,6 @@ export function getEngagementTrend(current: number, previous: number): Engagemen
   return { percentChange, direction: percentChange > 0 ? "up" : percentChange < 0 ? "down" : "flat" };
 }
 
-export function isHighWeeklyActivity(activityCount: number): boolean {
-  return activityCount >= HIGH_ACTIVITY_WEEKLY_THRESHOLD;
+export function isHighWeeklyActivity(activityCount: number, threshold = HIGH_ACTIVITY_WEEKLY_THRESHOLD): boolean {
+  return activityCount >= threshold;
 }

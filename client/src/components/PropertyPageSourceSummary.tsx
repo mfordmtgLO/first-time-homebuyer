@@ -29,6 +29,14 @@ function csvEscape(value: unknown) {
   return `"${String(value ?? "").replace(/"/g, '""')}"`;
 }
 
+function HighlightedText({ text, query }: { text: string; query: string }) {
+  const keyword = query.trim();
+  if (!keyword) return <>{text}</>;
+  const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const segments = text.split(new RegExp(`(${escapedKeyword})`, "gi"));
+  return <>{segments.map((segment, index) => segment.toLowerCase() === keyword.toLowerCase() ? <mark key={index} className="rounded bg-amber-200/80 px-0.5 text-foreground">{segment}</mark> : <span key={index}>{segment}</span>)}</>;
+}
+
 /** A compact source-cell control that keeps property-page attribution and period-scoped engagement readable in dashboard tables. */
 export default function PropertyPageSourceSummary({
   propertyLandingPageId,
@@ -174,7 +182,7 @@ export default function PropertyPageSourceSummary({
               </div>
               {filteredTimeline.length ? (
                 <ol className="space-y-2 py-3">
-                  {filteredTimeline.map((event) => <li key={event.id} className="rounded-md border border-border bg-muted/40 px-3 py-2"><p className="font-medium text-foreground">{formatPropertyActivityType(event.eventType)}</p><p className="text-xs text-muted-foreground">{new Date(event.createdAt).toLocaleString()}{event.detail ? ` · ${event.detail}` : ""}</p></li>)}
+                  {filteredTimeline.map((event) => <li key={event.id} className="rounded-md border border-border bg-muted/40 px-3 py-2"><p className="font-medium text-foreground"><HighlightedText text={formatPropertyActivityType(event.eventType)} query={timelineSearch} /></p><p className="text-xs text-muted-foreground"><HighlightedText text={`${new Date(event.createdAt).toLocaleString()}${event.detail ? ` · ${event.detail}` : ""}`} query={timelineSearch} /></p></li>)}
                 </ol>
               ) : <p className="py-8 text-center text-sm text-muted-foreground">No matching property-page activity was recorded for this period.</p>}
             </>

@@ -2,6 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { PROPERTY_ACTIVITY_RANGES, getPropertyActivitySince } from "@shared/propertyActivity";
+import { HIGH_ACTIVITY_WEEKLY_THRESHOLD } from "@shared/propertyEngagement";
 import { buydownScenarioSchema, costOfWaitingScenarioSchema } from "@shared/scenario";
 import { SLUG_PATTERN, slugify } from "@shared/slug";
 import {
@@ -44,6 +45,7 @@ import {
   getLoanOfficerBySlug,
   getPropertyLandingPageById,
   getPropertyLandingPageBySlug,
+  getPropertyEngagementSetting,
   getSyncedTopAgent,
   createSyncedAgentOutreachTemplate,
   getLoAgentSpendPairingForOwner,
@@ -59,6 +61,7 @@ import {
   recordGeoSphereListingEmailActivity,
   recordPropertyPageActivity,
   refreshPropertyLandingPage,
+  savePropertyEngagementThreshold,
   listPropertyPageActivity,
   insertLead,
   listAgents,
@@ -1356,6 +1359,16 @@ export const appRouter = router({
       requireAdmin(ctx.user.role);
       return listWeeklyPropertyPageEngagement();
     }),
+    engagementSetting: protectedProcedure.query(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      return (await getPropertyEngagementSetting(ctx.user.id)) ?? { highActivityThreshold: HIGH_ACTIVITY_WEEKLY_THRESHOLD };
+    }),
+    saveEngagementThreshold: protectedProcedure
+      .input(z.object({ highActivityThreshold: z.number().int().min(1).max(1000) }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return savePropertyEngagementThreshold({ ownerUserId: ctx.user.id, highActivityThreshold: input.highActivityThreshold });
+      }),
     activity: protectedProcedure
       .input(z.object({ propertyLandingPageId: z.number().int().positive(), activityRange: z.enum(PROPERTY_ACTIVITY_RANGES).optional() }))
       .query(async ({ ctx, input }) => {

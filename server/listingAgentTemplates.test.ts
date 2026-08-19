@@ -28,6 +28,8 @@ vi.mock("./db", async (importOriginal) => {
     }))),
     listPropertyLandingPages: vi.fn(async () => []),
     listWeeklyPropertyPageEngagement: vi.fn(async () => [{ id: 71, address: "1024 S 5th St, Coos Bay, OR 97420", slug: "1024-s-5th-st", weeklyActivityCount: 6, latestActivityType: "chat_completed", latestActivityAt: new Date() }]),
+    getPropertyEngagementSetting: vi.fn(async () => null),
+    savePropertyEngagementThreshold: vi.fn(async (input: { ownerUserId: number; highActivityThreshold: number }) => ({ ...input, createdAt: new Date(), updatedAt: new Date() })),
     getPropertyLandingPageBySlug: vi.fn(async () => ({ page: { id: 71, slug: "1024-s-5th-st", listingSnapshot: "{}", isActive: 1 }, loanOfficer: null, agent: null })),
     createPropertyLandingPage: vi.fn(async (input: { geosphereListingId: number; loanOfficerId: number; agentId: number }) => ({ id: 71, slug: "1024-s-5th-st", address: "1024 S 5th St, Coos Bay, OR 97420", ...input })),
     updatePropertyLandingPagePair: vi.fn(async (input: { id: number; loanOfficerId: number; agentId: number }) => input),
@@ -44,7 +46,7 @@ vi.mock("./db", async (importOriginal) => {
 });
 
 import { appRouter } from "./routers";
-import { createListingAgentEmailTemplate, createPropertyEmailTemplate, listListingAgentEmailTemplates, listPropertyEmailTemplates, recordGeoSphereListingEmailActivity, createPropertyLandingPage, updatePropertyLandingPagePair, updatePropertyLandingPageStatus, refreshPropertyLandingPage, createPropertyPageAgentEmailTemplate, recordPropertyPageActivity, listPropertyPageActivity, listWeeklyPropertyPageEngagement, updatePropertyLandingPageAiSummary } from "./db";
+import { createListingAgentEmailTemplate, createPropertyEmailTemplate, listListingAgentEmailTemplates, listPropertyEmailTemplates, recordGeoSphereListingEmailActivity, createPropertyLandingPage, updatePropertyLandingPagePair, updatePropertyLandingPageStatus, refreshPropertyLandingPage, createPropertyPageAgentEmailTemplate, recordPropertyPageActivity, listPropertyPageActivity, listWeeklyPropertyPageEngagement, getPropertyEngagementSetting, savePropertyEngagementThreshold, updatePropertyLandingPageAiSummary } from "./db";
 import type { TrpcContext } from "./_core/context";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
@@ -81,6 +83,8 @@ const createPropertyPageTemplateMock = vi.mocked(createPropertyPageAgentEmailTem
 const recordPropertyPageActivityMock = vi.mocked(recordPropertyPageActivity);
 const listPropertyPageActivityMock = vi.mocked(listPropertyPageActivity);
 const listWeeklyPropertyEngagementMock = vi.mocked(listWeeklyPropertyPageEngagement);
+const getPropertyEngagementSettingMock = vi.mocked(getPropertyEngagementSetting);
+const savePropertyEngagementThresholdMock = vi.mocked(savePropertyEngagementThreshold);
 const updatePropertyPageAiSummaryMock = vi.mocked(updatePropertyLandingPageAiSummary);
 
 describe("geosphere listing-agent email templates", () => {
@@ -186,6 +190,19 @@ describe("geosphere listing-agent email templates", () => {
     expect(ranking).toEqual(expect.arrayContaining([expect.objectContaining({ id: 71, weeklyActivityCount: 6 })]));
     expect(listWeeklyPropertyEngagementMock).toHaveBeenCalledTimes(1);
     await expect(appRouter.createCaller(createContext("user")).propertyPages.weeklyEngagement()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("reads the default alert threshold and saves a private threshold only for the site owner", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    const defaultSetting = await caller.propertyPages.engagementSetting();
+    const saved = await caller.propertyPages.saveEngagementThreshold({ highActivityThreshold: 18 });
+
+    expect(defaultSetting).toMatchObject({ highActivityThreshold: 10 });
+    expect(getPropertyEngagementSettingMock).toHaveBeenCalledWith(1);
+    expect(savePropertyEngagementThresholdMock).toHaveBeenCalledWith({ ownerUserId: 1, highActivityThreshold: 18 });
+    expect(saved).toMatchObject({ highActivityThreshold: 18 });
+    await expect(appRouter.createCaller(createContext("user")).propertyPages.engagementSetting()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(appRouter.createCaller(createContext("user")).propertyPages.saveEngagementThreshold({ highActivityThreshold: 18 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("saves a reviewed AI summary only through the protected property-page workflow", async () => {
