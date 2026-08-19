@@ -915,15 +915,11 @@ export default function AgentSettings() {
   };
 
   const syncTopAgents = trpc.agentSync.syncOregonRefresh.useMutation({
-    onSuccess: (result) => {
+    onSuccess: () => {
       syncedProfilesQuery.refetch();
       reviewQueueQuery.refetch();
-      const movements = result.movedAgents ?? [];
-      setLastRankMovements(movements);
-      toast.success(movements.length
-        ? `Synced ${result.count} Oregon source profiles; ${movements.length} rank change${movements.length === 1 ? "" : "s"} found.`
-        : `Synced ${result.count} Oregon source profiles; no rank changes found.`
-      );
+      setLastRankMovements([]);
+      toast.success("Oregon source profiles refreshed.");
     },
     onError: (err) => toast.error(err.message || "Oregon agent sync could not be completed."),
   });

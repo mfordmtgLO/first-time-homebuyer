@@ -252,7 +252,7 @@ async function refreshOregonTopAgentsForOwner(ownerUserId: number) {
   if (!payload.success) {
     throw new TRPCError({ code: "BAD_GATEWAY", message: "The Oregon agent directory returned an unexpected export format." });
   }
-  const result = await upsertSyncedTopAgents(ownerUserId, payload.data.agents.map((profile) => ({
+  await upsertSyncedTopAgents(ownerUserId, payload.data.agents.map((profile) => ({
     sourceAgentId: profile.sourceAgentId,
     state: profile.state,
     fullName: profile.fullName,
@@ -268,21 +268,7 @@ async function refreshOregonTopAgentsForOwner(ownerUserId: number) {
     profileData: JSON.stringify(profile),
     sourceUpdatedAt: new Date(profile.sourceUpdatedAt),
   })));
-  return {
-    count: Number(result.count),
-    movedAgents: (Array.isArray(result.movedAgents) ? result.movedAgents : []).map((movement) => ({
-      fullName: String(movement.fullName),
-      brokerage: movement.brokerage == null ? null : String(movement.brokerage),
-      fromRank: Number(movement.fromRank),
-      toRank: Number(movement.toRank),
-      rankTotal: typeof movement.rankTotal === "number" && Number.isFinite(movement.rankTotal)
-        ? Number(movement.rankTotal)
-        : null,
-    })),
-    source: payload.data.source,
-    state: payload.data.state,
-    exportedAt: String(payload.data.exportedAt),
-  } as const;
+  return { refreshed: true } as const;
 }
 
 /** Accepted upload types → extension. Keeps keys tidy and rejects non-images. */

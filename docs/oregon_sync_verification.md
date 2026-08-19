@@ -51,3 +51,7 @@ The final post-rollout click completed with the raw parser error still present. 
 Checkpoint `656bd73a` deployed the pinned canonical endpoint correction successfully. A fresh cache-busting dashboard load has no error toast and shows the owner-authenticated **Sync Top Agents** control ready for the final server-side refresh verification.
 
 Checkpoint `bea849d1` deployed the explicit `Accept: application/json` tRPC transport fix. The served client asset advanced to `index-Cfi0keRm.js`, and a fresh cache-busting dashboard session loaded without an immediate error. The final authenticated Sync Top Agents action remains to be tested.
+
+The JSON-only transport changed the live error from an HTML parsing failure to `Unable to transform response from server`, demonstrating that the protected request now reaches the server and receives JSON. Checkpoint `247c38e7` therefore normalizes the completed refresh response to only plain JSON-safe primitives and arrays, with an empty fallback for omitted movement metadata. Its deployment has completed; the final live retry is now pending.
+
+A fresh cache-busting authenticated dashboard session is loaded after checkpoint `247c38e7`, and the owner-only **Sync Top Agents** control is visible for the closing normalized-response verification.

@@ -78,7 +78,7 @@ describe("agentSync router", () => {
     const caller = appRouter.createCaller(createContext("admin"));
     const result = await caller.agentSync.syncOregon();
 
-    expect(result).toMatchObject({ count: 1, source: "oregon-agent-leads", state: "Oregon" });
+    expect(result).toEqual({ refreshed: true });
     expect(upsertSyncedTopAgents).toHaveBeenCalledWith(71, [expect.objectContaining({
       sourceAgentId: 812,
       state: "Oregon",
@@ -99,13 +99,7 @@ describe("agentSync router", () => {
     }), { status: 200, headers: { "content-type": "application/json" } })));
 
     const caller = appRouter.createCaller(createContext("admin"));
-    await expect(caller.agentSync.syncOregonRefresh()).resolves.toMatchObject({
-      count: 1,
-      movedAgents: [],
-      source: "oregon-agent-leads",
-      state: "Oregon",
-      exportedAt: "2026-08-19T21:00:00.000Z",
-    });
+    await expect(caller.agentSync.syncOregonRefresh()).resolves.toEqual({ refreshed: true });
     expect(upsertSyncedTopAgents).toHaveBeenCalledWith(71, []);
   });
 
