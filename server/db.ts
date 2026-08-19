@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, getTableColumns, inArray, isNotNull, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, getTableColumns, gte, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -131,11 +131,14 @@ export async function insertLead(lead: InsertLead) {
   return db.insert(leads).values(lead);
 }
 
-export async function listLeads() {
+export async function listLeads(options: { activitySince?: Date | null } = {}) {
   const db = await getDb();
   if (!db) {
     throw new Error("Database not available");
   }
+  const activityWindow = options.activitySince
+    ? sql`and ${propertyPageActivity.createdAt} >= ${options.activitySince}`
+    : sql``;
   return db
     .select({
       ...getTableColumns(leads),
@@ -146,7 +149,9 @@ export async function listLeads() {
       propertyPageAddress: propertyLandingPage.address,
       propertyPageSlug: propertyLandingPage.slug,
       propertyPageListingSnapshot: propertyLandingPage.listingSnapshot,
-      propertyPageActivityCount: sql<number>`coalesce((select count(*) from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id}), 0)`.mapWith(Number),
+      propertyPageActivityCount: sql<number>`coalesce((select count(*) from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} ${activityWindow}), 0)`.mapWith(Number),
+      propertyPageLatestActivityType: sql<string | null>`(select ${propertyPageActivity.eventType} from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} ${activityWindow} order by ${propertyPageActivity.createdAt} desc, ${propertyPageActivity.id} desc limit 1)`,
+      propertyPageLatestActivityAt: sql<Date | null>`(select ${propertyPageActivity.createdAt} from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} ${activityWindow} order by ${propertyPageActivity.createdAt} desc, ${propertyPageActivity.id} desc limit 1)`,
     })
     .from(leads)
     .leftJoin(loanOfficer, eq(leads.loanOfficerId, loanOfficer.id))
@@ -713,9 +718,12 @@ export async function addChatTranscript(
   return db.insert(chatTranscript).values({ chatLeadId, role, content });
 }
 
-export async function listChatIntakeLeads() {
+export async function listChatIntakeLeads(options: { activitySince?: Date | null } = {}) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  const activityWindow = options.activitySince
+    ? sql`and ${propertyPageActivity.createdAt} >= ${options.activitySince}`
+    : sql``;
   const rows = await db
     .select({
       lead: chatIntakeLead,
@@ -726,7 +734,9 @@ export async function listChatIntakeLeads() {
       propertyPageAddress: propertyLandingPage.address,
       propertyPageSlug: propertyLandingPage.slug,
       propertyPageListingSnapshot: propertyLandingPage.listingSnapshot,
-      propertyPageActivityCount: sql<number>`coalesce((select count(*) from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id}), 0)`.mapWith(Number),
+      propertyPageActivityCount: sql<number>`coalesce((select count(*) from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} ${activityWindow}), 0)`.mapWith(Number),
+      propertyPageLatestActivityType: sql<string | null>`(select ${propertyPageActivity.eventType} from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} ${activityWindow} order by ${propertyPageActivity.createdAt} desc, ${propertyPageActivity.id} desc limit 1)`,
+      propertyPageLatestActivityAt: sql<Date | null>`(select ${propertyPageActivity.createdAt} from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} ${activityWindow} order by ${propertyPageActivity.createdAt} desc, ${propertyPageActivity.id} desc limit 1)`,
     })
     .from(chatIntakeLead)
     .leftJoin(loanOfficer, eq(chatIntakeLead.loanOfficerId, loanOfficer.id))
@@ -734,7 +744,7 @@ export async function listChatIntakeLeads() {
     .leftJoin(propertyLandingPage, eq(chatIntakeLead.propertyPageId, propertyLandingPage.id))
     .orderBy(desc(chatIntakeLead.updatedAt));
 
-  return rows.map(({ lead, loanOfficerName, loanOfficerSlug, agentName, agentSlug, propertyPageAddress, propertyPageSlug, propertyPageListingSnapshot, propertyPageActivityCount }) => ({
+  return rows.map(({ lead, loanOfficerName, loanOfficerSlug, agentName, agentSlug, propertyPageAddress, propertyPageSlug, propertyPageListingSnapshot, propertyPageActivityCount, propertyPageLatestActivityType, propertyPageLatestActivityAt }) => ({
     ...lead,
     loanOfficerName: loanOfficerName ?? null,
     loanOfficerSlug: loanOfficerSlug ?? null,
@@ -744,6 +754,8 @@ export async function listChatIntakeLeads() {
     propertyPageSlug: propertyPageSlug ?? null,
     propertyPageListingSnapshot: propertyPageListingSnapshot ?? null,
     propertyPageActivityCount: propertyPageActivityCount ?? 0,
+    propertyPageLatestActivityType: propertyPageLatestActivityType ?? null,
+    propertyPageLatestActivityAt: propertyPageLatestActivityAt ?? null,
     isCoBranded: Boolean(lead.loanOfficerId && lead.agentId),
   }));
 }
@@ -1476,13 +1488,16 @@ export async function recordPropertyPageActivity(input: { propertyLandingPageId:
   return rows[0]!;
 }
 
-export async function listPropertyPageActivity(propertyLandingPageId: number) {
+export async function listPropertyPageActivity(propertyLandingPageId: number, activitySince?: Date | null) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return db
     .select()
     .from(propertyPageActivity)
-    .where(eq(propertyPageActivity.propertyLandingPageId, propertyLandingPageId))
+    .where(and(
+      eq(propertyPageActivity.propertyLandingPageId, propertyLandingPageId),
+      activitySince ? gte(propertyPageActivity.createdAt, activitySince) : undefined,
+    ))
     .orderBy(desc(propertyPageActivity.createdAt), desc(propertyPageActivity.id))
     .limit(100);
 }

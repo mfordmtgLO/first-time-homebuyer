@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { hasUsableRoadmapPhone } from "@shared/roadmapPhone";
+import { PROPERTY_ACTIVITY_RANGES, PROPERTY_ACTIVITY_RANGE_LABELS, type PropertyActivityRange } from "@shared/propertyActivity";
 import { getCoBrandAgentFilterOptions, getLoanOfficerFilterOptions, matchesSelectedCoBrandPair } from "@shared/roadmapPairFilters";
 import { PUBLIC_SITE_ORIGIN } from "@shared/publicSiteUrl";
 import {
@@ -484,8 +485,9 @@ export default function Leads() {
   const [campaignFilter, setCampaignFilter] = useState("all");
   const [propertySourceFilter, setPropertySourceFilter] = useState<"all" | "single-property">("all");
   const [propertyAddressFilter, setPropertyAddressFilter] = useState("all");
+  const [activityRange, setActivityRange] = useState<PropertyActivityRange>("all");
 
-  const leadsQuery = trpc.leads.list.useQuery(undefined, {
+  const leadsQuery = trpc.leads.list.useQuery({ activityRange }, {
     enabled: isAuthenticated && isAdmin,
     retry: false,
   });
@@ -804,6 +806,10 @@ export default function Leads() {
                   <SelectTrigger className="h-9 w-full bg-card text-xs sm:w-[240px]" aria-label="Filter Roadmap leads by property address"><SelectValue placeholder="All property addresses" /></SelectTrigger>
                   <SelectContent><SelectItem value="all">All property addresses</SelectItem>{propertyAddressOptions.map((address) => <SelectItem key={address} value={address}>{address}</SelectItem>)}</SelectContent>
                 </Select>
+                <Select value={activityRange} onValueChange={(value) => setActivityRange(value as PropertyActivityRange)}>
+                  <SelectTrigger className="h-9 w-full bg-card text-xs sm:w-[180px]" aria-label="Set property activity period"><SelectValue placeholder="Activity period" /></SelectTrigger>
+                  <SelectContent>{PROPERTY_ACTIVITY_RANGES.map((range) => <SelectItem key={range} value={range}>{PROPERTY_ACTIVITY_RANGE_LABELS[range]}</SelectItem>)}</SelectContent>
+                </Select>
                 {isFiltered && (
                   <Button
                     variant="ghost"
@@ -905,10 +911,14 @@ export default function Leads() {
                           <td className="px-5 py-3.5 text-xs">
                             {lead.propertyPageAddress ? (
                               <PropertyPageSourceSummary
+                                propertyLandingPageId={lead.propertyPageId}
                                 address={lead.propertyPageAddress}
                                 propertyPageSlug={lead.propertyPageSlug}
                                 listingSnapshot={lead.propertyPageListingSnapshot}
                                 activityCount={lead.propertyPageActivityCount}
+                                latestActivityType={lead.propertyPageLatestActivityType}
+                                latestActivityAt={lead.propertyPageLatestActivityAt}
+                                activityRange={activityRange}
                                 loanOfficerName={lead.loanOfficerName}
                                 agentName={lead.agentName}
                               />

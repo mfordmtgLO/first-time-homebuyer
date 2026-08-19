@@ -28,9 +28,13 @@ describe("compact property-page lead source helpers", () => {
     expect(sourceControl).toContain("navigator.clipboard.writeText(value)");
     expect(sourceControl).toContain("getPropertyHeroMedia(snapshot)");
     expect(sourceControl).toContain("Copy pairing");
+    expect(sourceControl).toContain("engagement timeline");
+    expect(sourceControl).toContain("PROPERTY_ACTIVITY_RANGE_LABELS");
     expect(roadmapTable).toContain('value="single-property"');
     expect(chatTable).toContain('value="single-property"');
     expect(roadmapTable).toContain("propertyAddressFilter");
     expect(chatTable).toContain("propertyAddressFilter");
+    expect(roadmapTable).toContain("activityRange");
+    expect(chatTable).toContain("activityRange");
   });
 });

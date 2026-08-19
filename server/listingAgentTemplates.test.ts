@@ -175,7 +175,7 @@ describe("geosphere listing-agent email templates", () => {
 
     expect(recordPropertyPageActivityMock).toHaveBeenCalledWith({ propertyLandingPageId: expect.any(Number), eventType: "social_share", detail: "facebook" });
     expect(activity).toEqual(expect.arrayContaining([expect.objectContaining({ eventType: "chat_completed" })]));
-    expect(listPropertyPageActivityMock).toHaveBeenCalledWith(71);
+    expect(listPropertyPageActivityMock).toHaveBeenCalledWith(71, null);
     await expect(appRouter.createCaller(createContext("user")).propertyPages.activity({ propertyLandingPageId: 71 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 

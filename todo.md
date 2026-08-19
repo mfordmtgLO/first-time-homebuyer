@@ -393,3 +393,6 @@
 - [x] Add property-address filtering to Roadmap and Mortgage Chat Intake single-property lead views
 - [x] Add a copyable LO-agent pairing label to expanded property source details
 - [x] Display each single-property page activity count beside its lead source
+- [x] Add date-range filtering to single-property engagement counts in dashboard lead sources
+- [x] Show each property page’s most recent activity type and timestamp beside engagement context
+- [x] Make property engagement counts open a detailed timeline for that specific saved property page

@@ -23,6 +23,7 @@ import { buildLeadWelcomeDraft } from "@shared/leadEmailDraft";
 import { PUBLIC_SITE_ORIGIN } from "@shared/publicSiteUrl";
 import { hasUsableRoadmapPhone } from "@shared/roadmapPhone";
 import { qualifiesForUsdaDashboardBadge } from "@shared/usdaEligibility";
+import { PROPERTY_ACTIVITY_RANGES, PROPERTY_ACTIVITY_RANGE_LABELS, type PropertyActivityRange } from "@shared/propertyActivity";
 import PropertyPageSourceSummary from "@/components/PropertyPageSourceSummary";
 
 type ChatLead = {
@@ -67,9 +68,12 @@ type ChatLead = {
   landingPath: string | null;
   referrerHost: string | null;
   propertyPageAddress: string | null;
+  propertyPageId: number | null;
   propertyPageSlug: string | null;
   propertyPageListingSnapshot: string | null;
   propertyPageActivityCount: number;
+  propertyPageLatestActivityType: string | null;
+  propertyPageLatestActivityAt: Date | null;
   scenario: string | null;
   isCoBranded: boolean;
 };
@@ -128,7 +132,8 @@ function TranscriptDialog({ lead, onOpenChange }: { lead: ChatLead | null; onOpe
 }
 
 export default function ChatIntakeLeads() {
-  const query = trpc.chat.list.useQuery();
+  const [activityRange, setActivityRange] = useState<PropertyActivityRange>("all");
+  const query = trpc.chat.list.useQuery({ activityRange });
   const agentsQuery = trpc.agent.list.useQuery();
   const utils = trpc.useUtils();
   const leads = (query.data ?? []) as ChatLead[];
@@ -262,6 +267,7 @@ export default function ChatIntakeLeads() {
           <Select value={campaignFilter} onValueChange={setCampaignFilter}><SelectTrigger className="w-full sm:w-52"><SelectValue placeholder="All campaigns" /></SelectTrigger><SelectContent><SelectItem value="all">All campaigns</SelectItem>{campaignOptions.map((campaign) => <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>)}</SelectContent></Select>
           <Select value={propertySourceFilter} onValueChange={(value) => setPropertySourceFilter(value as typeof propertySourceFilter)}><SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="All lead sources" /></SelectTrigger><SelectContent><SelectItem value="all">All lead sources</SelectItem><SelectItem value="single-property">Single-property website</SelectItem></SelectContent></Select>
           <Select value={propertyAddressFilter} onValueChange={(value) => { setPropertyAddressFilter(value); if (value !== "all") setPropertySourceFilter("single-property"); }} disabled={propertyAddressOptions.length === 0}><SelectTrigger className="w-full sm:w-60"><SelectValue placeholder="All property addresses" /></SelectTrigger><SelectContent><SelectItem value="all">All property addresses</SelectItem>{propertyAddressOptions.map((address) => <SelectItem key={address} value={address}>{address}</SelectItem>)}</SelectContent></Select>
+          <Select value={activityRange} onValueChange={(value) => setActivityRange(value as PropertyActivityRange)}><SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="Activity period" /></SelectTrigger><SelectContent>{PROPERTY_ACTIVITY_RANGES.map((range) => <SelectItem key={range} value={range}>{PROPERTY_ACTIVITY_RANGE_LABELS[range]}</SelectItem>)}</SelectContent></Select>
           {(search || status !== "all" || loanOfficerFilter !== "all" || agentFilter !== "all" || campaignFilter !== "all" || propertySourceFilter !== "all" || propertyAddressFilter !== "all") && <Button variant="ghost" size="sm" onClick={clearFilters}>Clear filters</Button>}
         </div>
         <p className="text-xs text-muted-foreground">Showing {filtered.length} of {displayLeads.length} chat intake{displayLeads.length === 1 ? "" : "s"}. CSV export follows these filters.</p>
@@ -277,7 +283,7 @@ export default function ChatIntakeLeads() {
             <tbody>{filtered.map((lead) => <tr key={lead.id} className="border-b border-border/60 last:border-0">
               <td className="px-5 py-3.5"><div className="flex flex-wrap items-center gap-2"><div className="font-medium text-foreground">{lead.fullName || "Anonymous visitor"}</div><UsdaBadge lead={lead} /></div><div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"><span>{lead.email || "No email"}</span><span>{lead.phone || "No phone"}</span>{hasUsableRoadmapPhone(lead.phone) && <Badge variant="outline" className="border-emerald-600/25 bg-emerald-600/5 text-emerald-700"><Smartphone className="mr-1 h-3 w-3" /> Phone ready</Badge>}{lead.smsConsent === 1 && hasUsableRoadmapPhone(lead.phone) && <Badge variant="outline" className="border-violet-600/25 bg-violet-600/5 text-violet-700"><MessageSquareText className="mr-1 h-3 w-3" /> Text ready</Badge>}</div><div className="mt-2 flex flex-wrap gap-1.5"><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" disabled={!lead.email} title={lead.email ? "Open a welcome email draft" : "This intake needs an email address first"} onClick={() => openEmailDraft(lead)}><Mail className="mr-1 h-3 w-3" /> Email draft</Button><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" onClick={() => { setNotesLead(lead); setNotesDraft(lead.notes ?? ""); }}><NotebookPen className="mr-1 h-3 w-3" /> {lead.notes?.trim() ? "Notes" : "Add note"}</Button><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" disabled={!lead.agentId || sendToAgent.isPending} title={lead.agentId ? "Email this intake to the assigned agent" : "Assign an agent first"} onClick={() => sendToAgent.mutate({ chatLeadId: lead.id })}>{sendToAgent.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-3 w-3" />} Send to agent</Button></div></td>
               <td className="px-5 py-3.5 text-xs text-muted-foreground">{[lead.utmSource, lead.utmMedium, lead.utmCampaign].filter(Boolean).join(" · ") || "Direct / untagged"}</td>
-              <td className="px-5 py-3.5">{lead.propertyPageAddress ? <PropertyPageSourceSummary address={lead.propertyPageAddress} propertyPageSlug={lead.propertyPageSlug} listingSnapshot={lead.propertyPageListingSnapshot} activityCount={lead.propertyPageActivityCount} loanOfficerName={lead.loanOfficerName} agentName={lead.agentName} /> : lead.isCoBranded ? <div className="min-w-44"><Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Co-branded</Badge><div className="mt-1.5 text-xs font-medium text-foreground">LO: {lead.loanOfficerName || "—"}</div><div className="text-xs text-muted-foreground">Agent: {lead.agentName || "—"}</div></div> : <Badge variant="outline" className="text-muted-foreground">Direct site</Badge>}</td>
+              <td className="px-5 py-3.5">{lead.propertyPageAddress ? <PropertyPageSourceSummary propertyLandingPageId={lead.propertyPageId} address={lead.propertyPageAddress} propertyPageSlug={lead.propertyPageSlug} listingSnapshot={lead.propertyPageListingSnapshot} activityCount={lead.propertyPageActivityCount} latestActivityType={lead.propertyPageLatestActivityType} latestActivityAt={lead.propertyPageLatestActivityAt} activityRange={activityRange} loanOfficerName={lead.loanOfficerName} agentName={lead.agentName} /> : lead.isCoBranded ? <div className="min-w-44"><Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Co-branded</Badge><div className="mt-1.5 text-xs font-medium text-foreground">LO: {lead.loanOfficerName || "—"}</div><div className="text-xs text-muted-foreground">Agent: {lead.agentName || "—"}</div></div> : <Badge variant="outline" className="text-muted-foreground">Direct site</Badge>}</td>
               <td className="px-5 py-3.5"><Badge variant="outline" className={lead.status === "qualified" ? "border-emerald-600/30 bg-emerald-600/10 text-emerald-700" : "border-accent/40 bg-accent/15 text-accent-foreground"}>{lead.status === "qualified" ? "Qualified" : "Incomplete"}</Badge></td>
               <td className="px-5 py-3.5">{recipientStatus(lead)}</td>
               <td className="px-5 py-3.5"><div className="font-medium text-foreground">{lead.resendCount === 0 ? "Not resent" : `${lead.resendCount} resend${lead.resendCount === 1 ? "" : "s"}`}</div><div className="mt-0.5 text-xs text-muted-foreground">{lead.lastResentAt ? `Last: ${formatDateTime(lead.lastResentAt)}` : "—"}</div></td>

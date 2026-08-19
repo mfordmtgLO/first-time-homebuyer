@@ -1,6 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { PROPERTY_ACTIVITY_RANGES, getPropertyActivitySince } from "@shared/propertyActivity";
 import { buydownScenarioSchema, costOfWaitingScenarioSchema } from "@shared/scenario";
 import { SLUG_PATTERN, slugify } from "@shared/slug";
 import {
@@ -684,14 +685,14 @@ export const appRouter = router({
 
         return { success: true } as const;
       }),
-    list: protectedProcedure.query(async ({ ctx }) => {
+    list: protectedProcedure.input(z.object({ activityRange: z.enum(PROPERTY_ACTIVITY_RANGES).optional() }).optional()).query(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Only the site owner can view leads.",
         });
       }
-      return listLeads();
+      return listLeads({ activitySince: getPropertyActivitySince(input?.activityRange ?? "all") });
     }),
     updateStatus: protectedProcedure
       .input(
@@ -1035,9 +1036,9 @@ export const appRouter = router({
         return { success: true as const, alreadyRequested: !isNewRequest };
       }),
     /** Admin-only list used by the dashboard's chat-intake review panel. */
-    list: protectedProcedure.query(async ({ ctx }) => {
+    list: protectedProcedure.input(z.object({ activityRange: z.enum(PROPERTY_ACTIVITY_RANGES).optional() }).optional()).query(async ({ ctx, input }) => {
       requireAdmin(ctx.user.role);
-      return listChatIntakeLeads();
+      return listChatIntakeLeads({ activitySince: getPropertyActivitySince(input?.activityRange ?? "all") });
     }),
     /** Admin-only transcript view for a single chat intake. */
     transcript: protectedProcedure
@@ -1351,10 +1352,10 @@ export const appRouter = router({
       return listPropertyLandingPages();
     }),
     activity: protectedProcedure
-      .input(z.object({ propertyLandingPageId: z.number().int().positive() }))
+      .input(z.object({ propertyLandingPageId: z.number().int().positive(), activityRange: z.enum(PROPERTY_ACTIVITY_RANGES).optional() }))
       .query(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
-        return listPropertyPageActivity(input.propertyLandingPageId);
+        return listPropertyPageActivity(input.propertyLandingPageId, getPropertyActivitySince(input.activityRange ?? "all"));
       }),
     /** Creates or refreshes a public page from one immutable saved-listing snapshot. */
     createFromListing: protectedProcedure
