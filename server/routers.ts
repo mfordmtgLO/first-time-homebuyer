@@ -225,6 +225,52 @@ function requireAdmin(role: string | undefined) {
   }
 }
 
+/**
+ * Runs the server-to-server Oregon directory refresh. Keeping this outside the
+ * tRPC procedures guarantees that legacy and versioned dashboard actions use
+ * the same authenticated, JSON-validated import path.
+ */
+async function refreshOregonTopAgentsForOwner(ownerUserId: number) {
+  const token = process.env.OREGON_AGENT_SYNC_TOKEN;
+  if (!token) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Oregon sync token is not configured." });
+  const sourceUrl = process.env.OREGON_AGENT_SYNC_URL ?? "https://oregonleads-bqkuz5cc.manus.space/api/sync/agents?state=Oregon";
+  let response: Response;
+  try {
+    response = await fetch(sourceUrl, { headers: { Authorization: `Bearer ${token}` } });
+  } catch {
+    throw new TRPCError({ code: "BAD_GATEWAY", message: "Could not reach the Oregon agent directory." });
+  }
+  if (!response.ok) {
+    throw new TRPCError({ code: "BAD_GATEWAY", message: "The Oregon agent directory rejected the sync request." });
+  }
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    throw new TRPCError({ code: "BAD_GATEWAY", message: "The Oregon agent directory returned a non-JSON response. Please retry Sync Top Agents." });
+  }
+  const raw = await response.json().catch(() => null);
+  const payload = oregonAgentSourceExportSchema.safeParse(raw);
+  if (!payload.success) {
+    throw new TRPCError({ code: "BAD_GATEWAY", message: "The Oregon agent directory returned an unexpected export format." });
+  }
+  const result = await upsertSyncedTopAgents(ownerUserId, payload.data.agents.map((profile) => ({
+    sourceAgentId: profile.sourceAgentId,
+    state: profile.state,
+    fullName: profile.fullName,
+    brokerage: profile.brokerage,
+    cityArea: profile.cityArea,
+    phone: profile.phone,
+    email: profile.email,
+    websiteBioUrl: profile.websiteBioUrl,
+    zillowUrl: profile.zillowUrl,
+    headshotUrl: profile.headshotUrl,
+    sourceRank: profile.realtrendsRank,
+    rankTotal: profile.rankTotal,
+    profileData: JSON.stringify(profile),
+    sourceUpdatedAt: new Date(profile.sourceUpdatedAt),
+  })));
+  return { ...result, source: payload.data.source, state: payload.data.state, exportedAt: payload.data.exportedAt } as const;
+}
+
 /** Accepted upload types → extension. Keeps keys tidy and rejects non-images. */
 const IMAGE_MIME_EXT: Record<string, string> = {
   "image/png": "png",
@@ -1788,43 +1834,12 @@ export const appRouter = router({
     /** Admin-only live pull from the read-only Oregon directory export endpoint. */
     syncOregon: protectedProcedure.mutation(async ({ ctx }) => {
       requireAdmin(ctx.user.role);
-      const token = process.env.OREGON_AGENT_SYNC_TOKEN;
-      if (!token) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Oregon sync token is not configured." });
-      let response: Response;
-      try {
-        response = await fetch(OREGON_AGENT_SYNC_URL, { headers: { Authorization: `Bearer ${token}` } });
-      } catch {
-        throw new TRPCError({ code: "BAD_GATEWAY", message: "Could not reach the Oregon agent directory." });
-      }
-      if (!response.ok) {
-        throw new TRPCError({ code: "BAD_GATEWAY", message: "The Oregon agent directory rejected the sync request." });
-      }
-      const contentType = response.headers.get("content-type") ?? "";
-      if (!contentType.includes("application/json")) {
-        throw new TRPCError({ code: "BAD_GATEWAY", message: "The Oregon agent directory returned a non-JSON response. Please retry Sync Top Agents." });
-      }
-      const raw = await response.json().catch(() => null);
-      const payload = oregonAgentSourceExportSchema.safeParse(raw);
-      if (!payload.success) {
-        throw new TRPCError({ code: "BAD_GATEWAY", message: "The Oregon agent directory returned an unexpected export format." });
-      }
-      const result = await upsertSyncedTopAgents(ctx.user.id, payload.data.agents.map((profile) => ({
-        sourceAgentId: profile.sourceAgentId,
-        state: profile.state,
-        fullName: profile.fullName,
-        brokerage: profile.brokerage,
-        cityArea: profile.cityArea,
-        phone: profile.phone,
-        email: profile.email,
-        websiteBioUrl: profile.websiteBioUrl,
-        zillowUrl: profile.zillowUrl,
-        headshotUrl: profile.headshotUrl,
-        sourceRank: profile.realtrendsRank,
-        rankTotal: profile.rankTotal,
-        profileData: JSON.stringify(profile),
-        sourceUpdatedAt: new Date(profile.sourceUpdatedAt),
-      })));
-      return { ...result, source: payload.data.source, state: payload.data.state, exportedAt: payload.data.exportedAt } as const;
+      return refreshOregonTopAgentsForOwner(ctx.user.id);
+    }),
+    /** Versioned refresh path used by the current dashboard bundle after production endpoint repair. */
+    syncOregonRefresh: protectedProcedure.mutation(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      return refreshOregonTopAgentsForOwner(ctx.user.id);
     }),
   }),
 });

@@ -47,6 +47,7 @@ describe("agentSync router", () => {
     const caller = appRouter.createCaller(createContext("user"));
     await expect(caller.agentSync.list({ state: "Oregon" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.agentSync.syncOregon()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.agentSync.syncOregonRefresh()).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.agentSync.outreachTemplates()).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.agentSync.buildOutreachDraft({ syncedProfileIds: [1] })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
@@ -85,6 +86,21 @@ describe("agentSync router", () => {
       sourceRank: 7,
       sourceUpdatedAt: new Date("2026-08-18T19:00:00.000Z"),
     })]);
+  });
+
+  it("imports Oregon profiles through the versioned dashboard refresh procedure", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      version: 1,
+      source: "oregon-agent-leads",
+      state: "Oregon",
+      exportedAt: "2026-08-19T21:00:00.000Z",
+      count: 0,
+      agents: [],
+    }), { status: 200, headers: { "content-type": "application/json" } })));
+
+    const caller = appRouter.createCaller(createContext("admin"));
+    await expect(caller.agentSync.syncOregonRefresh()).resolves.toMatchObject({ count: 1, source: "oregon-agent-leads", state: "Oregon" });
+    expect(upsertSyncedTopAgents).toHaveBeenCalledWith(71, []);
   });
 
   it("saves an outreach template under the signed-in owner only", async () => {

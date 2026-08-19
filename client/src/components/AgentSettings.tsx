@@ -914,7 +914,7 @@ export default function AgentSettings() {
     utils.agent.getBySlug.invalidate();
   };
 
-  const syncTopAgents = trpc.agentSync.syncOregon.useMutation({
+  const syncTopAgents = trpc.agentSync.syncOregonRefresh.useMutation({
     onSuccess: (result) => {
       syncedProfilesQuery.refetch();
       reviewQueueQuery.refetch();

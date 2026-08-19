@@ -33,3 +33,9 @@ On 2026-08-19, an authenticated dashboard click on **Sync Top Agents** reproduce
 The first browser retry after checkpoint `62e79213` still displayed the pre-existing raw parsing toast. This indicates that the published browser session continued to reach an older refresh implementation or another deployment-routing path; it does not invalidate the independently passing bearer-authenticated export connection test. Further production route diagnosis is required before the tracker item can be completed.
 
 Deployment success was confirmed after that stale-browser retry. A new cache-busting dashboard load no longer showed the retained parsing toast, so the next verification must trigger a fresh owner-authorized **Sync Top Agents** action against the newly deployed instance.
+
+The first fresh click after deployment still produced the raw parsing toast. The authenticated source test was then rerun after a secure re-entry of `OREGON_AGENT_SYNC_TOKEN` and passed. Checkpoint `1c7d0ef3` publishes that refreshed secret so the production server restarts with the exact revalidated shared token. A final post-restart browser verification is required before closing the issue.
+
+The post-restart browser refresh continued to display the legacy raw parser message even though the revalidated protected export test passed. The next repair will route the refreshed client through a new versioned protected tRPC procedure, retaining the same owner-scoped upsert logic, so the current published client and server implementation are explicitly aligned.
+
+The versioned `agentSync.syncOregonRefresh` procedure now reuses the same server-side authenticated JSON import helper as the legacy procedure, and the dashboard client now targets the versioned route. Focused router and authenticated-source tests pass. The client-bundle fingerprint will change on the next checkpoint, ensuring the browser calls the new protected route rather than retaining the legacy client action.
