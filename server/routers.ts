@@ -141,6 +141,15 @@ const oregonAgentSourceProfileSchema = z.object({
   zillowUrl: z.string().nullable(),
   headshotUrl: z.string().nullable(),
   realtrendsRank: z.number().int().nullable(),
+  rankTotal: z.number().int().positive().optional(),
+  principalBrokerName: z.string().nullable().optional(),
+  principalBrokerTitle: z.string().nullable().optional(),
+  principalBrokerPhone: z.string().nullable().optional(),
+  principalBrokerEmail: z.string().nullable().optional(),
+  principalBrokerHeadshotUrl: z.string().nullable().optional(),
+  officeBuysideRank: z.number().int().nullable().optional(),
+  sourceProfileUrl: z.string().url().optional(),
+  principalBrokerProfileUrl: z.string().url().nullable().optional(),
   sourceUpdatedAt: z.string().datetime(),
 }).passthrough();
 

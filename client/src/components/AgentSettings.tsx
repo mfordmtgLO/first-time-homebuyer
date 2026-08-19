@@ -136,6 +136,21 @@ function buildSyncedAgentBio(profile: SyncedTopAgentRow) {
   ].filter((detail): detail is string => Boolean(detail)).join("\n\n");
 }
 
+function syncedSourceDetail(profile: SyncedTopAgentRow) {
+  try { return JSON.parse(profile.profileData) as Record<string, unknown>; } catch { return {}; }
+}
+
+function syncedRankLabel(profile: SyncedTopAgentRow) {
+  const detail = syncedSourceDetail(profile);
+  const total = typeof detail.rankTotal === "number" ? detail.rankTotal : null;
+  return profile.sourceRank && total ? `${profile.sourceRank}/${total}` : profile.sourceRank ? `#${profile.sourceRank}` : "Unranked";
+}
+
+function isPrincipalBroker(profile: SyncedTopAgentRow) {
+  const principalBrokerName = syncedSourceDetail(profile).principalBrokerName;
+  return typeof principalBrokerName === "string" && principalBrokerName.trim().toLowerCase() === profile.fullName.trim().toLowerCase();
+}
+
 const MAX_FILE_BYTES = 4 * 1024 * 1024;
 
 function fileToBase64(file: File): Promise<string> {
@@ -264,6 +279,7 @@ function AgentFormDialog({
   const [form, setForm] = useState<FormState>(EMPTY);
   const [syncedSearch, setSyncedSearch] = useState("");
   const [onlyUncreated, setOnlyUncreated] = useState(true);
+  const [onlyPrincipalBrokers, setOnlyPrincipalBrokers] = useState(false);
   const [slugTouched, setSlugTouched] = useState(false);
   const [initializedFor, setInitializedFor] = useState<number | "new" | null>(null);
 
@@ -344,8 +360,11 @@ function AgentFormDialog({
     const searchable = onlyUncreated
       ? syncedProfiles.filter((profile) => profile.createdAgentId === null)
       : syncedProfiles;
-    return filterSyncedTopAgents(searchable, syncedSearch);
-  }, [onlyUncreated, syncedProfiles, syncedSearch]);
+    const principalBrokerFiltered = onlyPrincipalBrokers
+      ? searchable.filter(isPrincipalBroker)
+      : searchable;
+    return filterSyncedTopAgents(principalBrokerFiltered, syncedSearch);
+  }, [onlyPrincipalBrokers, onlyUncreated, syncedProfiles, syncedSearch]);
   const selectedSyncedProfile = syncedProfiles.find((profile) => profile.id === form.syncedTopAgentId) ?? null;
   const applySyncedProfile = (sourceId: string) => {
     const selected = syncedProfiles.find((profile) => profile.id === Number(sourceId));
@@ -407,6 +426,10 @@ function AgentFormDialog({
               />
               Only show uncreated profiles
             </label>
+            <label className="ml-3 mt-2 inline-flex items-center gap-2 text-xs font-medium text-foreground">
+              <input type="checkbox" checked={onlyPrincipalBrokers} onChange={(event) => setOnlyPrincipalBrokers(event.target.checked)} className="h-3.5 w-3.5 rounded border-input accent-primary" />
+              PB only
+            </label>
             <select
               id="synced-top-agent"
               value={form.syncedTopAgentId ?? ""}
@@ -416,7 +439,7 @@ function AgentFormDialog({
               <option value="">Choose a synced Oregon agent (optional)</option>
               {matchingSyncedProfiles.map((profile) => (
                 <option key={profile.id} value={profile.id}>
-                  {profile.sourceRank ? `#${profile.sourceRank} · ` : ""}{profile.fullName}{profile.brokerage ? ` — ${profile.brokerage}` : ""}
+                  {profile.fullName} ({syncedRankLabel(profile)}){profile.brokerage ? ` — ${profile.brokerage}` : ""}
                 </option>
               ))}
             </select>
@@ -436,12 +459,16 @@ function AgentFormDialog({
                   </div>
                 )}
                 <div className="min-w-0 text-sm">
-                  <p className="font-semibold text-foreground">{selectedSyncedProfile.fullName}{selectedSyncedProfile.sourceRank ? ` · #${selectedSyncedProfile.sourceRank}` : ""}</p>
+                  {isPrincipalBroker(selectedSyncedProfile) ? <span className="mr-2 inline-flex rounded-sm bg-[#0b2d5c] px-1.5 py-0.5 text-[10px] font-bold text-white">PB</span> : null}
+                  <p className="font-semibold text-foreground">{selectedSyncedProfile.fullName} · {syncedRankLabel(selectedSyncedProfile)}</p>
                   <p className="mt-0.5 text-muted-foreground">{[selectedSyncedProfile.brokerage, selectedSyncedProfile.cityArea].filter(Boolean).join(" · ") || "Oregon source profile"}</p>
+                  {typeof syncedSourceDetail(selectedSyncedProfile).principalBrokerName === "string" && <p className="mt-1 text-xs text-muted-foreground">Principal broker: {syncedSourceDetail(selectedSyncedProfile).principalBrokerName as string}</p>}
                   <p className="mt-1 text-xs text-muted-foreground break-words">{[selectedSyncedProfile.email, selectedSyncedProfile.phone].filter(Boolean).join(" · ")}</p>
                   <div className="mt-2 flex flex-wrap gap-2 text-xs font-medium">
                     {selectedSyncedProfile.websiteBioUrl && <a className="text-primary underline underline-offset-2" href={selectedSyncedProfile.websiteBioUrl} target="_blank" rel="noreferrer">Website / bio</a>}
                     {selectedSyncedProfile.zillowUrl && <a className="text-primary underline underline-offset-2" href={selectedSyncedProfile.zillowUrl} target="_blank" rel="noreferrer">Zillow profile</a>}
+                    {typeof syncedSourceDetail(selectedSyncedProfile).sourceProfileUrl === "string" && <a className="text-primary underline underline-offset-2" href={syncedSourceDetail(selectedSyncedProfile).sourceProfileUrl as string} target="_blank" rel="noreferrer">Oregon profile</a>}
+                    {typeof syncedSourceDetail(selectedSyncedProfile).principalBrokerProfileUrl === "string" && <a className="text-primary underline underline-offset-2" href={syncedSourceDetail(selectedSyncedProfile).principalBrokerProfileUrl as string} target="_blank" rel="noreferrer">PB profile</a>}
                   </div>
                 </div>
               </div>

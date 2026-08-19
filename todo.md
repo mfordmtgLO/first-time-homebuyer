@@ -363,3 +363,6 @@
 - [x] Add an uncreated-only filter to the synced-agent selection flow to prevent duplicate partner creation
 - [x] Detect source-profile changes on sync and show update badges on linked partner profiles
 - [x] Add an owner-only review queue for approving or rejecting detected synced-agent profile updates
+- [x] Sync dynamic Oregon agent rank positions with their current total-agent denominator
+- [x] Sync and display principal-broker data, PB designations, office context, and source-profile links
+- [x] Add private Oregon synced-agent filters for agent search and principal-broker-only views
