@@ -62,6 +62,7 @@ import {
   recordPropertyPageActivity,
   refreshPropertyLandingPage,
   savePropertyEngagementThreshold,
+  savePropertyEngagementPreferences,
   listPropertyPageActivity,
   insertLead,
   listAgents,
@@ -1361,13 +1362,27 @@ export const appRouter = router({
     }),
     engagementSetting: protectedProcedure.query(async ({ ctx }) => {
       requireAdmin(ctx.user.role);
-      return (await getPropertyEngagementSetting(ctx.user.id)) ?? { highActivityThreshold: HIGH_ACTIVITY_WEEKLY_THRESHOLD };
+      return (await getPropertyEngagementSetting(ctx.user.id)) ?? {
+        highActivityThreshold: HIGH_ACTIVITY_WEEKLY_THRESHOLD,
+        weeklySort: "activity" as const,
+        minimumActivity: 1,
+      };
     }),
     saveEngagementThreshold: protectedProcedure
       .input(z.object({ highActivityThreshold: z.number().int().min(1).max(1000) }))
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
         return savePropertyEngagementThreshold({ ownerUserId: ctx.user.id, highActivityThreshold: input.highActivityThreshold });
+      }),
+    saveEngagementPreferences: protectedProcedure
+      .input(z.object({
+        highActivityThreshold: z.number().int().min(1).max(1000),
+        weeklySort: z.enum(["activity", "conversion"]),
+        minimumActivity: z.number().int().min(1).max(1000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return savePropertyEngagementPreferences({ ownerUserId: ctx.user.id, ...input });
       }),
     activity: protectedProcedure
       .input(z.object({ propertyLandingPageId: z.number().int().positive(), activityRange: z.enum(PROPERTY_ACTIVITY_RANGES).optional() }))

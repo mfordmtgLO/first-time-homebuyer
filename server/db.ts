@@ -1520,6 +1520,8 @@ export async function listWeeklyPropertyPageEngagement(limit = 5) {
       id: propertyLandingPage.id,
       address: propertyLandingPage.address,
       slug: propertyLandingPage.slug,
+      agentId: propertyLandingPage.agentId,
+      agentName: agentProfile.name,
       weeklyActivityCount,
       weeklyCapturedLeadCount,
       priorWeekActivityCount,
@@ -1527,6 +1529,7 @@ export async function listWeeklyPropertyPageEngagement(limit = 5) {
       latestActivityAt,
     })
     .from(propertyLandingPage)
+    .leftJoin(agentProfile, eq(propertyLandingPage.agentId, agentProfile.id))
     .where(eq(propertyLandingPage.isActive, 1))
     .orderBy(desc(weeklyActivityCount), asc(propertyLandingPage.address))
     .limit(Math.min(Math.max(limit, 1), 10));
@@ -1544,6 +1547,29 @@ export async function savePropertyEngagementThreshold(input: { ownerUserId: numb
   if (!db) throw new Error("Database not available");
   await db.insert(propertyEngagementSetting).values(input).onDuplicateKeyUpdate({
     set: { highActivityThreshold: input.highActivityThreshold, updatedAt: new Date() },
+  });
+  const rows = await db.select().from(propertyEngagementSetting).where(eq(propertyEngagementSetting.ownerUserId, input.ownerUserId)).limit(1);
+  return rows[0]!;
+}
+
+export type PropertyEngagementPreferences = {
+  ownerUserId: number;
+  highActivityThreshold: number;
+  weeklySort: "activity" | "conversion";
+  minimumActivity: number;
+};
+
+/** Saves the private owner preference set used by the weekly property-engagement widget. */
+export async function savePropertyEngagementPreferences(input: PropertyEngagementPreferences) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(propertyEngagementSetting).values(input).onDuplicateKeyUpdate({
+    set: {
+      highActivityThreshold: input.highActivityThreshold,
+      weeklySort: input.weeklySort,
+      minimumActivity: input.minimumActivity,
+      updatedAt: new Date(),
+    },
   });
   const rows = await db.select().from(propertyEngagementSetting).where(eq(propertyEngagementSetting.ownerUserId, input.ownerUserId)).limit(1);
   return rows[0]!;

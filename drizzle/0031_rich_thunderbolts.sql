@@ -1,0 +1,2 @@
+ALTER TABLE `property_engagement_setting` ADD `weeklySort` enum('activity','conversion') DEFAULT 'activity' NOT NULL;--> statement-breakpoint
+ALTER TABLE `property_engagement_setting` ADD `minimumActivity` int DEFAULT 1 NOT NULL;

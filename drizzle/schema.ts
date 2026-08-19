@@ -598,6 +598,8 @@ export const propertyEngagementSetting = mysqlTable(
   {
     ownerUserId: int("ownerUserId").primaryKey(),
     highActivityThreshold: int("highActivityThreshold").default(10).notNull(),
+    weeklySort: mysqlEnum("weeklySort", ["activity", "conversion"]).default("activity").notNull(),
+    minimumActivity: int("minimumActivity").default(1).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   }

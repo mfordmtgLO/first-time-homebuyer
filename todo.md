@@ -406,3 +406,6 @@
 - [x] Show weekly property activity-to-captured-lead conversion metrics in the engagement widget
 - [x] Highlight timeline keyword matches inside displayed activity logs
 - [x] Add a weekly property engagement sort toggle for activity volume and activity-to-lead conversion rate
+- [x] Persist the weekly property engagement sort preference for each dashboard owner
+- [x] Add a minimum-activity filter to weekly conversion ranking
+- [x] Add per-property co-branded agent conversion comparison context to the weekly widget
