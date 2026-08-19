@@ -345,7 +345,7 @@ export type SyncedTopAgentProfileInput = {
 export async function upsertSyncedTopAgents(ownerUserId: number, profiles: SyncedTopAgentProfileInput[]) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const movedAgents: Array<{ fullName: string; fromRank: number; toRank: number; rankTotal: number | null }> = [];
+  const movedAgents: Array<{ fullName: string; brokerage: string | null; fromRank: number; toRank: number; rankTotal: number | null }> = [];
   for (const profile of profiles) {
     const existingRows = await db
       .select()
@@ -366,6 +366,7 @@ export async function upsertSyncedTopAgents(ownerUserId: number, profiles: Synce
     ) {
       movedAgents.push({
         fullName: profile.fullName,
+        brokerage: profile.brokerage,
         fromRank: existing.sourceRank,
         toRank: profile.sourceRank,
         rankTotal,

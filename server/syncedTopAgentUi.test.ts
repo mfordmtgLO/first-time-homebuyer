@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterSyncedTopAgents, formatRankMovement, getSourcePoolTotal, getSyncedTopAgentSummary } from "@shared/syncedTopAgentUi";
+import { filterRankSnapshots, filterSyncedTopAgents, formatRankMovement, getSourcePoolTotal, getSyncedTopAgentSummary, summarizeOfficeRankMovements } from "@shared/syncedTopAgentUi";
 
 const profiles = [
   { fullName: "Avery Brooks", brokerage: "Cascadia Realty", cityArea: "Salem", syncedAt: new Date("2026-08-18T10:00:00.000Z") },
@@ -28,5 +28,28 @@ describe("synced top agent UI helpers", () => {
   it("formats exact improved and dropped rank summaries", () => {
     expect(formatRankMovement(42, 35, 87)).toBe("improved: 42/87 → 35/87");
     expect(formatRankMovement(35, 42, 87)).toBe("dropped: 35/87 → 42/87");
+  });
+
+  it("filters private rank snapshots to the selected date range", () => {
+    const now = new Date("2026-08-19T12:00:00.000Z");
+    const snapshots = [
+      { capturedAt: new Date("2026-08-18T12:00:00.000Z") },
+      { capturedAt: new Date("2026-07-30T12:00:00.000Z") },
+      { capturedAt: new Date("2026-04-01T12:00:00.000Z") },
+    ];
+    expect(filterRankSnapshots(snapshots, "7d", now)).toEqual([snapshots[0]]);
+    expect(filterRankSnapshots(snapshots, "30d", now)).toEqual([snapshots[0], snapshots[1]]);
+    expect(filterRankSnapshots(snapshots, "all", now)).toEqual(snapshots);
+  });
+
+  it("summarizes rank movement at the office level", () => {
+    expect(summarizeOfficeRankMovements([
+      { fullName: "Avery", brokerage: "Cascadia", fromRank: 30, toRank: 20, rankTotal: 87 },
+      { fullName: "Morgan", brokerage: "Cascadia", fromRank: 18, toRank: 22, rankTotal: 87 },
+      { fullName: "Riley", brokerage: "Willamette", fromRank: 40, toRank: 32, rankTotal: 87 },
+    ])).toEqual([
+      { office: "Willamette", improved: 1, dropped: 0, netPositions: 8 },
+      { office: "Cascadia", improved: 1, dropped: 1, netPositions: 6 },
+    ]);
   });
 });

@@ -373,3 +373,6 @@
 - [x] Display the Oregon source-pool total beside synced-agent sorting controls
 - [x] Persist per-agent Oregon rank-history snapshots for private trend viewing
 - [x] Show a private post-sync summary listing agents whose Oregon ranks changed
+- [x] Add a private date-range filter for synced-agent rank-history snapshots
+- [x] Add a private office-level rank-movement summary after Oregon syncs
+- [x] Add green/red arrow indicators to private post-sync Oregon rank-movement summaries

@@ -34,7 +34,7 @@ import ProfileShareTools from "@/components/ProfileShareTools";
 import { buildCoBrandedShareMailto } from "@shared/coBrandedShareDraft";
 import { getUnpairedAgentIds } from "@shared/agentPairingStatus";
 import { publicSiteUrl } from "@shared/publicSiteUrl";
-import { filterSyncedTopAgents, formatRankMovement, getRankMovement, getSourcePoolTotal, getSyncedTopAgentSummary, sortSyncedTopAgents, type SyncedTopAgentSort } from "@shared/syncedTopAgentUi";
+import { filterRankSnapshots, filterSyncedTopAgents, formatRankMovement, getRankMovement, getSourcePoolTotal, getSyncedTopAgentSummary, sortSyncedTopAgents, summarizeOfficeRankMovements, type RankHistoryRange, type SyncedTopAgentSort } from "@shared/syncedTopAgentUi";
 import {
   AlertTriangle,
   Building2,
@@ -52,6 +52,7 @@ import {
   Star,
   Trash2,
   TrendingUp,
+  TrendingDown,
   UserRound,
   Users,
   X,
@@ -119,7 +120,7 @@ type SyncedTopAgentRow = {
   syncedAt: Date;
 };
 
-type RankMovementSummary = { fullName: string; fromRank: number; toRank: number; rankTotal: number | null };
+type RankMovementSummary = { fullName: string; brokerage: string | null; fromRank: number; toRank: number; rankTotal: number | null };
 
 function buildSyncedAgentBio(profile: SyncedTopAgentRow) {
   let source: Record<string, unknown> = {};
@@ -285,6 +286,7 @@ function AgentFormDialog({
   const [onlyPrincipalBrokers, setOnlyPrincipalBrokers] = useState(false);
   const [syncedSort, setSyncedSort] = useState<SyncedTopAgentSort>("rank");
   const [sourceDetailProfile, setSourceDetailProfile] = useState<SyncedTopAgentRow | null>(null);
+  const [rankHistoryRange, setRankHistoryRange] = useState<RankHistoryRange>("all");
   const [slugTouched, setSlugTouched] = useState(false);
   const [initializedFor, setInitializedFor] = useState<number | "new" | null>(null);
 
@@ -377,6 +379,7 @@ function AgentFormDialog({
     { enabled: Boolean(sourceDetailProfile) }
   );
   const rankHistory = rankHistoryQuery.data ?? [];
+  const filteredRankHistory = useMemo(() => filterRankSnapshots(rankHistory, rankHistoryRange), [rankHistory, rankHistoryRange]);
   const applySyncedProfile = (sourceId: string) => {
     const selected = syncedProfiles.find((profile) => profile.id === Number(sourceId));
     if (!selected) {
@@ -509,19 +512,29 @@ function AgentFormDialog({
               <p><strong>Principal broker:</strong> {typeof syncedSourceDetail(sourceDetailProfile).principalBrokerName === "string" ? syncedSourceDetail(sourceDetailProfile).principalBrokerName as string : "Not supplied"}</p>
               <p><strong>Contact:</strong> {[sourceDetailProfile.email, sourceDetailProfile.phone].filter(Boolean).join(" · ") || "Not supplied"}</p>
               <div className="rounded-md border border-border bg-muted/20 p-3">
-                <p className="font-semibold text-foreground">Private rank trend</p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-semibold text-foreground">Private rank trend</p>
+                  <label className="text-xs font-medium text-muted-foreground">Range
+                    <select value={rankHistoryRange} onChange={(event) => setRankHistoryRange(event.target.value as RankHistoryRange)} className="ml-1 h-7 rounded border border-input bg-background px-1 text-xs text-foreground">
+                      <option value="7d">Last 7 days</option>
+                      <option value="30d">Last 30 days</option>
+                      <option value="90d">Last 90 days</option>
+                      <option value="all">All snapshots</option>
+                    </select>
+                  </label>
+                </div>
                 {rankHistoryQuery.isLoading ? (
                   <p className="mt-1 text-xs text-muted-foreground">Loading source snapshots…</p>
-                ) : rankHistory.length ? (
+                ) : filteredRankHistory.length ? (
                   <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-                    {[...rankHistory].reverse().map((snapshot) => (
+                    {[...filteredRankHistory].reverse().map((snapshot) => (
                       <div key={snapshot.id} className="min-w-[86px] rounded border border-border bg-background px-2 py-1.5 text-center">
                         <p className="text-sm font-bold text-primary">#{snapshot.sourceRank ?? "—"}{snapshot.rankTotal ? `/${snapshot.rankTotal}` : ""}</p>
                         <p className="mt-1 text-[10px] text-muted-foreground">{new Date(snapshot.capturedAt).toLocaleDateString()}</p>
                       </div>
                     ))}
                   </div>
-                ) : <p className="mt-1 text-xs text-muted-foreground">The first saved refresh will establish this agent’s trend baseline.</p>}
+                ) : <p className="mt-1 text-xs text-muted-foreground">No snapshots match this range yet.</p>}
               </div>
             </div>}
           </DialogContent>
@@ -681,6 +694,7 @@ export default function AgentSettings() {
   const [editing, setEditing] = useState<AgentRow | null>(null);
   const [deleting, setDeleting] = useState<AgentRow | null>(null);
   const [lastRankMovements, setLastRankMovements] = useState<RankMovementSummary[]>([]);
+  const officeRankSummary = useMemo(() => summarizeOfficeRankMovements(lastRankMovements), [lastRankMovements]);
 
   const utils = trpc.useUtils();
   const refreshAgents = () => {
@@ -814,11 +828,18 @@ export default function AgentSettings() {
           </div>
           <div className="mt-2 max-h-36 overflow-y-auto rounded-md border border-sky-500/20 bg-background px-3 py-2 text-xs">
             {lastRankMovements.map((movement) => (
-              <p key={`${movement.fullName}-${movement.fromRank}-${movement.toRank}`} className="py-0.5 text-foreground">
+              <p key={`${movement.fullName}-${movement.fromRank}-${movement.toRank}`} className={`flex items-center gap-1 py-0.5 ${movement.toRank < movement.fromRank ? "text-emerald-700" : "text-red-700"}`}>
+                {movement.toRank < movement.fromRank ? <TrendingUp className="h-3.5 w-3.5 shrink-0" aria-label="Rank improved" /> : <TrendingDown className="h-3.5 w-3.5 shrink-0" aria-label="Rank dropped" />}
                 <strong>{movement.fullName}</strong> — {formatRankMovement(movement.fromRank, movement.toRank, movement.rankTotal)}
               </p>
             ))}
           </div>
+          {officeRankSummary.length > 0 && <div className="mt-3 rounded-md border border-sky-500/20 bg-background p-3">
+            <p className="text-xs font-semibold text-foreground">Office movement summary</p>
+            <div className="mt-2 grid gap-1 text-xs sm:grid-cols-2">
+              {officeRankSummary.map((office) => <p key={office.office} className="text-muted-foreground"><strong className="text-foreground">{office.office}</strong> — {office.improved} up, {office.dropped} down, net {office.netPositions >= 0 ? "+" : ""}{office.netPositions}</p>)}
+            </div>
+          </div>}
         </div>
       )}
 

@@ -62,3 +62,35 @@ export function formatRankMovement(fromRank: number, toRank: number, rankTotal: 
   const denominator = rankTotal ? `/${rankTotal}` : "";
   return `${direction}: ${fromRank}${denominator} → ${toRank}${denominator}`;
 }
+
+export type RankHistoryRange = "7d" | "30d" | "90d" | "all";
+export type RankSnapshotRecord = { capturedAt: Date };
+
+export function filterRankSnapshots<T extends RankSnapshotRecord>(snapshots: T[], range: RankHistoryRange, now = new Date()): T[] {
+  if (range === "all") return snapshots;
+  const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
+  const cutoff = now.getTime() - days * 24 * 60 * 60 * 1000;
+  return snapshots.filter((snapshot) => new Date(snapshot.capturedAt).getTime() >= cutoff);
+}
+
+export type RankMovementRecord = {
+  fullName: string;
+  brokerage: string | null;
+  fromRank: number;
+  toRank: number;
+  rankTotal: number | null;
+};
+
+export function summarizeOfficeRankMovements(movements: RankMovementRecord[]) {
+  const byOffice = new Map<string, { office: string; improved: number; dropped: number; netPositions: number }>();
+  for (const movement of movements) {
+    const office = movement.brokerage?.trim() || "Office not supplied";
+    const summary = byOffice.get(office) ?? { office, improved: 0, dropped: 0, netPositions: 0 };
+    const change = movement.fromRank - movement.toRank;
+    if (change > 0) summary.improved += 1;
+    if (change < 0) summary.dropped += 1;
+    summary.netPositions += change;
+    byOffice.set(office, summary);
+  }
+  return Array.from(byOffice.values()).sort((left, right) => right.netPositions - left.netPositions || left.office.localeCompare(right.office));
+}
