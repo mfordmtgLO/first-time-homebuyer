@@ -390,3 +390,6 @@
 - [x] Add one-click copy control for expanded single-property page URLs
 - [x] Add single-property website source filters to Roadmap and Mortgage Chat Intake lead tables
 - [x] Show a saved property thumbnail in expanded single-property source details when available
+- [x] Add property-address filtering to Roadmap and Mortgage Chat Intake single-property lead views
+- [x] Add a copyable LO-agent pairing label to expanded property source details
+- [x] Display each single-property page activity count beside its lead source

@@ -9,3 +9,8 @@ export function formatPropertyPairingSummary(
 ): string {
   return `${loanOfficerName || "LO not linked"} · ${agentName || "Agent not linked"}`;
 }
+
+export function formatPropertyActivityCount(activityCount: number | null | undefined): string {
+  const count = Math.max(0, Math.floor(activityCount ?? 0));
+  return `${count} ${count === 1 ? "activity" : "activities"}`;
+}

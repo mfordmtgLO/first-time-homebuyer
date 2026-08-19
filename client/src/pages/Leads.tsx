@@ -483,6 +483,7 @@ export default function Leads() {
   const [agentFilter, setAgentFilter] = useState("all");
   const [campaignFilter, setCampaignFilter] = useState("all");
   const [propertySourceFilter, setPropertySourceFilter] = useState<"all" | "single-property">("all");
+  const [propertyAddressFilter, setPropertyAddressFilter] = useState("all");
 
   const leadsQuery = trpc.leads.list.useQuery(undefined, {
     enabled: isAuthenticated && isAdmin,
@@ -524,6 +525,10 @@ export default function Leads() {
     () => Array.from(new Set(leads.map((lead) => [lead.utmSource, lead.utmMedium, lead.utmCampaign].filter(Boolean).join(" · ") || "Direct / untagged"))).sort(),
     [leads]
   );
+  const propertyAddressOptions = useMemo(
+    () => Array.from(new Set(leads.flatMap((lead) => lead.propertyPageAddress ? [lead.propertyPageAddress] : []))).sort(),
+    [leads],
+  );
 
   const filteredLeads = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -534,6 +539,7 @@ export default function Leads() {
       const campaign = [l.utmSource, l.utmMedium, l.utmCampaign].filter(Boolean).join(" · ") || "Direct / untagged";
       if (campaignFilter !== "all" && campaign !== campaignFilter) return false;
       if (propertySourceFilter === "single-property" && !l.propertyPageAddress) return false;
+      if (propertyAddressFilter !== "all" && l.propertyPageAddress !== propertyAddressFilter) return false;
       if (!q) return true;
       return (
         l.firstName.toLowerCase().includes(q) ||
@@ -545,9 +551,9 @@ export default function Leads() {
         (l.agentName ?? "").toLowerCase().includes(q)
       );
     });
-  }, [leads, search, statusFilter, loanOfficerFilter, agentFilter, campaignFilter, propertySourceFilter]);
+  }, [leads, search, statusFilter, loanOfficerFilter, agentFilter, campaignFilter, propertySourceFilter, propertyAddressFilter]);
 
-  const isFiltered = search.trim() !== "" || statusFilter !== "all" || loanOfficerFilter !== "all" || agentFilter !== "all" || campaignFilter !== "all" || propertySourceFilter !== "all";
+  const isFiltered = search.trim() !== "" || statusFilter !== "all" || loanOfficerFilter !== "all" || agentFilter !== "all" || campaignFilter !== "all" || propertySourceFilter !== "all" || propertyAddressFilter !== "all";
 
   const utils = trpc.useUtils();
   const updateStatus = trpc.leads.updateStatus.useMutation({
@@ -794,6 +800,10 @@ export default function Leads() {
                   <SelectTrigger className="h-9 w-full bg-card text-xs sm:w-[190px]" aria-label="Filter Roadmap leads by source type"><SelectValue placeholder="All lead sources" /></SelectTrigger>
                   <SelectContent><SelectItem value="all">All lead sources</SelectItem><SelectItem value="single-property">Single-property website</SelectItem></SelectContent>
                 </Select>
+                <Select value={propertyAddressFilter} onValueChange={(value) => { setPropertyAddressFilter(value); if (value !== "all") setPropertySourceFilter("single-property"); }} disabled={propertyAddressOptions.length === 0}>
+                  <SelectTrigger className="h-9 w-full bg-card text-xs sm:w-[240px]" aria-label="Filter Roadmap leads by property address"><SelectValue placeholder="All property addresses" /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All property addresses</SelectItem>{propertyAddressOptions.map((address) => <SelectItem key={address} value={address}>{address}</SelectItem>)}</SelectContent>
+                </Select>
                 {isFiltered && (
                   <Button
                     variant="ghost"
@@ -805,6 +815,7 @@ export default function Leads() {
                       setAgentFilter("all");
                       setCampaignFilter("all");
                       setPropertySourceFilter("all");
+                      setPropertyAddressFilter("all");
                     }}
                   >
                     Clear filters
@@ -848,6 +859,7 @@ export default function Leads() {
                       setAgentFilter("all");
                       setCampaignFilter("all");
                       setPropertySourceFilter("all");
+                      setPropertyAddressFilter("all");
                     }}
                   >
                     Clear filters
@@ -896,6 +908,7 @@ export default function Leads() {
                                 address={lead.propertyPageAddress}
                                 propertyPageSlug={lead.propertyPageSlug}
                                 listingSnapshot={lead.propertyPageListingSnapshot}
+                                activityCount={lead.propertyPageActivityCount}
                                 loanOfficerName={lead.loanOfficerName}
                                 agentName={lead.agentName}
                               />
