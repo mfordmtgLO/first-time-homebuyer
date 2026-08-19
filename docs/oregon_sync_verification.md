@@ -25,3 +25,11 @@ After the checkpoint and managed-service restart, the published dashboard still 
 The owner-authorized recovery refresh reused the application’s normal `upsertSyncedTopAgents` routine and persisted all **97** unique Oregon source profiles: **60** top-agent records and **37** standalone principal-broker records. A direct owner-scoped database verification found no rank above its declared pool. Tiffany Johnson is now present as a standalone `principal_broker` record with **Office #23/87**, **RE/MAX Integrity**, and the title **Managing Principal Broker**.
 
 The source denominator correction was published as Oregon Agent Leads commit `0004572` (`Use full Oregon pool for broker rank labels`). Focused source export tests passed after the rebase, covering standalone broker links and full-pool rank denominators. The dashboard source URL configuration and summary update were published as dashboard checkpoint `a7e75481`.
+
+## Token-error follow-up
+
+On 2026-08-19, an authenticated dashboard click on **Sync Top Agents** reproduced a raw `Unexpected token '<'` error, indicating that the published refresh path had received HTML rather than the protected JSON payload. The configured bearer-authenticated connection test still passed against the canonical Oregon export. The dashboard source URL was re-pinned to `https://oregonleads-bqkuz5cc.manus.space/api/sync/agents?state=Oregon`, and checkpoint `62e79213` adds content-type validation so a future non-JSON response produces a clear actionable dashboard error instead of a raw parsing failure. Final owner-triggered refresh verification remains pending after the new deployment starts.
+
+The first browser retry after checkpoint `62e79213` still displayed the pre-existing raw parsing toast. This indicates that the published browser session continued to reach an older refresh implementation or another deployment-routing path; it does not invalidate the independently passing bearer-authenticated export connection test. Further production route diagnosis is required before the tracker item can be completed.
+
+Deployment success was confirmed after that stale-browser retry. A new cache-busting dashboard load no longer showed the retained parsing toast, so the next verification must trigger a fresh owner-authorized **Sync Top Agents** action against the newly deployed instance.
