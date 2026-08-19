@@ -18,6 +18,7 @@ import {
   leads,
   loanOfficer,
   syncedTopAgent,
+  syncedTopAgentRankSnapshot,
   syncedTopAgentReview,
   textMessage,
   textMessageAttachment,
@@ -335,6 +336,7 @@ export type SyncedTopAgentProfileInput = {
   zillowUrl: string | null;
   headshotUrl: string | null;
   sourceRank: number | null;
+  rankTotal?: number | null;
   profileData: string;
   sourceUpdatedAt: Date | null;
 };
@@ -343,6 +345,7 @@ export type SyncedTopAgentProfileInput = {
 export async function upsertSyncedTopAgents(ownerUserId: number, profiles: SyncedTopAgentProfileInput[]) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  const movedAgents: Array<{ fullName: string; fromRank: number; toRank: number; rankTotal: number | null }> = [];
   for (const profile of profiles) {
     const existingRows = await db
       .select()
@@ -354,6 +357,20 @@ export async function upsertSyncedTopAgents(ownerUserId: number, profiles: Synce
       ))
       .limit(1);
     const existing = existingRows[0];
+    const rankTotal = profile.rankTotal ?? getRankTotal(profile.profileData);
+    if (
+      existing &&
+      existing.sourceRank !== null &&
+      profile.sourceRank !== null &&
+      existing.sourceRank !== profile.sourceRank
+    ) {
+      movedAgents.push({
+        fullName: profile.fullName,
+        fromRank: existing.sourceRank,
+        toRank: profile.sourceRank,
+        rankTotal,
+      });
+    }
     const requiresReview = Boolean(existing?.createdAgentId && existing.profileData !== profile.profileData);
     const values: Omit<InsertSyncedTopAgent, "id" | "createdAt" | "updatedAt"> = {
       ownerUserId,
@@ -424,8 +441,31 @@ export async function upsertSyncedTopAgents(ownerUserId: number, profiles: Synce
         syncedAt: values.syncedAt,
       },
     });
+    const syncedRows = await db
+      .select({ id: syncedTopAgent.id })
+      .from(syncedTopAgent)
+      .where(and(
+        eq(syncedTopAgent.ownerUserId, ownerUserId),
+        eq(syncedTopAgent.sourceKey, "oregon-agent-leads"),
+        eq(syncedTopAgent.sourceAgentId, profile.sourceAgentId)
+      ))
+      .limit(1);
+    if (syncedRows[0]) {
+      await db.insert(syncedTopAgentRankSnapshot).values({
+        ownerUserId,
+        syncedTopAgentId: syncedRows[0].id,
+        sourceRank: profile.sourceRank,
+        rankTotal,
+      });
+    }
   }
-  return { count: profiles.length };
+  return { count: profiles.length, movedAgents };
+}
+
+function getRankTotal(profileData: string): number | null {
+  const source = parseSourceProfile(profileData);
+  const value = source.rankTotal;
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
 }
 
 export function getChangedSourceFields(previousData: string, proposedData: string): string[] {
@@ -458,6 +498,21 @@ export async function getSyncedTopAgent(ownerUserId: number, id: number) {
     .where(and(eq(syncedTopAgent.ownerUserId, ownerUserId), eq(syncedTopAgent.id, id)))
     .limit(1);
   return rows[0];
+}
+
+/** Private source-rank trend for one selected synced profile, newest first. */
+export async function listSyncedTopAgentRankHistory(ownerUserId: number, syncedTopAgentId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .select()
+    .from(syncedTopAgentRankSnapshot)
+    .where(and(
+      eq(syncedTopAgentRankSnapshot.ownerUserId, ownerUserId),
+      eq(syncedTopAgentRankSnapshot.syncedTopAgentId, syncedTopAgentId)
+    ))
+    .orderBy(desc(syncedTopAgentRankSnapshot.capturedAt))
+    .limit(24);
 }
 
 export async function markSyncedTopAgentCreated(ownerUserId: number, syncedTopAgentId: number, createdAgentId: number) {

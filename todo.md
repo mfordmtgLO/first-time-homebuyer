@@ -370,3 +370,6 @@
 - [x] Show rank-changed indicators when refreshed Oregon source ranks improve or drop
 - [x] Add synced-agent selector sorting by source rank and office name
 - [x] Correct Oregon source rank denominators so no synced rank can exceed its displayed ranking pool
+- [x] Display the Oregon source-pool total beside synced-agent sorting controls
+- [x] Persist per-agent Oregon rank-history snapshots for private trend viewing
+- [x] Show a private post-sync summary listing agents whose Oregon ranks changed

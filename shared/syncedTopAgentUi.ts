@@ -39,3 +39,26 @@ export function getRankMovement(previousRank: number | null, currentRank: number
   if (previousRank === null || currentRank === null || previousRank === currentRank) return null;
   return currentRank < previousRank ? "improved" : "dropped";
 }
+
+export type SyncedTopAgentPoolRecord = { profileData: string };
+
+/** Returns the highest declared source ranking pool total across the private snapshot. */
+export function getSourcePoolTotal<T extends SyncedTopAgentPoolRecord>(profiles: T[]): number | null {
+  const totals = profiles.flatMap((profile) => {
+    try {
+      const data = JSON.parse(profile.profileData) as { rankTotal?: unknown };
+      return typeof data.rankTotal === "number" && Number.isFinite(data.rankTotal) && data.rankTotal > 0
+        ? [data.rankTotal]
+        : [];
+    } catch {
+      return [];
+    }
+  });
+  return totals.length ? Math.max(...totals) : null;
+}
+
+export function formatRankMovement(fromRank: number, toRank: number, rankTotal: number | null): string {
+  const direction = toRank < fromRank ? "improved" : "dropped";
+  const denominator = rankTotal ? `/${rankTotal}` : "";
+  return `${direction}: ${fromRank}${denominator} → ${toRank}${denominator}`;
+}

@@ -168,6 +168,24 @@ export const syncedTopAgentReview = mysqlTable(
 
 export type SyncedTopAgentReview = typeof syncedTopAgentReview.$inferSelect;
 
+/** Private point-in-time source rank captured for each owner-scoped Oregon refresh. */
+export const syncedTopAgentRankSnapshot = mysqlTable(
+  "synced_top_agent_rank_snapshot",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerUserId: int("ownerUserId").notNull(),
+    syncedTopAgentId: int("syncedTopAgentId").notNull(),
+    sourceRank: int("sourceRank"),
+    rankTotal: int("rankTotal"),
+    capturedAt: timestamp("capturedAt").defaultNow().notNull(),
+  },
+  (table) => [
+    index("synced_top_agent_rank_snapshot_owner_agent_time_idx").on(table.ownerUserId, table.syncedTopAgentId, table.capturedAt),
+  ]
+);
+
+export type SyncedTopAgentRankSnapshot = typeof syncedTopAgentRankSnapshot.$inferSelect;
+
 /**
  * Loan officers shown in the public Mortgage Intake Specialist widget. One
  * officer may be featured at a time; the model supports additional officers as

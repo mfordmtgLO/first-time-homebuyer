@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterSyncedTopAgents, getSyncedTopAgentSummary } from "@shared/syncedTopAgentUi";
+import { filterSyncedTopAgents, formatRankMovement, getSourcePoolTotal, getSyncedTopAgentSummary } from "@shared/syncedTopAgentUi";
 
 const profiles = [
   { fullName: "Avery Brooks", brokerage: "Cascadia Realty", cityArea: "Salem", syncedAt: new Date("2026-08-18T10:00:00.000Z") },
@@ -15,5 +15,18 @@ describe("synced top agent UI helpers", () => {
 
   it("reports imported count and most recent sync timestamp", () => {
     expect(getSyncedTopAgentSummary(profiles)).toEqual({ count: 2, latestSyncedAt: profiles[1].syncedAt });
+  });
+
+  it("uses the declared source ranking pool rather than imported profile count", () => {
+    expect(getSourcePoolTotal([
+      { profileData: JSON.stringify({ rankTotal: 87 }) },
+      { profileData: JSON.stringify({ rankTotal: 87 }) },
+      { profileData: "not-json" },
+    ])).toBe(87);
+  });
+
+  it("formats exact improved and dropped rank summaries", () => {
+    expect(formatRankMovement(42, 35, 87)).toBe("improved: 42/87 → 35/87");
+    expect(formatRankMovement(35, 42, 87)).toBe("dropped: 35/87 → 42/87");
   });
 });

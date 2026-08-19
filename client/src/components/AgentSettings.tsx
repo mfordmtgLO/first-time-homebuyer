@@ -34,7 +34,7 @@ import ProfileShareTools from "@/components/ProfileShareTools";
 import { buildCoBrandedShareMailto } from "@shared/coBrandedShareDraft";
 import { getUnpairedAgentIds } from "@shared/agentPairingStatus";
 import { publicSiteUrl } from "@shared/publicSiteUrl";
-import { filterSyncedTopAgents, getRankMovement, getSyncedTopAgentSummary, sortSyncedTopAgents, type SyncedTopAgentSort } from "@shared/syncedTopAgentUi";
+import { filterSyncedTopAgents, formatRankMovement, getRankMovement, getSourcePoolTotal, getSyncedTopAgentSummary, sortSyncedTopAgents, type SyncedTopAgentSort } from "@shared/syncedTopAgentUi";
 import {
   AlertTriangle,
   Building2,
@@ -118,6 +118,8 @@ type SyncedTopAgentRow = {
   hasPendingReview: number;
   syncedAt: Date;
 };
+
+type RankMovementSummary = { fullName: string; fromRank: number; toRank: number; rankTotal: number | null };
 
 function buildSyncedAgentBio(profile: SyncedTopAgentRow) {
   let source: Record<string, unknown> = {};
@@ -369,6 +371,12 @@ function AgentFormDialog({
     return sortSyncedTopAgents(filterSyncedTopAgents(principalBrokerFiltered, syncedSearch), syncedSort);
   }, [onlyPrincipalBrokers, onlyUncreated, syncedProfiles, syncedSearch, syncedSort]);
   const selectedSyncedProfile = syncedProfiles.find((profile) => profile.id === form.syncedTopAgentId) ?? null;
+  const sourcePoolTotal = useMemo(() => getSourcePoolTotal(syncedProfiles), [syncedProfiles]);
+  const rankHistoryQuery = trpc.agentSync.rankHistory.useQuery(
+    { syncedTopAgentId: sourceDetailProfile?.id ?? 1 },
+    { enabled: Boolean(sourceDetailProfile) }
+  );
+  const rankHistory = rankHistoryQuery.data ?? [];
   const applySyncedProfile = (sourceId: string) => {
     const selected = syncedProfiles.find((profile) => profile.id === Number(sourceId));
     if (!selected) {
@@ -441,6 +449,7 @@ function AgentFormDialog({
                 <option value="name">Name</option>
               </select>
             </label>
+            {sourcePoolTotal && <span className="ml-3 mt-2 inline-flex rounded-full border border-primary/20 bg-background px-2 py-1 text-[11px] font-semibold text-primary">Source pool: {sourcePoolTotal} ranked agents</span>}
             <select
               id="synced-top-agent"
               value={form.syncedTopAgentId ?? ""}
@@ -499,6 +508,21 @@ function AgentFormDialog({
               <p><strong>Office:</strong> {sourceDetailProfile.brokerage ?? "Not supplied"}</p>
               <p><strong>Principal broker:</strong> {typeof syncedSourceDetail(sourceDetailProfile).principalBrokerName === "string" ? syncedSourceDetail(sourceDetailProfile).principalBrokerName as string : "Not supplied"}</p>
               <p><strong>Contact:</strong> {[sourceDetailProfile.email, sourceDetailProfile.phone].filter(Boolean).join(" · ") || "Not supplied"}</p>
+              <div className="rounded-md border border-border bg-muted/20 p-3">
+                <p className="font-semibold text-foreground">Private rank trend</p>
+                {rankHistoryQuery.isLoading ? (
+                  <p className="mt-1 text-xs text-muted-foreground">Loading source snapshots…</p>
+                ) : rankHistory.length ? (
+                  <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+                    {[...rankHistory].reverse().map((snapshot) => (
+                      <div key={snapshot.id} className="min-w-[86px] rounded border border-border bg-background px-2 py-1.5 text-center">
+                        <p className="text-sm font-bold text-primary">#{snapshot.sourceRank ?? "—"}{snapshot.rankTotal ? `/${snapshot.rankTotal}` : ""}</p>
+                        <p className="mt-1 text-[10px] text-muted-foreground">{new Date(snapshot.capturedAt).toLocaleDateString()}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : <p className="mt-1 text-xs text-muted-foreground">The first saved refresh will establish this agent’s trend baseline.</p>}
+              </div>
             </div>}
           </DialogContent>
         </Dialog>
@@ -656,6 +680,7 @@ export default function AgentSettings() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<AgentRow | null>(null);
   const [deleting, setDeleting] = useState<AgentRow | null>(null);
+  const [lastRankMovements, setLastRankMovements] = useState<RankMovementSummary[]>([]);
 
   const utils = trpc.useUtils();
   const refreshAgents = () => {
@@ -668,7 +693,12 @@ export default function AgentSettings() {
     onSuccess: (result) => {
       syncedProfilesQuery.refetch();
       reviewQueueQuery.refetch();
-      toast.success(`Synced ${result.count} Oregon Top Agent profiles.`);
+      const movements = result.movedAgents ?? [];
+      setLastRankMovements(movements);
+      toast.success(movements.length
+        ? `Synced ${result.count} Oregon profiles; ${movements.length} rank change${movements.length === 1 ? "" : "s"} found.`
+        : `Synced ${result.count} Oregon Top Agent profiles; no rank changes found.`
+      );
     },
     onError: (err) => toast.error(err.message || "Oregon agent sync could not be completed."),
   });
@@ -772,6 +802,25 @@ export default function AgentSettings() {
       <div className="border-b border-border bg-muted/20 px-6 py-2 text-xs text-muted-foreground">
         <strong className="font-semibold text-foreground">Oregon sync:</strong> {syncedSummary.count} private source profile{syncedSummary.count === 1 ? "" : "s"} available for prefill. Synced information stays inside this owner dashboard until you create a partner.
       </div>
+
+      {lastRankMovements.length > 0 && (
+        <div className="border-b border-sky-500/25 bg-sky-500/5 px-6 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground"><TrendingUp className="h-4 w-4 text-sky-700" /> Latest Oregon rank changes</h3>
+              <p className="mt-0.5 text-xs text-muted-foreground">Private summary from the most recent completed sync.</p>
+            </div>
+            <span className="rounded-full border border-sky-600/25 bg-background px-2 py-0.5 text-xs font-semibold text-sky-800">{lastRankMovements.length} changed</span>
+          </div>
+          <div className="mt-2 max-h-36 overflow-y-auto rounded-md border border-sky-500/20 bg-background px-3 py-2 text-xs">
+            {lastRankMovements.map((movement) => (
+              <p key={`${movement.fullName}-${movement.fromRank}-${movement.toRank}`} className="py-0.5 text-foreground">
+                <strong>{movement.fullName}</strong> — {formatRankMovement(movement.fromRank, movement.toRank, movement.rankTotal)}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
 
       {reviewQueue.length > 0 && (
         <div className="border-b border-amber-500/30 bg-amber-500/5 px-6 py-4">

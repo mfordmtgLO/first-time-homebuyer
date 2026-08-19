@@ -64,6 +64,7 @@ import {
   listLeads,
   listLoAgentSpendTrackers,
   listSyncedTopAgents,
+  listSyncedTopAgentRankHistory,
   listSyncedTopAgentReviews,
   listTextMessageDrafts,
   listTextChainByLead,
@@ -1702,6 +1703,12 @@ export const appRouter = router({
         requireAdmin(ctx.user.role);
         return listSyncedTopAgents(ctx.user.id, input?.state ?? "Oregon");
       }),
+    rankHistory: protectedProcedure
+      .input(z.object({ syncedTopAgentId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return listSyncedTopAgentRankHistory(ctx.user.id, input.syncedTopAgentId);
+      }),
     reviewQueue: protectedProcedure.query(async ({ ctx }) => {
       requireAdmin(ctx.user.role);
       return listSyncedTopAgentReviews(ctx.user.id);
@@ -1745,6 +1752,7 @@ export const appRouter = router({
         zillowUrl: profile.zillowUrl,
         headshotUrl: profile.headshotUrl,
         sourceRank: profile.realtrendsRank,
+        rankTotal: profile.rankTotal,
         profileData: JSON.stringify(profile),
         sourceUpdatedAt: new Date(profile.sourceUpdatedAt),
       })));
