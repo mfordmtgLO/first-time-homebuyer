@@ -73,3 +73,9 @@ The storage-safe live request authenticated successfully and returned `502 appli
 The logging build is deployed and loaded in a fresh authenticated dashboard session. The owner-only **Sync Top Agents** control is visible and ready for the diagnostic refresh.
 
 The protected-refresh log identified the exact cause: `The Oregon agent directory returned an unexpected export format.` The combined source intentionally assigns stable negative IDs to derived principal-broker records. The dashboard export schema incorrectly required positive IDs, rejecting every combined refresh even though the records are valid. The schema now accepts any nonzero integer and regression coverage verifies that a negative principal-broker ID is imported through the guarded owner-scoped path.
+
+Checkpoint `7e023181` is deployed. A fresh authenticated dashboard session loaded the existing 97 records, and the owner-only **Sync Top Agents** control is ready for final verification of the corrected combined export parser.
+
+## Final live verification
+
+The owner-authorized dashboard refresh completed successfully on 2026-08-19 at 8:00:56 AM local dashboard time. The UI displayed **“Oregon source profiles refreshed.”** and retained the combined **97 imported** profiles: **60 top agents** and **37 principal brokers**. The refresh completed through the protected JSON path and did not overwrite existing partner records.
