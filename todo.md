@@ -369,3 +369,4 @@
 - [x] Add a compact private source-profile detail drawer for synced Oregon agents
 - [x] Show rank-changed indicators when refreshed Oregon source ranks improve or drop
 - [x] Add synced-agent selector sorting by source rank and office name
+- [x] Correct Oregon source rank denominators so no synced rank can exceed its displayed ranking pool
