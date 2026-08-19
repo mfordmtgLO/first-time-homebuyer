@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { chatCompletionNavigation } from "../shared/chatCompletionNavigation";
+import {
+  chatCompletionNavigation,
+  FULL_FIRST_TIME_HOMEBUYER_URL,
+  propertyChatCompletionNavigation,
+} from "../shared/chatCompletionNavigation";
 
 describe("chat completion navigation", () => {
   it("offers distinct, meaningful next destinations after a completed intake", () => {
@@ -18,6 +22,26 @@ describe("chat completion navigation", () => {
       "Free Roadmap",
       "Your Guide",
     ]);
+  });
+
+  it("uses destinations that exist on a single-property page and offers a full-site exit", () => {
+    expect(propertyChatCompletionNavigation.map((option) => option.targetId)).toEqual([
+      "buydown",
+      "cost-of-waiting",
+      "roadmap",
+      "full-homebuyer-site",
+    ]);
+    expect(FULL_FIRST_TIME_HOMEBUYER_URL).toBe("https://firsttimehomebuyer.manus.space");
+
+    const projectRoot = path.resolve(import.meta.dirname, "..");
+    const propertySource = readFileSync(path.join(projectRoot, "client/src/pages/PropertyLandingPage.tsx"), "utf8");
+    const widgetSource = readFileSync(path.join(projectRoot, "client/src/components/MortgageChatWidget.tsx"), "utf8");
+
+    expect(propertySource).toContain('id="buydown"');
+    expect(propertySource).toContain('id="cost-of-waiting"');
+    expect(propertySource).toContain('id="roadmap"');
+    expect(widgetSource).toContain("propertyChatCompletionNavigation");
+    expect(widgetSource).toContain("window.location.assign(FULL_FIRST_TIME_HOMEBUYER_URL)");
   });
 
   it("keeps Free Roadmap and Your Guide in the compact two-column completion grid", () => {

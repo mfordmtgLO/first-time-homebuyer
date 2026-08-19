@@ -383,3 +383,5 @@
 - [x] Add multi-selection of synced Oregon agents and principal/managing brokers for BCC email drafts
 - [x] Add a signature-complete Oregon outreach draft action with recipient validation and template merge support
 - [x] Diagnose and repair the Oregon Sync Top Agents token failure without overwriting existing synced records
+- [x] Repair non-working completed-chat navigation buttons on public single-property pages
+- [x] Add Cost of Waiting and full First-Time Homebuyer website destinations to single-property completed-chat navigation

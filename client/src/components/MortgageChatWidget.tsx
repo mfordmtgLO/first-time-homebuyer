@@ -5,13 +5,19 @@ import { useScenario } from "@/contexts/ScenarioContext";
 import { trpc } from "@/lib/trpc";
 import { CALENDLY_BOOKING_URL } from "@/lib/booking";
 import { getNextQuestionFocusTarget, hasTranscriptContentBelow } from "@shared/chatFocus";
-import { chatCompletionNavigation, type ChatCompletionNavigationTarget } from "@shared/chatCompletionNavigation";
+import {
+  chatCompletionNavigation,
+  FULL_FIRST_TIME_HOMEBUYER_URL,
+  propertyChatCompletionNavigation,
+  type ChatCompletionNavigationTarget,
+  type PropertyChatCompletionNavigationTarget,
+} from "@shared/chatCompletionNavigation";
 import { shouldHideMobileChatLauncher } from "@shared/chatLauncherVisibility";
 import { getMobileChatLauncherPresentation } from "@shared/chatLauncherPresentation";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
-import { ArrowRight, BookOpen, Calculator, CalendarDays, CheckCircle2, ChevronDown, Clock3, MessageCircle, Minus, RotateCcw, ShieldCheck, X } from "lucide-react";
+import { ArrowRight, BookOpen, Calculator, CalendarDays, CheckCircle2, ChevronDown, Clock3, Home, MessageCircle, Minus, RotateCcw, ShieldCheck, X } from "lucide-react";
 import { emitFunnelConversion, getCampaignAttribution } from "@/lib/campaignTracking";
 
 const SESSION_STORAGE_KEY = "mortgage-intake-session";
@@ -216,7 +222,13 @@ export default function MortgageChatWidget() {
     answer.mutate({ sessionId, message: content });
   };
 
-  const continueToSiteSection = (targetId: ChatCompletionNavigationTarget) => {
+  const completionNavigation = propertyPageSlug ? propertyChatCompletionNavigation : chatCompletionNavigation;
+
+  const continueToSiteSection = (targetId: ChatCompletionNavigationTarget | PropertyChatCompletionNavigationTarget) => {
+    if (targetId === "full-homebuyer-site") {
+      window.location.assign(FULL_FIRST_TIME_HOMEBUYER_URL);
+      return;
+    }
     setOpen(false);
     setMinimized(false);
     window.requestAnimationFrame(() => {
@@ -385,8 +397,14 @@ export default function MortgageChatWidget() {
               <div className="mt-5 w-full max-w-sm border-t border-border/70 pt-4 text-left">
                 <p className="text-center text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Keep exploring</p>
                 <div className="mt-3 grid grid-cols-2 gap-2">
-                  {chatCompletionNavigation.map((option) => {
-                    const Icon = option.targetId === "buydown" ? Calculator : option.targetId === "cost-of-waiting" ? Clock3 : BookOpen;
+                  {completionNavigation.map((option) => {
+                    const Icon = option.targetId === "buydown"
+                      ? Calculator
+                      : option.targetId === "cost-of-waiting"
+                        ? Clock3
+                        : option.targetId === "full-homebuyer-site"
+                          ? Home
+                          : BookOpen;
                     return (
                       <Button
                         key={option.targetId}

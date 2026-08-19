@@ -158,8 +158,11 @@ export default function PropertyLandingPage() {
                 </aside>
               </div>
             </section>
-            <div id="payment-scenarios"><Buydown /><CostOfWaiting /></div>
-            <LeadMagnet />
+            <div id="payment-scenarios">
+              <div id="buydown" className="scroll-mt-24"><Buydown /></div>
+              <div id="cost-of-waiting" className="scroll-mt-24"><CostOfWaiting /></div>
+            </div>
+            <div id="roadmap" className="scroll-mt-24"><LeadMagnet /></div>
           </main>
           <Footer />
           <MortgageChatWidget />
