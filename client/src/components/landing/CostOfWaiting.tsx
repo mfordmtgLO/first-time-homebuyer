@@ -4,7 +4,8 @@ import { computeCostOfWaiting } from "@shared/costOfWaiting";
 import { useScenario } from "@/contexts/ScenarioContext";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
-import { ArrowRight, FileDown, Info } from "lucide-react";
+import { ArrowRight, FileDown, Info, Share2 } from "lucide-react";
+import { toast } from "sonner";
 import {
   Popover,
   PopoverContent,
@@ -131,6 +132,13 @@ function AppreciationHistoryInfo() {
   );
 }
 
+function FiveYearComparisonTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ dataKey?: string; value?: number }>; label?: string }) {
+  if (!active || !payload?.length) return null;
+  const rent = payload.find((entry) => entry.dataKey === "rentWhileWaiting")?.value ?? 0;
+  const equity = payload.find((entry) => entry.dataKey === "equityIfBuyNow")?.value ?? 0;
+  return <div className="rounded-md border border-white/15 bg-[oklch(0.22_0.04_155)] px-3 py-2.5 text-xs shadow-xl"><p className="font-semibold text-white">{label}</p><p className="mt-1.5 text-[oklch(0.8_0.1_25)]">Rent paid while waiting: {fmtUsd(rent)}</p><p className="mt-1 text-[oklch(0.85_0.11_80)]">Equity if buying now: {fmtUsd(equity)}</p><p className="mt-1.5 border-t border-white/10 pt-1.5 font-semibold text-white">Financial difference: {fmtUsd(Math.max(rent + equity, 0))}</p></div>;
+}
+
 type CostOfWaitingProps = {
   purchasePrice?: number;
   propertyAddress?: string;
@@ -226,6 +234,23 @@ export default function CostOfWaiting({ purchasePrice: prefilledPurchasePrice = 
     if (!Number.isFinite(v)) return;
     const clamped = Math.min(Math.max(v, 0), purchasePrice);
     setDownPct(purchasePrice > 0 ? (clamped / purchasePrice) * 100 : 0);
+  };
+
+  const shareCalculation = async () => {
+    const heading = propertyAddress ? `Cost of Waiting for ${propertyAddress}` : "Cost of Waiting calculation";
+    const summary = `${heading}: Waiting ${waitYears} ${waitYears === 1 ? "year" : "years"} estimates ${fmtUsd(Math.max(result.costOfWaiting, 0))} in rent paid plus equity missed. Rent paid: ${fmtUsd(result.totalRentPaid)}. Equity if buying now: ${fmtUsd(Math.max(result.equityGained, 0))}.`;
+    const url = `${window.location.href.split("#")[0]}#cost-of-waiting`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: heading, text: summary, url });
+        return;
+      }
+      await navigator.clipboard.writeText(`${summary}\n${url}`);
+      toast.success("Cost of Waiting summary copied for sharing.");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      toast.error("Unable to share this calculation. Please try again.");
+    }
   };
 
   return (
@@ -534,7 +559,7 @@ export default function CostOfWaiting({ purchasePrice: prefilledPurchasePrice = 
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="oklch(1 0 0 / 0.1)" />
                   <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "oklch(1 0 0 / 0.6)" }} />
                   <YAxis hide domain={[0, (dataMax: number) => dataMax * 1.12]} />
-                  <Tooltip formatter={(value: number) => fmtUsd(value)} contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 0.15)", borderRadius: 8, color: "white" }} labelStyle={{ color: "oklch(1 0 0 / 0.7)" }} />
+                  <Tooltip content={<FiveYearComparisonTooltip />} />
                   <Legend formatter={(value: string) => <span style={{ color: "oklch(1 0 0 / 0.7)", fontSize: 12 }}>{value === "rentWhileWaiting" ? "Rent paid while waiting" : "Equity if buying now"}</span>} />
                   <Line type="monotone" dataKey="rentWhileWaiting" stroke={COLORS.rent} strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 5 }} />
                   <Line type="monotone" dataKey="equityIfBuyNow" stroke={COLORS.equity} strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 5 }} />
@@ -550,6 +575,13 @@ export default function CostOfWaiting({ purchasePrice: prefilledPurchasePrice = 
               annual rate. Not a loan offer or rate quote.
             </p>
             <div className="flex flex-col gap-2.5 sm:items-end">
+              <button
+                type="button"
+                onClick={shareCalculation}
+                className="btn-press inline-flex items-center justify-center gap-2 rounded-md border border-white/25 bg-white/[0.06] px-5 py-3 text-sm font-semibold text-white hover:bg-white/[0.12] whitespace-nowrap"
+              >
+                Share this calculation <Share2 className="h-4 w-4" />
+              </button>
               <button
                 type="button"
                 onClick={attachAndGoToForm}

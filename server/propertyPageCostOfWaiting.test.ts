@@ -9,11 +9,15 @@ describe("single-property Cost of Waiting section", () => {
     expect(page).toContain('background: "oklch(0.27 0.05 162)"');
     expect(page).toContain("What could waiting cost you while this opportunity changes?");
     expect(page).toContain("<CostOfWaiting purchasePrice={snapshot.price ?? undefined} propertyAddress={snapshot.address} />");
+    expect(page).toContain("<Buydown purchasePrice={snapshot.price ?? undefined} />");
     expect(page).toContain("PropertySectionNavigator");
     expect(page).toContain('new Event("open-mortgage-chat")');
+    expect(page).toContain("window.addEventListener(\"scroll\", updateActiveSection");
     expect(calculator).toContain("prefilledPurchasePrice");
     expect(calculator).toContain("For {propertyAddress}");
     expect(calculator).toContain("Five-year buy-now vs. wait lens");
     expect(calculator).toContain("LineChart");
+    expect(calculator).toContain("Share this calculation");
+    expect(calculator).toContain("FiveYearComparisonTooltip");
   });
 });

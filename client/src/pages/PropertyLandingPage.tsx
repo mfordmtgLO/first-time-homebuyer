@@ -77,15 +77,18 @@ function PropertySectionNavigator() {
       .filter((section) => section.id !== "chat-intake")
       .map((section) => document.getElementById(section.id))
       .filter((section): section is HTMLElement => Boolean(section));
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.filter((entry) => entry.isIntersecting).sort((left, right) => right.intersectionRatio - left.intersectionRatio)[0];
-        if (visible) setActiveSection(visible.target.id);
-      },
-      { rootMargin: "-25% 0px -65% 0px", threshold: [0.1, 0.4] }
-    );
-    observedSections.forEach((section) => observer.observe(section));
-    return () => observer.disconnect();
+    const updateActiveSection = () => {
+      const scanLine = window.scrollY + 132;
+      const current = observedSections.reduce<string>((active, section) => section.offsetTop <= scanLine ? section.id : active, observedSections[0]?.id ?? "property-details");
+      setActiveSection(current);
+    };
+    updateActiveSection();
+    window.addEventListener("scroll", updateActiveSection, { passive: true });
+    window.addEventListener("resize", updateActiveSection);
+    return () => {
+      window.removeEventListener("scroll", updateActiveSection);
+      window.removeEventListener("resize", updateActiveSection);
+    };
   }, []);
 
   const navigate = (id: (typeof PROPERTY_NAV_SECTIONS)[number]["id"]) => {
@@ -93,6 +96,7 @@ function PropertySectionNavigator() {
       window.dispatchEvent(new Event("open-mortgage-chat"));
       return;
     }
+    setActiveSection(id);
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
@@ -198,7 +202,7 @@ export default function PropertyLandingPage() {
               </div>
             </section>
             <div id="payment-scenarios">
-              <div id="buydown" className="scroll-mt-24"><Buydown /></div>
+              <div id="buydown" className="scroll-mt-24"><Buydown purchasePrice={snapshot.price ?? undefined} /></div>
             </div>
             <section id="cost-of-waiting" className="scroll-mt-24 py-16 text-primary-foreground md:py-20" style={{ background: "oklch(0.27 0.05 162)" }}>
               <div className="container">

@@ -414,3 +414,7 @@
 - [x] Prefill single-property Cost of Waiting purchase price from the saved property snapshot and identify the property in the calculator
 - [x] Add a compact sticky section navigator to public single-property pages
 - [x] Add a five-year buy-now-versus-wait comparison visual to the single-property Cost of Waiting experience
+- [x] Prefill the single-property 2-1 Buydown calculator purchase price from the saved property snapshot
+- [x] Add a share action for current single-property Cost of Waiting calculation results
+- [x] Show exact year-by-year amounts in five-year Cost of Waiting chart tooltips
+- [x] Ensure the sticky single-property navigator highlights the active scroll section

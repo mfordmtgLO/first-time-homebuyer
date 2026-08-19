@@ -31,11 +31,15 @@ const BAR_COLORS = {
   note: "oklch(0.32 0.06 155)", // evergreen
 };
 
-export default function Buydown() {
+type BuydownProps = {
+  purchasePrice?: number;
+};
+
+export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000 }: BuydownProps) {
   const ref = useReveal<HTMLElement>();
   const { setScenario, setAttached } = useScenario();
 
-  const [purchasePrice, setPurchasePrice] = useState(450000);
+  const [purchasePrice, setPurchasePrice] = useState(prefilledPurchasePrice);
   const [downPct, setDownPct] = useState(5); // slider drives percentage
   const [downMode, setDownMode] = useState<"percent" | "dollar">("percent");
   const [noteRate, setNoteRate] = useState(6.5);
