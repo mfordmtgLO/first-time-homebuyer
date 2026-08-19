@@ -409,3 +409,5 @@
 - [x] Persist the weekly property engagement sort preference for each dashboard owner
 - [x] Add a minimum-activity filter to weekly conversion ranking
 - [x] Add per-property co-branded agent conversion comparison context to the weekly widget
+- [x] Add the Cost of Waiting calculator section to public single-property pages
+- [x] Verify completed-chat Cost of Waiting navigation reaches the live single-property calculator section

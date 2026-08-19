@@ -90,7 +90,7 @@ export default function PropertyLandingPage() {
       <ScenarioProvider>
         <div className="min-h-screen bg-background text-foreground">
           <PropertyActivityTracker slug={data.page.slug} />
-          <style>{`@media print { header, footer, #payment-scenarios, .property-print-hide, [data-chat-launcher] { display: none !important; } main { color: #111 !important; } }`}</style>
+          <style>{`@media print { header, footer, #payment-scenarios, #cost-of-waiting, .property-print-hide, [data-chat-launcher] { display: none !important; } main { color: #111 !important; } }`}</style>
           <header className="property-print-hide border-b border-border bg-card/95 backdrop-blur">
             <div className="container flex flex-wrap items-center justify-between gap-3 py-4">
               <a href="/" className="font-display text-lg font-semibold text-primary">First-Time Homebuyer</a>
@@ -160,8 +160,17 @@ export default function PropertyLandingPage() {
             </section>
             <div id="payment-scenarios">
               <div id="buydown" className="scroll-mt-24"><Buydown /></div>
-              <div id="cost-of-waiting" className="scroll-mt-24"><CostOfWaiting /></div>
             </div>
+            <section id="cost-of-waiting" className="scroll-mt-24 py-16 text-primary-foreground md:py-20" style={{ background: "oklch(0.27 0.05 162)" }}>
+              <div className="container">
+                <div className="max-w-3xl">
+                  <p className="text-sm font-medium uppercase tracking-[0.18em] text-[oklch(0.82_0.12_80)]">Build a plan around this home</p>
+                  <h2 className="mt-3 font-display text-3xl font-semibold leading-tight md:text-4xl">What could waiting cost you while this opportunity changes?</h2>
+                  <p className="mt-4 max-w-2xl leading-relaxed text-primary-foreground/75">Use the calculator below to compare rent paid with the home equity you could build. The estimate is educational and can be saved with your Roadmap request for a conversation about this saved property.</p>
+                </div>
+                <CostOfWaiting />
+              </div>
+            </section>
             <div id="roadmap" className="scroll-mt-24"><LeadMagnet /></div>
           </main>
           <Footer />
