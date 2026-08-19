@@ -396,3 +396,6 @@
 - [x] Add date-range filtering to single-property engagement counts in dashboard lead sources
 - [x] Show each property page’s most recent activity type and timestamp beside engagement context
 - [x] Make property engagement counts open a detailed timeline for that specific saved property page
+- [x] Add event-type filtering inside detailed property engagement timelines
+- [x] Add CSV export for filtered property engagement timeline activity
+- [x] Add a weekly single-property engagement summary widget to the main dashboard

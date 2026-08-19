@@ -1502,6 +1502,30 @@ export async function listPropertyPageActivity(propertyLandingPageId: number, ac
     .limit(100);
 }
 
+/** Owner-facing weekly ranking of active saved property pages by privacy-minimized page activity. */
+export async function listWeeklyPropertyPageEngagement(limit = 5) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const weeklyActivityCount = sql<number>`coalesce((select count(*) from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} and ${propertyPageActivity.createdAt} >= ${since}), 0)`.mapWith(Number);
+  const latestActivityType = sql<string | null>`(select ${propertyPageActivity.eventType} from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} and ${propertyPageActivity.createdAt} >= ${since} order by ${propertyPageActivity.createdAt} desc, ${propertyPageActivity.id} desc limit 1)`;
+  const latestActivityAt = sql<Date | null>`(select ${propertyPageActivity.createdAt} from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} and ${propertyPageActivity.createdAt} >= ${since} order by ${propertyPageActivity.createdAt} desc, ${propertyPageActivity.id} desc limit 1)`;
+
+  return db
+    .select({
+      id: propertyLandingPage.id,
+      address: propertyLandingPage.address,
+      slug: propertyLandingPage.slug,
+      weeklyActivityCount,
+      latestActivityType,
+      latestActivityAt,
+    })
+    .from(propertyLandingPage)
+    .where(eq(propertyLandingPage.isActive, 1))
+    .orderBy(desc(weeklyActivityCount), asc(propertyLandingPage.address))
+    .limit(Math.min(Math.max(limit, 1), 10));
+}
+
 export async function updatePropertyLandingPageAiSummary(input: { id: number; aiSummary: string | null }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

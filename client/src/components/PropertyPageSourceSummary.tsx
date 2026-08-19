@@ -1,7 +1,9 @@
-import { useState } from "react";
-import { Activity, ChevronDown, Copy, ExternalLink, House, ImageOff, Loader2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Activity, ChevronDown, Copy, Download, ExternalLink, House, ImageOff, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { formatPropertyActivityCount, formatPropertyPairingSummary, getPropertyStreetAddress } from "@shared/propertyLeadSource";
 import { formatPropertyActivityType, PROPERTY_ACTIVITY_RANGE_LABELS, type PropertyActivityRange } from "@shared/propertyActivity";
@@ -22,6 +24,10 @@ type PropertyPageSourceSummaryProps = {
   agentName: string | null;
 };
 
+function csvEscape(value: unknown) {
+  return `"${String(value ?? "").replace(/"/g, '""')}"`;
+}
+
 /** A compact source-cell control that keeps property-page attribution and period-scoped engagement readable in dashboard tables. */
 export default function PropertyPageSourceSummary({
   propertyLandingPageId,
@@ -37,6 +43,7 @@ export default function PropertyPageSourceSummary({
 }: PropertyPageSourceSummaryProps) {
   const [expanded, setExpanded] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(false);
+  const [eventTypeFilter, setEventTypeFilter] = useState("all");
   const streetAddress = getPropertyStreetAddress(address);
   const pairingSummary = formatPropertyPairingSummary(loanOfficerName, agentName);
   const propertyUrl = propertyPageSlug ? publicSiteUrl(`/property/${propertyPageSlug}`) : null;
@@ -50,6 +57,14 @@ export default function PropertyPageSourceSummary({
   const latestActivityLabel = latestActivityAt
     ? `${formatPropertyActivityType(latestActivityType)} · ${new Date(latestActivityAt).toLocaleString()}`
     : "No activity in this period";
+  const eventTypeOptions = useMemo(
+    () => Array.from(new Set((timeline.data ?? []).map((event) => event.eventType))).sort(),
+    [timeline.data],
+  );
+  const filteredTimeline = useMemo(
+    () => (timeline.data ?? []).filter((event) => eventTypeFilter === "all" || event.eventType === eventTypeFilter),
+    [timeline.data, eventTypeFilter],
+  );
 
   const copyToClipboard = async (value: string, successMessage: string) => {
     try {
@@ -58,6 +73,20 @@ export default function PropertyPageSourceSummary({
     } catch {
       toast.error("Unable to copy. Please select and copy the text instead.");
     }
+  };
+
+  const downloadTimelineCsv = () => {
+    const csv = [
+      ["Property address", "Activity type", "Detail", "Timestamp"],
+      ...filteredTimeline.map((event) => [address, formatPropertyActivityType(event.eventType), event.detail ?? "", new Date(event.createdAt).toLocaleString()]),
+    ].map((row) => row.map(csvEscape).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${propertyPageSlug ?? "property"}-engagement-${activityRange}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success("Filtered engagement timeline exported.");
   };
 
   const activityButton = (className: string) => (
@@ -127,11 +156,22 @@ export default function PropertyPageSourceSummary({
             <DialogTitle>{streetAddress} engagement timeline</DialogTitle>
             <DialogDescription>Owner-only, privacy-minimized page activity for {periodLabel.toLowerCase()}.</DialogDescription>
           </DialogHeader>
-          {timeline.isLoading ? <div className="flex justify-center py-8 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div> : timeline.data?.length ? (
-            <ol className="space-y-2 py-1">
-              {timeline.data.map((event) => <li key={event.id} className="rounded-md border border-border bg-muted/40 px-3 py-2"><p className="font-medium text-foreground">{formatPropertyActivityType(event.eventType)}</p><p className="text-xs text-muted-foreground">{new Date(event.createdAt).toLocaleString()}{event.detail ? ` · ${event.detail}` : ""}</p></li>)}
-            </ol>
-          ) : <p className="py-8 text-center text-sm text-muted-foreground">No property-page activity was recorded for this period.</p>}
+          {timeline.isLoading ? <div className="flex justify-center py-8 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div> : (
+            <>
+              <div className="flex flex-col gap-2 border-y border-border/70 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <Select value={eventTypeFilter} onValueChange={setEventTypeFilter}>
+                  <SelectTrigger className="h-8 w-full text-xs sm:w-56" aria-label="Filter property timeline by activity type"><SelectValue placeholder="All activity types" /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All activity types</SelectItem>{eventTypeOptions.map((eventType) => <SelectItem key={eventType} value={eventType}>{formatPropertyActivityType(eventType)}</SelectItem>)}</SelectContent>
+                </Select>
+                <Button variant="outline" size="sm" className="h-8 text-xs" onClick={downloadTimelineCsv} disabled={filteredTimeline.length === 0}><Download className="mr-1.5 h-3.5 w-3.5" /> Export filtered CSV</Button>
+              </div>
+              {filteredTimeline.length ? (
+                <ol className="space-y-2 py-3">
+                  {filteredTimeline.map((event) => <li key={event.id} className="rounded-md border border-border bg-muted/40 px-3 py-2"><p className="font-medium text-foreground">{formatPropertyActivityType(event.eventType)}</p><p className="text-xs text-muted-foreground">{new Date(event.createdAt).toLocaleString()}{event.detail ? ` · ${event.detail}` : ""}</p></li>)}
+                </ol>
+              ) : <p className="py-8 text-center text-sm text-muted-foreground">No matching property-page activity was recorded for this period.</p>}
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>

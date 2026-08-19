@@ -52,6 +52,7 @@ import {
   listListingAgentEmailTemplates,
   listPropertyEmailTemplates,
   listPropertyLandingPages,
+  listWeeklyPropertyPageEngagement,
   listPropertyPageAgentEmailTemplates,
   loanOfficerSlugTaken,
   recordChatIntakeResendAttempt,
@@ -1350,6 +1351,10 @@ export const appRouter = router({
     list: protectedProcedure.query(async ({ ctx }) => {
       requireAdmin(ctx.user.role);
       return listPropertyLandingPages();
+    }),
+    weeklyEngagement: protectedProcedure.query(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      return listWeeklyPropertyPageEngagement();
     }),
     activity: protectedProcedure
       .input(z.object({ propertyLandingPageId: z.number().int().positive(), activityRange: z.enum(PROPERTY_ACTIVITY_RANGES).optional() }))
