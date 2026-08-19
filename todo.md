@@ -387,3 +387,6 @@
 - [x] Add Cost of Waiting and full First-Time Homebuyer website destinations to single-property completed-chat navigation
 - [x] Compact single-property website source labels in dashboard lead tables to street address and inline LO-agent context
 - [x] Add expandable single-property source details with the full property-page URL and co-brand pairing information
+- [x] Add one-click copy control for expanded single-property page URLs
+- [x] Add single-property website source filters to Roadmap and Mortgage Chat Intake lead tables
+- [x] Show a saved property thumbnail in expanded single-property source details when available

@@ -145,6 +145,7 @@ export async function listLeads() {
       agentSlug: agentProfile.slug,
       propertyPageAddress: propertyLandingPage.address,
       propertyPageSlug: propertyLandingPage.slug,
+      propertyPageListingSnapshot: propertyLandingPage.listingSnapshot,
     })
     .from(leads)
     .leftJoin(loanOfficer, eq(leads.loanOfficerId, loanOfficer.id))
@@ -723,6 +724,7 @@ export async function listChatIntakeLeads() {
       agentSlug: agentProfile.slug,
       propertyPageAddress: propertyLandingPage.address,
       propertyPageSlug: propertyLandingPage.slug,
+      propertyPageListingSnapshot: propertyLandingPage.listingSnapshot,
     })
     .from(chatIntakeLead)
     .leftJoin(loanOfficer, eq(chatIntakeLead.loanOfficerId, loanOfficer.id))
@@ -730,7 +732,7 @@ export async function listChatIntakeLeads() {
     .leftJoin(propertyLandingPage, eq(chatIntakeLead.propertyPageId, propertyLandingPage.id))
     .orderBy(desc(chatIntakeLead.updatedAt));
 
-  return rows.map(({ lead, loanOfficerName, loanOfficerSlug, agentName, agentSlug, propertyPageAddress, propertyPageSlug }) => ({
+  return rows.map(({ lead, loanOfficerName, loanOfficerSlug, agentName, agentSlug, propertyPageAddress, propertyPageSlug, propertyPageListingSnapshot }) => ({
     ...lead,
     loanOfficerName: loanOfficerName ?? null,
     loanOfficerSlug: loanOfficerSlug ?? null,
@@ -738,6 +740,7 @@ export async function listChatIntakeLeads() {
     agentSlug: agentSlug ?? null,
     propertyPageAddress: propertyPageAddress ?? null,
     propertyPageSlug: propertyPageSlug ?? null,
+    propertyPageListingSnapshot: propertyPageListingSnapshot ?? null,
     isCoBranded: Boolean(lead.loanOfficerId && lead.agentId),
   }));
 }

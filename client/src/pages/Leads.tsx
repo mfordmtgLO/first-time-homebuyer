@@ -482,6 +482,7 @@ export default function Leads() {
   const [loanOfficerFilter, setLoanOfficerFilter] = useState("all");
   const [agentFilter, setAgentFilter] = useState("all");
   const [campaignFilter, setCampaignFilter] = useState("all");
+  const [propertySourceFilter, setPropertySourceFilter] = useState<"all" | "single-property">("all");
 
   const leadsQuery = trpc.leads.list.useQuery(undefined, {
     enabled: isAuthenticated && isAdmin,
@@ -532,6 +533,7 @@ export default function Leads() {
       if (agentFilter !== "all" && !matchesSelectedCoBrandPair(l, loanOfficerFilter, agentFilter)) return false;
       const campaign = [l.utmSource, l.utmMedium, l.utmCampaign].filter(Boolean).join(" · ") || "Direct / untagged";
       if (campaignFilter !== "all" && campaign !== campaignFilter) return false;
+      if (propertySourceFilter === "single-property" && !l.propertyPageAddress) return false;
       if (!q) return true;
       return (
         l.firstName.toLowerCase().includes(q) ||
@@ -543,9 +545,9 @@ export default function Leads() {
         (l.agentName ?? "").toLowerCase().includes(q)
       );
     });
-  }, [leads, search, statusFilter, loanOfficerFilter, agentFilter, campaignFilter]);
+  }, [leads, search, statusFilter, loanOfficerFilter, agentFilter, campaignFilter, propertySourceFilter]);
 
-  const isFiltered = search.trim() !== "" || statusFilter !== "all" || loanOfficerFilter !== "all" || agentFilter !== "all" || campaignFilter !== "all";
+  const isFiltered = search.trim() !== "" || statusFilter !== "all" || loanOfficerFilter !== "all" || agentFilter !== "all" || campaignFilter !== "all" || propertySourceFilter !== "all";
 
   const utils = trpc.useUtils();
   const updateStatus = trpc.leads.updateStatus.useMutation({
@@ -788,6 +790,10 @@ export default function Leads() {
                   <SelectTrigger className="h-9 w-full bg-card text-xs sm:w-[210px]" aria-label="Filter Roadmap leads by campaign attribution"><SelectValue placeholder="All campaigns" /></SelectTrigger>
                   <SelectContent><SelectItem value="all">All campaigns</SelectItem>{campaignOptions.map((campaign) => <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>)}</SelectContent>
                 </Select>
+                <Select value={propertySourceFilter} onValueChange={(value) => setPropertySourceFilter(value as typeof propertySourceFilter)}>
+                  <SelectTrigger className="h-9 w-full bg-card text-xs sm:w-[190px]" aria-label="Filter Roadmap leads by source type"><SelectValue placeholder="All lead sources" /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All lead sources</SelectItem><SelectItem value="single-property">Single-property website</SelectItem></SelectContent>
+                </Select>
                 {isFiltered && (
                   <Button
                     variant="ghost"
@@ -798,6 +804,7 @@ export default function Leads() {
                       setLoanOfficerFilter("all");
                       setAgentFilter("all");
                       setCampaignFilter("all");
+                      setPropertySourceFilter("all");
                     }}
                   >
                     Clear filters
@@ -840,6 +847,7 @@ export default function Leads() {
                       setLoanOfficerFilter("all");
                       setAgentFilter("all");
                       setCampaignFilter("all");
+                      setPropertySourceFilter("all");
                     }}
                   >
                     Clear filters
@@ -887,6 +895,7 @@ export default function Leads() {
                               <PropertyPageSourceSummary
                                 address={lead.propertyPageAddress}
                                 propertyPageSlug={lead.propertyPageSlug}
+                                listingSnapshot={lead.propertyPageListingSnapshot}
                                 loanOfficerName={lead.loanOfficerName}
                                 agentName={lead.agentName}
                               />
