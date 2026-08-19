@@ -411,3 +411,6 @@
 - [x] Add per-property co-branded agent conversion comparison context to the weekly widget
 - [x] Add the Cost of Waiting calculator section to public single-property pages
 - [x] Verify completed-chat Cost of Waiting navigation reaches the live single-property calculator section
+- [x] Prefill single-property Cost of Waiting purchase price from the saved property snapshot and identify the property in the calculator
+- [x] Add a compact sticky section navigator to public single-property pages
+- [x] Add a five-year buy-now-versus-wait comparison visual to the single-property Cost of Waiting experience

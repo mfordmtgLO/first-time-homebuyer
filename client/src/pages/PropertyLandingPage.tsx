@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRoute } from "wouter";
 import { AgentPageProvider } from "@/contexts/AgentPageContext";
 import { ScenarioProvider, useScenario } from "@/contexts/ScenarioContext";
@@ -61,6 +61,44 @@ function PropertyActivityTracker({ slug }: { slug: string }) {
   return null;
 }
 
+const PROPERTY_NAV_SECTIONS = [
+  { id: "property-details", label: "Property details" },
+  { id: "buydown", label: "2-1 Buydown" },
+  { id: "cost-of-waiting", label: "Cost of Waiting" },
+  { id: "roadmap", label: "Roadmap" },
+  { id: "chat-intake", label: "Chat intake" },
+] as const;
+
+function PropertySectionNavigator() {
+  const [activeSection, setActiveSection] = useState<string>("property-details");
+
+  useEffect(() => {
+    const observedSections = PROPERTY_NAV_SECTIONS
+      .filter((section) => section.id !== "chat-intake")
+      .map((section) => document.getElementById(section.id))
+      .filter((section): section is HTMLElement => Boolean(section));
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.filter((entry) => entry.isIntersecting).sort((left, right) => right.intersectionRatio - left.intersectionRatio)[0];
+        if (visible) setActiveSection(visible.target.id);
+      },
+      { rootMargin: "-25% 0px -65% 0px", threshold: [0.1, 0.4] }
+    );
+    observedSections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, []);
+
+  const navigate = (id: (typeof PROPERTY_NAV_SECTIONS)[number]["id"]) => {
+    if (id === "chat-intake") {
+      window.dispatchEvent(new Event("open-mortgage-chat"));
+      return;
+    }
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  return <nav aria-label="Property page sections" className="sticky top-0 z-30 border-b border-border bg-card/95 shadow-sm backdrop-blur property-print-hide"><div className="container overflow-x-auto"><div className="flex min-w-max items-center gap-1 py-2">{PROPERTY_NAV_SECTIONS.map((section) => <button key={section.id} type="button" onClick={() => navigate(section.id)} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${section.id === "chat-intake" ? "bg-primary text-primary-foreground hover:brightness-110" : activeSection === section.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>{section.label}</button>)}</div></div></nav>;
+}
+
 export default function PropertyLandingPage() {
   const [, params] = useRoute("/property/:slug");
   const slug = params?.slug?.toLowerCase() ?? "";
@@ -101,6 +139,7 @@ export default function PropertyLandingPage() {
             </div>
           </header>
           <main>
+            <PropertySectionNavigator />
             <section className="border-b border-border bg-[linear-gradient(135deg,oklch(0.96_0.025_84),oklch(0.91_0.04_145))] py-10 md:py-16">
               <div className="container grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
                 <div>
@@ -136,7 +175,7 @@ export default function PropertyLandingPage() {
               </div>
             </section>
 
-            <section className="py-12 md:py-16">
+            <section id="property-details" className="scroll-mt-24 py-12 md:py-16">
               <div className="container grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
                 <div className="rounded-2xl border border-border bg-card p-6 shadow-sm md:p-8">
                   <div className="flex items-center gap-2"><SquareStack className="h-5 w-5 text-primary" /><h2 className="font-display text-2xl font-semibold">Saved property details</h2></div>
@@ -168,7 +207,7 @@ export default function PropertyLandingPage() {
                   <h2 className="mt-3 font-display text-3xl font-semibold leading-tight md:text-4xl">What could waiting cost you while this opportunity changes?</h2>
                   <p className="mt-4 max-w-2xl leading-relaxed text-primary-foreground/75">Use the calculator below to compare rent paid with the home equity you could build. The estimate is educational and can be saved with your Roadmap request for a conversation about this saved property.</p>
                 </div>
-                <CostOfWaiting />
+                <CostOfWaiting purchasePrice={snapshot.price ?? undefined} propertyAddress={snapshot.address} />
               </div>
             </section>
             <div id="roadmap" className="scroll-mt-24"><LeadMagnet /></div>

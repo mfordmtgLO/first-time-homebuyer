@@ -16,7 +16,10 @@ import {
   CartesianGrid,
   LabelList,
   Legend,
+  Line,
+  LineChart,
   ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
@@ -128,11 +131,16 @@ function AppreciationHistoryInfo() {
   );
 }
 
-export default function CostOfWaiting() {
+type CostOfWaitingProps = {
+  purchasePrice?: number;
+  propertyAddress?: string;
+};
+
+export default function CostOfWaiting({ purchasePrice: prefilledPurchasePrice = 400000, propertyAddress }: CostOfWaitingProps) {
   const { setCowScenario, setCowAttached } = useScenario();
   const [waitYears, setWaitYears] = useState(3);
   const [monthlyRent, setMonthlyRent] = useState(1800);
-  const [purchasePrice, setPurchasePrice] = useState(400000);
+  const [purchasePrice, setPurchasePrice] = useState(prefilledPurchasePrice);
   const [downMode, setDownMode] = useState<"percent" | "dollar">("percent");
   const [downPct, setDownPct] = useState(0); // starts at zero down
   const [interestRate, setInterestRate] = useState(6.5);
@@ -156,6 +164,19 @@ export default function CostOfWaiting() {
         rentIncreaseRate: rentIncrease,
       }),
     [waitYears, monthlyRent, purchasePrice, downDollars, interestRate, appreciation, rentIncrease]
+  );
+
+  const fiveYearResult = useMemo(
+    () => computeCostOfWaiting({
+      waitYears: 5,
+      monthlyRent,
+      purchasePrice,
+      downPayment: downDollars,
+      interestRate,
+      appreciationRate: appreciation,
+      rentIncreaseRate: rentIncrease,
+    }),
+    [monthlyRent, purchasePrice, downDollars, interestRate, appreciation, rentIncrease]
   );
 
   // Keep the shared cost-of-waiting scenario in sync with the latest run so
@@ -191,6 +212,15 @@ export default function CostOfWaiting() {
     [result]
   );
 
+  const fiveYearChartData = useMemo(
+    () => fiveYearResult.points.map((point) => ({
+      label: `Year ${point.year}`,
+      rentWhileWaiting: Math.round(point.cumulativeRent),
+      equityIfBuyNow: Math.round(Math.max(point.equityGained, 0)),
+    })),
+    [fiveYearResult]
+  );
+
   const handleDollarInput = (raw: string) => {
     const v = Number(raw.replace(/[^0-9]/g, ""));
     if (!Number.isFinite(v)) return;
@@ -205,6 +235,7 @@ export default function CostOfWaiting() {
           <span className="key-tag bg-white/10" style={{ color: "oklch(0.82 0.12 80)" }}>
             Run your own numbers
           </span>
+          {propertyAddress && <p className="mt-3 text-xs font-semibold uppercase tracking-[0.13em] text-white/65">For {propertyAddress}</p>}
           <h3 className="mt-3 font-display font-semibold text-2xl md:text-3xl text-white">
             What does waiting actually cost <em className="not-italic" style={{ color: "oklch(0.82 0.12 80)" }}>you</em>?
           </h3>
@@ -486,6 +517,29 @@ export default function CostOfWaiting() {
                 {fmtUsd(Math.max(result.costOfWaiting, 0))}
               </div>
               <div className="text-xs text-white/70">rent spent + equity missed</div>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-lg border border-white/10 bg-white/[0.04] p-5 md:p-6">
+            <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+              <div>
+                <h4 className="font-display text-lg font-semibold text-white">Five-year buy-now vs. wait lens</h4>
+                <p className="mt-1 text-xs leading-relaxed text-white/60">A fixed five-year comparison using the same rent, price, down-payment, rate, and appreciation assumptions above.</p>
+              </div>
+              <span className="text-sm font-semibold text-[oklch(0.82_0.12_80)]">{fmtUsd(Math.max(fiveYearResult.costOfWaiting, 0))} estimated five-year gap</span>
+            </div>
+            <div className="mt-4 h-[220px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={fiveYearChartData} margin={{ top: 16, right: 8, left: 8, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="oklch(1 0 0 / 0.1)" />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "oklch(1 0 0 / 0.6)" }} />
+                  <YAxis hide domain={[0, (dataMax: number) => dataMax * 1.12]} />
+                  <Tooltip formatter={(value: number) => fmtUsd(value)} contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 0.15)", borderRadius: 8, color: "white" }} labelStyle={{ color: "oklch(1 0 0 / 0.7)" }} />
+                  <Legend formatter={(value: string) => <span style={{ color: "oklch(1 0 0 / 0.7)", fontSize: 12 }}>{value === "rentWhileWaiting" ? "Rent paid while waiting" : "Equity if buying now"}</span>} />
+                  <Line type="monotone" dataKey="rentWhileWaiting" stroke={COLORS.rent} strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                  <Line type="monotone" dataKey="equityIfBuyNow" stroke={COLORS.equity} strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
