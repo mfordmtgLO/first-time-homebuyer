@@ -39,3 +39,11 @@ The first fresh click after deployment still produced the raw parsing toast. The
 The post-restart browser refresh continued to display the legacy raw parser message even though the revalidated protected export test passed. The next repair will route the refreshed client through a new versioned protected tRPC procedure, retaining the same owner-scoped upsert logic, so the current published client and server implementation are explicitly aligned.
 
 The versioned `agentSync.syncOregonRefresh` procedure now reuses the same server-side authenticated JSON import helper as the legacy procedure, and the dashboard client now targets the versioned route. Focused router and authenticated-source tests pass. The client-bundle fingerprint will change on the next checkpoint, ensuring the browser calls the new protected route rather than retaining the legacy client action.
+
+Checkpoint `789de51b` has been loaded through a cache-busting dashboard URL. The page rendered without the old error toast, and the current Co-marketing Agents control is ready for the final owner-authorized versioned refresh test.
+
+The initial click occurred before the production rollout completed and still reached the older client bundle. Production deployment has since confirmed successfully, and the served dashboard asset changed from `index-BJErPbMS.js` to `index-D1PmDpQi.js`, confirming that the versioned refresh client bundle is now available for the final browser test.
+
+The post-rollout dashboard load at `?syncfix=789de51b-live` rendered without an error toast and exposed the owner-authenticated **Sync Top Agents** control. The next click is the definitive versioned-route verification.
+
+The final post-rollout click completed with the raw parser error still present. The complete served production bundle was downloaded and confirmed to invoke `agentSync.syncOregonRefresh`, so browser caching is no longer a plausible cause. The remaining likely fault is a stale or malformed production source-URL setting reaching the server-side fetch; the next repair will pin the Oregon-only route directly in the server import helper while retaining the bearer token secret.

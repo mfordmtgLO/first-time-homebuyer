@@ -233,7 +233,7 @@ function requireAdmin(role: string | undefined) {
 async function refreshOregonTopAgentsForOwner(ownerUserId: number) {
   const token = process.env.OREGON_AGENT_SYNC_TOKEN;
   if (!token) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Oregon sync token is not configured." });
-  const sourceUrl = process.env.OREGON_AGENT_SYNC_URL ?? "https://oregonleads-bqkuz5cc.manus.space/api/sync/agents?state=Oregon";
+  const sourceUrl = "https://oregonleads-bqkuz5cc.manus.space/api/sync/agents?state=Oregon";
   let response: Response;
   try {
     response = await fetch(sourceUrl, { headers: { Authorization: `Bearer ${token}` } });
