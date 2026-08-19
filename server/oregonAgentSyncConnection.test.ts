@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-const sourceUrl = "https://oregonleads-bqkuz5cc.manus.space/api/sync/agents?state=Oregon";
-
 describe("Oregon agent direct-sync connection", () => {
   it("uses the configured bearer token to retrieve a versioned Oregon agent export", async () => {
     const token = process.env.OREGON_AGENT_SYNC_TOKEN;
+    const sourceUrl = process.env.OREGON_AGENT_SYNC_URL;
     expect(token, "OREGON_AGENT_SYNC_TOKEN must be configured").toBeTruthy();
+    expect(sourceUrl, "OREGON_AGENT_SYNC_URL must be configured").toBeTruthy();
 
-    const response = await fetch(sourceUrl, {
+    const response = await fetch(sourceUrl!, {
       headers: { Authorization: `Bearer ${token}` },
     });
 

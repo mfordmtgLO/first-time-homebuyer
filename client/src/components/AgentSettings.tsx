@@ -147,12 +147,12 @@ function syncedSourceDetail(profile: SyncedTopAgentRow) {
 function syncedRankLabel(profile: SyncedTopAgentRow) {
   const detail = syncedSourceDetail(profile);
   const total = typeof detail.rankTotal === "number" ? detail.rankTotal : null;
-  return profile.sourceRank && total ? `${profile.sourceRank}/${total}` : profile.sourceRank ? `#${profile.sourceRank}` : "Unranked";
+  const prefix = detail.rankKind === "office" ? "Office #" : "#";
+  return profile.sourceRank && total ? `${prefix}${profile.sourceRank}/${total}` : profile.sourceRank ? `${prefix}${profile.sourceRank}` : "Unranked";
 }
 
 function isPrincipalBroker(profile: SyncedTopAgentRow) {
-  const principalBrokerName = syncedSourceDetail(profile).principalBrokerName;
-  return typeof principalBrokerName === "string" && principalBrokerName.trim().toLowerCase() === profile.fullName.trim().toLowerCase();
+  return syncedSourceDetail(profile).recordType === "principal_broker";
 }
 
 const MAX_FILE_BYTES = 4 * 1024 * 1024;
@@ -675,6 +675,8 @@ export default function AgentSettings() {
   const syncedProfilesQuery = trpc.agentSync.list.useQuery({ state: "Oregon" });
   const syncedProfiles = (syncedProfilesQuery.data ?? []) as SyncedTopAgentRow[];
   const syncedSummary = getSyncedTopAgentSummary(syncedProfiles);
+  const topAgentProfileCount = syncedProfiles.filter((profile) => syncedSourceDetail(profile).recordType !== "principal_broker").length;
+  const principalBrokerProfileCount = syncedProfiles.filter(isPrincipalBroker).length;
   const reviewQueueQuery = trpc.agentSync.reviewQueue.useQuery();
   const reviewQueue = reviewQueueQuery.data ?? [];
   const pendingReviewAgentIds = new Set(reviewQueue.map((review) => review.agentId));
@@ -710,8 +712,8 @@ export default function AgentSettings() {
       const movements = result.movedAgents ?? [];
       setLastRankMovements(movements);
       toast.success(movements.length
-        ? `Synced ${result.count} Oregon profiles; ${movements.length} rank change${movements.length === 1 ? "" : "s"} found.`
-        : `Synced ${result.count} Oregon Top Agent profiles; no rank changes found.`
+        ? `Synced ${result.count} Oregon source profiles; ${movements.length} rank change${movements.length === 1 ? "" : "s"} found.`
+        : `Synced ${result.count} Oregon source profiles; no rank changes found.`
       );
     },
     onError: (err) => toast.error(err.message || "Oregon agent sync could not be completed."),
@@ -798,6 +800,7 @@ export default function AgentSettings() {
           </div>
           <div className="text-right text-[11px] leading-tight text-muted-foreground">
             <p><strong className="font-semibold text-foreground">{syncedSummary.count}</strong> imported</p>
+            <p>{topAgentProfileCount} top agent{topAgentProfileCount === 1 ? "" : "s"} · {principalBrokerProfileCount} PB{principalBrokerProfileCount === 1 ? "" : "s"}</p>
             <p>{syncedSummary.latestSyncedAt ? `Last synced ${syncedSummary.latestSyncedAt.toLocaleString()}` : "Not synced yet"}</p>
           </div>
           <Button
@@ -814,7 +817,7 @@ export default function AgentSettings() {
       </div>
 
       <div className="border-b border-border bg-muted/20 px-6 py-2 text-xs text-muted-foreground">
-        <strong className="font-semibold text-foreground">Oregon sync:</strong> {syncedSummary.count} private source profile{syncedSummary.count === 1 ? "" : "s"} available for prefill. Synced information stays inside this owner dashboard until you create a partner.
+        <strong className="font-semibold text-foreground">Oregon sync:</strong> {topAgentProfileCount} top agent{topAgentProfileCount === 1 ? "" : "s"} and {principalBrokerProfileCount} principal broker{principalBrokerProfileCount === 1 ? "" : "s"} available for private prefill. Synced information stays inside this owner dashboard until you create a partner.
       </div>
 
       {lastRankMovements.length > 0 && (
