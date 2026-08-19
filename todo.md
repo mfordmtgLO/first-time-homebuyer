@@ -376,5 +376,6 @@
 - [x] Add a private date-range filter for synced-agent rank-history snapshots
 - [x] Add a private office-level rank-movement summary after Oregon syncs
 - [x] Add green/red arrow indicators to private post-sync Oregon rank-movement summaries
-- [ ] Audit and repair Oregon source directory, search, and export coverage for all expected top agents and principal/managing principal brokers
-- [ ] Refresh and verify the dashboard Oregon sync includes the complete corrected agent and principal-broker set
+- [x] Audit and repair Oregon source directory, search, and export coverage for all expected top agents and principal/managing principal brokers
+- [x] Refresh and verify the dashboard Oregon sync includes the complete corrected agent and principal-broker set
+- [x] Correct principal-broker office-rank labels to use the complete Oregon source pool denominator

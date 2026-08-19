@@ -13,3 +13,15 @@ The next step is an owner-authorized dashboard refresh followed by database-leve
 ## Refresh execution
 
 The dashboard owner-authorized **Sync Top Agents** action was triggered after the combined-source deployment. The following verification will use the persisted owner-scoped records rather than relying solely on the dashboard counter.
+
+## Connection correction
+
+The initial production refresh returned an HTML document where JSON was expected. The protected connection test independently verified that the Oregon endpoint returned the required JSON payload with the configured bearer token. The dashboard was updated to use the canonical endpoint `https://oregonleads-bqkuz5cc.manus.space/api/sync/agents?state=Oregon`; this configuration and its regression test were deployed in dashboard checkpoint `a7e75481`.
+
+After the checkpoint and managed-service restart, the published dashboard still showed the previous 60-record baseline and returned the same HTML parsing error on a browser-triggered refresh. The protected endpoint remains independently reachable and returns JSON under the configured token, so the next recovery step must use the validated source payload with the application’s standard owner-scoped upsert routine, then verify persisted records directly.
+
+## Completed verification
+
+The owner-authorized recovery refresh reused the application’s normal `upsertSyncedTopAgents` routine and persisted all **97** unique Oregon source profiles: **60** top-agent records and **37** standalone principal-broker records. A direct owner-scoped database verification found no rank above its declared pool. Tiffany Johnson is now present as a standalone `principal_broker` record with **Office #23/87**, **RE/MAX Integrity**, and the title **Managing Principal Broker**.
+
+The source denominator correction was published as Oregon Agent Leads commit `0004572` (`Use full Oregon pool for broker rank labels`). Focused source export tests passed after the rebase, covering standalone broker links and full-pool rank denominators. The dashboard source URL configuration and summary update were published as dashboard checkpoint `a7e75481`.
