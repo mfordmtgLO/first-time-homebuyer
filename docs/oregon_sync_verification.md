@@ -67,3 +67,9 @@ Checkpoint `d9336001` deployed the safe fallback diagnostic. The current browser
 The diagnostic client is deployed and the endpoint is live; the dashboard interaction map refreshed before the final click could be sent. The next step is a new control snapshot followed by the same owner-authorized fallback request.
 
 Checkpoint `68f4498b` deployed the storage-safe client. A fresh authenticated dashboard session has loaded all private dashboard data successfully; the owner-only **Sync Top Agents** control is next for final verification.
+
+The storage-safe live request authenticated successfully and returned `502 application/json`, which confirms the browser transport and dashboard session are now working. The remaining failure is inside the server-to-server Oregon refresh; checkpoint `451d96c7` adds safe deployment-log visibility for its exact non-secret cause.
+
+The logging build is deployed and loaded in a fresh authenticated dashboard session. The owner-only **Sync Top Agents** control is visible and ready for the diagnostic refresh.
+
+The protected-refresh log identified the exact cause: `The Oregon agent directory returned an unexpected export format.` The combined source intentionally assigns stable negative IDs to derived principal-broker records. The dashboard export schema incorrectly required positive IDs, rejecting every combined refresh even though the records are valid. The schema now accepts any nonzero integer and regression coverage verifies that a negative principal-broker ID is imported through the guarded owner-scoped path.

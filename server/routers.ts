@@ -134,7 +134,11 @@ const agentProfileInputSchema = z.object({
 });
 
 const oregonAgentSourceProfileSchema = z.object({
-  sourceAgentId: z.number().int().positive(),
+  // Top agents use their positive source IDs; derived standalone principal
+  // brokers use stable negative IDs so they cannot collide with agents.
+  sourceAgentId: z.number().int().refine((value) => value !== 0, {
+    message: "A source profile ID cannot be zero.",
+  }),
   fullName: z.string().trim().min(1).max(160),
   state: z.literal("Oregon"),
   brokerage: z.string().nullable(),

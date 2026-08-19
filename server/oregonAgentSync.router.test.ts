@@ -60,8 +60,8 @@ describe("agentSync router", () => {
       exportedAt: "2026-08-18T20:00:00.000Z",
       count: 1,
       agents: [{
-        sourceAgentId: 812,
-        fullName: "Oregon Profile",
+        sourceAgentId: -812,
+        fullName: "Oregon Principal Broker",
         state: "Oregon",
         brokerage: "Example Brokerage",
         cityArea: "Salem",
@@ -80,9 +80,9 @@ describe("agentSync router", () => {
 
     expect(result).toEqual({ refreshed: true });
     expect(upsertSyncedTopAgents).toHaveBeenCalledWith(71, [expect.objectContaining({
-      sourceAgentId: 812,
+      sourceAgentId: -812,
       state: "Oregon",
-      fullName: "Oregon Profile",
+      fullName: "Oregon Principal Broker",
       sourceRank: 7,
       sourceUpdatedAt: new Date("2026-08-18T19:00:00.000Z"),
     })]);
