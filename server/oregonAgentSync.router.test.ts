@@ -72,7 +72,7 @@ describe("agentSync router", () => {
         realtrendsRank: 7,
         sourceUpdatedAt: "2026-08-18T19:00:00.000Z",
       }],
-    }), { status: 200 })));
+    }), { status: 200, headers: { "content-type": "application/json" } })));
 
     const caller = appRouter.createCaller(createContext("admin"));
     const result = await caller.agentSync.syncOregon();
@@ -95,6 +95,18 @@ describe("agentSync router", () => {
       ownerUserId: 71,
       name: "Broker introduction",
     }));
+  });
+
+  it("reports a clear gateway error when the Oregon source returns HTML", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("<!doctype html><title>Oregon</title>", {
+      status: 200,
+      headers: { "content-type": "text/html" },
+    })));
+    const caller = appRouter.createCaller(createContext("admin"));
+    await expect(caller.agentSync.syncOregon()).rejects.toMatchObject({
+      code: "BAD_GATEWAY",
+      message: "The Oregon agent directory returned a non-JSON response. Please retry Sync Top Agents.",
+    });
   });
 
   it("builds a BCC draft for multiple selected owner-scoped Oregon profiles", async () => {

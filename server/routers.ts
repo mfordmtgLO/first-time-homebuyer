@@ -1799,6 +1799,10 @@ export const appRouter = router({
       if (!response.ok) {
         throw new TRPCError({ code: "BAD_GATEWAY", message: "The Oregon agent directory rejected the sync request." });
       }
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!contentType.includes("application/json")) {
+        throw new TRPCError({ code: "BAD_GATEWAY", message: "The Oregon agent directory returned a non-JSON response. Please retry Sync Top Agents." });
+      }
       const raw = await response.json().catch(() => null);
       const payload = oregonAgentSourceExportSchema.safeParse(raw);
       if (!payload.success) {

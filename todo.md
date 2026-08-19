@@ -382,3 +382,4 @@
 - [x] Add owner-scoped saved Oregon outreach email templates with an Add template editor workflow
 - [x] Add multi-selection of synced Oregon agents and principal/managing brokers for BCC email drafts
 - [x] Add a signature-complete Oregon outreach draft action with recipient validation and template merge support
+- [ ] Diagnose and repair the Oregon Sync Top Agents token failure without overwriting existing synced records
