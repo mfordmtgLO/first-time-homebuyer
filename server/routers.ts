@@ -268,7 +268,21 @@ async function refreshOregonTopAgentsForOwner(ownerUserId: number) {
     profileData: JSON.stringify(profile),
     sourceUpdatedAt: new Date(profile.sourceUpdatedAt),
   })));
-  return { ...result, source: payload.data.source, state: payload.data.state, exportedAt: payload.data.exportedAt } as const;
+  return {
+    count: Number(result.count),
+    movedAgents: (Array.isArray(result.movedAgents) ? result.movedAgents : []).map((movement) => ({
+      fullName: String(movement.fullName),
+      brokerage: movement.brokerage == null ? null : String(movement.brokerage),
+      fromRank: Number(movement.fromRank),
+      toRank: Number(movement.toRank),
+      rankTotal: typeof movement.rankTotal === "number" && Number.isFinite(movement.rankTotal)
+        ? Number(movement.rankTotal)
+        : null,
+    })),
+    source: payload.data.source,
+    state: payload.data.state,
+    exportedAt: String(payload.data.exportedAt),
+  } as const;
 }
 
 /** Accepted upload types → extension. Keeps keys tidy and rejects non-images. */

@@ -49,3 +49,5 @@ The post-rollout dashboard load at `?syncfix=789de51b-live` rendered without an 
 The final post-rollout click completed with the raw parser error still present. The complete served production bundle was downloaded and confirmed to invoke `agentSync.syncOregonRefresh`, so browser caching is no longer a plausible cause. The remaining likely fault is a stale or malformed production source-URL setting reaching the server-side fetch; the next repair will pin the Oregon-only route directly in the server import helper while retaining the bearer token secret.
 
 Checkpoint `656bd73a` deployed the pinned canonical endpoint correction successfully. A fresh cache-busting dashboard load has no error toast and shows the owner-authenticated **Sync Top Agents** control ready for the final server-side refresh verification.
+
+Checkpoint `bea849d1` deployed the explicit `Accept: application/json` tRPC transport fix. The served client asset advanced to `index-Cfi0keRm.js`, and a fresh cache-busting dashboard session loaded without an immediate error. The final authenticated Sync Top Agents action remains to be tested.
