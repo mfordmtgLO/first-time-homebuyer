@@ -32,6 +32,8 @@ describe("compact property-page lead source helpers", () => {
     expect(sourceControl).toContain("PROPERTY_ACTIVITY_RANGE_LABELS");
     expect(sourceControl).toContain("Export filtered CSV");
     expect(sourceControl).toContain("eventTypeFilter");
+    expect(sourceControl).toContain("timelineSearch");
+    expect(sourceControl).toContain("Search events or details");
     expect(roadmapTable).toContain('value="single-property"');
     expect(chatTable).toContain('value="single-property"');
     expect(roadmapTable).toContain("propertyAddressFilter");

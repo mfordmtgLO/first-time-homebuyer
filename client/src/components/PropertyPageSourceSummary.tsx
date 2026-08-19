@@ -3,6 +3,7 @@ import { Activity, ChevronDown, Copy, Download, ExternalLink, House, ImageOff, L
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { formatPropertyActivityCount, formatPropertyPairingSummary, getPropertyStreetAddress } from "@shared/propertyLeadSource";
@@ -44,6 +45,7 @@ export default function PropertyPageSourceSummary({
   const [expanded, setExpanded] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(false);
   const [eventTypeFilter, setEventTypeFilter] = useState("all");
+  const [timelineSearch, setTimelineSearch] = useState("");
   const streetAddress = getPropertyStreetAddress(address);
   const pairingSummary = formatPropertyPairingSummary(loanOfficerName, agentName);
   const propertyUrl = propertyPageSlug ? publicSiteUrl(`/property/${propertyPageSlug}`) : null;
@@ -61,10 +63,14 @@ export default function PropertyPageSourceSummary({
     () => Array.from(new Set((timeline.data ?? []).map((event) => event.eventType))).sort(),
     [timeline.data],
   );
-  const filteredTimeline = useMemo(
-    () => (timeline.data ?? []).filter((event) => eventTypeFilter === "all" || event.eventType === eventTypeFilter),
-    [timeline.data, eventTypeFilter],
-  );
+  const filteredTimeline = useMemo(() => {
+    const keyword = timelineSearch.trim().toLowerCase();
+    return (timeline.data ?? []).filter((event) => {
+      const matchesType = eventTypeFilter === "all" || event.eventType === eventTypeFilter;
+      const searchable = `${formatPropertyActivityType(event.eventType)} ${event.eventType} ${event.detail ?? ""}`.toLowerCase();
+      return matchesType && (!keyword || searchable.includes(keyword));
+    });
+  }, [timeline.data, eventTypeFilter, timelineSearch]);
 
   const copyToClipboard = async (value: string, successMessage: string) => {
     try {
@@ -159,6 +165,7 @@ export default function PropertyPageSourceSummary({
           {timeline.isLoading ? <div className="flex justify-center py-8 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div> : (
             <>
               <div className="flex flex-col gap-2 border-y border-border/70 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <Input value={timelineSearch} onChange={(event) => setTimelineSearch(event.target.value)} className="h-8 w-full text-xs sm:max-w-48" placeholder="Search events or details…" aria-label="Search property timeline activity" />
                 <Select value={eventTypeFilter} onValueChange={setEventTypeFilter}>
                   <SelectTrigger className="h-8 w-full text-xs sm:w-56" aria-label="Filter property timeline by activity type"><SelectValue placeholder="All activity types" /></SelectTrigger>
                   <SelectContent><SelectItem value="all">All activity types</SelectItem>{eventTypeOptions.map((eventType) => <SelectItem key={eventType} value={eventType}>{formatPropertyActivityType(eventType)}</SelectItem>)}</SelectContent>

@@ -1506,10 +1506,12 @@ export async function listPropertyPageActivity(propertyLandingPageId: number, ac
 export async function listWeeklyPropertyPageEngagement(limit = 5) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const weeklyActivityCount = sql<number>`coalesce((select count(*) from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} and ${propertyPageActivity.createdAt} >= ${since}), 0)`.mapWith(Number);
-  const latestActivityType = sql<string | null>`(select ${propertyPageActivity.eventType} from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} and ${propertyPageActivity.createdAt} >= ${since} order by ${propertyPageActivity.createdAt} desc, ${propertyPageActivity.id} desc limit 1)`;
-  const latestActivityAt = sql<Date | null>`(select ${propertyPageActivity.createdAt} from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} and ${propertyPageActivity.createdAt} >= ${since} order by ${propertyPageActivity.createdAt} desc, ${propertyPageActivity.id} desc limit 1)`;
+  const currentWeekStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const priorWeekStart = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+  const weeklyActivityCount = sql<number>`coalesce((select count(*) from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} and ${propertyPageActivity.createdAt} >= ${currentWeekStart}), 0)`.mapWith(Number);
+  const priorWeekActivityCount = sql<number>`coalesce((select count(*) from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} and ${propertyPageActivity.createdAt} >= ${priorWeekStart} and ${propertyPageActivity.createdAt} < ${currentWeekStart}), 0)`.mapWith(Number);
+  const latestActivityType = sql<string | null>`(select ${propertyPageActivity.eventType} from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} and ${propertyPageActivity.createdAt} >= ${currentWeekStart} order by ${propertyPageActivity.createdAt} desc, ${propertyPageActivity.id} desc limit 1)`;
+  const latestActivityAt = sql<Date | null>`(select ${propertyPageActivity.createdAt} from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} and ${propertyPageActivity.createdAt} >= ${currentWeekStart} order by ${propertyPageActivity.createdAt} desc, ${propertyPageActivity.id} desc limit 1)`;
 
   return db
     .select({
@@ -1517,6 +1519,7 @@ export async function listWeeklyPropertyPageEngagement(limit = 5) {
       address: propertyLandingPage.address,
       slug: propertyLandingPage.slug,
       weeklyActivityCount,
+      priorWeekActivityCount,
       latestActivityType,
       latestActivityAt,
     })

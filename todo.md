@@ -399,3 +399,6 @@
 - [x] Add event-type filtering inside detailed property engagement timelines
 - [x] Add CSV export for filtered property engagement timeline activity
 - [x] Add a weekly single-property engagement summary widget to the main dashboard
+- [x] Add quick keyword search inside detailed property engagement timelines
+- [x] Show week-over-week percentage trends in the weekly property engagement widget
+- [x] Highlight high-activity properties in the weekly widget with a visual alert badge
