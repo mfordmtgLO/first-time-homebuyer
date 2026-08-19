@@ -11,5 +11,8 @@ describe("weekly property engagement summary presentation", () => {
     expect(widget).toContain("weeklyCapturedLeadCount");
     expect(widget).toContain("Save");
     expect(widget).toContain("saveEngagementThreshold");
+    expect(widget).toContain("Most activity");
+    expect(widget).toContain("Best conversion");
+    expect(widget).toContain("sortWeeklyPropertyEngagement");
   });
 });

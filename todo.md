@@ -405,3 +405,4 @@
 - [x] Add an owner-configurable weekly high-activity threshold setting for property alerts
 - [x] Show weekly property activity-to-captured-lead conversion metrics in the engagement widget
 - [x] Highlight timeline keyword matches inside displayed activity logs
+- [x] Add a weekly property engagement sort toggle for activity volume and activity-to-lead conversion rate
