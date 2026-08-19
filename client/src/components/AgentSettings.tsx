@@ -919,7 +919,13 @@ export default function AgentSettings() {
   const syncTopAgents = async () => {
     setIsSyncingTopAgents(true);
     try {
-      const rawSession = typeof window === "undefined" ? null : sessionStorage.getItem("manus-cookie");
+      let rawSession: string | null = null;
+      try {
+        rawSession = typeof window === "undefined" ? null : sessionStorage.getItem("manus-cookie");
+      } catch {
+        // Browser privacy controls can deny sessionStorage. The signed-in
+        // same-origin cookie remains sufficient for this protected request.
+      }
       const response = await fetch("/api/oregon-sync-refresh", {
         method: "POST",
         credentials: "include",
