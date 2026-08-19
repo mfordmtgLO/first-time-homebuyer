@@ -65,3 +65,5 @@ Checkpoint `a60f169c` deployed the protected JSON fallback successfully. A fresh
 Checkpoint `d9336001` deployed the safe fallback diagnostic. The current browser session is authenticated and the owner-only **Sync Top Agents** control is visible for the final request inspection.
 
 The diagnostic client is deployed and the endpoint is live; the dashboard interaction map refreshed before the final click could be sent. The next step is a new control snapshot followed by the same owner-authorized fallback request.
+
+Checkpoint `68f4498b` deployed the storage-safe client. A fresh authenticated dashboard session has loaded all private dashboard data successfully; the owner-only **Sync Top Agents** control is next for final verification.

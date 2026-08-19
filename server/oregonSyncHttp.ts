@@ -30,6 +30,7 @@ export function registerOregonSyncHttp(app: Express) {
       const message = error instanceof Error && error.message
         ? error.message
         : "Oregon agent sync could not be completed.";
+      console.error("[OregonSync] Protected refresh failed:", message);
       res.status(502).json({ error: message });
     }
   });
