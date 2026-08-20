@@ -8,7 +8,7 @@ describe("single-property Cost of Waiting section", () => {
     expect(page).toContain('id="cost-of-waiting"');
     expect(page).toContain('background: "oklch(0.27 0.05 162)"');
     expect(page).toContain("What could waiting cost you while this opportunity changes?");
-    expect(page).toContain("<CostOfWaiting purchasePrice={snapshot.price ?? undefined} propertyAddress={snapshot.address} />");
+    expect(page).toContain("<CostOfWaiting purchasePrice={snapshot.price ?? undefined} propertyAddress={snapshot.address} revealImmediately />");
     expect(page).toContain("<Buydown purchasePrice={snapshot.price ?? undefined} />");
     expect(page).toContain("BuyerCalculationActions");
     expect(page).toContain("Your local homebuying team");
@@ -22,6 +22,8 @@ describe("single-property Cost of Waiting section", () => {
     expect(page).toContain('new Event("open-mortgage-chat")');
     expect(page).toContain("window.addEventListener(\"scroll\", updateActiveSection");
     expect(calculator).toContain("prefilledPurchasePrice");
+    expect(calculator).toContain("revealImmediately = false");
+    expect(calculator).toContain('revealImmediately ? "opacity-100 translate-y-0" : "reveal"');
     expect(calculator).toContain("For {propertyAddress}");
     expect(calculator).toContain("Five-year buy-now vs. wait lens");
     expect(calculator).toContain("LineChart");

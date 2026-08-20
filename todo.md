@@ -482,3 +482,6 @@
 - [x] Add Google Ads campaign budget tracking through the existing private UTM spend workflow
 - [x] Add comparable Google and Facebook ROI-style performance metrics based on tagged captured outcomes
 - [x] Add regression coverage and publish the Google Ads campaign-reporting update
+- [x] Diagnose why the public single-property Cost of Waiting calculator mount is empty
+- [x] Restore the complete interactive Cost of Waiting calculator with property-price prefill on single-property pages
+- [x] Add regression coverage, visually verify an active property page, and publish the calculator repair

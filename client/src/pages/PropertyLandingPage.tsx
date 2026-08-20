@@ -297,7 +297,7 @@ export default function PropertyLandingPage() {
                   <h2 className="mt-3 font-display text-3xl font-semibold leading-tight md:text-4xl">What could waiting cost you while this opportunity changes?</h2>
                   <p className="mt-4 max-w-2xl leading-relaxed text-primary-foreground/75">Use the calculator below to compare rent paid with the home equity you could build. The estimate is educational and can be saved with your Roadmap request for a conversation about this saved property.</p>
                 </div>
-                <CostOfWaiting purchasePrice={snapshot.price ?? undefined} propertyAddress={snapshot.address} />
+                <CostOfWaiting purchasePrice={snapshot.price ?? undefined} propertyAddress={snapshot.address} revealImmediately />
               </div>
             </section>
             <div id="roadmap" className="scroll-mt-24"><LeadMagnet /></div>

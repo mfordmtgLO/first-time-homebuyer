@@ -142,9 +142,10 @@ function FiveYearComparisonTooltip({ active, payload, label }: { active?: boolea
 type CostOfWaitingProps = {
   purchasePrice?: number;
   propertyAddress?: string;
+  revealImmediately?: boolean;
 };
 
-export default function CostOfWaiting({ purchasePrice: prefilledPurchasePrice = 400000, propertyAddress }: CostOfWaitingProps) {
+export default function CostOfWaiting({ purchasePrice: prefilledPurchasePrice = 400000, propertyAddress, revealImmediately = false }: CostOfWaitingProps) {
   const { setCowScenario, setCowAttached } = useScenario();
   const [waitYears, setWaitYears] = useState(3);
   const [monthlyRent, setMonthlyRent] = useState(1800);
@@ -254,7 +255,7 @@ export default function CostOfWaiting({ purchasePrice: prefilledPurchasePrice = 
   };
 
   return (
-    <div className="mt-14 reveal rounded-lg border border-white/12 bg-white/[0.05] backdrop-blur-sm p-6 md:p-8">
+    <div className={`mt-14 ${revealImmediately ? "opacity-100 translate-y-0" : "reveal"} rounded-lg border border-white/12 bg-white/[0.05] backdrop-blur-sm p-6 md:p-8`}>
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
         <div>
           <span className="key-tag bg-white/10" style={{ color: "oklch(0.82 0.12 80)" }}>
