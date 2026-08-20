@@ -5,11 +5,12 @@ describe("single-property Cost of Waiting section", () => {
   it("renders the calculator in a visible standalone anchored section", () => {
     const page = readFileSync("client/src/pages/PropertyLandingPage.tsx", "utf8");
     const calculator = readFileSync("client/src/components/landing/CostOfWaiting.tsx", "utf8");
+    const buydown = readFileSync("client/src/components/landing/Buydown.tsx", "utf8");
     expect(page).toContain('id="cost-of-waiting"');
     expect(page).toContain('background: "oklch(0.27 0.05 162)"');
     expect(page).toContain("What could waiting cost you while this opportunity changes?");
     expect(page).toContain("<CostOfWaiting purchasePrice={snapshot.price ?? undefined} propertyAddress={snapshot.address} revealImmediately />");
-    expect(page).toContain("<Buydown purchasePrice={snapshot.price ?? undefined} />");
+    expect(page).toContain("<Buydown purchasePrice={snapshot.price ?? undefined} propertyAddress={snapshot.address} />");
     expect(page).toContain("BuyerCalculationActions");
     expect(page).toContain("Your local homebuying team");
     expect(page).toContain("Email PDF summary");
@@ -27,8 +28,13 @@ describe("single-property Cost of Waiting section", () => {
     expect(calculator).toContain("For {propertyAddress}");
     expect(calculator).toContain("Five-year buy-now vs. wait lens");
     expect(calculator).toContain("LineChart");
-    expect(calculator).toContain("Share this calculation");
+    expect(calculator).toContain("Share this scenario");
+    expect(calculator).toContain("Cost of Waiting scenario");
     expect(calculator).toContain("FiveYearComparisonTooltip");
     expect(calculator).toContain("Five-year impact:");
+    expect(buydown).toContain("propertyAddress?: string");
+    expect(buydown).toContain("2-1 Buydown scenario for");
+    expect(buydown).toContain("Share this scenario");
+    expect(buydown).toContain("#buydown");
   });
 });

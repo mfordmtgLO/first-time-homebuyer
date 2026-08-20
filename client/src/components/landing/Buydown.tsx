@@ -5,7 +5,8 @@ import { useScenario } from "@/contexts/ScenarioContext";
 import { computeBuydown } from "@shared/buydown";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
-import { ArrowRight, FileDown } from "lucide-react";
+import { ArrowRight, FileDown, Share2 } from "lucide-react";
+import { toast } from "sonner";
 import {
   Bar,
   BarChart,
@@ -33,9 +34,10 @@ const BAR_COLORS = {
 
 type BuydownProps = {
   purchasePrice?: number;
+  propertyAddress?: string;
 };
 
-export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000 }: BuydownProps) {
+export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000, propertyAddress }: BuydownProps) {
   const ref = useReveal<HTMLElement>();
   const { setScenario, setAttached } = useScenario();
 
@@ -80,6 +82,23 @@ export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000
   const attachAndGoToForm = () => {
     setAttached(true);
     document.getElementById("roadmap")?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const shareScenario = async () => {
+    const heading = propertyAddress ? `2-1 Buydown scenario for ${propertyAddress}` : "2-1 Buydown scenario";
+    const summary = `${heading}: ${fmtUsd(purchasePrice)} purchase price with ${fmtUsd(downDollars)} down and a ${noteRate.toFixed(3).replace(/\.?0+$/, "")}% note rate. Estimated monthly principal-and-interest savings: ${fmtUsd(result.year1MonthlySavings)} in year one and ${fmtUsd(result.year2MonthlySavings)} in year two. Estimated seller-paid interest subsidy: ${fmtUsd(result.totalSubsidy)}.`;
+    const url = `${window.location.href.split("#")[0]}#buydown`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: heading, text: summary, url });
+        return;
+      }
+      await navigator.clipboard.writeText(`${summary}\n${url}`);
+      toast.success("2-1 Buydown scenario copied for sharing.");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      toast.error("Unable to share this scenario. Please try again.");
+    }
   };
 
   const chartData = useMemo(
@@ -342,6 +361,13 @@ export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000
                 while your income rises.
               </p>
               <div className="flex flex-col gap-2.5">
+                {propertyAddress ? <button
+                  type="button"
+                  onClick={shareScenario}
+                  className="btn-press inline-flex items-center justify-center gap-2 rounded-md border border-primary/25 bg-card px-5 py-3 text-sm font-semibold text-primary hover:bg-primary/5 whitespace-nowrap"
+                >
+                  Share this scenario <Share2 className="h-4 w-4" />
+                </button> : null}
                 <button
                   type="button"
                   onClick={attachAndGoToForm}

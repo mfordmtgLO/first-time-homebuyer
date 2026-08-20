@@ -487,3 +487,6 @@
 - [x] Add regression coverage, visually verify an active property page, and publish the calculator repair
 - [x] Add a bounded independent vertical scrollbar to the Spend Tracker Active pairings sidebar for future pairing expansion
 - [x] Add regression coverage, visually verify desktop and mobile compactness, and publish the Active pairings scroll behavior
+- [x] Add a property-page 2-1 Buydown Share this scenario action with current scenario inputs and property link
+- [x] Rename public property-page calculator share actions to Share this scenario for both 2-1 Buydown and Cost of Waiting
+- [x] Add regression coverage, visually verify an active property page, and publish calculator scenario sharing
