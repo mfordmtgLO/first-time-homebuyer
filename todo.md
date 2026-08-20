@@ -542,3 +542,7 @@
 - [x] Rework single-property editor field sizing and responsive wrapping so labels and descriptions stay inside their cells without overlap
 - [x] Add regression coverage and visually verify the single-property editor layout on desktop and mobile
 - [x] Publish the single-property editor layout fix
+
+- [x] Remove the public Cost of Waiting principal-and-interest payment quote from calculator displays and summaries
+- [x] Add regression coverage confirming Cost of Waiting remains comparison-focused without public P&I quotes
+- [x] Publish the Cost of Waiting disclosure-safe display fix

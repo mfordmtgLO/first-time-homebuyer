@@ -245,7 +245,7 @@ export default function CostOfWaiting({ purchasePrice: prefilledPurchasePrice = 
   const shareCalculation = async () => {
     const heading = propertyAddress ? `Cost of Waiting scenario for ${propertyAddress}` : "Cost of Waiting scenario";
     const savedCostLabels = [monthlyPropertyTaxes > 0 ? `${fmtUsd(monthlyPropertyTaxes)}/mo taxes` : null, monthlyHoaDues > 0 ? `${fmtUsd(monthlyHoaDues)}/mo HOA` : null, monthlyHomeownerInsurance > 0 ? `${fmtUsd(monthlyHomeownerInsurance)}/mo homeowner insurance` : null, monthlyMortgageInsurance > 0 ? `${fmtUsd(monthlyMortgageInsurance)}/mo mortgage insurance` : null].filter(Boolean).join(", ");
-    const savedCosts = savedMonthlyPropertyCosts > 0 ? ` Saved property planning costs: ${savedCostLabels}; estimated P&I plus those saved costs: ${fmtUsd(result.monthlyPayment + savedMonthlyPropertyCosts)}/mo.` : "";
+    const savedCosts = savedMonthlyPropertyCosts > 0 ? ` Saved property planning context: ${savedCostLabels}.` : "";
     const summary = `${heading}: Waiting ${waitYears} ${waitYears === 1 ? "year" : "years"} estimates ${fmtUsd(Math.max(result.costOfWaiting, 0))} in rent paid plus equity missed. Rent paid: ${fmtUsd(result.totalRentPaid)}. Equity if buying now: ${fmtUsd(Math.max(result.equityGained, 0))}. Five-year impact: ${fmtUsd(Math.max(fiveYearResult.costOfWaiting, 0))} estimated rent paid plus equity missed; ${fmtUsd(fiveYearResult.totalRentPaid)} rent paid and ${fmtUsd(Math.max(fiveYearResult.equityGained, 0))} equity if buying now.${savedCosts}`;
     const url = `${window.location.href.split("#")[0]}#cost-of-waiting`;
     try {
@@ -480,9 +480,6 @@ export default function CostOfWaiting({ purchasePrice: prefilledPurchasePrice = 
               <h4 className="font-display font-semibold text-lg text-white">
                 Rent spent vs. equity built, year by year
               </h4>
-              <span className="text-xs text-white/50">
-                P&amp;I {fmtUsd(result.monthlyPayment)}/mo on {fmtUsd(result.loanAmount)} loan
-              </span>
             </div>
             <div className="mt-4 h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -552,7 +549,7 @@ export default function CostOfWaiting({ purchasePrice: prefilledPurchasePrice = 
               <div className="text-xs text-white/70">rent spent + equity missed</div>
             </div>
           </div>
-          {savedMonthlyPropertyCosts > 0 ? <div className="mt-5 rounded-lg border border-white/10 bg-white/[0.04] p-4 text-sm text-white/75"><p className="font-semibold text-white">Saved all-in monthly planning context</p><p className="mt-1 leading-relaxed">{monthlyPropertyTaxes > 0 ? `Property taxes ${fmtUsd(monthlyPropertyTaxes)}/mo` : ""}{monthlyPropertyTaxes > 0 && (monthlyHoaDues > 0 || monthlyHomeownerInsurance > 0 || monthlyMortgageInsurance > 0) ? " · " : ""}{monthlyHoaDues > 0 ? `HOA dues ${fmtUsd(monthlyHoaDues)}/mo` : ""}{monthlyHoaDues > 0 && (monthlyHomeownerInsurance > 0 || monthlyMortgageInsurance > 0) ? " · " : ""}{monthlyHomeownerInsurance > 0 ? `Homeowner insurance ${fmtUsd(monthlyHomeownerInsurance)}/mo` : ""}{monthlyHomeownerInsurance > 0 && monthlyMortgageInsurance > 0 ? " · " : ""}{monthlyMortgageInsurance > 0 ? `Mortgage insurance ${fmtUsd(monthlyMortgageInsurance)}/mo` : ""}. Estimated P&amp;I plus these saved costs: <span className="font-semibold text-white">{fmtUsd(result.monthlyPayment + savedMonthlyPropertyCosts)}/mo</span>.</p></div> : null}
+          {savedMonthlyPropertyCosts > 0 ? <div className="mt-5 rounded-lg border border-white/10 bg-white/[0.04] p-4 text-sm text-white/75"><p className="font-semibold text-white">Saved all-in monthly planning context</p><p className="mt-1 leading-relaxed">{monthlyPropertyTaxes > 0 ? `Property taxes ${fmtUsd(monthlyPropertyTaxes)}/mo` : ""}{monthlyPropertyTaxes > 0 && (monthlyHoaDues > 0 || monthlyHomeownerInsurance > 0 || monthlyMortgageInsurance > 0) ? " · " : ""}{monthlyHoaDues > 0 ? `HOA dues ${fmtUsd(monthlyHoaDues)}/mo` : ""}{monthlyHoaDues > 0 && (monthlyHomeownerInsurance > 0 || monthlyMortgageInsurance > 0) ? " · " : ""}{monthlyHomeownerInsurance > 0 ? `Homeowner insurance ${fmtUsd(monthlyHomeownerInsurance)}/mo` : ""}{monthlyHomeownerInsurance > 0 && monthlyMortgageInsurance > 0 ? " · " : ""}{monthlyMortgageInsurance > 0 ? `Mortgage insurance ${fmtUsd(monthlyMortgageInsurance)}/mo` : ""}. These are separate planning context only and are not a payment quote.</p></div> : null}
 
           <div className="mt-5 rounded-lg border border-white/10 bg-white/[0.04] p-5 md:p-6">
             <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">

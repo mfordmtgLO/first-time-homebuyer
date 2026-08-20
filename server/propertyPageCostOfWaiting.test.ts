@@ -37,6 +37,11 @@ describe("single-property Cost of Waiting section", () => {
     expect(calculator).toContain("FiveYearComparisonTooltip");
     expect(calculator).toContain("Five-year impact:");
     expect(calculator).toContain("Saved all-in monthly planning context");
+    expect(calculator).toContain("Saved property planning context:");
+    expect(calculator).not.toContain("P&amp;I {fmtUsd(result.monthlyPayment)}");
+    expect(calculator).not.toContain("estimated P&amp;I plus those saved costs");
+    expect(calculator).not.toContain("Estimated P&amp;I plus these saved costs");
+    expect(calculator).toContain("not a payment quote");
     expect(calculator).toContain("monthlyPropertyTaxes?: number");
     expect(calculator).toContain("monthlyHoaDues?: number");
     expect(calculator).toContain("monthlyHomeownerInsurance?: number");
