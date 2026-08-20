@@ -490,3 +490,6 @@
 - [x] Add a property-page 2-1 Buydown Share this scenario action with current scenario inputs and property link
 - [x] Rename public property-page calculator share actions to Share this scenario for both 2-1 Buydown and Cost of Waiting
 - [x] Add regression coverage, visually verify an active property page, and publish calculator scenario sharing
+- [x] Audit the stored Mike Ford loan-officer profile and shared code for all obsolete (541) 729-2097 references
+- [x] Correct Mike Ford’s dashboard profile, public single-property team cards, signatures, and outreach drafts to (541) 729-0819
+- [x] Add regression coverage, visually verify the public profile card, and publish the phone-number correction
