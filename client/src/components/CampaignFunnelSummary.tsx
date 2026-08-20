@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { BarChart3, Download, FileText, Link2, MapPinned, MessageCircle, UsersRound } from "lucide-react";
+import { BarChart3, Download, DollarSign, FileText, Link2, MapPinned, MessageCircle, Trash2, UsersRound } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { roadmapCohort, type RoadmapCohort } from "@shared/campaignCohorts";
@@ -22,6 +22,12 @@ const CAMPAIGN_DATE_RANGES: Array<{ value: CampaignDateRange; label: string; day
   { value: "90d", label: "Last 90 days", days: 90 },
 ];
 
+const CAMPAIGN_PRESETS = [
+  { label: "Facebook", source: "facebook", medium: "paid_social", campaign: "firsthome", content: "" },
+  { label: "Google", source: "google", medium: "paid_search", campaign: "firsthome", content: "" },
+  { label: "Email", source: "email", medium: "email", campaign: "firsthome", content: "" },
+] as const;
+
 function campaignLabel(row: { utmSource?: string | null; utmMedium?: string | null; utmCampaign?: string | null }) {
   if (!row.utmSource && !row.utmCampaign) return "Direct / untagged";
   return [row.utmSource, row.utmMedium, row.utmCampaign].filter(Boolean).join(" · ");
@@ -32,10 +38,26 @@ function isTaggedSubmission(lead: AttributionFields) {
 }
 
 function isWithinDateRange(lead: AttributionFields, range: CampaignDateRange) {
+  return isDateWithinRange(lead.createdAt, range);
+}
+
+function isDateWithinRange(value: Date | string, range: CampaignDateRange) {
   const days = CAMPAIGN_DATE_RANGES.find((item) => item.value === range)?.days;
   if (!days) return true;
-  const timestamp = new Date(lead.createdAt).getTime();
+  const timestamp = new Date(value).getTime();
   return !Number.isFinite(timestamp) || timestamp >= Date.now() - days * 24 * 60 * 60 * 1000;
+}
+
+function campaignIdentity(row: { utmSource?: string | null; utmMedium?: string | null; utmCampaign?: string | null }) {
+  const source = row.utmSource?.trim().toLowerCase() ?? "";
+  const medium = row.utmMedium?.trim().toLowerCase() ?? "";
+  const campaign = row.utmCampaign?.trim().toLowerCase() ?? "";
+  return { key: `${source}\u0001${medium}\u0001${campaign}`, source, medium, campaign, label: [source, medium, campaign].filter(Boolean).join(" · ") || "Tagged campaign" };
+}
+
+function formatCurrency(cents: number | null) {
+  if (cents === null) return "—";
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 }
 
 function escapeCsv(value: unknown) {
@@ -55,14 +77,19 @@ type UTMGuidanceProps = {
   onCampaignChange: (value: string) => void;
   onContentChange: (value: string) => void;
   onTermChange: (value: string) => void;
+  onPreset: (preset: (typeof CAMPAIGN_PRESETS)[number]) => void;
   onCopy: () => void;
 };
 
-function UTMGuidance({ source, medium, campaign, content, term, generatedUrl, copyStatus, onSourceChange, onMediumChange, onCampaignChange, onContentChange, onTermChange, onCopy }: UTMGuidanceProps) {
+function UTMGuidance({ source, medium, campaign, content, term, generatedUrl, copyStatus, onSourceChange, onMediumChange, onCampaignChange, onContentChange, onTermChange, onPreset, onCopy }: UTMGuidanceProps) {
   return (
     <details className="mt-4 rounded-lg border border-border bg-background/60 px-4 py-3 text-sm">
       <summary className="cursor-pointer font-medium text-foreground">How to tag a campaign link</summary>
       <p className="mt-2 text-muted-foreground">Set a source, medium, and campaign before sharing an approved public landing-page link. Tagged Roadmap and completed chat submissions automatically unlock the full attribution report.</p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <span className="text-xs font-medium text-muted-foreground">Standard presets</span>
+        {CAMPAIGN_PRESETS.map((preset) => <Button key={preset.label} type="button" size="sm" variant="outline" onClick={() => onPreset(preset)}>{preset.label}</Button>)}
+      </div>
       <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         <label className="text-xs font-medium text-muted-foreground">UTM source<input value={source} onChange={(event) => onSourceChange(event.target.value)} placeholder="facebook" className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm text-foreground" /></label>
         <label className="text-xs font-medium text-muted-foreground">UTM medium<input value={medium} onChange={(event) => onMediumChange(event.target.value)} placeholder="paid_social" className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm text-foreground" /></label>
@@ -81,6 +108,8 @@ function UTMGuidance({ source, medium, campaign, content, term, generatedUrl, co
 export default function CampaignFunnelSummary() {
   const roadmapQuery = trpc.leads.list.useQuery();
   const chatQuery = trpc.chat.list.useQuery();
+  const utils = trpc.useUtils();
+  const campaignSpendQuery = trpc.campaignSpend.list.useQuery();
   const [dateRange, setDateRange] = useState<CampaignDateRange>("all");
   const [utmSource, setUtmSource] = useState("facebook");
   const [utmMedium, setUtmMedium] = useState("paid_social");
@@ -88,8 +117,18 @@ export default function CampaignFunnelSummary() {
   const [utmContent, setUtmContent] = useState("");
   const [utmTerm, setUtmTerm] = useState("");
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  const [spendSource, setSpendSource] = useState("facebook");
+  const [spendMedium, setSpendMedium] = useState("paid_social");
+  const [spendCampaign, setSpendCampaign] = useState("firsthome");
+  const [spendAmount, setSpendAmount] = useState("");
+  const [spendDate, setSpendDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [spendNotes, setSpendNotes] = useState("");
+  const [spendError, setSpendError] = useState<string | null>(null);
+  const addSpendMutation = trpc.campaignSpend.add.useMutation({ onSuccess: () => utils.campaignSpend.list.invalidate() });
+  const deleteSpendMutation = trpc.campaignSpend.delete.useMutation({ onSuccess: () => utils.campaignSpend.list.invalidate() });
   const roadmap = roadmapQuery.data ?? [];
   const chats = chatQuery.data ?? [];
+  const spendEntries = campaignSpendQuery.data ?? [];
   const qualifiedChats = chats.filter((lead) => lead.status === "qualified");
   const attributionSubmissions = [...roadmap, ...qualifiedChats];
   const taggedSubmissionCount = attributionSubmissions.filter(isTaggedSubmission).length;
@@ -127,6 +166,24 @@ export default function CampaignFunnelSummary() {
       referrerHost: lead.referrerHost,
     })),
   ].sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+  const filteredSpendEntries = spendEntries.filter((entry) => isDateWithinRange(entry.spentOn, dateRange));
+  const campaignPerformanceMap = new Map<string, { key: string; label: string; source: string; medium: string; campaign: string; submissions: number; spendCents: number; spendEntries: number }>();
+  const ensureCampaignPerformance = (row: { utmSource?: string | null; utmMedium?: string | null; utmCampaign?: string | null }) => {
+    const identity = campaignIdentity(row);
+    const current = campaignPerformanceMap.get(identity.key) ?? { ...identity, submissions: 0, spendCents: 0, spendEntries: 0 };
+    campaignPerformanceMap.set(identity.key, current);
+    return current;
+  };
+  taggedRows.forEach((row) => { ensureCampaignPerformance(row).submissions += 1; });
+  filteredSpendEntries.forEach((entry) => {
+    const current = ensureCampaignPerformance(entry);
+    current.spendCents += entry.spendCents;
+    current.spendEntries += 1;
+  });
+  const campaignPerformance = Array.from(campaignPerformanceMap.values()).sort((a, b) => b.submissions - a.submissions || b.spendCents - a.spendCents || a.label.localeCompare(b.label));
+  const campaignChartRows = campaignPerformance.filter((row) => row.submissions > 0);
+  const maxCampaignVolume = Math.max(1, ...campaignChartRows.map((row) => row.submissions));
+  const totalCampaignSpendCents = filteredSpendEntries.reduce((sum, entry) => sum + entry.spendCents, 0);
 
   const generatedUrl = useMemo(() => {
     const url = new URL("https://firsttimehomebuyer.manus.space/");
@@ -148,6 +205,14 @@ export default function CampaignFunnelSummary() {
     window.setTimeout(() => setCopyStatus(null), 1800);
   };
 
+  const applyCampaignPreset = (preset: (typeof CAMPAIGN_PRESETS)[number]) => {
+    setUtmSource(preset.source);
+    setUtmMedium(preset.medium);
+    setUtmCampaign(preset.campaign);
+    setUtmContent(preset.content);
+    setUtmTerm("");
+  };
+
   const downloadTaggedRows = () => {
     const headers = ["Submitted at", "Submission type", "Name", "Email", "UTM source", "UTM medium", "UTM campaign", "UTM content", "UTM term", "Landing path", "Referrer host"];
     const csv = [headers, ...taggedRows.map((row) => [
@@ -159,6 +224,33 @@ export default function CampaignFunnelSummary() {
     anchor.download = `campaign-attribution-${dateRange}.csv`;
     anchor.click();
     URL.revokeObjectURL(url);
+  };
+
+  const saveCampaignSpend = () => {
+    const normalizedAmount = Number(spendAmount.replace(/[$,\s]/g, ""));
+    if (!spendSource.trim() || !spendMedium.trim() || !spendCampaign.trim()) {
+      setSpendError("Source, medium, and campaign are required.");
+      return;
+    }
+    if (!Number.isFinite(normalizedAmount) || normalizedAmount <= 0) {
+      setSpendError("Enter a positive dollar amount.");
+      return;
+    }
+    setSpendError(null);
+    addSpendMutation.mutate({
+      utmSource: spendSource.trim(),
+      utmMedium: spendMedium.trim(),
+      utmCampaign: spendCampaign.trim(),
+      spentOn: spendDate,
+      spendCents: Math.round(normalizedAmount * 100),
+      notes: spendNotes.trim() || undefined,
+    }, {
+      onSuccess: () => {
+        setSpendAmount("");
+        setSpendNotes("");
+      },
+      onError: (error) => setSpendError(error.message),
+    });
   };
 
   const byCampaign = new Map<string, { roadmap: number; completedChats: number; homesList: number; buyerAgent: number }>();
@@ -194,7 +286,48 @@ export default function CampaignFunnelSummary() {
     { label: "Buyer-agent requests", value: buyerAgentRequests.length, icon: UsersRound, tone: "text-amber-800 bg-amber-500/15" },
   ];
 
-  const guidance = <UTMGuidance source={utmSource} medium={utmMedium} campaign={utmCampaign} content={utmContent} term={utmTerm} generatedUrl={generatedUrl} copyStatus={copyStatus} onSourceChange={setUtmSource} onMediumChange={setUtmMedium} onCampaignChange={setUtmCampaign} onContentChange={setUtmContent} onTermChange={setUtmTerm} onCopy={copyGeneratedUrl} />;
+  const campaignReportingTools = (
+    <div className="mt-5 grid gap-4 xl:grid-cols-[1.15fr_.85fr]">
+      <section className="rounded-lg border border-border bg-background/60 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Tagged campaign volume comparison</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">Qualifying Roadmap and completed chat submissions in the selected range.</p>
+          </div>
+          <span className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">{taggedRows.length} tagged leads</span>
+        </div>
+        {campaignChartRows.length ? <div className="mt-4 space-y-3">{campaignChartRows.map((row) => (
+          <div key={row.key}>
+            <div className="mb-1 flex items-center justify-between gap-3 text-xs"><span className="min-w-0 truncate font-medium text-foreground">{row.label}</span><span className="shrink-0 text-muted-foreground">{row.submissions} lead{row.submissions === 1 ? "" : "s"}</span></div>
+            <div className="h-2.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-[width] duration-200" style={{ width: `${Math.max(6, (row.submissions / maxCampaignVolume) * 100)}%` }} /></div>
+          </div>
+        ))}</div> : <p className="mt-4 rounded-md bg-muted/50 px-3 py-3 text-sm text-muted-foreground">The chart will populate after the first UTM-tagged qualifying submission.</p>}
+      </section>
+      <section className="rounded-lg border border-border bg-background/60 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div><h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground"><DollarSign className="h-4 w-4 text-primary" /> Campaign spend</h2><p className="mt-0.5 text-xs text-muted-foreground">Private dashboard input only. Total in range: {formatCurrency(totalCampaignSpendCents)}.</p></div>
+          <span className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">CPL = spend ÷ tagged leads</span>
+        </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <label className="text-xs font-medium text-muted-foreground">Source<input value={spendSource} onChange={(event) => setSpendSource(event.target.value)} className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm text-foreground" /></label>
+          <label className="text-xs font-medium text-muted-foreground">Medium<input value={spendMedium} onChange={(event) => setSpendMedium(event.target.value)} className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm text-foreground" /></label>
+          <label className="text-xs font-medium text-muted-foreground">Campaign<input value={spendCampaign} onChange={(event) => setSpendCampaign(event.target.value)} className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm text-foreground" /></label>
+          <label className="text-xs font-medium text-muted-foreground">Spend<input inputMode="decimal" value={spendAmount} onChange={(event) => setSpendAmount(event.target.value)} placeholder="450.00" className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm text-foreground" /></label>
+          <label className="text-xs font-medium text-muted-foreground">Date<input type="date" value={spendDate} onChange={(event) => setSpendDate(event.target.value)} className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm text-foreground" /></label>
+          <label className="text-xs font-medium text-muted-foreground">Notes <span className="font-normal">(optional)</span><input value={spendNotes} onChange={(event) => setSpendNotes(event.target.value)} placeholder="June Meta budget" className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm text-foreground" /></label>
+        </div>
+        {spendError && <p className="mt-2 text-xs font-medium text-destructive">{spendError}</p>}
+        <Button type="button" size="sm" className="mt-3" disabled={addSpendMutation.isPending} onClick={saveCampaignSpend}>{addSpendMutation.isPending ? "Saving…" : "Add private spend"}</Button>
+      </section>
+      <section className="xl:col-span-2 overflow-x-auto rounded-lg border border-border bg-background/60">
+        <div className="border-b border-border px-4 py-3"><h2 className="text-sm font-semibold text-foreground">Campaign cost per tagged lead</h2><p className="mt-0.5 text-xs text-muted-foreground">Spend and qualifying submissions are matched by UTM source, medium, and campaign for the selected range.</p></div>
+        <table className="w-full min-w-[760px] text-sm"><thead><tr className="border-b border-border bg-muted/50 text-left text-xs text-muted-foreground"><th className="px-4 py-2.5 font-semibold">Campaign</th><th className="px-4 py-2.5 text-right font-semibold">Tagged leads</th><th className="px-4 py-2.5 text-right font-semibold">Spend</th><th className="px-4 py-2.5 text-right font-semibold">Cost per lead</th></tr></thead><tbody>{campaignPerformance.length ? campaignPerformance.map((row) => <tr key={row.key} className="border-b border-border/60 last:border-0"><td className="px-4 py-3 font-medium text-foreground">{row.label}</td><td className="px-4 py-3 text-right">{row.submissions}</td><td className="px-4 py-3 text-right">{formatCurrency(row.spendCents || null)}</td><td className="px-4 py-3 text-right font-medium">{row.submissions && row.spendCents ? formatCurrency(Math.round(row.spendCents / row.submissions)) : "—"}</td></tr>) : <tr><td colSpan={4} className="px-4 py-7 text-center text-muted-foreground">Add private spend or capture a tagged lead to begin cost-per-lead reporting.</td></tr>}</tbody></table>
+      </section>
+      {filteredSpendEntries.length > 0 && <section className="xl:col-span-2 overflow-x-auto rounded-lg border border-border bg-background/60"><div className="border-b border-border px-4 py-3"><h2 className="text-sm font-semibold text-foreground">Recorded spend in range</h2></div><table className="w-full min-w-[760px] text-sm"><thead><tr className="border-b border-border bg-muted/50 text-left text-xs text-muted-foreground"><th className="px-4 py-2.5 font-semibold">Date</th><th className="px-4 py-2.5 font-semibold">Campaign</th><th className="px-4 py-2.5 font-semibold">Notes</th><th className="px-4 py-2.5 text-right font-semibold">Spend</th><th className="px-4 py-2.5" /></tr></thead><tbody>{filteredSpendEntries.map((entry) => <tr key={entry.id} className="border-b border-border/60 last:border-0"><td className="px-4 py-3">{new Date(entry.spentOn).toLocaleDateString()}</td><td className="px-4 py-3 font-medium text-foreground">{campaignIdentity(entry).label}</td><td className="px-4 py-3 text-muted-foreground">{entry.notes || "—"}</td><td className="px-4 py-3 text-right">{formatCurrency(entry.spendCents)}</td><td className="px-4 py-3 text-right"><Button type="button" size="icon" variant="ghost" aria-label={`Delete campaign spend entry ${entry.id}`} disabled={deleteSpendMutation.isPending} onClick={() => deleteSpendMutation.mutate({ id: entry.id })}><Trash2 className="h-4 w-4 text-destructive" /></Button></td></tr>)}</tbody></table></section>}
+    </div>
+  );
+
+  const guidance = <UTMGuidance source={utmSource} medium={utmMedium} campaign={utmCampaign} content={utmContent} term={utmTerm} generatedUrl={generatedUrl} copyStatus={copyStatus} onSourceChange={setUtmSource} onMediumChange={setUtmMedium} onCampaignChange={setUtmCampaign} onContentChange={setUtmContent} onTermChange={setUtmTerm} onPreset={applyCampaignPreset} onCopy={copyGeneratedUrl} />;
 
   if (!showFullAttribution) {
     return (
@@ -211,6 +344,7 @@ export default function CampaignFunnelSummary() {
           <span><strong className="text-foreground">0</strong> tagged campaign submissions</span>
           <span className="text-muted-foreground">The full campaign and calculator-cohort reports appear automatically after the first tagged submission.</span>
         </div>
+        {campaignReportingTools}
         {guidance}
       </section>
     );
@@ -238,6 +372,7 @@ export default function CampaignFunnelSummary() {
           </div>
         ))}
       </div>
+      {campaignReportingTools}
       <div className="mt-5 overflow-x-auto rounded-lg border border-border">
         <table className="w-full min-w-[680px] text-sm">
           <thead><tr className="border-b border-border bg-muted/60 text-left text-xs text-muted-foreground"><th className="px-4 py-2.5 font-semibold">First-touch campaign</th><th className="px-4 py-2.5 text-right font-semibold">Roadmap</th><th className="px-4 py-2.5 text-right font-semibold">Completed chat</th><th className="px-4 py-2.5 text-right font-semibold">Homes list</th><th className="px-4 py-2.5 text-right font-semibold">Buyer agent</th></tr></thead>

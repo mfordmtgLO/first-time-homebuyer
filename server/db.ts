@@ -18,6 +18,7 @@ import {
   emailTemplateUsage,
   emailTemplateVersion,
   syncedAgentOutreachTemplate,
+  campaignSpendEntry,
   loAgentSpendEntry,
   loAgentSpendPairing,
   leads,
@@ -1334,6 +1335,43 @@ export async function deleteLoAgentSpendPairing(input: { id: number; ownerUserId
   if (!db) throw new Error("Database not available");
   await db.delete(loAgentSpendEntry).where(eq(loAgentSpendEntry.pairingId, input.id));
   await db.delete(loAgentSpendPairing).where(and(eq(loAgentSpendPairing.id, input.id), eq(loAgentSpendPairing.ownerUserId, input.ownerUserId)));
+}
+
+// ---------------------------------------------------------------------------
+// Private campaign spend reporting
+// ---------------------------------------------------------------------------
+
+export async function listCampaignSpendEntries(ownerUserId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .select()
+    .from(campaignSpendEntry)
+    .where(eq(campaignSpendEntry.ownerUserId, ownerUserId))
+    .orderBy(desc(campaignSpendEntry.spentOn), desc(campaignSpendEntry.id));
+}
+
+export async function createCampaignSpendEntry(input: {
+  ownerUserId: number;
+  utmSource: string;
+  utmMedium: string;
+  utmCampaign: string;
+  spentOn: Date;
+  spendCents: number;
+  notes?: string | null;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(campaignSpendEntry).values({ ...input, notes: input.notes ?? null });
+  const rows = await db.select().from(campaignSpendEntry).where(eq(campaignSpendEntry.id, Number(result.insertId))).limit(1);
+  if (!rows[0]) throw new Error("Couldn't save campaign spend.");
+  return rows[0];
+}
+
+export async function deleteCampaignSpendEntry(input: { id: number; ownerUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(campaignSpendEntry).where(and(eq(campaignSpendEntry.id, input.id), eq(campaignSpendEntry.ownerUserId, input.ownerUserId)));
 }
 
 // ---------------------------------------------------------------------------

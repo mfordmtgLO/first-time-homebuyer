@@ -39,4 +39,21 @@ describe("CampaignFunnelSummary attribution readiness", () => {
     expect(componentSource).toContain('url.searchParams.set("utm_source"');
     expect(componentSource).toContain('url.searchParams.set("utm_campaign"');
   });
+
+  it("keeps standard Facebook, Google, and email presets available in the UTM generator", () => {
+    expect(componentSource).toContain("const CAMPAIGN_PRESETS");
+    expect(componentSource).toContain('label: "Facebook"');
+    expect(componentSource).toContain('label: "Google"');
+    expect(componentSource).toContain('label: "Email"');
+    expect(componentSource).toContain("Standard presets");
+  });
+
+  it("keeps visual campaign comparison and private cost-per-lead reporting available", () => {
+    expect(componentSource).toContain("Tagged campaign volume comparison");
+    expect(componentSource).toContain("maxCampaignVolume");
+    expect(componentSource).toContain("Campaign cost per tagged lead");
+    expect(componentSource).toContain("CPL = spend ÷ tagged leads");
+    expect(componentSource).toContain("trpc.campaignSpend.list.useQuery()");
+    expect(componentSource).toContain("Add private spend");
+  });
 });

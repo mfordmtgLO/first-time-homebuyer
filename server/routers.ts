@@ -29,6 +29,8 @@ import {
   createLoanOfficer,
   createLoAgentSpendPairing,
   addLoAgentSpendEntry,
+  createCampaignSpendEntry,
+  deleteCampaignSpendEntry,
   deleteLoAgentSpendEntry,
   deleteLoAgentSpendPairing,
   deleteAgent,
@@ -55,6 +57,7 @@ import {
   setSyncedAgentOutreachTemplateArchived,
   deleteSyncedAgentOutreachTemplate,
   getLoAgentSpendPairingForOwner,
+  listCampaignSpendEntries,
   listGeoSphereListings,
   listGeoSphereSavedPulls,
   listListingAgentEmailTemplates,
@@ -1732,6 +1735,39 @@ export const appRouter = router({
         const pairing = await getLoAgentSpendPairingForOwner(input.id, ctx.user.id);
         if (!pairing) throw new TRPCError({ code: "NOT_FOUND", message: "Pairing tracker not found." });
         await deleteLoAgentSpendPairing({ id: input.id, ownerUserId: ctx.user.id });
+        return { success: true } as const;
+      }),
+  }),
+
+  campaignSpend: router({
+    /** Private administrator-only paid-campaign entries; never exposed to public property or landing pages. */
+    list: protectedProcedure.query(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      return listCampaignSpendEntries(ctx.user.id);
+    }),
+    add: protectedProcedure
+      .input(z.object({
+        utmSource: z.string().trim().min(1, "Enter a UTM source.").max(120),
+        utmMedium: z.string().trim().min(1, "Enter a UTM medium.").max(120),
+        utmCampaign: z.string().trim().min(1, "Enter a UTM campaign.").max(160),
+        spentOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a valid date."),
+        spendCents: z.number().int().min(1, "Enter a positive spend amount.").max(100_000_000),
+        notes: z.string().trim().max(300).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return createCampaignSpendEntry({
+          ...input,
+          ownerUserId: ctx.user.id,
+          spentOn: new Date(`${input.spentOn}T12:00:00.000Z`),
+          notes: input.notes || null,
+        });
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        await deleteCampaignSpendEntry({ id: input.id, ownerUserId: ctx.user.id });
         return { success: true } as const;
       }),
   }),

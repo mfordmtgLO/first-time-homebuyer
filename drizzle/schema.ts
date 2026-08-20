@@ -744,6 +744,30 @@ export const loAgentSpendEntry = mysqlTable(
 export type LoAgentSpendEntry = typeof loAgentSpendEntry.$inferSelect;
 export type InsertLoAgentSpendEntry = typeof loAgentSpendEntry.$inferInsert;
 
+/** Private paid-campaign costs used only for dashboard cost-per-tagged-lead reporting. */
+export const campaignSpendEntry = mysqlTable(
+  "campaign_spend_entry",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerUserId: int("ownerUserId").notNull(),
+    utmSource: varchar("utmSource", { length: 120 }).notNull(),
+    utmMedium: varchar("utmMedium", { length: 120 }).notNull(),
+    utmCampaign: varchar("utmCampaign", { length: 160 }).notNull(),
+    spentOn: timestamp("spentOn").notNull(),
+    spendCents: int("spendCents").notNull(),
+    notes: varchar("notes", { length: 300 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    index("campaign_spend_entry_owner_date_idx").on(table.ownerUserId, table.spentOn),
+    index("campaign_spend_entry_owner_campaign_idx").on(table.ownerUserId, table.utmSource, table.utmMedium, table.utmCampaign),
+  ]
+);
+
+export type CampaignSpendEntry = typeof campaignSpendEntry.$inferSelect;
+export type InsertCampaignSpendEntry = typeof campaignSpendEntry.$inferInsert;
+
 /** Persistent ownership state for the project-level GeoSphere weekly sync job. */
 export const geosphereSyncSetting = mysqlTable(
   "geosphere_sync_setting",

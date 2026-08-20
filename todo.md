@@ -471,3 +471,7 @@
 - [x] Add an in-dashboard UTM campaign-link generator within the attribution guidance section
 - [x] Add CSV export for date-filtered tagged campaign attribution rows
 - [x] Add regression coverage and publish the campaign reporting controls
+- [x] Add reusable Facebook, Google, and email campaign presets to the UTM link generator
+- [x] Add a visual campaign-volume comparison bar chart for tagged submission reporting
+- [x] Add private campaign-spend inputs with cost-per-tagged-lead calculation by campaign and selected date range
+- [x] Add database migration, regression coverage, and publish enhanced campaign reporting
