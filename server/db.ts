@@ -1490,6 +1490,8 @@ export async function createPropertyLandingPage(input: {
   hoaDues?: number | null;
   homeownerInsurance?: number | null;
   mortgageInsurance?: number | null;
+  complianceApprovalStatus?: "draft" | "submitted" | "approved" | "changes_requested";
+  maxSellerContribution?: number | null;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -1515,6 +1517,8 @@ export async function createPropertyLandingPage(input: {
     hoaDues: input.hoaDues ?? existingSnapshot?.hoaDues ?? importedSnapshot.hoaDues,
     homeownerInsurance: input.homeownerInsurance ?? existingSnapshot?.homeownerInsurance ?? importedSnapshot.homeownerInsurance,
     mortgageInsurance: input.mortgageInsurance ?? existingSnapshot?.mortgageInsurance ?? importedSnapshot.mortgageInsurance,
+    complianceApprovalStatus: input.complianceApprovalStatus ?? existingSnapshot?.complianceApprovalStatus ?? importedSnapshot.complianceApprovalStatus,
+    maxSellerContribution: input.maxSellerContribution ?? existingSnapshot?.maxSellerContribution ?? importedSnapshot.maxSellerContribution,
   };
   if (existing[0]) {
     await db
@@ -1601,6 +1605,8 @@ export async function updatePropertyLandingPageMetadata(input: {
   hoaDues: number | null;
   homeownerInsurance: number | null;
   mortgageInsurance: number | null;
+  complianceApprovalStatus: "draft" | "submitted" | "approved" | "changes_requested";
+  maxSellerContribution: number | null;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -1616,6 +1622,8 @@ export async function updatePropertyLandingPageMetadata(input: {
     hoaDues: input.hoaDues,
     homeownerInsurance: input.homeownerInsurance,
     mortgageInsurance: input.mortgageInsurance,
+    complianceApprovalStatus: input.complianceApprovalStatus,
+    maxSellerContribution: input.maxSellerContribution,
   };
   await db.update(propertyLandingPage).set({ listingSnapshot: JSON.stringify(updatedSnapshot) }).where(eq(propertyLandingPage.id, input.id));
   const updated = await db.select().from(propertyLandingPage).where(eq(propertyLandingPage.id, input.id)).limit(1);

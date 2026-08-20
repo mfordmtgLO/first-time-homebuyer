@@ -23,9 +23,10 @@ type BuydownProps = {
   monthlyHoaDues?: number;
   monthlyHomeownerInsurance?: number;
   monthlyMortgageInsurance?: number;
+  maxSellerContribution?: number;
 };
 
-export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000, propertyAddress, monthlyPropertyTaxes = 0, monthlyHoaDues = 0, monthlyHomeownerInsurance = 0, monthlyMortgageInsurance = 0 }: BuydownProps) {
+export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000, propertyAddress, monthlyPropertyTaxes = 0, monthlyHoaDues = 0, monthlyHomeownerInsurance = 0, monthlyMortgageInsurance = 0, maxSellerContribution }: BuydownProps) {
   const ref = useReveal<HTMLElement>();
   const { setScenario, setAttached } = useScenario();
 
@@ -51,6 +52,7 @@ export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000
   );
   const savedMonthlyPropertyCosts = Math.max(monthlyPropertyTaxes, 0) + Math.max(monthlyHoaDues, 0) + Math.max(monthlyHomeownerInsurance, 0) + Math.max(monthlyMortgageInsurance, 0);
   const savedCostLabels = [monthlyPropertyTaxes > 0 ? `${fmtUsd(monthlyPropertyTaxes)}/mo taxes` : null, monthlyHoaDues > 0 ? `${fmtUsd(monthlyHoaDues)}/mo HOA` : null, monthlyHomeownerInsurance > 0 ? `${fmtUsd(monthlyHomeownerInsurance)}/mo homeowner insurance` : null, monthlyMortgageInsurance > 0 ? `${fmtUsd(monthlyMortgageInsurance)}/mo mortgage insurance` : null].filter(Boolean).join(", ");
+  const sellerContributionNeedsReview = Boolean(maxSellerContribution && maxSellerContribution > 0 && result.totalSubsidy > maxSellerContribution);
 
   // Keep the shared scenario in sync with the latest calculator run so the
   // Roadmap form can attach it when the visitor opts in.
@@ -293,6 +295,7 @@ export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000
                 </div>
               </div>
               {savedMonthlyPropertyCosts > 0 ? <div className="mt-5 rounded-md border border-primary/15 bg-primary/[0.05] p-4 text-sm text-muted-foreground"><p className="font-semibold text-foreground">Saved property costs to discuss</p><p className="mt-1 leading-relaxed">{savedCostLabels}. Your loan officer can prepare a complete, loan-specific payment and APR disclosure after reviewing the full application, loan terms, fees, and program eligibility.</p></div> : null}
+              {sellerContributionNeedsReview ? <div className="mt-4 rounded-md border border-amber-500/30 bg-amber-50 p-4 text-sm text-amber-950"><p className="font-semibold">Seller-contribution review needed</p><p className="mt-1 leading-relaxed">This savings illustration exceeds the saved seller-contribution planning limit for this property. Please discuss alternate structures and current program, contract, and closing-cost requirements with your loan officer.</p></div> : null}
             </div>
 
             <div className="mt-6 rounded-lg bg-secondary p-5 md:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">

@@ -1496,6 +1496,8 @@ export const appRouter = router({
         hoaDues: z.number().finite().min(0).max(100_000).multipleOf(0.01).nullable().optional(),
         homeownerInsurance: z.number().finite().min(0).max(100_000).multipleOf(0.01).nullable().optional(),
         mortgageInsurance: z.number().finite().min(0).max(100_000).multipleOf(0.01).nullable().optional(),
+        complianceApprovalStatus: z.enum(["draft", "submitted", "approved", "changes_requested"]).optional(),
+        maxSellerContribution: z.number().finite().min(0).max(1_000_000).multipleOf(0.01).nullable().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
@@ -1533,7 +1535,7 @@ export const appRouter = router({
         requireAdmin(ctx.user.role);
         return updatePropertyLandingPageExternalListingUrl(input);
       }),
-    /** Updates owner-entered tax, unit, HOA, homeowner-insurance, and mortgage-insurance snapshot details after a public page exists. */
+    /** Updates owner-entered property facts and private compliance planning controls after a public page exists. */
     updateMetadata: protectedProcedure
       .input(z.object({
         id: z.number().int().positive(),
@@ -1542,6 +1544,8 @@ export const appRouter = router({
         hoaDues: z.number().finite().min(0).max(100_000).multipleOf(0.01).nullable(),
         homeownerInsurance: z.number().finite().min(0).max(100_000).multipleOf(0.01).nullable(),
         mortgageInsurance: z.number().finite().min(0).max(100_000).multipleOf(0.01).nullable(),
+        complianceApprovalStatus: z.enum(["draft", "submitted", "approved", "changes_requested"]),
+        maxSellerContribution: z.number().finite().min(0).max(1_000_000).multipleOf(0.01).nullable(),
       }))
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);

@@ -40,4 +40,16 @@ describe("single-property dashboard metadata editor", () => {
     expect(publicPageSource).toContain("snapshot.homeownerInsurance === null");
     expect(workspaceSource).toContain("must be a non-negative dollar amount with no more than two decimal places");
   });
+
+  it("keeps private compliance status and contribution limits available without turning them into public payment quotes", () => {
+    expect(workspaceSource).toContain("Compliance review status");
+    expect(workspaceSource).toContain("Maximum seller contribution");
+    expect(workspaceSource).toContain("COMPLIANCE_STATUS_OPTIONS");
+    expect(workspaceSource).toContain("FOR INTERNAL USE ONLY");
+    expect(routerSource).toContain('complianceApprovalStatus: z.enum(["draft", "submitted", "approved", "changes_requested"])');
+    expect(routerSource).toContain("maxSellerContribution: z.number().finite().min(0).max(1_000_000).multipleOf(0.01)");
+    expect(databaseSource).toContain("complianceApprovalStatus: input.complianceApprovalStatus");
+    expect(databaseSource).toContain("maxSellerContribution: input.maxSellerContribution");
+    expect(publicPageSource).toContain("maxSellerContribution={snapshot.maxSellerContribution ?? undefined}");
+  });
 });

@@ -48,8 +48,11 @@ describe("single-property Cost of Waiting section", () => {
     expect(buydown).toContain("Potential monthly payment savings");
     expect(buydown).toContain("seller contributions toward the 2-1 buydown subsidy");
     expect(buydown).toContain("not a payment quote, APR quote");
+    expect(buydown).toContain("maxSellerContribution?: number");
+    expect(buydown).toContain("Seller-contribution review needed");
     expect(buydown).not.toContain("Monthly principal & interest by year");
     expect(buydown).not.toContain("Estimated note-rate P&I");
+    expect(buydown).not.toContain("Estimated monthly payment:");
     expect(page).not.toContain("Year 1 payment / savings");
   });
 });

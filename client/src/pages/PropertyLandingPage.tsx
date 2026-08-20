@@ -317,7 +317,7 @@ export default function PropertyLandingPage() {
             </section>
             <div id="payment-scenarios">
               <CalculatorEligibilityBadges isLmi={snapshot.isLmi} isUsda={snapshot.isUsda} />
-              <div id="buydown" className="scroll-mt-24"><Buydown purchasePrice={snapshot.price ?? undefined} propertyAddress={snapshot.address} monthlyPropertyTaxes={snapshot.propertyTaxes === null ? undefined : snapshot.propertyTaxes / 12} monthlyHoaDues={snapshot.hoaDues ?? undefined} monthlyHomeownerInsurance={snapshot.homeownerInsurance ?? undefined} monthlyMortgageInsurance={snapshot.mortgageInsurance ?? undefined} /></div>
+              <div id="buydown" className="scroll-mt-24"><Buydown purchasePrice={snapshot.price ?? undefined} propertyAddress={snapshot.address} monthlyPropertyTaxes={snapshot.propertyTaxes === null ? undefined : snapshot.propertyTaxes / 12} monthlyHoaDues={snapshot.hoaDues ?? undefined} monthlyHomeownerInsurance={snapshot.homeownerInsurance ?? undefined} monthlyMortgageInsurance={snapshot.mortgageInsurance ?? undefined} maxSellerContribution={snapshot.maxSellerContribution ?? undefined} /></div>
             </div>
             <section id="cost-of-waiting" className="scroll-mt-24 py-16 text-primary-foreground md:py-20" style={{ background: "oklch(0.27 0.05 162)" }}>
               <div className="container">

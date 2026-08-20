@@ -518,3 +518,7 @@
 - [x] Remove public 2-1 Buydown principal-and-interest payment quotes and retain year-one/year-two savings plus seller-funded subsidy education
 - [x] Add seller-contribution assumption and non-commitment language to the public 2-1 Buydown presentation for compliance review
 - [x] Add regression coverage, visually verify dashboard and public property pages, and publish the revised calculator experience
+- [x] Add a private compliance approval-status control to each single-property page’s dashboard editor
+- [x] Add a For Internal Use Only watermark to the dashboard-generated all-in monthly-cost worksheet
+- [x] Add a validated maximum seller-contribution limit to property facts and use it to contextualize the 2-1 Buydown subsidy
+- [x] Add regression coverage and publish compliance-oriented single-property controls

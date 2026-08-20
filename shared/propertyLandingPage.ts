@@ -19,6 +19,8 @@ export type PropertyLandingSnapshot = {
   hoaDues: number | null;
   homeownerInsurance: number | null;
   mortgageInsurance: number | null;
+  complianceApprovalStatus: "draft" | "submitted" | "approved" | "changes_requested";
+  maxSellerContribution: number | null;
   propertyType: string | null;
   manufacturedHomeType: string | null;
   yearBuilt: number | null;
@@ -135,6 +137,8 @@ export function buildPropertyLandingSnapshot(listing: SavedListingLike, sourceSa
     hoaDues: firstNumber(source, ["hoaDues", "monthlyHoaDues", "hoaFee", "monthlyHoaFee"]),
     homeownerInsurance: firstNumber(source, ["homeownerInsurance", "homeownersInsurance", "monthlyHomeInsurance", "monthlyInsurance"]),
     mortgageInsurance: firstNumber(source, ["mortgageInsurance", "monthlyMortgageInsurance", "mi"]),
+    complianceApprovalStatus: "draft",
+    maxSellerContribution: null,
     propertyType,
     manufacturedHomeType: manufactured,
     yearBuilt: firstNumber(source, ["yearBuilt"]),
@@ -156,7 +160,14 @@ export function parsePropertyLandingSnapshot(value: string): PropertyLandingSnap
   try {
     const parsed = JSON.parse(value) as Partial<PropertyLandingSnapshot>;
     if (!parsed || typeof parsed.address !== "string" || typeof parsed.listingId !== "number") return null;
-    return parsed as PropertyLandingSnapshot;
+    const complianceApprovalStatus = parsed.complianceApprovalStatus === "submitted" || parsed.complianceApprovalStatus === "approved" || parsed.complianceApprovalStatus === "changes_requested"
+      ? parsed.complianceApprovalStatus
+      : "draft";
+    return {
+      ...parsed,
+      complianceApprovalStatus,
+      maxSellerContribution: typeof parsed.maxSellerContribution === "number" && Number.isFinite(parsed.maxSellerContribution) ? parsed.maxSellerContribution : null,
+    } as PropertyLandingSnapshot;
   } catch {
     return null;
   }
