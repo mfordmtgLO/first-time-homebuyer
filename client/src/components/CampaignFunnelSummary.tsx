@@ -15,6 +15,11 @@ export default function CampaignFunnelSummary() {
   const qualifiedChats = chats.filter((lead) => lead.status === "qualified");
   const homesListRequests = chats.filter((lead) => lead.lowDownPaymentHomeSearch === 1);
   const buyerAgentRequests = chats.filter((lead) => lead.buyerAgentRequest === 1);
+  const attributionSubmissions = [...roadmap, ...qualifiedChats];
+  const isTaggedSubmission = (lead: { utmSource?: string | null; utmMedium?: string | null; utmCampaign?: string | null; utmContent?: string | null; utmTerm?: string | null }) =>
+    Boolean(lead.utmSource || lead.utmMedium || lead.utmCampaign || lead.utmContent || lead.utmTerm);
+  const taggedSubmissionCount = attributionSubmissions.filter(isTaggedSubmission).length;
+  const showFullAttribution = taggedSubmissionCount > 0;
 
   const byCampaign = new Map<string, { roadmap: number; completedChats: number; homesList: number; buyerAgent: number }>();
   const byCampaignScenario = new Map<string, Record<RoadmapCohort, number>>();
@@ -49,6 +54,29 @@ export default function CampaignFunnelSummary() {
     { label: "Homes-list requests", value: homesListRequests.length, icon: MapPinned, tone: "text-emerald-700 bg-emerald-600/10" },
     { label: "Buyer-agent requests", value: buyerAgentRequests.length, icon: UsersRound, tone: "text-amber-800 bg-amber-500/15" },
   ];
+
+  if (!showFullAttribution) {
+    return (
+      <section id="campaign-funnel" className="scroll-mt-24 mb-10 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="flex items-center gap-2.5 font-display text-xl font-semibold text-foreground"><BarChart3 className="h-5 w-5 text-primary" /> Campaign attribution</h1>
+            <p className="mt-1 text-sm text-muted-foreground">No UTM-tagged Roadmap or completed chat submissions have arrived yet. Operational totals remain available in the Roadmap leads and Mortgage chat intake sections.</p>
+          </div>
+          <span className="w-fit rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">Tag-ready</span>
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm">
+          <span><strong className="text-foreground">{attributionSubmissions.length}</strong> qualifying submissions monitored</span>
+          <span><strong className="text-foreground">0</strong> tagged campaign submissions</span>
+          <span className="text-muted-foreground">The full campaign and calculator-cohort reports appear automatically after the first tagged submission.</span>
+        </div>
+        <details className="mt-4 rounded-lg border border-border bg-background/60 px-4 py-3 text-sm">
+          <summary className="cursor-pointer font-medium text-foreground">How to tag a campaign link</summary>
+          <p className="mt-2 text-muted-foreground">Add UTM parameters to the public landing-page URL before using it in an approved campaign. Example: <code className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">?utm_source=facebook&amp;utm_medium=paid_social&amp;utm_campaign=firsthome</code>. The full attribution view activates automatically when a tagged Roadmap or completed chat submission is captured.</p>
+        </details>
+      </section>
+    );
+  }
 
   return (
     <section id="campaign-funnel" className="scroll-mt-24 mb-10 rounded-xl border border-primary/20 bg-card p-5 shadow-sm sm:p-6">

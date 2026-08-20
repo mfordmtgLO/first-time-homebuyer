@@ -1,0 +1,27 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
+
+const componentSource = readFileSync(resolve(process.cwd(), "client/src/components/CampaignFunnelSummary.tsx"), "utf8");
+
+describe("CampaignFunnelSummary attribution readiness", () => {
+  it("uses every available UTM value to identify a tagged qualifying submission", () => {
+    expect(componentSource).toContain("const isTaggedSubmission");
+    expect(componentSource).toContain("lead.utmSource || lead.utmMedium || lead.utmCampaign || lead.utmContent || lead.utmTerm");
+    expect(componentSource).toContain("const taggedSubmissionCount");
+    expect(componentSource).toContain("const showFullAttribution = taggedSubmissionCount > 0");
+  });
+
+  it("replaces the full duplicated funnel with a compact tag-ready state until attribution exists", () => {
+    expect(componentSource).toContain("if (!showFullAttribution)");
+    expect(componentSource).toContain("No UTM-tagged Roadmap or completed chat submissions have arrived yet.");
+    expect(componentSource).toContain("0</strong> tagged campaign submissions");
+    expect(componentSource).toContain("The full campaign and calculator-cohort reports appear automatically");
+  });
+
+  it("retains UTM-tagging guidance for approved campaign links", () => {
+    expect(componentSource).toContain("How to tag a campaign link");
+    expect(componentSource).toContain("utm_source=facebook");
+    expect(componentSource).toContain("utm_campaign=firsthome");
+  });
+});

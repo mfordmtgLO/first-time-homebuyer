@@ -460,3 +460,10 @@
 - [x] Display calendar-click counts in the private property engagement dashboard and date-range reporting
 - [x] Audit and add a controlled optional third-party single-property CRM URL link for existing live property pages
 - [x] Add regression coverage and publish property calendar analytics and third-party-link support
+- [x] Inspect the GeoSphere Oregon map repository and supplied FirstHome targeted and non-targeted purchase-price limit data
+- [x] Add FirstHome targeted and non-targeted purchase-price limit eligibility to the GeoSphere map without changing dashboard sync fields
+- [x] Test the map logic, deployment, and existing first-time-homebuyer dashboard sync compatibility
+- [x] Audit the Campaign funnel metrics against existing Roadmap, chat-intake, homes-list, and buyer-agent dashboard reporting for duplication
+- [x] Streamline or remove redundant first-touch campaign presentation only if it adds no distinct attribution value
+- [x] Validate the revised campaign-reporting experience and publish the dashboard update if needed
+- [x] Replace the untagged Campaign funnel cards and repeated table with a compact attribution status until tagged campaign leads arrive
