@@ -232,6 +232,8 @@ export default function GeoSphereListings() {
   const [customPropertyPageTemplateBody, setCustomPropertyPageTemplateBody] = useState("");
   const [propertyPageBuyerTemplateId, setPropertyPageBuyerTemplateId] = useState("");
   const [customPropertyPageBuyerTemplateOpen, setCustomPropertyPageBuyerTemplateOpen] = useState(false);
+  const [propertyPageBuyerTemplateManagerOpen, setPropertyPageBuyerTemplateManagerOpen] = useState(false);
+  const [editingPropertyPageBuyerTemplateId, setEditingPropertyPageBuyerTemplateId] = useState<number | null>(null);
   const [customPropertyPageBuyerTemplateName, setCustomPropertyPageBuyerTemplateName] = useState("");
   const [customPropertyPageBuyerTemplateSubject, setCustomPropertyPageBuyerTemplateSubject] = useState("Buyer calculation summary — {{property_address}}");
   const [customPropertyPageBuyerTemplateBody, setCustomPropertyPageBuyerTemplateBody] = useState("Hi {{client_name}},\n\nI prepared a buyer calculation summary for {{property_address}}. You can review the saved property page here: {{property_url}}\n\nPlease let me know what questions you have about the property or your first-home financing options.\n\n{{loan_officer_signature}}\n\n{{agent_signature}}");
@@ -387,6 +389,24 @@ export default function GeoSphereListings() {
       toast.success(`${template.name} is now available for buyer email drafts.`);
     },
     onError: (error) => toast.error(error.message || "The buyer email template could not be saved."),
+  });
+  const updatePropertyPageBuyerTemplate = trpc.propertyPages.updateBuyerEmailTemplate.useMutation({
+    onSuccess: async (template) => {
+      await utils.propertyPages.listBuyerEmailTemplates.invalidate();
+      setPropertyPageBuyerTemplateId(String(template.id));
+      setCustomPropertyPageBuyerTemplateOpen(false);
+      setEditingPropertyPageBuyerTemplateId(null);
+      toast.success(`${template.name} was updated.`);
+    },
+    onError: (error) => toast.error(error.message || "The buyer email template could not be updated."),
+  });
+  const deletePropertyPageBuyerTemplate = trpc.propertyPages.deleteBuyerEmailTemplate.useMutation({
+    onSuccess: async (_result, variables) => {
+      await utils.propertyPages.listBuyerEmailTemplates.invalidate();
+      setPropertyPageBuyerTemplateId((selected) => selected === String(variables.id) ? "" : selected);
+      toast.success("Buyer email template deleted.");
+    },
+    onError: (error) => toast.error(error.message || "The buyer email template could not be deleted."),
   });
 
   const openListingDraft = () => {
@@ -554,10 +574,19 @@ export default function GeoSphereListings() {
   };
   const selectPropertyPageBuyerTemplate = (value: string) => {
     if (value === ADD_CUSTOM_PROPERTY_PAGE_BUYER_TEMPLATE) {
+      setEditingPropertyPageBuyerTemplateId(null);
       setCustomPropertyPageBuyerTemplateOpen(true);
       return;
     }
     setPropertyPageBuyerTemplateId(value);
+  };
+  const openPropertyPageBuyerTemplateEditor = (template: NonNullable<typeof propertyPageBuyerTemplatesQuery.data>[number]) => {
+    setEditingPropertyPageBuyerTemplateId(template.id);
+    setCustomPropertyPageBuyerTemplateName(template.name);
+    setCustomPropertyPageBuyerTemplateSubject(template.subjectTemplate);
+    setCustomPropertyPageBuyerTemplateBody(template.bodyTemplate);
+    setPropertyPageBuyerTemplateManagerOpen(false);
+    setCustomPropertyPageBuyerTemplateOpen(true);
   };
   const openPropertyPageBuyerDraft = (page: typeof propertyPages[number]) => {
     const snapshot = parsePropertyLandingSnapshot(page.listingSnapshot);
@@ -1008,6 +1037,7 @@ export default function GeoSphereListings() {
                       {(propertyPageBuyerTemplatesQuery.data ?? []).map((template) => <SelectItem key={template.id} value={String(template.id)}>Saved · {template.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  <Button type="button" size="sm" variant="outline" className="h-9 text-xs" onClick={() => setPropertyPageBuyerTemplateManagerOpen(true)}>Manage</Button>
                 </div>
               </div>
               {propertyPagesQuery.isLoading ? <div className="mt-5 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading saved property pages…</div> : propertyPages.length === 0 ? <div className="mt-5 rounded-lg border border-dashed border-border bg-card/60 p-5 text-sm text-muted-foreground">No property pages yet. Use <strong className="text-foreground">Property page</strong> in any saved listing row above to create one.</div> : <div className="mt-5 grid gap-4 xl:grid-cols-2">
@@ -1151,10 +1181,10 @@ export default function GeoSphereListings() {
           <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setCustomPropertyPageTemplateOpen(false)} disabled={savePropertyPageTemplate.isPending}>Cancel</Button><Button onClick={() => { if (customPropertyPageTemplateName.trim().length < 2 || customPropertyPageTemplateBody.trim().length < 20) { toast.error("Enter a template name and at least 20 characters of reusable email copy."); return; } savePropertyPageTemplate.mutate({ name: customPropertyPageTemplateName.trim(), bodyTemplate: customPropertyPageTemplateBody.trim() }); }} disabled={savePropertyPageTemplate.isPending}>{savePropertyPageTemplate.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}Save email template</Button></div>
         </DialogContent>
       </Dialog>
-      <Dialog open={customPropertyPageBuyerTemplateOpen} onOpenChange={setCustomPropertyPageBuyerTemplateOpen}>
+      <Dialog open={customPropertyPageBuyerTemplateOpen} onOpenChange={(open) => { setCustomPropertyPageBuyerTemplateOpen(open); if (!open) setEditingPropertyPageBuyerTemplateId(null); }}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="font-display">Add buyer email template</DialogTitle>
+            <DialogTitle className="font-display">{editingPropertyPageBuyerTemplateId ? "Edit buyer email template" : "Add buyer email template"}</DialogTitle>
             <DialogDescription>Save reusable client-facing copy for property-page buyer summaries. Available merge fields: <code>{"{{client_name}}"}</code>, <code>{"{{property_address}}"}</code>, <code>{"{{property_url}}"}</code>, <code>{"{{loan_officer_signature}}"}</code>, and <code>{"{{agent_signature}}"}</code>.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -1162,7 +1192,16 @@ export default function GeoSphereListings() {
             <div className="space-y-1.5"><Label htmlFor="property-page-buyer-template-subject">Email subject</Label><Input id="property-page-buyer-template-subject" value={customPropertyPageBuyerTemplateSubject} onChange={(event) => setCustomPropertyPageBuyerTemplateSubject(event.target.value)} maxLength={300} placeholder="Buyer calculation summary — {{property_address}}" /></div>
             <div className="space-y-1.5"><Label htmlFor="property-page-buyer-template-body">Reusable buyer email body</Label><Textarea id="property-page-buyer-template-body" value={customPropertyPageBuyerTemplateBody} onChange={(event) => setCustomPropertyPageBuyerTemplateBody(event.target.value)} maxLength={6000} className="min-h-56 resize-y" placeholder="Write your client message, then use supported merge fields for property and co-brand details." /><p className="text-right text-xs text-muted-foreground">{customPropertyPageBuyerTemplateBody.length}/6000</p></div>
           </div>
-          <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setCustomPropertyPageBuyerTemplateOpen(false)} disabled={savePropertyPageBuyerTemplate.isPending}>Cancel</Button><Button onClick={() => { if (customPropertyPageBuyerTemplateName.trim().length < 2 || customPropertyPageBuyerTemplateSubject.trim().length < 4 || customPropertyPageBuyerTemplateBody.trim().length < 20) { toast.error("Enter a name, subject, and at least 20 characters of reusable buyer email copy."); return; } savePropertyPageBuyerTemplate.mutate({ name: customPropertyPageBuyerTemplateName.trim(), subjectTemplate: customPropertyPageBuyerTemplateSubject.trim(), bodyTemplate: customPropertyPageBuyerTemplateBody.trim() }); }} disabled={savePropertyPageBuyerTemplate.isPending}>{savePropertyPageBuyerTemplate.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}Save buyer template</Button></div>
+          <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setCustomPropertyPageBuyerTemplateOpen(false)} disabled={savePropertyPageBuyerTemplate.isPending || updatePropertyPageBuyerTemplate.isPending}>Cancel</Button><Button onClick={() => { if (customPropertyPageBuyerTemplateName.trim().length < 2 || customPropertyPageBuyerTemplateSubject.trim().length < 4 || customPropertyPageBuyerTemplateBody.trim().length < 20) { toast.error("Enter a name, subject, and at least 20 characters of reusable buyer email copy."); return; } const input = { name: customPropertyPageBuyerTemplateName.trim(), subjectTemplate: customPropertyPageBuyerTemplateSubject.trim(), bodyTemplate: customPropertyPageBuyerTemplateBody.trim() }; if (editingPropertyPageBuyerTemplateId) updatePropertyPageBuyerTemplate.mutate({ id: editingPropertyPageBuyerTemplateId, ...input }); else savePropertyPageBuyerTemplate.mutate(input); }} disabled={savePropertyPageBuyerTemplate.isPending || updatePropertyPageBuyerTemplate.isPending}>{savePropertyPageBuyerTemplate.isPending || updatePropertyPageBuyerTemplate.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}{editingPropertyPageBuyerTemplateId ? "Update buyer template" : "Save buyer template"}</Button></div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={propertyPageBuyerTemplateManagerOpen} onOpenChange={setPropertyPageBuyerTemplateManagerOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader><DialogTitle className="font-display">Manage buyer email templates</DialogTitle><DialogDescription>Edit or delete your reusable client-summary drafts. Template use stays private to this dashboard owner.</DialogDescription></DialogHeader>
+          <div className="max-h-[55vh] space-y-3 overflow-y-auto pr-1">
+            {(propertyPageBuyerTemplatesQuery.data ?? []).length ? (propertyPageBuyerTemplatesQuery.data ?? []).map((template) => <div key={template.id} className="rounded-lg border border-border bg-muted/20 p-3"><div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><p className="font-semibold text-foreground">{template.name}</p><p className="mt-1 truncate text-xs text-muted-foreground">{template.subjectTemplate}</p></div><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => openPropertyPageBuyerTemplateEditor(template)}>Edit</Button><Button size="sm" variant="outline" className="border-rose-200 text-rose-700 hover:bg-rose-50" disabled={deletePropertyPageBuyerTemplate.isPending} onClick={() => { if (window.confirm(`Delete “${template.name}”? This cannot be undone.`)) deletePropertyPageBuyerTemplate.mutate({ id: template.id }); }}>Delete</Button></div></div></div>) : <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">No buyer email templates saved yet. Use Add buyer template to create your first reusable draft.</p>}
+          </div>
+          <div className="flex justify-end"><Button variant="outline" onClick={() => setPropertyPageBuyerTemplateManagerOpen(false)}>Close</Button></div>
         </DialogContent>
       </Dialog>
       <Dialog open={Boolean(bulkOutreachPreview)} onOpenChange={(open) => { if (!open) setBulkOutreachPreview(null); }}>

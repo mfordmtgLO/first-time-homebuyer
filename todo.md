@@ -426,3 +426,6 @@
 - [x] Add property-specific OHCS Flex Lending and USDA RD screening notes below calculator eligibility badges
 - [x] Add owner-scoped reusable buyer email templates to the single-property PDF-summary workflow
 - [x] Track Email PDF summary clicks as property-page engagement events and display the metric in dashboard analytics
+- [x] Add owner-only edit and delete controls for saved buyer email templates
+- [x] Add date-range filtering for Email PDF summary click metrics in the weekly property engagement dashboard widget
+- [x] Add Email PDF summary click-to-captured-lead conversion reporting to the property engagement dashboard

@@ -1616,6 +1616,65 @@ export async function createPropertyPageBuyerEmailTemplate(input: { ownerUserId:
   return rows[0]!;
 }
 
+export async function updatePropertyPageBuyerEmailTemplate(input: { ownerUserId: number; id: number; name: string; subjectTemplate: string; bodyTemplate: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.update(propertyPageBuyerEmailTemplate).set({ name: input.name, subjectTemplate: input.subjectTemplate, bodyTemplate: input.bodyTemplate, updatedAt: new Date() }).where(and(eq(propertyPageBuyerEmailTemplate.id, input.id), eq(propertyPageBuyerEmailTemplate.ownerUserId, input.ownerUserId)));
+  if (!result[0].affectedRows) throw new Error("Buyer email template not found.");
+  const rows = await db.select().from(propertyPageBuyerEmailTemplate).where(eq(propertyPageBuyerEmailTemplate.id, input.id)).limit(1);
+  return rows[0]!;
+}
+
+export async function deletePropertyPageBuyerEmailTemplate(input: { ownerUserId: number; id: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.delete(propertyPageBuyerEmailTemplate).where(and(eq(propertyPageBuyerEmailTemplate.id, input.id), eq(propertyPageBuyerEmailTemplate.ownerUserId, input.ownerUserId)));
+  if (!result[0].affectedRows) throw new Error("Buyer email template not found.");
+}
+
+/** Aggregates privacy-minimized Email PDF draft activity and post-draft captured leads by saved property page. */
+export async function getPropertyEmailPdfSummaryEngagement(since: Date | null) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const emailCondition = since
+    ? and(eq(propertyPageActivity.eventType, "email_pdf_summary"), gte(propertyPageActivity.createdAt, since))
+    : eq(propertyPageActivity.eventType, "email_pdf_summary");
+  const [pages, emailEvents, roadmapLeads, chatLeads] = await Promise.all([
+    db.select({ id: propertyLandingPage.id, address: propertyLandingPage.address, slug: propertyLandingPage.slug }).from(propertyLandingPage).where(eq(propertyLandingPage.isActive, 1)),
+    db.select({ propertyLandingPageId: propertyPageActivity.propertyLandingPageId, createdAt: propertyPageActivity.createdAt }).from(propertyPageActivity).where(emailCondition),
+    db.select({ propertyPageId: leads.propertyPageId, createdAt: leads.createdAt }).from(leads).where(isNotNull(leads.propertyPageId)),
+    db.select({ propertyPageId: chatIntakeLead.propertyPageId, completedAt: chatIntakeLead.completedAt }).from(chatIntakeLead).where(and(isNotNull(chatIntakeLead.propertyPageId), isNotNull(chatIntakeLead.completedAt))),
+  ]);
+  const eventsByPage = new Map<number, Date[]>();
+  emailEvents.forEach((event) => {
+    const events = eventsByPage.get(event.propertyLandingPageId) ?? [];
+    events.push(event.createdAt);
+    eventsByPage.set(event.propertyLandingPageId, events);
+  });
+  const leadsByPage = new Map<number, Date[]>();
+  roadmapLeads.forEach((lead) => {
+    if (!lead.propertyPageId) return;
+    const rows = leadsByPage.get(lead.propertyPageId) ?? [];
+    rows.push(lead.createdAt);
+    leadsByPage.set(lead.propertyPageId, rows);
+  });
+  chatLeads.forEach((lead) => {
+    if (!lead.propertyPageId || !lead.completedAt) return;
+    const rows = leadsByPage.get(lead.propertyPageId) ?? [];
+    rows.push(lead.completedAt);
+    leadsByPage.set(lead.propertyPageId, rows);
+  });
+  const propertyPages = pages.map((page) => {
+    const clicks = eventsByPage.get(page.id) ?? [];
+    const firstClickAt = clicks.length ? new Date(Math.min(...clicks.map((value) => value.getTime()))) : null;
+    const capturedLeadsAfterEmail = firstClickAt ? (leadsByPage.get(page.id) ?? []).filter((createdAt) => createdAt >= firstClickAt!).length : 0;
+    return { ...page, emailPdfSummaryClicks: clicks.length, capturedLeadsAfterEmail };
+  }).filter((page) => page.emailPdfSummaryClicks > 0).sort((left, right) => right.emailPdfSummaryClicks - left.emailPdfSummaryClicks || right.capturedLeadsAfterEmail - left.capturedLeadsAfterEmail || left.address.localeCompare(right.address));
+  const emailPdfSummaryClicks = propertyPages.reduce((total, page) => total + page.emailPdfSummaryClicks, 0);
+  const capturedLeadsAfterEmail = propertyPages.reduce((total, page) => total + page.capturedLeadsAfterEmail, 0);
+  return { emailPdfSummaryClicks, capturedLeadsAfterEmail, propertyPages };
+}
+
 /**
  * Records that a dashboard user opened a listing-agent outreach mail draft.
  * The browser mail client performs the actual delivery, so this is presented as

@@ -23,6 +23,8 @@ import {
   createPropertyLandingPage,
   createPropertyPageAgentEmailTemplate,
   createPropertyPageBuyerEmailTemplate,
+  updatePropertyPageBuyerEmailTemplate,
+  deletePropertyPageBuyerEmailTemplate,
   createAgent,
   createLoanOfficer,
   createLoAgentSpendPairing,
@@ -58,6 +60,7 @@ import {
   listWeeklyPropertyPageEngagement,
   listPropertyPageAgentEmailTemplates,
   listPropertyPageBuyerEmailTemplates,
+  getPropertyEmailPdfSummaryEngagement,
   loanOfficerSlugTaken,
   recordChatIntakeResendAttempt,
   recordGeoSphereListingEmailActivity,
@@ -1541,6 +1544,30 @@ export const appRouter = router({
           }
           throw error;
         }
+      }),
+    updateBuyerEmailTemplate: protectedProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        name: z.string().trim().min(2, "Enter a template name.").max(160),
+        subjectTemplate: z.string().trim().min(4, "Enter an email subject.").max(300),
+        bodyTemplate: z.string().trim().min(20, "Write at least 20 characters for the email body.").max(6000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return updatePropertyPageBuyerEmailTemplate({ ownerUserId: ctx.user.id, ...input });
+      }),
+    deleteBuyerEmailTemplate: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        await deletePropertyPageBuyerEmailTemplate({ ownerUserId: ctx.user.id, id: input.id });
+        return { deleted: true };
+      }),
+    emailPdfSummaryEngagement: protectedProcedure
+      .input(z.object({ range: z.enum(PROPERTY_ACTIVITY_RANGES).default("7d") }).optional())
+      .query(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return getPropertyEmailPdfSummaryEngagement(getPropertyActivitySince(input?.range ?? "7d"));
       }),
   }),
 

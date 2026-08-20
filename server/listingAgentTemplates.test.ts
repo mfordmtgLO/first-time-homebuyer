@@ -40,6 +40,9 @@ vi.mock("./db", async (importOriginal) => {
     createPropertyPageAgentEmailTemplate: vi.fn(async (input: { name: string; bodyTemplate: string }) => ({ id: 81, ...input, createdAt: new Date(), updatedAt: new Date() })),
     listPropertyPageBuyerEmailTemplates: vi.fn(async () => []),
     createPropertyPageBuyerEmailTemplate: vi.fn(async (input: { ownerUserId: number; name: string; subjectTemplate: string; bodyTemplate: string }) => ({ id: 82, ...input, createdAt: new Date(), updatedAt: new Date() })),
+    updatePropertyPageBuyerEmailTemplate: vi.fn(async (input: { ownerUserId: number; id: number; name: string; subjectTemplate: string; bodyTemplate: string }) => ({ ...input, createdAt: new Date(), updatedAt: new Date() })),
+    deletePropertyPageBuyerEmailTemplate: vi.fn(async () => undefined),
+    getPropertyEmailPdfSummaryEngagement: vi.fn(async () => ({ emailPdfSummaryClicks: 3, capturedLeadsAfterEmail: 1, propertyPages: [{ id: 71, address: "1024 S 5th St", slug: "1024-s-5th-st", emailPdfSummaryClicks: 3, capturedLeadsAfterEmail: 1 }] })),
     recordPropertyPageActivity: vi.fn(async (input: { propertyLandingPageId: number; eventType: string; detail?: string | null }) => ({ id: 201, ...input, createdAt: new Date() })),
     listPropertyPageActivity: vi.fn(async () => [{ id: 202, propertyLandingPageId: 71, eventType: "chat_completed", detail: null, createdAt: new Date() }]),
     updatePropertyLandingPageAiSummary: vi.fn(async (input: { id: number; aiSummary: string | null }) => ({ ...input, updatedAt: new Date() })),
@@ -49,7 +52,7 @@ vi.mock("./db", async (importOriginal) => {
 });
 
 import { appRouter } from "./routers";
-import { createListingAgentEmailTemplate, createPropertyEmailTemplate, listListingAgentEmailTemplates, listPropertyEmailTemplates, recordGeoSphereListingEmailActivity, createPropertyLandingPage, updatePropertyLandingPagePair, updatePropertyLandingPageStatus, refreshPropertyLandingPage, createPropertyPageAgentEmailTemplate, createPropertyPageBuyerEmailTemplate, listPropertyPageBuyerEmailTemplates, recordPropertyPageActivity, listPropertyPageActivity, listWeeklyPropertyPageEngagement, getPropertyEngagementSetting, savePropertyEngagementThreshold, savePropertyEngagementPreferences, updatePropertyLandingPageAiSummary } from "./db";
+import { createListingAgentEmailTemplate, createPropertyEmailTemplate, listListingAgentEmailTemplates, listPropertyEmailTemplates, recordGeoSphereListingEmailActivity, createPropertyLandingPage, updatePropertyLandingPagePair, updatePropertyLandingPageStatus, refreshPropertyLandingPage, createPropertyPageAgentEmailTemplate, createPropertyPageBuyerEmailTemplate, updatePropertyPageBuyerEmailTemplate, deletePropertyPageBuyerEmailTemplate, listPropertyPageBuyerEmailTemplates, getPropertyEmailPdfSummaryEngagement, recordPropertyPageActivity, listPropertyPageActivity, listWeeklyPropertyPageEngagement, getPropertyEngagementSetting, savePropertyEngagementThreshold, savePropertyEngagementPreferences, updatePropertyLandingPageAiSummary } from "./db";
 import type { TrpcContext } from "./_core/context";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
@@ -85,6 +88,9 @@ const refreshPropertyPageMock = vi.mocked(refreshPropertyLandingPage);
 const createPropertyPageTemplateMock = vi.mocked(createPropertyPageAgentEmailTemplate);
 const createPropertyPageBuyerTemplateMock = vi.mocked(createPropertyPageBuyerEmailTemplate);
 const listPropertyPageBuyerTemplatesMock = vi.mocked(listPropertyPageBuyerEmailTemplates);
+const updatePropertyPageBuyerTemplateMock = vi.mocked(updatePropertyPageBuyerEmailTemplate);
+const deletePropertyPageBuyerTemplateMock = vi.mocked(deletePropertyPageBuyerEmailTemplate);
+const emailPdfSummaryEngagementMock = vi.mocked(getPropertyEmailPdfSummaryEngagement);
 const recordPropertyPageActivityMock = vi.mocked(recordPropertyPageActivity);
 const listPropertyPageActivityMock = vi.mocked(listPropertyPageActivity);
 const listWeeklyPropertyEngagementMock = vi.mocked(listWeeklyPropertyPageEngagement);
@@ -243,6 +249,25 @@ describe("geosphere listing-agent email templates", () => {
     expect(saved).toMatchObject({ id: 82, name: "Numbers to review" });
     await expect(appRouter.createCaller(createContext("user")).propertyPages.listBuyerEmailTemplates()).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(appRouter.createCaller(createContext("user")).propertyPages.saveBuyerEmailTemplate({ name: "No", subjectTemplate: "No draft", bodyTemplate: "This should not be permitted as a buyer email template." })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("updates and deletes buyer email templates only for the dashboard owner", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    const updated = await caller.propertyPages.updateBuyerEmailTemplate({ id: 82, name: "Updated buyer summary", subjectTemplate: "Updated subject", bodyTemplate: "An updated buyer email body with enough content to pass validation." });
+    const deleted = await caller.propertyPages.deleteBuyerEmailTemplate({ id: 82 });
+    expect(updatePropertyPageBuyerTemplateMock).toHaveBeenCalledWith(expect.objectContaining({ ownerUserId: 1, id: 82, name: "Updated buyer summary" }));
+    expect(deletePropertyPageBuyerTemplateMock).toHaveBeenCalledWith({ ownerUserId: 1, id: 82 });
+    expect(updated).toMatchObject({ id: 82, name: "Updated buyer summary" });
+    expect(deleted).toEqual({ deleted: true });
+    await expect(appRouter.createCaller(createContext("user")).propertyPages.updateBuyerEmailTemplate({ id: 82, name: "No", subjectTemplate: "No draft", bodyTemplate: "This should not be permitted as a buyer email template." })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(appRouter.createCaller(createContext("user")).propertyPages.deleteBuyerEmailTemplate({ id: 82 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("returns date-scoped Email PDF click-to-lead conversion analytics only to the dashboard owner", async () => {
+    const result = await appRouter.createCaller(createContext("admin")).propertyPages.emailPdfSummaryEngagement({ range: "30d" });
+    expect(emailPdfSummaryEngagementMock).toHaveBeenCalledWith(expect.any(Date));
+    expect(result).toMatchObject({ emailPdfSummaryClicks: 3, capturedLeadsAfterEmail: 1 });
+    await expect(appRouter.createCaller(createContext("user")).propertyPages.emailPdfSummaryEngagement({ range: "30d" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("retires or restores a property page and refreshes only from its saved snapshot", async () => {
