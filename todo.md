@@ -467,3 +467,7 @@
 - [x] Streamline or remove redundant first-touch campaign presentation only if it adds no distinct attribution value
 - [x] Validate the revised campaign-reporting experience and publish the dashboard update if needed
 - [x] Replace the untagged Campaign funnel cards and repeated table with a compact attribution status until tagged campaign leads arrive
+- [x] Add date-range filtering for qualifying UTM-tagged campaign submissions
+- [x] Add an in-dashboard UTM campaign-link generator within the attribution guidance section
+- [x] Add CSV export for date-filtered tagged campaign attribution rows
+- [x] Add regression coverage and publish the campaign reporting controls

@@ -6,7 +6,7 @@ const componentSource = readFileSync(resolve(process.cwd(), "client/src/componen
 
 describe("CampaignFunnelSummary attribution readiness", () => {
   it("uses every available UTM value to identify a tagged qualifying submission", () => {
-    expect(componentSource).toContain("const isTaggedSubmission");
+    expect(componentSource).toContain("function isTaggedSubmission");
     expect(componentSource).toContain("lead.utmSource || lead.utmMedium || lead.utmCampaign || lead.utmContent || lead.utmTerm");
     expect(componentSource).toContain("const taggedSubmissionCount");
     expect(componentSource).toContain("const showFullAttribution = taggedSubmissionCount > 0");
@@ -21,7 +21,22 @@ describe("CampaignFunnelSummary attribution readiness", () => {
 
   it("retains UTM-tagging guidance for approved campaign links", () => {
     expect(componentSource).toContain("How to tag a campaign link");
-    expect(componentSource).toContain("utm_source=facebook");
-    expect(componentSource).toContain("utm_campaign=firsthome");
+    expect(componentSource).toContain('useState("facebook")');
+    expect(componentSource).toContain('useState("firsthome")');
+  });
+
+  it("adds date-filtered tagged reporting controls and a CSV export", () => {
+    expect(componentSource).toContain('type CampaignDateRange = "all" | "7d" | "30d" | "90d"');
+    expect(componentSource).toContain("function isWithinDateRange");
+    expect(componentSource).toContain('aria-label="Campaign date range"');
+    expect(componentSource).toContain("Export tagged CSV");
+    expect(componentSource).toContain("campaign-attribution-${dateRange}.csv");
+  });
+
+  it("provides an in-dashboard UTM link generator in the expandable guidance", () => {
+    expect(componentSource).toContain("Generated UTM campaign link");
+    expect(componentSource).toContain("Copy tagged link");
+    expect(componentSource).toContain('url.searchParams.set("utm_source"');
+    expect(componentSource).toContain('url.searchParams.set("utm_campaign"');
   });
 });

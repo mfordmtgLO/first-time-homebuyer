@@ -1,25 +1,165 @@
-import { BarChart3, FileText, MessageCircle, UsersRound, MapPinned } from "lucide-react";
+import { useMemo, useState } from "react";
+import { BarChart3, Download, FileText, Link2, MapPinned, MessageCircle, UsersRound } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { Button } from "@/components/ui/button";
 import { roadmapCohort, type RoadmapCohort } from "@shared/campaignCohorts";
+
+type CampaignDateRange = "all" | "7d" | "30d" | "90d";
+
+type AttributionFields = {
+  createdAt: Date | string;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
+  utmContent?: string | null;
+  utmTerm?: string | null;
+};
+
+const CAMPAIGN_DATE_RANGES: Array<{ value: CampaignDateRange; label: string; days: number | null }> = [
+  { value: "all", label: "All time", days: null },
+  { value: "7d", label: "Last 7 days", days: 7 },
+  { value: "30d", label: "Last 30 days", days: 30 },
+  { value: "90d", label: "Last 90 days", days: 90 },
+];
 
 function campaignLabel(row: { utmSource?: string | null; utmMedium?: string | null; utmCampaign?: string | null }) {
   if (!row.utmSource && !row.utmCampaign) return "Direct / untagged";
   return [row.utmSource, row.utmMedium, row.utmCampaign].filter(Boolean).join(" · ");
 }
 
+function isTaggedSubmission(lead: AttributionFields) {
+  return Boolean(lead.utmSource || lead.utmMedium || lead.utmCampaign || lead.utmContent || lead.utmTerm);
+}
+
+function isWithinDateRange(lead: AttributionFields, range: CampaignDateRange) {
+  const days = CAMPAIGN_DATE_RANGES.find((item) => item.value === range)?.days;
+  if (!days) return true;
+  const timestamp = new Date(lead.createdAt).getTime();
+  return !Number.isFinite(timestamp) || timestamp >= Date.now() - days * 24 * 60 * 60 * 1000;
+}
+
+function escapeCsv(value: unknown) {
+  return `"${String(value ?? "").replace(/"/g, '""')}"`;
+}
+
+type UTMGuidanceProps = {
+  source: string;
+  medium: string;
+  campaign: string;
+  content: string;
+  term: string;
+  generatedUrl: string;
+  copyStatus: string | null;
+  onSourceChange: (value: string) => void;
+  onMediumChange: (value: string) => void;
+  onCampaignChange: (value: string) => void;
+  onContentChange: (value: string) => void;
+  onTermChange: (value: string) => void;
+  onCopy: () => void;
+};
+
+function UTMGuidance({ source, medium, campaign, content, term, generatedUrl, copyStatus, onSourceChange, onMediumChange, onCampaignChange, onContentChange, onTermChange, onCopy }: UTMGuidanceProps) {
+  return (
+    <details className="mt-4 rounded-lg border border-border bg-background/60 px-4 py-3 text-sm">
+      <summary className="cursor-pointer font-medium text-foreground">How to tag a campaign link</summary>
+      <p className="mt-2 text-muted-foreground">Set a source, medium, and campaign before sharing an approved public landing-page link. Tagged Roadmap and completed chat submissions automatically unlock the full attribution report.</p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <label className="text-xs font-medium text-muted-foreground">UTM source<input value={source} onChange={(event) => onSourceChange(event.target.value)} placeholder="facebook" className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm text-foreground" /></label>
+        <label className="text-xs font-medium text-muted-foreground">UTM medium<input value={medium} onChange={(event) => onMediumChange(event.target.value)} placeholder="paid_social" className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm text-foreground" /></label>
+        <label className="text-xs font-medium text-muted-foreground">UTM campaign<input value={campaign} onChange={(event) => onCampaignChange(event.target.value)} placeholder="firsthome" className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm text-foreground" /></label>
+        <label className="text-xs font-medium text-muted-foreground">UTM content <span className="font-normal">(optional)</span><input value={content} onChange={(event) => onContentChange(event.target.value)} placeholder="video_a" className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm text-foreground" /></label>
+        <label className="text-xs font-medium text-muted-foreground">UTM term <span className="font-normal">(optional)</span><input value={term} onChange={(event) => onTermChange(event.target.value)} placeholder="first_time_buyer" className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm text-foreground" /></label>
+      </div>
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+        <input aria-label="Generated UTM campaign link" readOnly value={generatedUrl} className="h-9 min-w-0 flex-1 rounded-md border border-input bg-muted/40 px-2.5 text-xs text-foreground" />
+        <Button type="button" size="sm" onClick={onCopy}><Link2 className="mr-1.5 h-3.5 w-3.5" />{copyStatus ?? "Copy tagged link"}</Button>
+      </div>
+    </details>
+  );
+}
+
 export default function CampaignFunnelSummary() {
   const roadmapQuery = trpc.leads.list.useQuery();
   const chatQuery = trpc.chat.list.useQuery();
+  const [dateRange, setDateRange] = useState<CampaignDateRange>("all");
+  const [utmSource, setUtmSource] = useState("facebook");
+  const [utmMedium, setUtmMedium] = useState("paid_social");
+  const [utmCampaign, setUtmCampaign] = useState("firsthome");
+  const [utmContent, setUtmContent] = useState("");
+  const [utmTerm, setUtmTerm] = useState("");
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const roadmap = roadmapQuery.data ?? [];
   const chats = chatQuery.data ?? [];
   const qualifiedChats = chats.filter((lead) => lead.status === "qualified");
-  const homesListRequests = chats.filter((lead) => lead.lowDownPaymentHomeSearch === 1);
-  const buyerAgentRequests = chats.filter((lead) => lead.buyerAgentRequest === 1);
   const attributionSubmissions = [...roadmap, ...qualifiedChats];
-  const isTaggedSubmission = (lead: { utmSource?: string | null; utmMedium?: string | null; utmCampaign?: string | null; utmContent?: string | null; utmTerm?: string | null }) =>
-    Boolean(lead.utmSource || lead.utmMedium || lead.utmCampaign || lead.utmContent || lead.utmTerm);
   const taggedSubmissionCount = attributionSubmissions.filter(isTaggedSubmission).length;
   const showFullAttribution = taggedSubmissionCount > 0;
+  const filteredRoadmap = roadmap.filter((lead) => isWithinDateRange(lead, dateRange));
+  const filteredChats = chats.filter((lead) => isWithinDateRange(lead, dateRange));
+  const filteredQualifiedChats = filteredChats.filter((lead) => lead.status === "qualified");
+  const homesListRequests = filteredChats.filter((lead) => lead.lowDownPaymentHomeSearch === 1);
+  const buyerAgentRequests = filteredChats.filter((lead) => lead.buyerAgentRequest === 1);
+  const taggedRows = [
+    ...filteredRoadmap.filter(isTaggedSubmission).map((lead) => ({
+      submittedAt: lead.createdAt,
+      submissionType: "Roadmap request",
+      name: lead.firstName,
+      email: lead.email,
+      utmSource: lead.utmSource,
+      utmMedium: lead.utmMedium,
+      utmCampaign: lead.utmCampaign,
+      utmContent: lead.utmContent,
+      utmTerm: lead.utmTerm,
+      landingPath: lead.landingPath,
+      referrerHost: lead.referrerHost,
+    })),
+    ...filteredQualifiedChats.filter(isTaggedSubmission).map((lead) => ({
+      submittedAt: lead.completedAt ?? lead.createdAt,
+      submissionType: "Completed chat intake",
+      name: lead.fullName,
+      email: lead.email,
+      utmSource: lead.utmSource,
+      utmMedium: lead.utmMedium,
+      utmCampaign: lead.utmCampaign,
+      utmContent: lead.utmContent,
+      utmTerm: lead.utmTerm,
+      landingPath: lead.landingPath,
+      referrerHost: lead.referrerHost,
+    })),
+  ].sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+
+  const generatedUrl = useMemo(() => {
+    const url = new URL("https://firsttimehomebuyer.manus.space/");
+    if (utmSource.trim()) url.searchParams.set("utm_source", utmSource.trim());
+    if (utmMedium.trim()) url.searchParams.set("utm_medium", utmMedium.trim());
+    if (utmCampaign.trim()) url.searchParams.set("utm_campaign", utmCampaign.trim());
+    if (utmContent.trim()) url.searchParams.set("utm_content", utmContent.trim());
+    if (utmTerm.trim()) url.searchParams.set("utm_term", utmTerm.trim());
+    return url.toString();
+  }, [utmCampaign, utmContent, utmMedium, utmSource, utmTerm]);
+
+  const copyGeneratedUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(generatedUrl);
+      setCopyStatus("Copied!");
+    } catch {
+      setCopyStatus("Select link to copy");
+    }
+    window.setTimeout(() => setCopyStatus(null), 1800);
+  };
+
+  const downloadTaggedRows = () => {
+    const headers = ["Submitted at", "Submission type", "Name", "Email", "UTM source", "UTM medium", "UTM campaign", "UTM content", "UTM term", "Landing path", "Referrer host"];
+    const csv = [headers, ...taggedRows.map((row) => [
+      new Date(row.submittedAt).toISOString(), row.submissionType, row.name, row.email, row.utmSource, row.utmMedium, row.utmCampaign, row.utmContent, row.utmTerm, row.landingPath, row.referrerHost,
+    ])].map((row) => row.map(escapeCsv).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `campaign-attribution-${dateRange}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
 
   const byCampaign = new Map<string, { roadmap: number; completedChats: number; homesList: number; buyerAgent: number }>();
   const byCampaignScenario = new Map<string, Record<RoadmapCohort, number>>();
@@ -28,14 +168,14 @@ export default function CampaignFunnelSummary() {
     current[field] += 1;
     byCampaign.set(label, current);
   };
-  roadmap.forEach((lead) => {
+  filteredRoadmap.forEach((lead) => {
     const label = campaignLabel(lead);
     add(label, "roadmap");
     const cohorts = byCampaignScenario.get(label) ?? { buydown: 0, costOfWaiting: 0, both: 0, noCalculator: 0 };
     cohorts[roadmapCohort(lead.scenario)] += 1;
     byCampaignScenario.set(label, cohorts);
   });
-  chats.forEach((lead) => {
+  filteredChats.forEach((lead) => {
     const label = campaignLabel(lead);
     if (lead.status === "qualified") add(label, "completedChats");
     if (lead.lowDownPaymentHomeSearch === 1) add(label, "homesList");
@@ -47,13 +187,14 @@ export default function CampaignFunnelSummary() {
   const cohortRows = Array.from(byCampaignScenario.entries())
     .map(([label, counts]) => ({ label, ...counts, total: counts.buydown + counts.costOfWaiting + counts.both + counts.noCalculator }))
     .sort((a, b) => b.total - a.total || a.label.localeCompare(b.label));
-
   const cards = [
-    { label: "Roadmap requests", value: roadmap.length, icon: FileText, tone: "text-primary bg-primary/10" },
-    { label: "Completed chat intakes", value: qualifiedChats.length, icon: MessageCircle, tone: "text-violet-700 bg-violet-600/10" },
+    { label: "Roadmap requests", value: filteredRoadmap.length, icon: FileText, tone: "text-primary bg-primary/10" },
+    { label: "Completed chat intakes", value: filteredQualifiedChats.length, icon: MessageCircle, tone: "text-violet-700 bg-violet-600/10" },
     { label: "Homes-list requests", value: homesListRequests.length, icon: MapPinned, tone: "text-emerald-700 bg-emerald-600/10" },
     { label: "Buyer-agent requests", value: buyerAgentRequests.length, icon: UsersRound, tone: "text-amber-800 bg-amber-500/15" },
   ];
+
+  const guidance = <UTMGuidance source={utmSource} medium={utmMedium} campaign={utmCampaign} content={utmContent} term={utmTerm} generatedUrl={generatedUrl} copyStatus={copyStatus} onSourceChange={setUtmSource} onMediumChange={setUtmMedium} onCampaignChange={setUtmCampaign} onContentChange={setUtmContent} onTermChange={setUtmTerm} onCopy={copyGeneratedUrl} />;
 
   if (!showFullAttribution) {
     return (
@@ -70,22 +211,23 @@ export default function CampaignFunnelSummary() {
           <span><strong className="text-foreground">0</strong> tagged campaign submissions</span>
           <span className="text-muted-foreground">The full campaign and calculator-cohort reports appear automatically after the first tagged submission.</span>
         </div>
-        <details className="mt-4 rounded-lg border border-border bg-background/60 px-4 py-3 text-sm">
-          <summary className="cursor-pointer font-medium text-foreground">How to tag a campaign link</summary>
-          <p className="mt-2 text-muted-foreground">Add UTM parameters to the public landing-page URL before using it in an approved campaign. Example: <code className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">?utm_source=facebook&amp;utm_medium=paid_social&amp;utm_campaign=firsthome</code>. The full attribution view activates automatically when a tagged Roadmap or completed chat submission is captured.</p>
-        </details>
+        {guidance}
       </section>
     );
   }
 
   return (
     <section id="campaign-funnel" className="scroll-mt-24 mb-10 rounded-xl border border-primary/20 bg-card p-5 shadow-sm sm:p-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="flex items-center gap-2.5 font-display text-2xl font-semibold text-foreground"><BarChart3 className="h-6 w-6 text-primary" /> Campaign funnel</h1>
           <p className="mt-1 text-sm text-muted-foreground">First-touch campaign attribution from Roadmap and mortgage-chat submissions. Browser conversion events remain tag-ready only until approved platform tracking is configured.</p>
         </div>
-        <span className="text-xs text-muted-foreground">{roadmapQuery.isFetching || chatQuery.isFetching ? "Refreshing…" : "Dashboard attribution"}</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 text-xs text-muted-foreground">Range<select aria-label="Campaign date range" value={dateRange} onChange={(event) => setDateRange(event.target.value as CampaignDateRange)} className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"><option value="all">All time</option><option value="7d">Last 7 days</option><option value="30d">Last 30 days</option><option value="90d">Last 90 days</option></select></label>
+          <Button type="button" size="sm" variant="outline" disabled={taggedRows.length === 0} onClick={downloadTaggedRows}><Download className="mr-1.5 h-3.5 w-3.5" />Export tagged CSV ({taggedRows.length})</Button>
+          <span className="text-xs text-muted-foreground">{roadmapQuery.isFetching || chatQuery.isFetching ? "Refreshing…" : "Dashboard attribution"}</span>
+        </div>
       </div>
       <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map(({ label, value, icon: Icon, tone }) => (
@@ -99,7 +241,7 @@ export default function CampaignFunnelSummary() {
       <div className="mt-5 overflow-x-auto rounded-lg border border-border">
         <table className="w-full min-w-[680px] text-sm">
           <thead><tr className="border-b border-border bg-muted/60 text-left text-xs text-muted-foreground"><th className="px-4 py-2.5 font-semibold">First-touch campaign</th><th className="px-4 py-2.5 text-right font-semibold">Roadmap</th><th className="px-4 py-2.5 text-right font-semibold">Completed chat</th><th className="px-4 py-2.5 text-right font-semibold">Homes list</th><th className="px-4 py-2.5 text-right font-semibold">Buyer agent</th></tr></thead>
-          <tbody>{rows.length ? rows.map((row) => <tr key={row.label} className="border-b border-border/60 last:border-0"><td className="px-4 py-3 font-medium text-foreground">{row.label}</td><td className="px-4 py-3 text-right">{row.roadmap}</td><td className="px-4 py-3 text-right">{row.completedChats}</td><td className="px-4 py-3 text-right">{row.homesList}</td><td className="px-4 py-3 text-right">{row.buyerAgent}</td></tr>) : <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No funnel submissions yet. UTM-tagged campaign traffic will appear here after the first Roadmap or chat submission.</td></tr>}</tbody>
+          <tbody>{rows.length ? rows.map((row) => <tr key={row.label} className="border-b border-border/60 last:border-0"><td className="px-4 py-3 font-medium text-foreground">{row.label}</td><td className="px-4 py-3 text-right">{row.roadmap}</td><td className="px-4 py-3 text-right">{row.completedChats}</td><td className="px-4 py-3 text-right">{row.homesList}</td><td className="px-4 py-3 text-right">{row.buyerAgent}</td></tr>) : <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No qualifying campaign submissions match this date range.</td></tr>}</tbody>
         </table>
       </div>
       <div className="mt-5 overflow-x-auto rounded-lg border border-border">
@@ -109,9 +251,10 @@ export default function CampaignFunnelSummary() {
         </div>
         <table className="w-full min-w-[820px] text-sm">
           <thead><tr className="border-b border-border bg-muted/60 text-left text-xs text-muted-foreground"><th className="px-4 py-2.5 font-semibold">First-touch campaign</th><th className="px-4 py-2.5 text-right font-semibold">2-1 buydown</th><th className="px-4 py-2.5 text-right font-semibold">Cost of waiting</th><th className="px-4 py-2.5 text-right font-semibold">Both calculators</th><th className="px-4 py-2.5 text-right font-semibold">No calculator</th><th className="px-4 py-2.5 text-right font-semibold">Roadmap total</th></tr></thead>
-          <tbody>{cohortRows.length ? cohortRows.map((row) => <tr key={row.label} className="border-b border-border/60 last:border-0"><td className="px-4 py-3 font-medium text-foreground">{row.label}</td><td className="px-4 py-3 text-right">{row.buydown}</td><td className="px-4 py-3 text-right">{row.costOfWaiting}</td><td className="px-4 py-3 text-right">{row.both}</td><td className="px-4 py-3 text-right">{row.noCalculator}</td><td className="px-4 py-3 text-right font-medium">{row.total}</td></tr>) : <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Calculator cohorts will appear after Roadmap leads arrive with saved scenario data.</td></tr>}</tbody>
+          <tbody>{cohortRows.length ? cohortRows.map((row) => <tr key={row.label} className="border-b border-border/60 last:border-0"><td className="px-4 py-3 font-medium text-foreground">{row.label}</td><td className="px-4 py-3 text-right">{row.buydown}</td><td className="px-4 py-3 text-right">{row.costOfWaiting}</td><td className="px-4 py-3 text-right">{row.both}</td><td className="px-4 py-3 text-right">{row.noCalculator}</td><td className="px-4 py-3 text-right font-medium">{row.total}</td></tr>) : <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No Roadmap calculator cohorts match this date range.</td></tr>}</tbody>
         </table>
       </div>
+      {guidance}
     </section>
   );
 }
