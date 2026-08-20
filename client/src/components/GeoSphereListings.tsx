@@ -32,6 +32,7 @@ import { filterByImportedListingAgent, getImportedListingAgentOptions, parseImpo
 import { filterPropertyListRecipients, formatRecipientLastFirst, type PropertyListRecipientFilter } from "@shared/geosphereRecipients";
 import { buildPropertyPageAgentDraft } from "@shared/propertyPageEmailDraft";
 import { buildPropertyLandingSnapshot, parsePropertyLandingSnapshot } from "@shared/propertyLandingPage";
+import { calculateEffectiveContributionScreeningLimit, DEFAULT_PROGRAM_CONTRIBUTION_LIMIT_BPS, PROGRAM_CONTRIBUTION_LIMIT_KEYS, type ProgramContributionLimitValues } from "@shared/programContributionLimits";
 import { publicSiteUrl } from "@shared/publicSiteUrl";
 import { EmailTemplateLifecycleManager, type ManagedEmailTemplate } from "@/components/EmailTemplateLifecycleManager";
 import { UniversalEmailTemplateEditor } from "@/components/UniversalEmailTemplateEditor";
@@ -45,7 +46,7 @@ const usd = (value: number | null) =>
 
 const escapePrintHtml = (value: string) => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
 
-function printAllInMonthlyCostSummary(address: string, snapshot: { price: number | null; propertyTaxes: number | null; hoaDues: number | null; homeownerInsurance: number | null; mortgageInsurance: number | null }) {
+function printAllInMonthlyCostSummary(address: string, snapshot: { price: number | null; propertyTaxes: number | null; hoaDues: number | null; homeownerInsurance: number | null; mortgageInsurance: number | null; contributionProgram: "none" | "fha" | "va" | "usda" | "conventional"; conventionalOccupancy: "primary" | "second_home" | "investment"; conventionalLtvTier: "lte80" | "ltv81_90" | "gt90"; programContributionLimit: number | null; maxSellerContribution: number | null }) {
   const printWindow = window.open("", "_blank");
   if (!printWindow) {
     toast.error("Please allow pop-ups to print the all-in monthly-cost summary.");
@@ -61,9 +62,12 @@ function printAllInMonthlyCostSummary(address: string, snapshot: { price: number
     ["HOA dues", snapshot.hoaDues === null ? "Not saved" : `${usd(snapshot.hoaDues)}/mo`],
     ["Homeowner insurance", snapshot.homeownerInsurance === null ? "Not saved" : `${usd(snapshot.homeownerInsurance)}/mo`],
     ["Mortgage insurance", snapshot.mortgageInsurance === null ? "Not saved" : `${usd(snapshot.mortgageInsurance)}/mo`],
+    ["Contribution program screen", snapshot.contributionProgram === "none" ? "Not selected" : `${CONTRIBUTION_PROGRAM_OPTIONS.find((option) => option.value === snapshot.contributionProgram)?.label ?? snapshot.contributionProgram}${snapshot.contributionProgram === "conventional" ? ` · ${CONVENTIONAL_OCCUPANCY_OPTIONS.find((option) => option.value === snapshot.conventionalOccupancy)?.label} · ${CONVENTIONAL_LTV_OPTIONS.find((option) => option.value === snapshot.conventionalLtvTier)?.label}` : ""}`],
+    ["Private program contribution cap", snapshot.programContributionLimit === null ? "Not configured" : `${usd(snapshot.programContributionLimit)} (stricter configured sales-price percentage or dollar cap)`],
+    ["Seller contribution to screen", snapshot.maxSellerContribution === null ? "Not entered" : usd(snapshot.maxSellerContribution)],
     ["Estimated all-in monthly planning total", usd(estimatedTotal)],
   ];
-  printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"/><title>All-in monthly-cost summary — ${escapePrintHtml(address)}</title><style>body{font-family:Arial,sans-serif;color:#1d3128;margin:42px;line-height:1.45;position:relative}h1{font-family:Georgia,serif;font-size:28px;margin:0 0 4px}p{color:#56645e}.tag{display:inline-block;background:#e8b442;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700}table{width:100%;border-collapse:collapse;margin-top:22px}th,td{border-bottom:1px solid #d8dfdb;padding:10px;text-align:left;font-size:14px}th{width:58%;color:#50645a}.total th,.total td{font-weight:700;color:#153f30;background:#f3f6f3}.note{margin-top:28px;border-top:1px solid #d8dfdb;padding-top:14px;font-size:11px;color:#56645e}.watermark{position:fixed;top:46%;left:50%;z-index:-1;transform:translate(-50%,-50%) rotate(-28deg);font-size:46px;font-weight:800;letter-spacing:.1em;color:rgba(21,63,48,.10);white-space:nowrap;pointer-events:none;user-select:none}@media print{body{margin:0}.watermark{z-index:0}}</style></head><body><div class="watermark" aria-hidden="true">FOR INTERNAL USE ONLY</div><div class="tag">Loan officer planning worksheet · For Internal Use Only</div><h1>${escapePrintHtml(address)}</h1><p>Saved-property monthly-cost planning summary</p><table>${rows.map(([label, value], index) => `<tr class="${index === rows.length - 1 ? "total" : ""}"><th>${escapePrintHtml(label)}</th><td>${escapePrintHtml(value)}</td></tr>`).join("")}</table><p class="note">Internal planning worksheet only. Estimated P&I assumes a 30-year fixed loan, 6.5% rate, and 5% down. This is not a payment quote, APR quote, loan estimate, commitment to lend, or offer of credit. Actual terms, mortgage insurance, fees, discount points, closing costs, prepaids, seller contributions, eligibility, and underwriting may change results.</p><script>window.onload=()=>window.print();<\/script></body></html>`);
+  printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"/><title>All-in monthly-cost summary — ${escapePrintHtml(address)}</title><style>body{font-family:Arial,sans-serif;color:#1d3128;margin:42px;line-height:1.45;position:relative}h1{font-family:Georgia,serif;font-size:28px;margin:0 0 4px}p{color:#56645e}.tag{display:inline-block;background:#e8b442;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700}table{width:100%;border-collapse:collapse;margin-top:22px}th,td{border-bottom:1px solid #d8dfdb;padding:10px;text-align:left;font-size:14px}th{width:58%;color:#50645a}.total th,.total td{font-weight:700;color:#153f30;background:#f3f6f3}.note{margin-top:28px;border-top:1px solid #d8dfdb;padding-top:14px;font-size:11px;color:#56645e}.watermark{position:fixed;top:46%;left:50%;z-index:-1;transform:translate(-50%,-50%) rotate(-28deg);font-size:46px;font-weight:800;letter-spacing:.1em;color:rgba(21,63,48,.10);white-space:nowrap;pointer-events:none;user-select:none}@media print{body{margin:0}.watermark{z-index:0}}</style></head><body><div class="watermark" aria-hidden="true">FOR INTERNAL USE ONLY</div><div class="tag">Loan officer planning worksheet · For Internal Use Only</div><h1>${escapePrintHtml(address)}</h1><p>Saved-property monthly-cost planning summary</p><table>${rows.map(([label, value], index) => `<tr class="${index === rows.length - 1 ? "total" : ""}"><th>${escapePrintHtml(label)}</th><td>${escapePrintHtml(value)}</td></tr>`).join("")}</table><p class="note">Internal planning worksheet only. Program contribution screens are configurable internal review aids, not eligibility determinations or public program guidance. Estimated P&I assumes a 30-year fixed loan, 6.5% rate, and 5% down. This is not a payment quote, APR quote, loan estimate, commitment to lend, or offer of credit. Actual terms, mortgage insurance, fees, discount points, closing costs, prepaids, seller contributions, eligibility, and underwriting may change results.</p><script>window.onload=()=>window.print();<\/script></body></html>`);
   printWindow.document.close();
 }
 
@@ -79,6 +83,33 @@ const COMPLIANCE_STATUS_OPTIONS = [
   { value: "approved", label: "Approved" },
   { value: "changes_requested", label: "Changes requested" },
 ] as const;
+const CONTRIBUTION_PROGRAM_OPTIONS = [
+  { value: "none", label: "No program screen" },
+  { value: "fha", label: "FHA" },
+  { value: "va", label: "VA" },
+  { value: "usda", label: "USDA" },
+  { value: "conventional", label: "Conventional" },
+] as const;
+const CONVENTIONAL_OCCUPANCY_OPTIONS = [
+  { value: "primary", label: "Primary residence" },
+  { value: "second_home", label: "Second home" },
+  { value: "investment", label: "Investment property" },
+] as const;
+const CONVENTIONAL_LTV_OPTIONS = [
+  { value: "lte80", label: "LTV 80% or less" },
+  { value: "ltv81_90", label: "LTV 81–90%" },
+  { value: "gt90", label: "LTV greater than 90%" },
+] as const;
+const PROGRAM_LIMIT_LABELS: Record<(typeof PROGRAM_CONTRIBUTION_LIMIT_KEYS)[number], string> = {
+  fha: "FHA",
+  va: "VA",
+  usda: "USDA",
+  conventional_primary: "Conventional · Primary residence",
+  conventional_second_home: "Conventional · Second home",
+  conventional_investment: "Conventional · Investment property",
+  conventional_ltv81_90: "Conventional · LTV 81–90%",
+  conventional_gt90: "Conventional · LTV greater than 90%",
+};
 function parseOptionalCurrencyAmount(raw: string, label: string, maximum: number) {
   const normalized = raw.trim();
   if (!normalized) return { value: null as number | null };
@@ -281,6 +312,9 @@ export default function GeoSphereListings() {
   const [propertyPageHomeownerInsurance, setPropertyPageHomeownerInsurance] = useState("");
   const [propertyPageMortgageInsurance, setPropertyPageMortgageInsurance] = useState("");
   const [propertyPageComplianceApprovalStatus, setPropertyPageComplianceApprovalStatus] = useState<"draft" | "submitted" | "approved" | "changes_requested">("draft");
+  const [propertyPageContributionProgram, setPropertyPageContributionProgram] = useState<"none" | "fha" | "va" | "usda" | "conventional">("none");
+  const [propertyPageConventionalOccupancy, setPropertyPageConventionalOccupancy] = useState<"primary" | "second_home" | "investment">("primary");
+  const [propertyPageConventionalLtvTier, setPropertyPageConventionalLtvTier] = useState<"lte80" | "ltv81_90" | "gt90">("lte80");
   const [propertyPageMaxSellerContribution, setPropertyPageMaxSellerContribution] = useState("");
   const [propertyPageTemplateId, setPropertyPageTemplateId] = useState("");
   const [customPropertyPageTemplateOpen, setCustomPropertyPageTemplateOpen] = useState(false);
@@ -298,7 +332,8 @@ export default function GeoSphereListings() {
   const [propertyPagePairDrafts, setPropertyPagePairDrafts] = useState<Record<number, { loanOfficerId: string; agentId: string }>>({});
   const [propertyPageExternalUrlDrafts, setPropertyPageExternalUrlDrafts] = useState<Record<number, string>>({});
   const [propertyPageMetadataEditorId, setPropertyPageMetadataEditorId] = useState<number | null>(null);
-  const [propertyPageMetadataDrafts, setPropertyPageMetadataDrafts] = useState<Record<number, { propertyTaxes: string; units: string; hoaDues: string; homeownerInsurance: string; mortgageInsurance: string; complianceApprovalStatus: "draft" | "submitted" | "approved" | "changes_requested"; maxSellerContribution: string }>>({});
+  const [propertyPageMetadataDrafts, setPropertyPageMetadataDrafts] = useState<Record<number, { propertyTaxes: string; units: string; hoaDues: string; homeownerInsurance: string; mortgageInsurance: string; complianceApprovalStatus: "draft" | "submitted" | "approved" | "changes_requested"; contributionProgram: "none" | "fha" | "va" | "usda" | "conventional"; conventionalOccupancy: "primary" | "second_home" | "investment"; conventionalLtvTier: "lte80" | "ltv81_90" | "gt90"; maxSellerContribution: string }>>({});
+  const [programLimitDrafts, setProgramLimitDrafts] = useState<ProgramContributionLimitValues>(DEFAULT_PROGRAM_CONTRIBUTION_LIMIT_BPS);
 
   const statusQuery = trpc.geosphere.status.useQuery();
   const pullsQuery = trpc.geosphere.listPulls.useQuery();
@@ -309,12 +344,21 @@ export default function GeoSphereListings() {
   const propertyTemplatesQuery = trpc.geosphere.listPropertyEmailTemplates.useQuery();
   const allPropertyTemplatesQuery = trpc.geosphere.listPropertyEmailTemplates.useQuery({ includeArchived: true });
   const propertyPagesQuery = trpc.propertyPages.list.useQuery();
+  const programContributionLimitsQuery = trpc.propertyPages.programContributionLimits.useQuery();
   const propertyPageTemplatesQuery = trpc.propertyPages.listAgentEmailTemplates.useQuery();
   const allPropertyPageTemplatesQuery = trpc.propertyPages.listAgentEmailTemplates.useQuery({ includeArchived: true });
   const propertyPageBuyerTemplatesQuery = trpc.propertyPages.listBuyerEmailTemplates.useQuery();
   const allPropertyPageBuyerTemplatesQuery = trpc.propertyPages.listBuyerEmailTemplates.useQuery({ includeArchived: true });
   const officersQuery = trpc.loanOfficer.list.useQuery();
   const agentsQuery = trpc.agent.list.useQuery();
+  const saveProgramContributionLimits = trpc.propertyPages.saveProgramContributionLimits.useMutation({
+    onSuccess: (limits) => { setProgramLimitDrafts(limits); void programContributionLimitsQuery.refetch(); toast.success("Private program contribution screens saved."); },
+    onError: (error) => toast.error(error.message),
+  });
+
+  useEffect(() => {
+    if (programContributionLimitsQuery.data) setProgramLimitDrafts(programContributionLimitsQuery.data);
+  }, [programContributionLimitsQuery.data]);
   const selectedPull = useMemo(
     () => (pullsQuery.data ?? []).find((pull) => String(pull.id) === selectedPullId) ?? null,
     [pullsQuery.data, selectedPullId]
@@ -633,6 +677,14 @@ export default function GeoSphereListings() {
     () => (listingsQuery.data ?? []).find((listing) => listing.id === propertyPageListingId) ?? null,
     [listingsQuery.data, propertyPageListingId]
   );
+  const builderProgramContributionLimit = calculateEffectiveContributionScreeningLimit({
+    price: propertyPageListing?.price ?? null,
+    program: propertyPageContributionProgram,
+    conventionalOccupancy: propertyPageConventionalOccupancy,
+    conventionalLtvTier: propertyPageConventionalLtvTier,
+    limits: programLimitDrafts,
+  });
+  const builderContributionNeedsReview = builderProgramContributionLimit !== null && Number.isFinite(Number(propertyPageMaxSellerContribution)) && Number(propertyPageMaxSellerContribution) > builderProgramContributionLimit;
   const openPropertyPageBuilder = (listingId: number) => {
     setPropertyPageListingId(listingId);
     setPropertyPageLoanOfficerId(officers[0] ? String(officers[0].id) : "");
@@ -644,6 +696,9 @@ export default function GeoSphereListings() {
     setPropertyPageHomeownerInsurance("");
     setPropertyPageMortgageInsurance("");
     setPropertyPageComplianceApprovalStatus("draft");
+    setPropertyPageContributionProgram("none");
+    setPropertyPageConventionalOccupancy("primary");
+    setPropertyPageConventionalLtvTier("lte80");
     setPropertyPageMaxSellerContribution("");
     setPropertyPageBuilderOpen(true);
   };
@@ -662,6 +717,13 @@ export default function GeoSphereListings() {
     if ("error" in homeownerInsurance) { toast.error(homeownerInsurance.error); return; }
     if ("error" in mortgageInsurance) { toast.error(mortgageInsurance.error); return; }
     if ("error" in maxSellerContribution) { toast.error(maxSellerContribution.error); return; }
+    const programContributionLimit = calculateEffectiveContributionScreeningLimit({
+      price: propertyPageListing?.price ?? null,
+      program: propertyPageContributionProgram,
+      conventionalOccupancy: propertyPageConventionalOccupancy,
+      conventionalLtvTier: propertyPageConventionalLtvTier,
+      limits: programLimitDrafts,
+    });
     createPropertyPage.mutate({
       geosphereListingId: propertyPageListingId,
       loanOfficerId: Number(propertyPageLoanOfficerId),
@@ -673,10 +735,14 @@ export default function GeoSphereListings() {
       ...(homeownerInsurance.value !== null ? { homeownerInsurance: homeownerInsurance.value } : {}),
       ...(mortgageInsurance.value !== null ? { mortgageInsurance: mortgageInsurance.value } : {}),
       complianceApprovalStatus: propertyPageComplianceApprovalStatus,
+      contributionProgram: propertyPageContributionProgram,
+      conventionalOccupancy: propertyPageConventionalOccupancy,
+      conventionalLtvTier: propertyPageConventionalLtvTier,
+      programContributionLimit,
       ...(maxSellerContribution.value !== null ? { maxSellerContribution: maxSellerContribution.value } : {}),
     });
   };
-  const savePropertyPageFacts = (pageId: number, draft: { propertyTaxes: string; units: string; hoaDues: string; homeownerInsurance: string; mortgageInsurance: string; complianceApprovalStatus: "draft" | "submitted" | "approved" | "changes_requested"; maxSellerContribution: string }) => {
+  const savePropertyPageFacts = (pageId: number, draft: { propertyTaxes: string; units: string; hoaDues: string; homeownerInsurance: string; mortgageInsurance: string; complianceApprovalStatus: "draft" | "submitted" | "approved" | "changes_requested"; contributionProgram: "none" | "fha" | "va" | "usda" | "conventional"; conventionalOccupancy: "primary" | "second_home" | "investment"; conventionalLtvTier: "lte80" | "ltv81_90" | "gt90"; maxSellerContribution: string }) => {
     const taxes = parseOptionalCurrencyAmount(draft.propertyTaxes, "Annual property taxes", 10_000_000);
     const hoaDues = parseOptionalCurrencyAmount(draft.hoaDues, "Monthly HOA dues", 100_000);
     const homeownerInsurance = parseOptionalCurrencyAmount(draft.homeownerInsurance, "Monthly homeowner insurance", 100_000);
@@ -687,7 +753,16 @@ export default function GeoSphereListings() {
     if ("error" in homeownerInsurance) { toast.error(homeownerInsurance.error); return; }
     if ("error" in mortgageInsurance) { toast.error(mortgageInsurance.error); return; }
     if ("error" in maxSellerContribution) { toast.error(maxSellerContribution.error); return; }
-    updatePropertyPageMetadata.mutate({ id: pageId, propertyTaxes: taxes.value, units: draft.units.trim() || null, hoaDues: hoaDues.value, homeownerInsurance: homeownerInsurance.value, mortgageInsurance: mortgageInsurance.value, complianceApprovalStatus: draft.complianceApprovalStatus, maxSellerContribution: maxSellerContribution.value });
+    const page = propertyPages.find((candidate) => candidate.id === pageId);
+    const snapshot = page ? parsePropertyLandingSnapshot(page.listingSnapshot) : null;
+    const programContributionLimit = calculateEffectiveContributionScreeningLimit({
+      price: snapshot?.price ?? null,
+      program: draft.contributionProgram,
+      conventionalOccupancy: draft.conventionalOccupancy,
+      conventionalLtvTier: draft.conventionalLtvTier,
+      limits: programLimitDrafts,
+    });
+    updatePropertyPageMetadata.mutate({ id: pageId, propertyTaxes: taxes.value, units: draft.units.trim() || null, hoaDues: hoaDues.value, homeownerInsurance: homeownerInsurance.value, mortgageInsurance: mortgageInsurance.value, complianceApprovalStatus: draft.complianceApprovalStatus, contributionProgram: draft.contributionProgram, conventionalOccupancy: draft.conventionalOccupancy, conventionalLtvTier: draft.conventionalLtvTier, programContributionLimit, maxSellerContribution: maxSellerContribution.value });
   };
   const savePropertyPagePair = (pageId: number, page: typeof propertyPages[number]) => {
     const draft = propertyPagePairDrafts[pageId] ?? { loanOfficerId: String(page.loanOfficerId ?? ""), agentId: String(page.agentId ?? "") };
@@ -1227,6 +1302,14 @@ export default function GeoSphereListings() {
                   <Button type="button" size="sm" variant="outline" className="h-9 text-xs" onClick={() => setPropertyPageBuyerTemplateManagerOpen(true)}>Manage</Button>
                 </div>
               </div>
+              <details className="mt-4 rounded-lg border border-amber-500/25 bg-amber-500/[0.045] p-3">
+                <summary className="cursor-pointer text-sm font-semibold text-foreground">Program contribution limits <span className="font-normal text-muted-foreground">(private internal settings)</span></summary>
+                <p className="mt-2 max-w-4xl text-[11px] leading-relaxed text-muted-foreground">Set a sales-price percentage and/or fixed USD ceiling for FHA, VA, USDA, and each conventional screen. Percentages are always calculated from the saved property sales price—not loan amount. If both are entered, the stricter amount applies. Values require current corporate-compliance or qualified-counsel review and are not public program guidance.</p>
+                <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  {PROGRAM_CONTRIBUTION_LIMIT_KEYS.map((key) => <div key={key} className="rounded-md border border-border bg-background/80 p-2.5"><p className="text-[11px] font-semibold text-foreground">{PROGRAM_LIMIT_LABELS[key]}</p><div className="mt-2 grid grid-cols-2 gap-2"><label className="text-[10px] font-medium text-muted-foreground">% sales price<Input className="mt-1 h-8 bg-card text-xs" type="number" min="0" max="100" step="0.01" inputMode="decimal" value={(programLimitDrafts[key].percentBps / 100).toFixed(2)} onChange={(event) => { const percent = Number(event.target.value); setProgramLimitDrafts((current) => ({ ...current, [key]: { ...current[key], percentBps: Number.isFinite(percent) ? Math.round(percent * 100) : 0 } })); }} /></label><label className="text-[10px] font-medium text-muted-foreground">USD cap<Input className="mt-1 h-8 bg-card text-xs" type="number" min="0" step="0.01" inputMode="decimal" value={programLimitDrafts[key].dollarCap ?? ""} onChange={(event) => { const raw = event.target.value.trim(); const amount = raw ? Number(raw) : null; setProgramLimitDrafts((current) => ({ ...current, [key]: { ...current[key], dollarCap: amount !== null && Number.isFinite(amount) ? Math.round(amount * 100) / 100 : null } })); }} placeholder="None" /></label></div></div>)}
+                </div>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2"><p className="text-[11px] text-muted-foreground">For conventional primary/second-home cases, the relevant LTV screen also applies when selected; the lowest resulting cap wins.</p><Button type="button" size="sm" disabled={saveProgramContributionLimits.isPending} onClick={() => saveProgramContributionLimits.mutate({ limits: programLimitDrafts })}>{saveProgramContributionLimits.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}Save program limits</Button></div>
+              </details>
               {propertyPagesQuery.isLoading ? <div className="mt-5 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading saved property pages…</div> : propertyPages.length === 0 ? <div className="mt-5 rounded-lg border border-dashed border-border bg-card/60 p-5 text-sm text-muted-foreground">No property pages yet. Use <strong className="text-foreground">Property page</strong> in any saved listing row above to create one.</div> : <div className="mt-5 grid gap-4 xl:grid-cols-2">
                 {propertyPages.map((page) => {
                   const snapshot = parsePropertyLandingSnapshot(page.listingSnapshot);
@@ -1238,8 +1321,14 @@ export default function GeoSphereListings() {
                     homeownerInsurance: snapshot?.homeownerInsurance === null || snapshot?.homeownerInsurance === undefined ? "" : String(snapshot.homeownerInsurance),
                     mortgageInsurance: snapshot?.mortgageInsurance === null || snapshot?.mortgageInsurance === undefined ? "" : String(snapshot.mortgageInsurance),
                     complianceApprovalStatus: snapshot?.complianceApprovalStatus ?? "draft",
+                    contributionProgram: snapshot?.contributionProgram ?? "none",
+                    conventionalOccupancy: snapshot?.conventionalOccupancy ?? "primary",
+                    conventionalLtvTier: snapshot?.conventionalLtvTier ?? "lte80",
                     maxSellerContribution: snapshot?.maxSellerContribution === null || snapshot?.maxSellerContribution === undefined ? "" : String(snapshot.maxSellerContribution),
                   };
+                  const currentProgramCap = calculateEffectiveContributionScreeningLimit({ price: snapshot?.price ?? null, program: metadataDraft.contributionProgram, conventionalOccupancy: metadataDraft.conventionalOccupancy, conventionalLtvTier: metadataDraft.conventionalLtvTier, limits: programLimitDrafts });
+                  const enteredSellerContribution = Number(metadataDraft.maxSellerContribution);
+                  const contributionNeedsReview = currentProgramCap !== null && Number.isFinite(enteredSellerContribution) && enteredSellerContribution > currentProgramCap;
                   const url = publicSiteUrl(`/property/${page.slug}`);
                   return <div key={page.id} className="rounded-xl border border-border bg-card p-4 shadow-sm">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -1260,9 +1349,11 @@ export default function GeoSphereListings() {
                         <label className="text-xs font-semibold text-muted-foreground">Monthly homeowner insurance<Input className="mt-1.5 h-9 bg-background text-xs" type="number" min="0" step="0.01" value={metadataDraft.homeownerInsurance} onChange={(event) => setPropertyPageMetadataDrafts((current) => ({ ...current, [page.id]: { ...metadataDraft, homeownerInsurance: event.target.value } }))} placeholder="e.g., 145" /></label>
                         <label className="text-xs font-semibold text-muted-foreground">Monthly mortgage insurance<Input className="mt-1.5 h-9 bg-background text-xs" type="number" min="0" step="0.01" value={metadataDraft.mortgageInsurance} onChange={(event) => setPropertyPageMetadataDrafts((current) => ({ ...current, [page.id]: { ...metadataDraft, mortgageInsurance: event.target.value } }))} placeholder="e.g., 180" /></label>
                         <label className="text-xs font-semibold text-muted-foreground">Compliance review status<Select value={metadataDraft.complianceApprovalStatus} onValueChange={(value) => setPropertyPageMetadataDrafts((current) => ({ ...current, [page.id]: { ...metadataDraft, complianceApprovalStatus: value as typeof metadataDraft.complianceApprovalStatus } }))}><SelectTrigger className="mt-1.5 h-9 bg-background text-xs"><SelectValue /></SelectTrigger><SelectContent>{COMPLIANCE_STATUS_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></label>
-                        <label className="text-xs font-semibold text-muted-foreground">Maximum seller contribution <span className="font-normal">(internal USD)</span><Input className="mt-1.5 h-9 bg-background text-xs" type="number" min="0" step="0.01" inputMode="decimal" value={metadataDraft.maxSellerContribution} onChange={(event) => setPropertyPageMetadataDrafts((current) => ({ ...current, [page.id]: { ...metadataDraft, maxSellerContribution: event.target.value } }))} placeholder="e.g., 12000" /></label>
-                        <div className="sm:col-span-2 xl:col-span-4 flex items-center justify-between gap-3"><p className="text-[11px] leading-relaxed text-muted-foreground">Compliance status and seller contribution are private internal review controls. The contribution value is a planning limit, not a program determination; actual permissible contributions require current review.</p><Button size="sm" disabled={updatePropertyPageMetadata.isPending} onClick={() => savePropertyPageFacts(page.id, metadataDraft)}>Save facts</Button></div>
-                      </div> : <p className="mt-2 text-[11px] text-muted-foreground">Taxes: {snapshot?.propertyTaxes === null || snapshot?.propertyTaxes === undefined ? "not saved" : usd(snapshot.propertyTaxes)} · Units: {snapshot?.units ?? "not saved"} · HOA: {snapshot?.hoaDues === null || snapshot?.hoaDues === undefined ? "not saved" : `${usd(snapshot.hoaDues)}/mo`} · Home insurance: {snapshot?.homeownerInsurance === null || snapshot?.homeownerInsurance === undefined ? "not saved" : `${usd(snapshot.homeownerInsurance)}/mo`} · Mortgage insurance: {snapshot?.mortgageInsurance === null || snapshot?.mortgageInsurance === undefined ? "not saved" : `${usd(snapshot.mortgageInsurance)}/mo`} · Seller contribution limit: {snapshot?.maxSellerContribution === null || snapshot?.maxSellerContribution === undefined ? "not saved" : usd(snapshot.maxSellerContribution)}</p>}
+                        <label className="text-xs font-semibold text-muted-foreground">Contribution program<Select value={metadataDraft.contributionProgram} onValueChange={(value) => setPropertyPageMetadataDrafts((current) => ({ ...current, [page.id]: { ...metadataDraft, contributionProgram: value as typeof metadataDraft.contributionProgram } }))}><SelectTrigger className="mt-1.5 h-9 bg-background text-xs"><SelectValue /></SelectTrigger><SelectContent>{CONTRIBUTION_PROGRAM_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></label>
+                        {metadataDraft.contributionProgram === "conventional" ? <><label className="text-xs font-semibold text-muted-foreground">Conventional occupancy<Select value={metadataDraft.conventionalOccupancy} onValueChange={(value) => setPropertyPageMetadataDrafts((current) => ({ ...current, [page.id]: { ...metadataDraft, conventionalOccupancy: value as typeof metadataDraft.conventionalOccupancy } }))}><SelectTrigger className="mt-1.5 h-9 bg-background text-xs"><SelectValue /></SelectTrigger><SelectContent>{CONVENTIONAL_OCCUPANCY_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></label><label className="text-xs font-semibold text-muted-foreground">Conventional LTV tier<Select value={metadataDraft.conventionalLtvTier} onValueChange={(value) => setPropertyPageMetadataDrafts((current) => ({ ...current, [page.id]: { ...metadataDraft, conventionalLtvTier: value as typeof metadataDraft.conventionalLtvTier } }))}><SelectTrigger className="mt-1.5 h-9 bg-background text-xs"><SelectValue /></SelectTrigger><SelectContent>{CONVENTIONAL_LTV_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></label></> : null}
+                        <label className="text-xs font-semibold text-muted-foreground">Seller contribution to screen <span className="font-normal">(internal USD)</span><Input className="mt-1.5 h-9 bg-background text-xs" type="number" min="0" step="0.01" inputMode="decimal" value={metadataDraft.maxSellerContribution} onChange={(event) => setPropertyPageMetadataDrafts((current) => ({ ...current, [page.id]: { ...metadataDraft, maxSellerContribution: event.target.value } }))} placeholder="e.g., 12000" /></label>
+                        <div className="sm:col-span-2 xl:col-span-4 flex items-center justify-between gap-3"><p className={`text-[11px] leading-relaxed ${contributionNeedsReview ? "font-semibold text-rose-700" : "text-muted-foreground"}`}>{metadataDraft.contributionProgram === "none" ? "Choose a program to apply your private sales-price percentage and dollar-cap screen." : currentProgramCap === null ? "Saved sales price is required before a program cap can be screened." : contributionNeedsReview ? `Review needed: entered seller contribution exceeds the stricter configured cap of ${usd(currentProgramCap)}.` : `Current private program screen: ${usd(currentProgramCap)} based on the saved sales price; percentages never use loan amount.`}</p><Button size="sm" disabled={updatePropertyPageMetadata.isPending} onClick={() => savePropertyPageFacts(page.id, metadataDraft)}>Save facts</Button></div>
+                      </div> : <p className="mt-2 text-[11px] text-muted-foreground">Taxes: {snapshot?.propertyTaxes === null || snapshot?.propertyTaxes === undefined ? "not saved" : usd(snapshot.propertyTaxes)} · Units: {snapshot?.units ?? "not saved"} · HOA: {snapshot?.hoaDues === null || snapshot?.hoaDues === undefined ? "not saved" : `${usd(snapshot.hoaDues)}/mo`} · Home insurance: {snapshot?.homeownerInsurance === null || snapshot?.homeownerInsurance === undefined ? "not saved" : `${usd(snapshot.homeownerInsurance)}/mo`} · Mortgage insurance: {snapshot?.mortgageInsurance === null || snapshot?.mortgageInsurance === undefined ? "not saved" : `${usd(snapshot.mortgageInsurance)}/mo`} · Program screen: {snapshot?.programContributionLimit === null || snapshot?.programContributionLimit === undefined ? "not saved" : usd(snapshot.programContributionLimit)} · Contribution to screen: {snapshot?.maxSellerContribution === null || snapshot?.maxSellerContribution === undefined ? "not saved" : usd(snapshot.maxSellerContribution)}</p>}
                     </div>
                     <div className="mt-4 flex flex-wrap items-center gap-2"><Button size="sm" variant="outline" onClick={() => savePropertyPagePair(page.id, page)} disabled={updatePropertyPagePair.isPending}><Link2 className="mr-1.5 h-3.5 w-3.5" /> Save pairing</Button><Button size="sm" onClick={() => openPropertyPageAgentDraft(page)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Agent email draft</Button><Button size="sm" variant="outline" onClick={() => openPropertyPageBuyerDraft(page)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Buyer email draft</Button>{snapshot ? <Button size="sm" variant="outline" onClick={() => printAllInMonthlyCostSummary(page.address, snapshot)}><Printer className="mr-1.5 h-3.5 w-3.5" /> Print all-in costs</Button> : null}<Button size="sm" variant="outline" disabled={refreshPropertyPageSnapshot.isPending} onClick={() => refreshPropertyPageSnapshot.mutate({ id: page.id })}><RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Refresh saved snapshot</Button><label className="ml-auto flex items-center gap-2 text-xs font-medium text-muted-foreground">{page.isActive === 1 ? "Public" : "Retired"}<input type="checkbox" role="switch" aria-label={`Make ${page.address} ${page.isActive === 1 ? "retired" : "public"}`} checked={page.isActive === 1} disabled={setPropertyPageActive.isPending} onChange={(event) => setPropertyPageActive.mutate({ id: page.id, isActive: event.target.checked })} className="h-4 w-8 cursor-pointer accent-primary" /></label></div>
                     <PropertyPageAiSummaryEditor page={page} />
@@ -1382,8 +1473,10 @@ export default function GeoSphereListings() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5"><Label>Compliance review status <span className="font-normal text-muted-foreground">(private)</span></Label><Select value={propertyPageComplianceApprovalStatus} onValueChange={(value) => setPropertyPageComplianceApprovalStatus(value as typeof propertyPageComplianceApprovalStatus)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{COMPLIANCE_STATUS_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select><p className="text-xs text-muted-foreground">Tracks internal or corporate review progress; it is never shown on the public page.</p></div>
-              <div className="space-y-1.5"><Label htmlFor="property-page-seller-contribution">Maximum seller contribution <span className="font-normal text-muted-foreground">(internal USD, optional)</span></Label><Input id="property-page-seller-contribution" type="number" min="0" step="0.01" inputMode="decimal" value={propertyPageMaxSellerContribution} onChange={(event) => setPropertyPageMaxSellerContribution(event.target.value)} placeholder="e.g., 12000" /><p className="text-xs text-muted-foreground">Used only to flag a 2-1 subsidy that exceeds your saved planning limit; verify actual program and contract limits.</p></div>
+              <div className="space-y-1.5"><Label>Contribution program <span className="font-normal text-muted-foreground">(private)</span></Label><Select value={propertyPageContributionProgram} onValueChange={(value) => setPropertyPageContributionProgram(value as typeof propertyPageContributionProgram)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{CONTRIBUTION_PROGRAM_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select><p className="text-xs text-muted-foreground">Uses the private Program contribution limits settings saved for the selected program.</p></div>
             </div>
+            {propertyPageContributionProgram === "conventional" ? <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-1.5"><Label>Conventional occupancy</Label><Select value={propertyPageConventionalOccupancy} onValueChange={(value) => setPropertyPageConventionalOccupancy(value as typeof propertyPageConventionalOccupancy)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{CONVENTIONAL_OCCUPANCY_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div><div className="space-y-1.5"><Label>Conventional LTV tier</Label><Select value={propertyPageConventionalLtvTier} onValueChange={(value) => setPropertyPageConventionalLtvTier(value as typeof propertyPageConventionalLtvTier)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{CONVENTIONAL_LTV_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div></div> : null}
+            <div className="space-y-1.5"><Label htmlFor="property-page-seller-contribution">Seller contribution to screen <span className="font-normal text-muted-foreground">(internal USD, optional)</span></Label><Input id="property-page-seller-contribution" type="number" min="0" step="0.01" inputMode="decimal" value={propertyPageMaxSellerContribution} onChange={(event) => setPropertyPageMaxSellerContribution(event.target.value)} placeholder="e.g., 12000" /><p className={`text-xs ${builderContributionNeedsReview ? "font-semibold text-rose-700" : "text-muted-foreground"}`}>{propertyPageContributionProgram === "none" ? "Choose a program to apply a private seller-contribution screen." : builderProgramContributionLimit === null ? "A saved sales price is required before the program cap can be calculated." : builderContributionNeedsReview ? `Review needed: entered contribution exceeds the stricter configured cap of ${usd(builderProgramContributionLimit)}.` : `Current private program screen: ${usd(builderProgramContributionLimit)}. The percentage is calculated from sales price, never loan amount.`}</p></div>
             <div className="space-y-1.5"><Label htmlFor="property-page-external-url">Existing live property-page URL <span className="font-normal text-muted-foreground">(optional)</span></Label><Input id="property-page-external-url" type="url" value={propertyPageExternalUrl} onChange={(event) => setPropertyPageExternalUrl(event.target.value)} placeholder="https://surefire.com/... or https://totalexpert.com/..." /><p className="text-xs leading-relaxed text-muted-foreground">For an authorized third-party CRM or MLS-vendor property page. We link to it from this saved-snapshot page but do not pull in its photos, description, status, or other listing data.</p></div>
           </div>
           <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setPropertyPageBuilderOpen(false)} disabled={createPropertyPage.isPending}>Cancel</Button><Button onClick={submitPropertyPage} disabled={createPropertyPage.isPending || !propertyPageListingId || !propertyPageLoanOfficerId || !propertyPageAgentId}>{createPropertyPage.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Plus className="mr-1.5 h-4 w-4" />} Save property page</Button></div>

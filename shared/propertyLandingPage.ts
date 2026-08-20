@@ -1,3 +1,12 @@
+import {
+  normalizeConventionalLtvTier,
+  normalizeConventionalOccupancy,
+  normalizeSellerContributionProgram,
+  type ConventionalLtvTier,
+  type ConventionalOccupancy,
+  type SellerContributionProgram,
+} from "./programContributionLimits";
+
 export type PropertySnapshotAgent = {
   name: string;
   email: string;
@@ -20,6 +29,11 @@ export type PropertyLandingSnapshot = {
   homeownerInsurance: number | null;
   mortgageInsurance: number | null;
   complianceApprovalStatus: "draft" | "submitted" | "approved" | "changes_requested";
+  contributionProgram: SellerContributionProgram;
+  conventionalOccupancy: ConventionalOccupancy;
+  conventionalLtvTier: ConventionalLtvTier;
+  /** Private resolved amount from the selected program rule at last dashboard save. */
+  programContributionLimit: number | null;
   maxSellerContribution: number | null;
   propertyType: string | null;
   manufacturedHomeType: string | null;
@@ -138,6 +152,10 @@ export function buildPropertyLandingSnapshot(listing: SavedListingLike, sourceSa
     homeownerInsurance: firstNumber(source, ["homeownerInsurance", "homeownersInsurance", "monthlyHomeInsurance", "monthlyInsurance"]),
     mortgageInsurance: firstNumber(source, ["mortgageInsurance", "monthlyMortgageInsurance", "mi"]),
     complianceApprovalStatus: "draft",
+    contributionProgram: "none",
+    conventionalOccupancy: "primary",
+    conventionalLtvTier: "lte80",
+    programContributionLimit: null,
     maxSellerContribution: null,
     propertyType,
     manufacturedHomeType: manufactured,
@@ -166,6 +184,10 @@ export function parsePropertyLandingSnapshot(value: string): PropertyLandingSnap
     return {
       ...parsed,
       complianceApprovalStatus,
+      contributionProgram: normalizeSellerContributionProgram(parsed.contributionProgram),
+      conventionalOccupancy: normalizeConventionalOccupancy(parsed.conventionalOccupancy),
+      conventionalLtvTier: normalizeConventionalLtvTier(parsed.conventionalLtvTier),
+      programContributionLimit: typeof parsed.programContributionLimit === "number" && Number.isFinite(parsed.programContributionLimit) ? parsed.programContributionLimit : null,
       maxSellerContribution: typeof parsed.maxSellerContribution === "number" && Number.isFinite(parsed.maxSellerContribution) ? parsed.maxSellerContribution : null,
     } as PropertyLandingSnapshot;
   } catch {

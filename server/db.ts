@@ -12,6 +12,7 @@ import {
   propertyLandingPage,
   propertyPageActivity,
   propertyEngagementSetting,
+  programContributionLimit,
   propertyEmailTemplate,
   propertyPageAgentEmailTemplate,
   propertyPageBuyerEmailTemplate,
@@ -40,6 +41,12 @@ import {
   type InsertSyncedTopAgent,
 } from "../drizzle/schema";
 import { buildPropertyLandingSnapshot, parsePropertyLandingSnapshot, slugifyPropertyAddress } from "../shared/propertyLandingPage";
+import {
+  DEFAULT_PROGRAM_CONTRIBUTION_LIMIT_BPS,
+  PROGRAM_CONTRIBUTION_LIMIT_KEYS,
+  normalizeProgramContributionLimitValues,
+  type ProgramContributionLimitValues,
+} from "../shared/programContributionLimits";
 import { ENV } from './_core/env';
 
 export const EMAIL_TEMPLATE_USAGE_SCOPES = ["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach"] as const;
@@ -1491,6 +1498,10 @@ export async function createPropertyLandingPage(input: {
   homeownerInsurance?: number | null;
   mortgageInsurance?: number | null;
   complianceApprovalStatus?: "draft" | "submitted" | "approved" | "changes_requested";
+  contributionProgram?: "none" | "fha" | "va" | "usda" | "conventional";
+  conventionalOccupancy?: "primary" | "second_home" | "investment";
+  conventionalLtvTier?: "lte80" | "ltv81_90" | "gt90";
+  programContributionLimit?: number | null;
   maxSellerContribution?: number | null;
 }) {
   const db = await getDb();
@@ -1518,6 +1529,10 @@ export async function createPropertyLandingPage(input: {
     homeownerInsurance: input.homeownerInsurance ?? existingSnapshot?.homeownerInsurance ?? importedSnapshot.homeownerInsurance,
     mortgageInsurance: input.mortgageInsurance ?? existingSnapshot?.mortgageInsurance ?? importedSnapshot.mortgageInsurance,
     complianceApprovalStatus: input.complianceApprovalStatus ?? existingSnapshot?.complianceApprovalStatus ?? importedSnapshot.complianceApprovalStatus,
+    contributionProgram: input.contributionProgram ?? existingSnapshot?.contributionProgram ?? importedSnapshot.contributionProgram,
+    conventionalOccupancy: input.conventionalOccupancy ?? existingSnapshot?.conventionalOccupancy ?? importedSnapshot.conventionalOccupancy,
+    conventionalLtvTier: input.conventionalLtvTier ?? existingSnapshot?.conventionalLtvTier ?? importedSnapshot.conventionalLtvTier,
+    programContributionLimit: input.programContributionLimit ?? existingSnapshot?.programContributionLimit ?? importedSnapshot.programContributionLimit,
     maxSellerContribution: input.maxSellerContribution ?? existingSnapshot?.maxSellerContribution ?? importedSnapshot.maxSellerContribution,
   };
   if (existing[0]) {
@@ -1606,6 +1621,10 @@ export async function updatePropertyLandingPageMetadata(input: {
   homeownerInsurance: number | null;
   mortgageInsurance: number | null;
   complianceApprovalStatus: "draft" | "submitted" | "approved" | "changes_requested";
+  contributionProgram: "none" | "fha" | "va" | "usda" | "conventional";
+  conventionalOccupancy: "primary" | "second_home" | "investment";
+  conventionalLtvTier: "lte80" | "ltv81_90" | "gt90";
+  programContributionLimit: number | null;
   maxSellerContribution: number | null;
 }) {
   const db = await getDb();
@@ -1623,6 +1642,10 @@ export async function updatePropertyLandingPageMetadata(input: {
     homeownerInsurance: input.homeownerInsurance,
     mortgageInsurance: input.mortgageInsurance,
     complianceApprovalStatus: input.complianceApprovalStatus,
+    contributionProgram: input.contributionProgram,
+    conventionalOccupancy: input.conventionalOccupancy,
+    conventionalLtvTier: input.conventionalLtvTier,
+    programContributionLimit: input.programContributionLimit,
     maxSellerContribution: input.maxSellerContribution,
   };
   await db.update(propertyLandingPage).set({ listingSnapshot: JSON.stringify(updatedSnapshot) }).where(eq(propertyLandingPage.id, input.id));
@@ -1774,6 +1797,42 @@ export async function savePropertyEngagementPreferences(input: PropertyEngagemen
   });
   const rows = await db.select().from(propertyEngagementSetting).where(eq(propertyEngagementSetting.ownerUserId, input.ownerUserId)).limit(1);
   return rows[0]!;
+}
+
+/** Returns every private program screen, merging stored values with reviewable defaults. */
+export async function getProgramContributionLimits(ownerUserId: number): Promise<ProgramContributionLimitValues> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db.select().from(programContributionLimit).where(eq(programContributionLimit.ownerUserId, ownerUserId));
+  const stored = Object.fromEntries(rows.map((row) => [row.programKey, {
+    percentBps: row.percentBps,
+    dollarCap: row.dollarCapCents === null ? null : row.dollarCapCents / 100,
+  }]));
+  return normalizeProgramContributionLimitValues(stored);
+}
+
+/** Saves the private sales-price percentage and optional USD ceiling for each supported program screen. */
+export async function saveProgramContributionLimits(input: { ownerUserId: number; limits: ProgramContributionLimitValues }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.transaction(async (tx) => {
+    for (const programKey of PROGRAM_CONTRIBUTION_LIMIT_KEYS) {
+      const limit = input.limits[programKey];
+      await tx.insert(programContributionLimit).values({
+        ownerUserId: input.ownerUserId,
+        programKey,
+        percentBps: limit.percentBps,
+        dollarCapCents: limit.dollarCap === null ? null : Math.round(limit.dollarCap * 100),
+      }).onDuplicateKeyUpdate({
+        set: {
+          percentBps: limit.percentBps,
+          dollarCapCents: limit.dollarCap === null ? null : Math.round(limit.dollarCap * 100),
+          updatedAt: new Date(),
+        },
+      });
+    }
+  });
+  return getProgramContributionLimits(input.ownerUserId);
 }
 
 export async function updatePropertyLandingPageAiSummary(input: { id: number; aiSummary: string | null }) {

@@ -51,6 +51,7 @@ import {
   getPropertyLandingPageById,
   getPropertyLandingPageBySlug,
   getPropertyEngagementSetting,
+  getProgramContributionLimits,
   getSyncedTopAgent,
   createSyncedAgentOutreachTemplate,
   updateSyncedAgentOutreachTemplate,
@@ -90,6 +91,7 @@ import {
   refreshPropertyLandingPage,
   savePropertyEngagementThreshold,
   savePropertyEngagementPreferences,
+  saveProgramContributionLimits,
   listPropertyPageActivity,
   insertLead,
   listAgents,
@@ -1450,6 +1452,28 @@ export const appRouter = router({
       requireAdmin(ctx.user.role);
       return listPropertyLandingPages();
     }),
+    /** Private owner-managed internal seller-contribution screens. */
+    programContributionLimits: protectedProcedure.query(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      return getProgramContributionLimits(ctx.user.id);
+    }),
+    saveProgramContributionLimits: protectedProcedure
+      .input(z.object({
+        limits: z.object({
+          fha: z.object({ percentBps: z.number().int().min(0).max(10_000), dollarCap: z.number().finite().min(0).max(10_000_000).multipleOf(0.01).nullable() }),
+          va: z.object({ percentBps: z.number().int().min(0).max(10_000), dollarCap: z.number().finite().min(0).max(10_000_000).multipleOf(0.01).nullable() }),
+          usda: z.object({ percentBps: z.number().int().min(0).max(10_000), dollarCap: z.number().finite().min(0).max(10_000_000).multipleOf(0.01).nullable() }),
+          conventional_primary: z.object({ percentBps: z.number().int().min(0).max(10_000), dollarCap: z.number().finite().min(0).max(10_000_000).multipleOf(0.01).nullable() }),
+          conventional_second_home: z.object({ percentBps: z.number().int().min(0).max(10_000), dollarCap: z.number().finite().min(0).max(10_000_000).multipleOf(0.01).nullable() }),
+          conventional_investment: z.object({ percentBps: z.number().int().min(0).max(10_000), dollarCap: z.number().finite().min(0).max(10_000_000).multipleOf(0.01).nullable() }),
+          conventional_ltv81_90: z.object({ percentBps: z.number().int().min(0).max(10_000), dollarCap: z.number().finite().min(0).max(10_000_000).multipleOf(0.01).nullable() }),
+          conventional_gt90: z.object({ percentBps: z.number().int().min(0).max(10_000), dollarCap: z.number().finite().min(0).max(10_000_000).multipleOf(0.01).nullable() }),
+        }),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return saveProgramContributionLimits({ ownerUserId: ctx.user.id, limits: input.limits });
+      }),
     weeklyEngagement: protectedProcedure.query(async ({ ctx }) => {
       requireAdmin(ctx.user.role);
       return listWeeklyPropertyPageEngagement();
@@ -1497,6 +1521,10 @@ export const appRouter = router({
         homeownerInsurance: z.number().finite().min(0).max(100_000).multipleOf(0.01).nullable().optional(),
         mortgageInsurance: z.number().finite().min(0).max(100_000).multipleOf(0.01).nullable().optional(),
         complianceApprovalStatus: z.enum(["draft", "submitted", "approved", "changes_requested"]).optional(),
+        contributionProgram: z.enum(["none", "fha", "va", "usda", "conventional"]).optional(),
+        conventionalOccupancy: z.enum(["primary", "second_home", "investment"]).optional(),
+        conventionalLtvTier: z.enum(["lte80", "ltv81_90", "gt90"]).optional(),
+        programContributionLimit: z.number().finite().min(0).max(1_000_000).multipleOf(0.01).nullable().optional(),
         maxSellerContribution: z.number().finite().min(0).max(1_000_000).multipleOf(0.01).nullable().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
@@ -1545,6 +1573,10 @@ export const appRouter = router({
         homeownerInsurance: z.number().finite().min(0).max(100_000).multipleOf(0.01).nullable(),
         mortgageInsurance: z.number().finite().min(0).max(100_000).multipleOf(0.01).nullable(),
         complianceApprovalStatus: z.enum(["draft", "submitted", "approved", "changes_requested"]),
+        contributionProgram: z.enum(["none", "fha", "va", "usda", "conventional"]),
+        conventionalOccupancy: z.enum(["primary", "second_home", "investment"]),
+        conventionalLtvTier: z.enum(["lte80", "ltv81_90", "gt90"]),
+        programContributionLimit: z.number().finite().min(0).max(1_000_000).multipleOf(0.01).nullable(),
         maxSellerContribution: z.number().finite().min(0).max(1_000_000).multipleOf(0.01).nullable(),
       }))
       .mutation(async ({ ctx, input }) => {

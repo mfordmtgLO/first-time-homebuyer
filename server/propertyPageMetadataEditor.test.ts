@@ -50,6 +50,17 @@ describe("single-property dashboard metadata editor", () => {
     expect(routerSource).toContain("maxSellerContribution: z.number().finite().min(0).max(1_000_000).multipleOf(0.01)");
     expect(databaseSource).toContain("complianceApprovalStatus: input.complianceApprovalStatus");
     expect(databaseSource).toContain("maxSellerContribution: input.maxSellerContribution");
-    expect(publicPageSource).toContain("maxSellerContribution={snapshot.maxSellerContribution ?? undefined}");
+    expect(publicPageSource).toContain("maxSellerContribution={snapshot.programContributionLimit ?? undefined}");
+  });
+
+  it("provides private FHA, VA, USDA, and conventional dual-cap settings using sales price rather than loan amount", () => {
+    expect(workspaceSource).toContain("Program contribution limits");
+    expect(workspaceSource).toContain("% sales price");
+    expect(workspaceSource).toContain("percentage is calculated from sales price, never loan amount");
+    expect(workspaceSource).toContain("Conventional occupancy");
+    expect(workspaceSource).toContain("Conventional LTV tier");
+    expect(workspaceSource).toContain("contributionProgram: draft.contributionProgram");
+    expect(routerSource).toContain("programContributionLimit: z.number().finite().min(0).max(1_000_000).multipleOf(0.01)");
+    expect(databaseSource).toContain("programContributionLimit: input.programContributionLimit");
   });
 });

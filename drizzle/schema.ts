@@ -621,6 +621,38 @@ export const propertyEngagementSetting = mysqlTable(
 export type PropertyEngagementSetting = typeof propertyEngagementSetting.$inferSelect;
 export type InsertPropertyEngagementSetting = typeof propertyEngagementSetting.$inferInsert;
 
+/** Private owner-managed seller-contribution screens; never rendered as public program guidance. */
+export const programContributionLimit = mysqlTable(
+  "program_contribution_limit",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerUserId: int("ownerUserId").notNull(),
+    programKey: mysqlEnum("programKey", [
+      "fha",
+      "va",
+      "usda",
+      "conventional_primary",
+      "conventional_second_home",
+      "conventional_investment",
+      "conventional_ltv81_90",
+      "conventional_gt90",
+    ]).notNull(),
+    /** Basis points of sales price, e.g. 600 = 6.00%. */
+    percentBps: int("percentBps").notNull(),
+    /** Optional fixed USD ceiling stored as integer cents. */
+    dollarCapCents: int("dollarCapCents"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("program_contribution_limit_owner_program_unique").on(table.ownerUserId, table.programKey),
+    index("program_contribution_limit_owner_idx").on(table.ownerUserId),
+  ]
+);
+
+export type ProgramContributionLimit = typeof programContributionLimit.$inferSelect;
+export type InsertProgramContributionLimit = typeof programContributionLimit.$inferInsert;
+
 /** Reusable listing-agent outreach introductions for a saved single-property page. */
 export const propertyPageAgentEmailTemplate = mysqlTable(
   "property_page_agent_email_template",

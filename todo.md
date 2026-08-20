@@ -526,3 +526,10 @@
 - [x] Move Meet your team from the side tab into the far-right sticky property section menu
 - [x] Keep the sticky property menu’s Meet your team action visible and accessible at desktop and mobile widths
 - [x] Add regression coverage, visually verify scroll behavior, and publish compact property-page controls
+- [x] Audit current seller-contribution fields and map FHA, VA, USDA, and conventional program selection to property pages
+- [x] Add private Program contribution limits settings for FHA, VA, USDA, and conventional financing with reviewable values
+- [x] Add program-aware seller-contribution warnings in the single-property editor and internal worksheet context
+- [x] Add regression coverage and publish program-specific seller-contribution controls
+- [x] Add conventional seller-contribution settings for primary residence, second home, investment property, LTV greater than 90%, and LTV 81–90%
+- [x] Support both dollar-cap and percentage-of-sales-price inputs for every program contribution setting and auto-screen property scenarios against the stricter configured cap
+- [x] Support both dollar-cap and percentage-of-price inputs for every program contribution setting and auto-screen property scenarios against the stricter configured cap (implemented as percentage of sales price)
