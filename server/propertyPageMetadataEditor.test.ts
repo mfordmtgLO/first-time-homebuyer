@@ -64,6 +64,15 @@ describe("single-property dashboard metadata editor", () => {
     expect(databaseSource).toContain("programContributionLimit: input.programContributionLimit");
   });
 
+  it("keeps the single-property creation editor contained, scrollable, and responsive", () => {
+    expect(workspaceSource).toContain('className="flex max-h-[calc(100dvh-1rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl"');
+    expect(workspaceSource).toContain('className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable] px-6 py-5"');
+    expect(workspaceSource).toContain('grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3');
+    expect(workspaceSource).toContain('className="min-w-0 space-y-1.5"');
+    expect(workspaceSource).toContain('className="break-words text-xs leading-5 text-muted-foreground"');
+    expect(workspaceSource).toContain('className="flex shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-6 py-4 sm:flex-row sm:justify-end"');
+  });
+
   it("automatically changes an over-limit contribution to Needs Review and shows the exact screening feedback", () => {
     expect(workspaceSource).toContain('value: "needs_review", label: "Needs review · contribution over limit"');
     expect(workspaceSource).toContain("getContributionScreeningFeedback");

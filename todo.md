@@ -537,3 +537,8 @@
 - [x] Automatically set a saved property page’s private compliance status to Needs Review when its entered contribution exceeds the calculated limit
 - [x] Add a visual proximity indicator beside the seller contribution input for under-limit, near-limit, and over-limit screening
 - [x] Add regression coverage and publish enhanced contribution screening feedback
+
+- [x] Make the single-property creation editor a contained floating window with an internal vertical scrollbar and reachable action buttons
+- [x] Rework single-property editor field sizing and responsive wrapping so labels and descriptions stay inside their cells without overlap
+- [x] Add regression coverage and visually verify the single-property editor layout on desktop and mobile
+- [x] Publish the single-property editor layout fix
