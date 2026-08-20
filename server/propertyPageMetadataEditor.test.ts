@@ -46,7 +46,7 @@ describe("single-property dashboard metadata editor", () => {
     expect(workspaceSource).toContain("Maximum seller contribution");
     expect(workspaceSource).toContain("COMPLIANCE_STATUS_OPTIONS");
     expect(workspaceSource).toContain("FOR INTERNAL USE ONLY");
-    expect(routerSource).toContain('complianceApprovalStatus: z.enum(["draft", "submitted", "approved", "changes_requested"])');
+    expect(routerSource).toContain('complianceApprovalStatus: z.enum(["draft", "submitted", "approved", "changes_requested", "needs_review"])');
     expect(routerSource).toContain("maxSellerContribution: z.number().finite().min(0).max(1_000_000).multipleOf(0.01)");
     expect(databaseSource).toContain("complianceApprovalStatus: input.complianceApprovalStatus");
     expect(databaseSource).toContain("maxSellerContribution: input.maxSellerContribution");
@@ -62,5 +62,16 @@ describe("single-property dashboard metadata editor", () => {
     expect(workspaceSource).toContain("contributionProgram: draft.contributionProgram");
     expect(routerSource).toContain("programContributionLimit: z.number().finite().min(0).max(1_000_000).multipleOf(0.01)");
     expect(databaseSource).toContain("programContributionLimit: input.programContributionLimit");
+  });
+
+  it("automatically changes an over-limit contribution to Needs Review and shows the exact screening feedback", () => {
+    expect(workspaceSource).toContain('value: "needs_review", label: "Needs review · contribution over limit"');
+    expect(workspaceSource).toContain("getContributionScreeningFeedback");
+    expect(workspaceSource).toContain('complianceApprovalStatus = contributionFeedback.state === "over" ? "needs_review"');
+    expect(workspaceSource).toContain("Exceeds the stricter configured cap by");
+    expect(workspaceSource).toContain("Near private limit");
+    expect(workspaceSource).toContain("transition-[width]");
+    expect(databaseSource).toContain("contributionExceedsScreen");
+    expect(databaseSource).toContain('contributionExceedsScreen ? "needs_review" as const');
   });
 });

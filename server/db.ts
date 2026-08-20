@@ -1497,7 +1497,7 @@ export async function createPropertyLandingPage(input: {
   hoaDues?: number | null;
   homeownerInsurance?: number | null;
   mortgageInsurance?: number | null;
-  complianceApprovalStatus?: "draft" | "submitted" | "approved" | "changes_requested";
+  complianceApprovalStatus?: "draft" | "submitted" | "approved" | "changes_requested" | "needs_review";
   contributionProgram?: "none" | "fha" | "va" | "usda" | "conventional";
   conventionalOccupancy?: "primary" | "second_home" | "investment";
   conventionalLtvTier?: "lte80" | "ltv81_90" | "gt90";
@@ -1521,7 +1521,7 @@ export async function createPropertyLandingPage(input: {
     .where(eq(propertyLandingPage.geosphereListingId, input.geosphereListingId))
     .limit(1);
   const existingSnapshot = existing[0] ? parsePropertyLandingSnapshot(existing[0].listingSnapshot) : null;
-  const snapshot = {
+  const snapshotDraft = {
     ...importedSnapshot,
     propertyTaxes: input.propertyTaxes ?? existingSnapshot?.propertyTaxes ?? importedSnapshot.propertyTaxes,
     units: input.units ?? existingSnapshot?.units ?? importedSnapshot.units,
@@ -1534,6 +1534,13 @@ export async function createPropertyLandingPage(input: {
     conventionalLtvTier: input.conventionalLtvTier ?? existingSnapshot?.conventionalLtvTier ?? importedSnapshot.conventionalLtvTier,
     programContributionLimit: input.programContributionLimit ?? existingSnapshot?.programContributionLimit ?? importedSnapshot.programContributionLimit,
     maxSellerContribution: input.maxSellerContribution ?? existingSnapshot?.maxSellerContribution ?? importedSnapshot.maxSellerContribution,
+  };
+  const contributionExceedsScreen = snapshotDraft.programContributionLimit !== null
+    && snapshotDraft.maxSellerContribution !== null
+    && snapshotDraft.maxSellerContribution > snapshotDraft.programContributionLimit;
+  const snapshot = {
+    ...snapshotDraft,
+    complianceApprovalStatus: contributionExceedsScreen ? "needs_review" as const : snapshotDraft.complianceApprovalStatus,
   };
   if (existing[0]) {
     await db
@@ -1620,7 +1627,7 @@ export async function updatePropertyLandingPageMetadata(input: {
   hoaDues: number | null;
   homeownerInsurance: number | null;
   mortgageInsurance: number | null;
-  complianceApprovalStatus: "draft" | "submitted" | "approved" | "changes_requested";
+  complianceApprovalStatus: "draft" | "submitted" | "approved" | "changes_requested" | "needs_review";
   contributionProgram: "none" | "fha" | "va" | "usda" | "conventional";
   conventionalOccupancy: "primary" | "second_home" | "investment";
   conventionalLtvTier: "lte80" | "ltv81_90" | "gt90";
@@ -1634,7 +1641,7 @@ export async function updatePropertyLandingPageMetadata(input: {
   if (!page) throw new Error("Property page not found.");
   const snapshot = parsePropertyLandingSnapshot(page.listingSnapshot);
   if (!snapshot) throw new Error("The saved property snapshot is unavailable.");
-  const updatedSnapshot = {
+  const updatedSnapshotDraft = {
     ...snapshot,
     propertyTaxes: input.propertyTaxes,
     units: input.units?.trim() || null,
@@ -1647,6 +1654,13 @@ export async function updatePropertyLandingPageMetadata(input: {
     conventionalLtvTier: input.conventionalLtvTier,
     programContributionLimit: input.programContributionLimit,
     maxSellerContribution: input.maxSellerContribution,
+  };
+  const contributionExceedsScreen = updatedSnapshotDraft.programContributionLimit !== null
+    && updatedSnapshotDraft.maxSellerContribution !== null
+    && updatedSnapshotDraft.maxSellerContribution > updatedSnapshotDraft.programContributionLimit;
+  const updatedSnapshot = {
+    ...updatedSnapshotDraft,
+    complianceApprovalStatus: contributionExceedsScreen ? "needs_review" as const : updatedSnapshotDraft.complianceApprovalStatus,
   };
   await db.update(propertyLandingPage).set({ listingSnapshot: JSON.stringify(updatedSnapshot) }).where(eq(propertyLandingPage.id, input.id));
   const updated = await db.select().from(propertyLandingPage).where(eq(propertyLandingPage.id, input.id)).limit(1);

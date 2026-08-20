@@ -28,6 +28,15 @@ export type ProgramContributionLimit = {
 
 export type ProgramContributionLimitValues = Record<ProgramContributionLimitKey, ProgramContributionLimit>;
 
+export type ContributionScreeningFeedback = {
+  state: "unconfigured" | "empty" | "within" | "near" | "over";
+  enteredAmount: number | null;
+  limit: number | null;
+  remainingAmount: number | null;
+  exceedanceAmount: number | null;
+  percentOfLimit: number | null;
+};
+
 /**
  * Default percentages from the cited internal research note. They are editable
  * internal screens, not underwriting approvals or a substitute for current
@@ -147,6 +156,40 @@ export function calculateEffectiveContributionScreeningLimit(input: {
   const programAmount = calculateProgramContributionLimitAmount(input);
   const candidates = [programAmount, input.manualDollarCap ?? null].filter((value): value is number => value !== null && Number.isFinite(value));
   return candidates.length ? Math.min(...candidates) : null;
+}
+
+/**
+ * Evaluates an entered seller contribution against an already-resolved private
+ * program screen. The percentage is resolved from sales price before this step.
+ */
+export function getContributionScreeningFeedback(input: {
+  contribution: number | string | null | undefined;
+  limit: number | null | undefined;
+}): ContributionScreeningFeedback {
+  const limit = typeof input.limit === "number" && Number.isFinite(input.limit) && input.limit >= 0
+    ? Math.round(input.limit * 100) / 100
+    : null;
+  const rawContribution = typeof input.contribution === "string" ? input.contribution.trim() : input.contribution;
+  const enteredAmount = rawContribution === "" || rawContribution === null || rawContribution === undefined
+    ? null
+    : Number(rawContribution);
+  const validContribution = typeof enteredAmount === "number" && Number.isFinite(enteredAmount) && enteredAmount >= 0
+    ? Math.round(enteredAmount * 100) / 100
+    : null;
+
+  if (limit === null) return { state: "unconfigured", enteredAmount: validContribution, limit: null, remainingAmount: null, exceedanceAmount: null, percentOfLimit: null };
+  if (validContribution === null) return { state: "empty", enteredAmount: null, limit, remainingAmount: limit, exceedanceAmount: null, percentOfLimit: 0 };
+  const difference = Math.round((limit - validContribution) * 100) / 100;
+  const percentOfLimit = limit === 0 ? (validContribution === 0 ? 0 : 100) : Math.round((validContribution / limit) * 10_000) / 100;
+  if (difference < 0) return { state: "over", enteredAmount: validContribution, limit, remainingAmount: 0, exceedanceAmount: Math.abs(difference), percentOfLimit };
+  return {
+    state: percentOfLimit >= 75 ? "near" : "within",
+    enteredAmount: validContribution,
+    limit,
+    remainingAmount: difference,
+    exceedanceAmount: null,
+    percentOfLimit,
+  };
 }
 
 export function programContributionSelectionLabel(input: {

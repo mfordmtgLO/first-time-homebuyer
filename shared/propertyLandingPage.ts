@@ -28,7 +28,7 @@ export type PropertyLandingSnapshot = {
   hoaDues: number | null;
   homeownerInsurance: number | null;
   mortgageInsurance: number | null;
-  complianceApprovalStatus: "draft" | "submitted" | "approved" | "changes_requested";
+  complianceApprovalStatus: "draft" | "submitted" | "approved" | "changes_requested" | "needs_review";
   contributionProgram: SellerContributionProgram;
   conventionalOccupancy: ConventionalOccupancy;
   conventionalLtvTier: ConventionalLtvTier;
@@ -178,7 +178,7 @@ export function parsePropertyLandingSnapshot(value: string): PropertyLandingSnap
   try {
     const parsed = JSON.parse(value) as Partial<PropertyLandingSnapshot>;
     if (!parsed || typeof parsed.address !== "string" || typeof parsed.listingId !== "number") return null;
-    const complianceApprovalStatus = parsed.complianceApprovalStatus === "submitted" || parsed.complianceApprovalStatus === "approved" || parsed.complianceApprovalStatus === "changes_requested"
+    const complianceApprovalStatus = parsed.complianceApprovalStatus === "submitted" || parsed.complianceApprovalStatus === "approved" || parsed.complianceApprovalStatus === "changes_requested" || parsed.complianceApprovalStatus === "needs_review"
       ? parsed.complianceApprovalStatus
       : "draft";
     return {

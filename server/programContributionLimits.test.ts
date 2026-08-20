@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateEffectiveContributionScreeningLimit, calculateProgramContributionLimitAmount, DEFAULT_PROGRAM_CONTRIBUTION_LIMIT_BPS, resolveProgramContributionLimitKeys } from "../shared/programContributionLimits";
+import { calculateEffectiveContributionScreeningLimit, calculateProgramContributionLimitAmount, DEFAULT_PROGRAM_CONTRIBUTION_LIMIT_BPS, getContributionScreeningFeedback, resolveProgramContributionLimitKeys } from "../shared/programContributionLimits";
 
 describe("private program contribution screens", () => {
   it("calculates percentage caps from sales price rather than loan amount", () => {
@@ -39,5 +39,13 @@ describe("private program contribution screens", () => {
 
   it("does not add a conventional LTV tier to investment-property screens", () => {
     expect(resolveProgramContributionLimitKeys({ program: "conventional", conventionalOccupancy: "investment", conventionalLtvTier: "gt90" })).toEqual(["conventional_investment"]);
+  });
+
+  it("reports unconfigured, empty, within-limit, near-limit, and over-limit contribution states", () => {
+    expect(getContributionScreeningFeedback({ contribution: 12_000, limit: null })).toMatchObject({ state: "unconfigured", limit: null, percentOfLimit: null });
+    expect(getContributionScreeningFeedback({ contribution: "", limit: 12_000 })).toMatchObject({ state: "empty", remainingAmount: 12_000, percentOfLimit: 0 });
+    expect(getContributionScreeningFeedback({ contribution: 6_000, limit: 12_000 })).toMatchObject({ state: "within", remainingAmount: 6_000, percentOfLimit: 50 });
+    expect(getContributionScreeningFeedback({ contribution: 9_000, limit: 12_000 })).toMatchObject({ state: "near", remainingAmount: 3_000, percentOfLimit: 75 });
+    expect(getContributionScreeningFeedback({ contribution: 12_350, limit: 12_000 })).toMatchObject({ state: "over", remainingAmount: 0, exceedanceAmount: 350, percentOfLimit: 102.92 });
   });
 });

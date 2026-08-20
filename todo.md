@@ -533,3 +533,7 @@
 - [x] Add conventional seller-contribution settings for primary residence, second home, investment property, LTV greater than 90%, and LTV 81–90%
 - [x] Support both dollar-cap and percentage-of-sales-price inputs for every program contribution setting and auto-screen property scenarios against the stricter configured cap
 - [x] Support both dollar-cap and percentage-of-price inputs for every program contribution setting and auto-screen property scenarios against the stricter configured cap (implemented as percentage of sales price)
+- [x] Show the exact dollar exceedance when a seller contribution is above the private program limit
+- [x] Automatically set a saved property page’s private compliance status to Needs Review when its entered contribution exceeds the calculated limit
+- [x] Add a visual proximity indicator beside the seller contribution input for under-limit, near-limit, and over-limit screening
+- [x] Add regression coverage and publish enhanced contribution screening feedback
