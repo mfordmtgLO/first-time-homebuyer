@@ -13,7 +13,7 @@ import { getPropertyHeroMedia, parsePropertyLandingSnapshot, propertyEligibility
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Bath, BedDouble, Building2, CalendarDays, ExternalLink, Facebook, Globe2, Home, Linkedin, Mail, MapPin, Phone, Printer, Ruler, Share2, ShieldCheck, SquareStack, Trees, UserRound } from "lucide-react";
+import { Bath, BedDouble, Building2, CalendarCheck, CalendarDays, ExternalLink, Facebook, Globe2, Home, Instagram, Linkedin, Mail, MapPin, Phone, Printer, Ruler, Share2, ShieldCheck, SquareStack, Trees, UserRound } from "lucide-react";
 
 const money = (value: number | null) => value === null ? "Not in saved snapshot" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
 const number = (value: number | null) => value === null ? "Not in saved snapshot" : value.toLocaleString("en-US");
@@ -46,12 +46,34 @@ function PropertyImageUnavailable() {
   return <div className="grid h-[330px] place-items-center bg-[radial-gradient(circle_at_30%_20%,oklch(0.83_0.1_84),transparent_38%),linear-gradient(135deg,oklch(0.31_0.05_155),oklch(0.17_0.03_152))] px-8 text-center text-primary-foreground"><div><Home className="mx-auto mb-3 h-12 w-12"/><p className="font-display text-2xl">Saved property details</p><p className="mt-2 text-sm text-primary-foreground/80">Listing imagery was not included in this saved snapshot.</p></div></div>;
 }
 
-type PublicTeamProfile = { name: string; title?: string | null; nmls?: string | null; companyName: string; email: string; phone: string; website: string; bio?: string | null; headshotUrl: string; companyLogoUrl: string };
+type PublicTeamProfile = {
+  name: string;
+  title?: string | null;
+  nmls?: string | null;
+  companyName: string;
+  email: string;
+  phone: string;
+  website: string;
+  calendlyUrl?: string;
+  facebookUrl?: string;
+  instagramUrl?: string;
+  linkedinUrl?: string;
+  bio?: string | null;
+  headshotUrl: string;
+  companyLogoUrl: string;
+};
 const profileInitials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "Team";
+const publicHttpUrl = (value: string | null | undefined) => /^https?:\/\//i.test(value?.trim() ?? "") ? value!.trim() : "";
 
 function TeamProfileCard({ profile, role, showNmls = false }: { profile: PublicTeamProfile; role: string; showNmls?: boolean }) {
-  const website = /^https?:\/\//i.test(profile.website?.trim() ?? "") ? profile.website.trim() : "";
-  return <article className="rounded-xl border border-border bg-background p-4 shadow-sm"><p className="text-[11px] font-bold uppercase tracking-[0.15em] text-primary">{role}</p><div className="mt-3 flex items-start gap-3">{profile.headshotUrl ? <img src={profile.headshotUrl} alt={`${profile.name} headshot`} className="h-16 w-16 shrink-0 rounded-full border border-border object-cover" /> : <div aria-label={`${profile.name} profile placeholder`} className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary">{profileInitials(profile.name)}</div>}<div className="min-w-0 flex-1"><h3 className="font-display text-xl font-semibold leading-tight text-foreground">{profile.name}</h3><p className="mt-0.5 text-sm font-medium text-muted-foreground">{profile.title || (showNmls ? "Loan Officer" : "Co-marketing Real Estate Agent")}{showNmls && profile.nmls ? ` · NMLS #${profile.nmls}` : ""}</p>{profile.companyLogoUrl ? <img src={profile.companyLogoUrl} alt={`${profile.companyName} logo`} className="mt-2 h-7 max-w-40 object-contain object-left" /> : <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-foreground"><Building2 className="h-3.5 w-3.5 text-primary" />{profile.companyName}</p>}</div></div>{profile.companyLogoUrl && profile.companyName ? <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-foreground"><Building2 className="h-3.5 w-3.5 text-primary" />{profile.companyName}</p> : null}{profile.bio ? <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground">{profile.bio}</p> : null}<div className="mt-4 grid gap-2 border-t border-border pt-3 text-sm">{profile.phone ? <a className="inline-flex items-center gap-2 font-medium text-primary hover:underline" href={`tel:${profile.phone.replace(/[^\d+]/g, "")}`}><Phone className="h-3.5 w-3.5" />{profile.phone}</a> : null}{profile.email ? <a className="inline-flex min-w-0 items-center gap-2 font-medium text-primary hover:underline" href={`mailto:${profile.email}`}><Mail className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{profile.email}</span></a> : null}{website ? <a className="inline-flex min-w-0 items-center gap-2 font-medium text-primary hover:underline" href={website} target="_blank" rel="noreferrer"><Globe2 className="h-3.5 w-3.5 shrink-0" /><span className="truncate">Visit profile</span><ExternalLink className="h-3 w-3 shrink-0" /></a> : null}</div></article>;
+  const website = publicHttpUrl(profile.website);
+  const calendlyUrl = publicHttpUrl(profile.calendlyUrl);
+  const socialLinks = !showNmls ? [
+    { label: "Facebook", url: publicHttpUrl(profile.facebookUrl), Icon: Facebook },
+    { label: "Instagram", url: publicHttpUrl(profile.instagramUrl), Icon: Instagram },
+    { label: "LinkedIn", url: publicHttpUrl(profile.linkedinUrl), Icon: Linkedin },
+  ].filter((link) => Boolean(link.url)) : [];
+  return <article className="rounded-xl border border-border bg-background p-4 shadow-sm"><p className="text-[11px] font-bold uppercase tracking-[0.15em] text-primary">{role}</p><div className="mt-3 flex items-start gap-3">{profile.headshotUrl ? <img src={profile.headshotUrl} alt={`${profile.name} headshot`} className="h-16 w-16 shrink-0 rounded-full border border-border object-cover" /> : <div aria-label={`${profile.name} profile placeholder`} className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary">{profileInitials(profile.name)}</div>}<div className="min-w-0 flex-1"><h3 className="font-display text-xl font-semibold leading-tight text-foreground">{profile.name}</h3><p className="mt-0.5 text-sm font-medium text-muted-foreground">{profile.title || (showNmls ? "Loan Officer" : "Co-marketing Real Estate Agent")}{showNmls && profile.nmls ? ` · NMLS #${profile.nmls}` : ""}</p>{profile.companyLogoUrl ? <img src={profile.companyLogoUrl} alt={`${profile.companyName} logo`} className="mt-2 h-7 max-w-40 object-contain object-left" /> : <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-foreground"><Building2 className="h-3.5 w-3.5 text-primary" />{profile.companyName}</p>}</div></div>{profile.companyLogoUrl && profile.companyName ? <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-foreground"><Building2 className="h-3.5 w-3.5 text-primary" />{profile.companyName}</p> : null}{profile.bio ? <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground">{profile.bio}</p> : null}<div className="mt-4 grid gap-2 border-t border-border pt-3 text-sm">{profile.phone ? <a className="inline-flex items-center gap-2 font-medium text-primary hover:underline" href={`tel:${profile.phone.replace(/[^\d+]/g, "")}`}><Phone className="h-3.5 w-3.5" />{profile.phone}</a> : null}{profile.email ? <a className="inline-flex min-w-0 items-center gap-2 font-medium text-primary hover:underline" href={`mailto:${profile.email}`}><Mail className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{profile.email}</span></a> : null}{website ? <a className="inline-flex min-w-0 items-center gap-2 font-medium text-primary hover:underline" href={website} target="_blank" rel="noreferrer"><Globe2 className="h-3.5 w-3.5 shrink-0" /><span className="truncate">Visit profile</span><ExternalLink className="h-3 w-3 shrink-0" /></a> : null}{showNmls && calendlyUrl ? <a className="mt-1 inline-flex items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 font-semibold text-primary-foreground transition hover:brightness-110" href={calendlyUrl} target="_blank" rel="noreferrer"><CalendarCheck className="h-4 w-4" />Schedule a call</a> : null}{socialLinks.length ? <div className="mt-1 flex items-center gap-2"><span className="text-xs font-medium text-muted-foreground">Social:</span>{socialLinks.map(({ label, url, Icon }) => <a key={label} href={url} target="_blank" rel="noreferrer" aria-label={`${profile.name} on ${label}`} title={`${profile.name} on ${label}`} className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-primary/25 text-primary transition hover:bg-primary hover:text-primary-foreground"><Icon className="h-4 w-4" /></a>)}</div> : null}</div></article>;
 }
 
 function PropertyTeamBranding({ officer, agent }: { officer: PublicTeamProfile | null; agent: PublicTeamProfile | null }) {

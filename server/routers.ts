@@ -133,6 +133,15 @@ import { buildSyncedAgentOutreachDraft } from "../shared/syncedAgentOutreachDraf
 
 const ADMIN_ONLY_MESSAGE = "Only the site owner can manage agents.";
 
+const optionalPublicHttpUrl = z
+  .string()
+  .trim()
+  .max(500)
+  .refine((value) => value === "" || (/^https?:\/\//i.test(value) && z.string().url().safeParse(value).success), {
+    message: "Enter a valid http(s) URL or leave blank.",
+  })
+  .default("");
+
 const agentProfileInputSchema = z.object({
   name: z.string().trim().max(160).default(""),
   slug: z
@@ -155,6 +164,9 @@ const agentProfileInputSchema = z.object({
   phone: z.string().trim().max(40).default(""),
   bio: z.string().trim().max(2000).default(""),
   website: z.string().trim().max(500).default(""),
+  facebookUrl: optionalPublicHttpUrl,
+  instagramUrl: optionalPublicHttpUrl,
+  linkedinUrl: optionalPublicHttpUrl,
   companyName: z.string().trim().max(200).default(""),
   headshotUrl: z.string().trim().max(500).default(""),
   companyLogoUrl: z.string().trim().max(500).default(""),
@@ -370,6 +382,7 @@ const loanOfficerInputSchema = z.object({
   companyName: z.string().trim().max(200).default(""),
   bio: z.string().trim().max(2000).default(""),
   website: z.string().trim().max(500).default(""),
+  calendlyUrl: optionalPublicHttpUrl,
   headshotUrl: z.string().trim().max(500).default(""),
   companyLogoUrl: z.string().trim().max(500).default(""),
   agentId: z.number().int().positive().nullable().default(null),
@@ -1836,6 +1849,9 @@ export const appRouter = router({
           phone: input.phone,
           bio: input.bio,
           website: input.website,
+          facebookUrl: input.facebookUrl,
+          instagramUrl: input.instagramUrl,
+          linkedinUrl: input.linkedinUrl,
           companyName: input.companyName,
           headshotUrl: input.headshotUrl,
           companyLogoUrl: input.companyLogoUrl,
@@ -1869,6 +1885,9 @@ export const appRouter = router({
           phone: input.phone,
           bio: input.bio,
           website: input.website,
+          facebookUrl: input.facebookUrl,
+          instagramUrl: input.instagramUrl,
+          linkedinUrl: input.linkedinUrl,
           companyName: input.companyName,
           headshotUrl: input.headshotUrl,
           companyLogoUrl: input.companyLogoUrl,

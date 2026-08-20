@@ -56,6 +56,7 @@ type Officer = {
   companyName: string;
   bio: string | null;
   website: string;
+  calendlyUrl: string;
   headshotUrl: string;
   companyLogoUrl: string;
   agentId: number | null;
@@ -64,7 +65,7 @@ type Officer = {
 };
 
 type FormState = Omit<Officer, "id" | "featured" | "visible" | "bio"> & { bio: string; visible: boolean };
-type TextFieldKey = "name" | "title" | "email" | "phone" | "nmls" | "companyName" | "website";
+type TextFieldKey = "name" | "title" | "email" | "phone" | "nmls" | "companyName" | "website" | "calendlyUrl";
 
 const EMPTY: FormState = {
   name: "",
@@ -76,6 +77,7 @@ const EMPTY: FormState = {
   companyName: "",
   bio: "",
   website: "",
+  calendlyUrl: "",
   headshotUrl: "",
   companyLogoUrl: "",
   agentId: null,
@@ -186,6 +188,7 @@ function OfficerDialog({ open, onOpenChange, editing, agents }: { open: boolean;
       companyName: editing.companyName,
       bio: editing.bio ?? "",
       website: editing.website,
+      calendlyUrl: editing.calendlyUrl,
       headshotUrl: editing.headshotUrl,
       companyLogoUrl: editing.companyLogoUrl,
       agentId: editing.agentId,
@@ -231,6 +234,7 @@ function OfficerDialog({ open, onOpenChange, editing, agents }: { open: boolean;
           {field("nmls", "Individual NMLS #")}{field("companyName", "Company name")}
           <div className="space-y-1.5"><Label htmlFor="officer-slug">Public LO slug</Label><Input id="officer-slug" value={form.slug} onChange={(event) => { setSlugTouched(true); set({ slug: slugify(event.target.value) }); }} placeholder={slugify(form.name) || "loan-officer"} /><p className="text-xs text-muted-foreground">Used in paired URLs. {slugTouched ? "Custom slug set." : "Auto-generated from name if blank."}</p></div>
           {field("website", "Website", "url")}
+          <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="officer-calendlyUrl">Calendly scheduling link <span className="font-normal text-muted-foreground">(optional)</span></Label><Input id="officer-calendlyUrl" type="url" value={form.calendlyUrl} onChange={(event) => set({ calendlyUrl: event.target.value })} placeholder="https://calendly.com/your-name/intro" /><p className="text-xs text-muted-foreground">When provided, public single-property pages show this loan officer’s “Schedule a call” button. Leave blank to hide it.</p></div>
           <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="officer-agent">Co-marketing agent partner</Label><select id="officer-agent" value={form.agentId === null ? "none" : String(form.agentId)} onChange={(event) => set({ agentId: event.target.value === "none" ? null : Number(event.target.value) })} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"><option value="none">No agent selected — LO profile only</option>{agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}{agent.companyName ? ` · ${agent.companyName}` : ""}{agent.visible !== 1 ? " (inactive)" : ""}</option>)}</select><p className="text-xs text-muted-foreground">Selecting an agent creates the unique shareable URL for this LO-agent partnership.</p></div>
           <div className="sm:col-span-2 space-y-1.5"><Label htmlFor="officer-bio">Bio</Label><Textarea id="officer-bio" value={form.bio} onChange={(event) => set({ bio: event.target.value })} rows={4} placeholder="A short client-facing introduction for this loan officer." /></div>
           <ImageUpload kind="headshot" label="Headshot" url={form.headshotUrl} rounded onUploaded={(headshotUrl) => set({ headshotUrl })} onClear={() => set({ headshotUrl: "" })} />

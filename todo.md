@@ -452,3 +452,7 @@
 - [x] Render the assigned dashboard loan-officer profile with headshot, company branding, and contact details on every public single-property page
 - [x] Render the assigned dashboard co-marketing agent profile with headshot, company branding, and contact details on every public single-property page
 - [x] Add regression coverage and publish complete LO-agent single-property co-branding
+- [x] Add a dashboard-managed appointment link to each public single-property loan-officer profile card
+- [x] Add optional dashboard-managed social profile links to each public single-property co-marketing agent card
+- [x] Add regression coverage and publish the public property-team profile-link enhancement
+- [x] Make the future loan-officer Calendly profile field optional and show the public appointment action only when that officer provides a valid link

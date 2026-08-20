@@ -69,6 +69,9 @@ type AgentRow = {
   phone: string;
   bio: string | null;
   website: string;
+  facebookUrl: string;
+  instagramUrl: string;
+  linkedinUrl: string;
   companyName: string;
   headshotUrl: string;
   companyLogoUrl: string;
@@ -84,6 +87,9 @@ type FormState = {
   phone: string;
   bio: string;
   website: string;
+  facebookUrl: string;
+  instagramUrl: string;
+  linkedinUrl: string;
   companyName: string;
   headshotUrl: string;
   companyLogoUrl: string;
@@ -98,6 +104,9 @@ const EMPTY: FormState = {
   phone: "",
   bio: "",
   website: "",
+  facebookUrl: "",
+  instagramUrl: "",
+  linkedinUrl: "",
   companyName: "",
   headshotUrl: "",
   companyLogoUrl: "",
@@ -307,6 +316,9 @@ function AgentFormDialog({
             phone: editing.phone,
             bio: editing.bio ?? "",
             website: editing.website,
+            facebookUrl: editing.facebookUrl,
+            instagramUrl: editing.instagramUrl,
+            linkedinUrl: editing.linkedinUrl,
             companyName: editing.companyName,
             headshotUrl: editing.headshotUrl,
             companyLogoUrl: editing.companyLogoUrl,
@@ -352,6 +364,9 @@ function AgentFormDialog({
       phone: form.phone,
       bio: form.bio,
       website: form.website,
+      facebookUrl: form.facebookUrl,
+      instagramUrl: form.instagramUrl,
+      linkedinUrl: form.linkedinUrl,
       companyName: form.companyName,
       headshotUrl: form.headshotUrl,
       companyLogoUrl: form.companyLogoUrl,
@@ -615,6 +630,18 @@ function AgentFormDialog({
               onChange={(e) => set({ website: e.target.value })}
               placeholder="https://www.example.com"
             />
+          </div>
+          <div>
+            <Label htmlFor="agent-facebook" className="text-sm font-medium">Facebook <span className="font-normal text-muted-foreground">(optional)</span></Label>
+            <Input id="agent-facebook" type="url" className="mt-1.5" value={form.facebookUrl} onChange={(e) => set({ facebookUrl: e.target.value })} placeholder="https://facebook.com/your-page" />
+          </div>
+          <div>
+            <Label htmlFor="agent-instagram" className="text-sm font-medium">Instagram <span className="font-normal text-muted-foreground">(optional)</span></Label>
+            <Input id="agent-instagram" type="url" className="mt-1.5" value={form.instagramUrl} onChange={(e) => set({ instagramUrl: e.target.value })} placeholder="https://instagram.com/your-handle" />
+          </div>
+          <div>
+            <Label htmlFor="agent-linkedin" className="text-sm font-medium">LinkedIn <span className="font-normal text-muted-foreground">(optional)</span></Label>
+            <Input id="agent-linkedin" type="url" className="mt-1.5" value={form.linkedinUrl} onChange={(e) => set({ linkedinUrl: e.target.value })} placeholder="https://linkedin.com/in/your-profile" />
           </div>
           <div className="sm:col-span-2">
             <Label htmlFor="agent-bio" className="text-sm font-medium">Bio</Label>

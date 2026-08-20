@@ -85,6 +85,10 @@ export const agentProfile = mysqlTable("agent_profile", {
   phone: varchar("phone", { length: 40 }).default("").notNull(),
   bio: text("bio"),
   website: varchar("website", { length: 500 }).default("").notNull(),
+  /** Optional public social profile links, managed from the dashboard agent editor. */
+  facebookUrl: varchar("facebookUrl", { length: 500 }).default("").notNull(),
+  instagramUrl: varchar("instagramUrl", { length: 500 }).default("").notNull(),
+  linkedinUrl: varchar("linkedinUrl", { length: 500 }).default("").notNull(),
   companyName: varchar("companyName", { length: 200 }).default("").notNull(),
   /** /manus-storage/... URL of the uploaded headshot image. */
   headshotUrl: varchar("headshotUrl", { length: 500 }).default("").notNull(),
@@ -203,6 +207,8 @@ export const loanOfficer = mysqlTable("loan_officer", {
   companyName: varchar("companyName", { length: 200 }).default("").notNull(),
   bio: text("bio"),
   website: varchar("website", { length: 500 }).default("").notNull(),
+  /** Optional appointment page supplied by this individual loan officer. */
+  calendlyUrl: varchar("calendlyUrl", { length: 500 }).default("").notNull(),
   /** /manus-storage/... URL of the LO headshot shown on their co-branded page. */
   headshotUrl: varchar("headshotUrl", { length: 500 }).default("").notNull(),
   /** /manus-storage/... URL of the LO company logo shown on their co-branded page. */
