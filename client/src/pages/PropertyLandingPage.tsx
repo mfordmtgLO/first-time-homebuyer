@@ -312,7 +312,7 @@ export default function PropertyLandingPage() {
             </section>
             <div id="payment-scenarios">
               <CalculatorEligibilityBadges isLmi={snapshot.isLmi} isUsda={snapshot.isUsda} />
-              <div id="buydown" className="scroll-mt-24"><Buydown purchasePrice={snapshot.price ?? undefined} propertyAddress={snapshot.address} /></div>
+              <div id="buydown" className="scroll-mt-24"><Buydown purchasePrice={snapshot.price ?? undefined} propertyAddress={snapshot.address} monthlyPropertyTaxes={snapshot.propertyTaxes === null ? undefined : snapshot.propertyTaxes / 12} monthlyHoaDues={snapshot.hoaDues ?? undefined} /></div>
             </div>
             <section id="cost-of-waiting" className="scroll-mt-24 py-16 text-primary-foreground md:py-20" style={{ background: "oklch(0.27 0.05 162)" }}>
               <div className="container">
@@ -322,7 +322,7 @@ export default function PropertyLandingPage() {
                   <h2 className="mt-3 font-display text-3xl font-semibold leading-tight md:text-4xl">What could waiting cost you while this opportunity changes?</h2>
                   <p className="mt-4 max-w-2xl leading-relaxed text-primary-foreground/75">Use the calculator below to compare rent paid with the home equity you could build. The estimate is educational and can be saved with your Roadmap request for a conversation about this saved property.</p>
                 </div>
-                <CostOfWaiting purchasePrice={snapshot.price ?? undefined} propertyAddress={snapshot.address} revealImmediately />
+                <CostOfWaiting purchasePrice={snapshot.price ?? undefined} propertyAddress={snapshot.address} monthlyPropertyTaxes={snapshot.propertyTaxes === null ? undefined : snapshot.propertyTaxes / 12} monthlyHoaDues={snapshot.hoaDues ?? undefined} revealImmediately />
               </div>
             </section>
             <div id="roadmap" className="scroll-mt-24"><LeadMagnet /></div>

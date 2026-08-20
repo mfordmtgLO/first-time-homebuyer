@@ -49,6 +49,14 @@ const ADD_CUSTOM_TEMPLATE = "__add_custom_email_template__";
 const ADD_CUSTOM_PROPERTY_EMAIL_TEMPLATE = "__add_custom_property_email_template__";
 const ADD_CUSTOM_PROPERTY_PAGE_TEMPLATE = "__add_custom_property_page_template__";
 const ADD_CUSTOM_PROPERTY_PAGE_BUYER_TEMPLATE = "__add_custom_property_page_buyer_template__";
+function parseOptionalCurrencyAmount(raw: string, label: string, maximum: number) {
+  const normalized = raw.trim();
+  if (!normalized) return { value: null as number | null };
+  if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) return { error: `${label} must be a non-negative dollar amount with no more than two decimal places.` };
+  const value = Number(normalized);
+  if (!Number.isFinite(value) || value < 0 || value > maximum) return { error: `${label} must be between $0 and ${usd(maximum)}.` };
+  return { value: Math.round(value * 100) / 100 };
+}
 const PROPERTY_EMAIL_TEMPLATES: Array<{ value: PropertyEmailTemplateKey; label: string }> = [
   { value: "property_shortlist_with_agent_follow_up", label: "Property shortlist with agent follow-up" },
   { value: "short_property_update", label: "Short property update" },
@@ -605,15 +613,26 @@ export default function GeoSphereListings() {
       toast.error("Choose a saved listing, loan officer, and co-branded agent first.");
       return;
     }
+    const taxes = parseOptionalCurrencyAmount(propertyPageTaxes, "Annual property taxes", 10_000_000);
+    const hoaDues = parseOptionalCurrencyAmount(propertyPageHoaDues, "Monthly HOA dues", 100_000);
+    if ("error" in taxes) { toast.error(taxes.error); return; }
+    if ("error" in hoaDues) { toast.error(hoaDues.error); return; }
     createPropertyPage.mutate({
       geosphereListingId: propertyPageListingId,
       loanOfficerId: Number(propertyPageLoanOfficerId),
       agentId: Number(propertyPageAgentId),
       externalListingUrl: propertyPageExternalUrl.trim(),
-      ...(propertyPageTaxes.trim() ? { propertyTaxes: Number(propertyPageTaxes) } : {}),
+      ...(taxes.value !== null ? { propertyTaxes: taxes.value } : {}),
       ...(propertyPageUnits.trim() ? { units: propertyPageUnits.trim() } : {}),
-      ...(propertyPageHoaDues.trim() ? { hoaDues: Number(propertyPageHoaDues) } : {}),
+      ...(hoaDues.value !== null ? { hoaDues: hoaDues.value } : {}),
     });
+  };
+  const savePropertyPageFacts = (pageId: number, draft: { propertyTaxes: string; units: string; hoaDues: string }) => {
+    const taxes = parseOptionalCurrencyAmount(draft.propertyTaxes, "Annual property taxes", 10_000_000);
+    const hoaDues = parseOptionalCurrencyAmount(draft.hoaDues, "Monthly HOA dues", 100_000);
+    if ("error" in taxes) { toast.error(taxes.error); return; }
+    if ("error" in hoaDues) { toast.error(hoaDues.error); return; }
+    updatePropertyPageMetadata.mutate({ id: pageId, propertyTaxes: taxes.value, units: draft.units.trim() || null, hoaDues: hoaDues.value });
   };
   const savePropertyPagePair = (pageId: number, page: typeof propertyPages[number]) => {
     const draft = propertyPagePairDrafts[pageId] ?? { loanOfficerId: String(page.loanOfficerId ?? ""), agentId: String(page.agentId ?? "") };
@@ -891,7 +910,10 @@ export default function GeoSphereListings() {
   };
 
   const downloadVisibleInventory = () => {
-    const csv = buildGeoSphereInventoryCsv(visibleListings);
+    const csv = buildGeoSphereInventoryCsv(visibleListings.map((listing) => {
+      const snapshot = buildPropertyLandingSnapshot(listing);
+      return { ...listing, propertyTaxes: snapshot.propertyTaxes, units: snapshot.units, hoaDues: snapshot.hoaDues };
+    }));
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const href = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -1176,7 +1198,7 @@ export default function GeoSphereListings() {
                         <label className="text-xs font-semibold text-muted-foreground">Annual property taxes<Input className="mt-1.5 h-9 bg-background text-xs" type="number" min="0" step="1" value={metadataDraft.propertyTaxes} onChange={(event) => setPropertyPageMetadataDrafts((current) => ({ ...current, [page.id]: { ...metadataDraft, propertyTaxes: event.target.value } }))} placeholder="e.g., 2400" /></label>
                         <label className="text-xs font-semibold text-muted-foreground">Units<Input className="mt-1.5 h-9 bg-background text-xs" value={metadataDraft.units} maxLength={80} onChange={(event) => setPropertyPageMetadataDrafts((current) => ({ ...current, [page.id]: { ...metadataDraft, units: event.target.value } }))} placeholder="e.g., 2" /></label>
                         <label className="text-xs font-semibold text-muted-foreground">Monthly HOA dues<Input className="mt-1.5 h-9 bg-background text-xs" type="number" min="0" step="0.01" value={metadataDraft.hoaDues} onChange={(event) => setPropertyPageMetadataDrafts((current) => ({ ...current, [page.id]: { ...metadataDraft, hoaDues: event.target.value } }))} placeholder="e.g., 125" /></label>
-                        <div className="sm:col-span-3 flex items-center justify-between gap-3"><p className="text-[11px] leading-relaxed text-muted-foreground">Saved property facts require current verification. Leave a field blank to clear it from this public saved snapshot.</p><Button size="sm" disabled={updatePropertyPageMetadata.isPending} onClick={() => updatePropertyPageMetadata.mutate({ id: page.id, propertyTaxes: metadataDraft.propertyTaxes.trim() ? Number(metadataDraft.propertyTaxes) : null, units: metadataDraft.units.trim() || null, hoaDues: metadataDraft.hoaDues.trim() ? Number(metadataDraft.hoaDues) : null })}>Save facts</Button></div>
+                        <div className="sm:col-span-3 flex items-center justify-between gap-3"><p className="text-[11px] leading-relaxed text-muted-foreground">Saved property facts require current verification. Leave a field blank to clear it from this public saved snapshot.</p><Button size="sm" disabled={updatePropertyPageMetadata.isPending} onClick={() => savePropertyPageFacts(page.id, metadataDraft)}>Save facts</Button></div>
                       </div> : <p className="mt-2 text-[11px] text-muted-foreground">Taxes: {snapshot?.propertyTaxes === null || snapshot?.propertyTaxes === undefined ? "not saved" : usd(snapshot.propertyTaxes)} · Units: {snapshot?.units ?? "not saved"} · HOA: {snapshot?.hoaDues === null || snapshot?.hoaDues === undefined ? "not saved" : `${usd(snapshot.hoaDues)}/mo`}</p>}
                     </div>
                     <div className="mt-4 flex flex-wrap items-center gap-2"><Button size="sm" variant="outline" onClick={() => savePropertyPagePair(page.id, page)} disabled={updatePropertyPagePair.isPending}><Link2 className="mr-1.5 h-3.5 w-3.5" /> Save pairing</Button><Button size="sm" onClick={() => openPropertyPageAgentDraft(page)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Agent email draft</Button><Button size="sm" variant="outline" onClick={() => openPropertyPageBuyerDraft(page)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Buyer email draft</Button><Button size="sm" variant="outline" disabled={refreshPropertyPageSnapshot.isPending} onClick={() => refreshPropertyPageSnapshot.mutate({ id: page.id })}><RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Refresh saved snapshot</Button><label className="ml-auto flex items-center gap-2 text-xs font-medium text-muted-foreground">{page.isActive === 1 ? "Public" : "Retired"}<input type="checkbox" role="switch" aria-label={`Make ${page.address} ${page.isActive === 1 ? "retired" : "public"}`} checked={page.isActive === 1} disabled={setPropertyPageActive.isPending} onChange={(event) => setPropertyPageActive.mutate({ id: page.id, isActive: event.target.checked })} className="h-4 w-8 cursor-pointer accent-primary" /></label></div>

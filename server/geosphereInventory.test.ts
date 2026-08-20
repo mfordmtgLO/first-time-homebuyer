@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildGeoSphereInventoryCsv, filterAndSortGeoSphereListings } from "../shared/geosphereInventory";
 
 const listings = [
-  { address: "500 Oak Street, Coos Bay, OR", price: 300000, bedrooms: 3, bathrooms: 2, squareFootage: 1600, propertyType: "Single family", isLmi: true, isUsda: true },
+  { address: "500 Oak Street, Coos Bay, OR", price: 300000, bedrooms: 3, bathrooms: 2, squareFootage: 1600, propertyType: "Single family", propertyTaxes: 2400, units: "2", hoaDues: 125, isLmi: true, isUsda: true },
   { address: "12 Pine Avenue, Coos Bay, OR", price: 250000, bedrooms: 2, bathrooms: 1, squareFootage: 900, propertyType: "Condo", isLmi: false, isUsda: true },
 ];
 
@@ -15,7 +15,11 @@ describe("GeoSphere inventory helpers", () => {
   it("exports the visible inventory with eligibility values", () => {
     const csv = buildGeoSphereInventoryCsv(listings);
     expect(csv).toContain("USDA RD eligible");
+    expect(csv).toContain("Property taxes (annual)");
+    expect(csv).toContain("HOA dues (monthly)");
     expect(csv).toContain("500 Oak Street, Coos Bay, OR");
+    expect(csv).toContain("2400");
+    expect(csv).toContain("125");
     expect(csv).toContain("Yes");
   });
 });

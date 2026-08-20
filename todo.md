@@ -504,3 +504,7 @@
 - [x] Add a dashboard metadata edit action for an existing property page’s taxes, units, and HOA dues
 - [x] Include saved property tax and unit information in buyer property-list email draft details
 - [x] Add regression coverage and publish expanded property metadata support
+- [x] Add saved HOA dues, property taxes, and units to dashboard property CSV exports
+- [x] Include saved property taxes and HOA dues in single-property calculator assumptions and buyer-facing summaries
+- [x] Add client-side and server-side numeric validation for property tax and HOA dues editor fields
+- [x] Add regression coverage and publish property export, calculator, and validation enhancements

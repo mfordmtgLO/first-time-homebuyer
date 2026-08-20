@@ -1491,9 +1491,9 @@ export const appRouter = router({
         loanOfficerId: z.number().int().positive(),
         agentId: z.number().int().positive(),
         externalListingUrl: optionalPublicHttpUrl,
-        propertyTaxes: z.number().finite().min(0).max(10_000_000).nullable().optional(),
+        propertyTaxes: z.number().finite().min(0).max(10_000_000).multipleOf(0.01).nullable().optional(),
         units: z.string().trim().max(80).nullable().optional(),
-        hoaDues: z.number().finite().min(0).max(100_000).nullable().optional(),
+        hoaDues: z.number().finite().min(0).max(100_000).multipleOf(0.01).nullable().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
@@ -1535,9 +1535,9 @@ export const appRouter = router({
     updateMetadata: protectedProcedure
       .input(z.object({
         id: z.number().int().positive(),
-        propertyTaxes: z.number().finite().min(0).max(10_000_000).nullable(),
+        propertyTaxes: z.number().finite().min(0).max(10_000_000).multipleOf(0.01).nullable(),
         units: z.string().trim().max(80).nullable(),
-        hoaDues: z.number().finite().min(0).max(100_000).nullable(),
+        hoaDues: z.number().finite().min(0).max(100_000).multipleOf(0.01).nullable(),
       }))
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);

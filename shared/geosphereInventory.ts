@@ -7,6 +7,9 @@ export type GeoSphereInventoryListing = {
   propertyType: string | null;
   isLmi: boolean | number;
   isUsda: boolean | number;
+  propertyTaxes?: number | null;
+  units?: string | null;
+  hoaDues?: number | null;
 };
 
 export type GeoSphereInventorySort = "address" | "price-low" | "price-high" | "size-high";
@@ -39,7 +42,7 @@ function escapeCsvCell(value: string | number | null) {
 }
 
 export function buildGeoSphereInventoryCsv(listings: GeoSphereInventoryListing[]) {
-  const headers = ["Address", "Price", "Bedrooms", "Bathrooms", "Square footage", "Property type", "LMI", "USDA RD eligible"];
+  const headers = ["Address", "Price", "Bedrooms", "Bathrooms", "Square footage", "Property type", "Property taxes (annual)", "Units", "HOA dues (monthly)", "LMI", "USDA RD eligible"];
   const rows = listings.map((listing) => [
     listing.address,
     listing.price,
@@ -47,6 +50,9 @@ export function buildGeoSphereInventoryCsv(listings: GeoSphereInventoryListing[]
     listing.bathrooms,
     listing.squareFootage,
     listing.propertyType,
+    listing.propertyTaxes ?? null,
+    listing.units ?? null,
+    listing.hoaDues ?? null,
     Boolean(listing.isLmi) ? "Yes" : "No",
     Boolean(listing.isUsda) ? "Yes" : "No",
   ]);
