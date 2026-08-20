@@ -32,6 +32,8 @@ describe("chat completion navigation", () => {
       "full-homebuyer-site",
     ]);
     expect(FULL_FIRST_TIME_HOMEBUYER_URL).toBe("https://firsttimehomebuyer.manus.space");
+    expect(propertyChatCompletionNavigation.find((option) => option.targetId === "full-homebuyer-site")?.label).toBe("Homebuyer Guide");
+    expect(propertyChatCompletionNavigation.map((option) => option.label)).not.toContain("Full Homebuyer Site");
 
     const projectRoot = path.resolve(import.meta.dirname, "..");
     const propertySource = readFileSync(path.join(projectRoot, "client/src/pages/PropertyLandingPage.tsx"), "utf8");
@@ -49,6 +51,9 @@ describe("chat completion navigation", () => {
     const componentSource = readFileSync(path.join(projectRoot, "client/src/components/MortgageChatWidget.tsx"), "utf8");
 
     expect(componentSource).toContain('className="mt-3 grid grid-cols-2 gap-2"');
+    expect(componentSource).toContain('className="h-auto min-h-12 w-full min-w-0 items-center justify-start gap-1.5 px-2.5 py-2 text-left text-xs"');
+    expect(componentSource).toContain('className="min-w-0 flex-1 whitespace-normal break-words text-xs font-semibold leading-tight"');
+    expect(componentSource).not.toContain('className="min-w-0 flex-1 truncate text-xs font-semibold"');
     expect(componentSource).not.toContain('option.targetId === "roadmap" ? "h-11');
   });
 

@@ -417,11 +417,11 @@ export default function MortgageChatWidget({ compactWhenIdle = false }: { compac
                         key={option.targetId}
                         type="button"
                         variant="outline"
-                        className="h-10 min-w-0 justify-start gap-1.5 px-2 text-left text-xs"
+                        className="h-auto min-h-12 w-full min-w-0 items-center justify-start gap-1.5 px-2.5 py-2 text-left text-xs"
                         onClick={() => continueToSiteSection(option.targetId)}
                       >
                         <Icon className="h-4 w-4 shrink-0 text-primary" />
-                        <span className="min-w-0 flex-1 truncate text-xs font-semibold">{option.label}</span>
+                        <span className="min-w-0 flex-1 whitespace-normal break-words text-xs font-semibold leading-tight">{option.label}</span>
                         <ArrowRight className="h-3.5 w-3.5 shrink-0 text-primary/75" aria-hidden="true" />
                       </Button>
                     );

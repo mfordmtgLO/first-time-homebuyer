@@ -550,3 +550,8 @@
 - [x] Expand the single-property Property Highlights disclosure for estimated taxes, HOA dues, and homeowner insurance requiring independent verification
 - [x] Add regression coverage and visually verify the expanded Property Highlights disclosure
 - [x] Publish the single-property property-facts disclosure update
+
+- [x] Rename the completed-chat homebuyer destination so it does not use the word “full”
+- [x] Ensure completed-chat navigation button labels wrap or fit clearly without truncation at mobile and desktop widths
+- [x] Add regression coverage and visually verify completed-chat navigation buttons
+- [x] Publish the completed-chat navigation readability fix

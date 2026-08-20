@@ -48,7 +48,7 @@ export const propertyChatCompletionNavigation = [
   },
   {
     targetId: "full-homebuyer-site",
-    label: "Full Homebuyer Site",
+    label: "Homebuyer Guide",
     description: "Explore the complete first-time buyer guide.",
   },
 ] as const;
