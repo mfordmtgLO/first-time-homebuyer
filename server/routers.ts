@@ -22,6 +22,7 @@ import {
   createPropertyEmailTemplate,
   createPropertyLandingPage,
   createPropertyPageAgentEmailTemplate,
+  createPropertyPageBuyerEmailTemplate,
   createAgent,
   createLoanOfficer,
   createLoAgentSpendPairing,
@@ -56,6 +57,7 @@ import {
   listPropertyLandingPages,
   listWeeklyPropertyPageEngagement,
   listPropertyPageAgentEmailTemplates,
+  listPropertyPageBuyerEmailTemplates,
   loanOfficerSlugTaken,
   recordChatIntakeResendAttempt,
   recordGeoSphereListingEmailActivity,
@@ -1342,7 +1344,7 @@ export const appRouter = router({
     trackActivity: publicProcedure
       .input(z.object({
         slug: propertyPageSlugSchema,
-        eventType: z.enum(["page_view", "buydown_calculator", "cost_of_waiting_calculator", "social_share", "print_export"]),
+        eventType: z.enum(["page_view", "buydown_calculator", "cost_of_waiting_calculator", "social_share", "print_export", "email_pdf_summary"]),
         detail: z.string().trim().max(500).optional(),
       }))
       .mutation(async ({ input }) => {
@@ -1515,6 +1517,27 @@ export const appRouter = router({
         } catch (error) {
           if (error instanceof Error && /duplicate|unique/i.test(error.message)) {
             throw new TRPCError({ code: "CONFLICT", message: "A template with that name already exists." });
+          }
+          throw error;
+        }
+      }),
+    listBuyerEmailTemplates: protectedProcedure.query(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      return listPropertyPageBuyerEmailTemplates(ctx.user.id);
+    }),
+    saveBuyerEmailTemplate: protectedProcedure
+      .input(z.object({
+        name: z.string().trim().min(2, "Enter a template name.").max(160),
+        subjectTemplate: z.string().trim().min(4, "Enter an email subject.").max(300),
+        bodyTemplate: z.string().trim().min(20, "Write at least 20 characters for the email body.").max(6000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        try {
+          return await createPropertyPageBuyerEmailTemplate({ ownerUserId: ctx.user.id, ...input });
+        } catch (error) {
+          if (error instanceof Error && /duplicate|unique/i.test(error.message)) {
+            throw new TRPCError({ code: "CONFLICT", message: "A buyer email template with that name already exists." });
           }
           throw error;
         }

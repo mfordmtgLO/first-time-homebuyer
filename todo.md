@@ -424,3 +424,5 @@
 - [x] Add loan officer and co-branded agent contact block to buyer calculation PDF summaries
 - [x] Add a client-email option for single-property buyer calculation summaries
 - [x] Add property-specific OHCS Flex Lending and USDA RD screening notes below calculator eligibility badges
+- [x] Add owner-scoped reusable buyer email templates to the single-property PDF-summary workflow
+- [x] Track Email PDF summary clicks as property-page engagement events and display the metric in dashboard analytics

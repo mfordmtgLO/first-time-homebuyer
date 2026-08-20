@@ -18,5 +18,7 @@ describe("weekly property engagement summary presentation", () => {
     expect(widget).toContain("saveEngagementPreferences");
     expect(widget).toContain("Co-brand agent conversion comparison");
     expect(widget).toContain("agentName");
+    expect(widget).toContain("weeklyEmailPdfSummaryCount");
+    expect(widget).toContain("Email PDF");
   });
 });

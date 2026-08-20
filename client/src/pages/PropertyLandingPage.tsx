@@ -111,7 +111,7 @@ function CalculatorEligibilityBadges({ isLmi, isUsda, dark = false }: { isLmi: b
   return <div className="container property-print-hide"><div className="flex flex-wrap gap-3 pb-3 pt-6"><span className={`w-full text-xs font-semibold uppercase tracking-[0.13em] ${labelClass}`}>Saved program screen</span>{isLmi && <div className="max-w-md"><Badge className="bg-amber-100 text-amber-950 hover:bg-amber-100">OHCS Flex Lending screen</Badge><p className={`mt-1.5 text-xs leading-relaxed ${noteClass}`}>This saved property is within an LMI-screened area used for OHCS Flex Lending outreach. Buyer income, loan, and program requirements still require current verification.</p></div>}{isUsda && <div className="max-w-md"><Badge className="bg-emerald-100 text-emerald-950 hover:bg-emerald-100">USDA RD screen</Badge><p className={`mt-1.5 text-xs leading-relaxed ${noteClass}`}>The saved map screen places this property outside USDA’s ineligible urban overlays. Address, household, and program requirements must still be confirmed.</p></div>}{!isLmi && !isUsda && <div><Badge variant="outline" className={dark ? "border-white/25 text-primary-foreground/75" : "text-muted-foreground"}>No saved Flex or USDA screen</Badge><p className={`mt-1.5 text-xs ${noteClass}`}>No program screen is stored with this snapshot; ask your loan officer to review current options.</p></div>}</div></div>;
 }
 
-function BuyerCalculationActions({ propertyAddress, propertyUrl, isLmi, isUsda, contactLines }: { propertyAddress: string; propertyUrl: string; isLmi: boolean; isUsda: boolean; contactLines: string[] }) {
+function BuyerCalculationActions({ propertyAddress, propertyUrl, isLmi, isUsda, contactLines, onEmailIntent }: { propertyAddress: string; propertyUrl: string; isLmi: boolean; isUsda: boolean; contactLines: string[]; onEmailIntent: () => void }) {
   const { scenario, cowScenario } = useScenario();
   const calculationSummary = () => [
     `Buyer calculation summary for ${propertyAddress}`,
@@ -136,6 +136,7 @@ function BuyerCalculationActions({ propertyAddress, propertyUrl, isLmi, isUsda, 
   const emailCalculationPdf = () => {
     const clientEmail = window.prompt("Enter the client email address for a prepared buyer-summary draft:");
     if (!clientEmail) return;
+    onEmailIntent();
     const subject = `Buyer calculation summary — ${propertyAddress}`;
     const body = `Hi,\n\nHere is the buyer calculation summary for ${propertyAddress}. Please see the scenario details below. You can also view the property page here: ${propertyUrl}\n\n${calculationSummary()}\n\nTo include the printable PDF, select “Buyer calculation PDF,” save the browser print dialog as a PDF, and attach it to this message.\n\n${contactLines.join("\n")}`;
     window.location.href = `mailto:${encodeURIComponent(clientEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -205,7 +206,7 @@ export default function PropertyLandingPage() {
                   </div>
                   <div className="property-print-hide mt-4 flex flex-wrap gap-2">
                     <Button size="sm" variant="outline" onClick={() => { track.mutate({ slug: data.page.slug, eventType: "print_export" }); window.print(); }}><Printer className="mr-1.5 h-4 w-4" />Print / save PDF</Button>
-                    <BuyerCalculationActions propertyAddress={snapshot.address} propertyUrl={propertyUrl} isLmi={snapshot.isLmi} isUsda={snapshot.isUsda} contactLines={buyerContactLines} />
+                    <BuyerCalculationActions propertyAddress={snapshot.address} propertyUrl={propertyUrl} isLmi={snapshot.isLmi} isUsda={snapshot.isUsda} contactLines={buyerContactLines} onEmailIntent={() => track.mutate({ slug: data.page.slug, eventType: "email_pdf_summary", detail: "mailto_draft" })} />
                     <Button size="sm" variant="outline" onClick={async () => {
                       track.mutate({ slug: data.page.slug, eventType: "social_share", detail: "native_share" });
                       if (navigator.share) await navigator.share({ title: snapshot.address, text: `Saved property spotlight: ${snapshot.address}`, url: propertyUrl });

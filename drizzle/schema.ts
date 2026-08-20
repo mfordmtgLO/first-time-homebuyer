@@ -581,6 +581,7 @@ export const propertyPageActivity = mysqlTable(
       "buyer_agent_request",
       "social_share",
       "print_export",
+      "email_pdf_summary",
     ]).notNull(),
     /** Non-identifying detail such as the share destination; do not store visitor contact data here. */
     detail: varchar("detail", { length: 500 }),
@@ -623,6 +624,27 @@ export const propertyPageAgentEmailTemplate = mysqlTable(
 
 export type PropertyPageAgentEmailTemplate = typeof propertyPageAgentEmailTemplate.$inferSelect;
 export type InsertPropertyPageAgentEmailTemplate = typeof propertyPageAgentEmailTemplate.$inferInsert;
+
+/** Private reusable client-facing buyer-summary email copy for saved property pages. */
+export const propertyPageBuyerEmailTemplate = mysqlTable(
+  "property_page_buyer_email_template",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerUserId: int("ownerUserId").notNull(),
+    name: varchar("name", { length: 160 }).notNull(),
+    subjectTemplate: varchar("subjectTemplate", { length: 300 }).notNull(),
+    bodyTemplate: text("bodyTemplate").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("property_page_buyer_email_template_owner_name_unique").on(table.ownerUserId, table.name),
+    index("property_page_buyer_email_template_owner_idx").on(table.ownerUserId),
+  ]
+);
+
+export type PropertyPageBuyerEmailTemplate = typeof propertyPageBuyerEmailTemplate.$inferSelect;
+export type InsertPropertyPageBuyerEmailTemplate = typeof propertyPageBuyerEmailTemplate.$inferInsert;
 
 /** Private, owner-scoped LO and agent pairing used only for internal spend management. */
 export const loAgentSpendPairing = mysqlTable(

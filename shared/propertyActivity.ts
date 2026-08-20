@@ -17,6 +17,7 @@ export function getPropertyActivitySince(range: PropertyActivityRange, now = new
 
 export function formatPropertyActivityType(eventType: string | null | undefined): string {
   if (!eventType) return "No activity in this period";
+  if (eventType === "email_pdf_summary") return "Email PDF summary draft";
   return eventType
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))

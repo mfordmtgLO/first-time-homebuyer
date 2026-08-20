@@ -14,6 +14,7 @@ import {
   propertyEngagementSetting,
   propertyEmailTemplate,
   propertyPageAgentEmailTemplate,
+  propertyPageBuyerEmailTemplate,
   syncedAgentOutreachTemplate,
   loAgentSpendEntry,
   loAgentSpendPairing,
@@ -1474,7 +1475,7 @@ export async function getPropertyLandingPageById(id: number) {
   return rows[0];
 }
 
-export type PropertyPageActivityType = "page_view" | "buydown_calculator" | "cost_of_waiting_calculator" | "roadmap_request" | "chat_started" | "chat_completed" | "homes_list_request" | "buyer_agent_request" | "social_share" | "print_export";
+export type PropertyPageActivityType = "page_view" | "buydown_calculator" | "cost_of_waiting_calculator" | "roadmap_request" | "chat_started" | "chat_completed" | "homes_list_request" | "buyer_agent_request" | "social_share" | "print_export" | "email_pdf_summary";
 
 /** Stores only page-level interaction metadata; visitor contact data remains in protected lead tables. */
 export async function recordPropertyPageActivity(input: { propertyLandingPageId: number; eventType: PropertyPageActivityType; detail?: string | null }) {
@@ -1511,6 +1512,7 @@ export async function listWeeklyPropertyPageEngagement(limit = 5) {
   const priorWeekStart = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
   const weeklyActivityCount = sql<number>`coalesce((select count(*) from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} and ${propertyPageActivity.createdAt} >= ${currentWeekStart}), 0)`.mapWith(Number);
   const weeklyCapturedLeadCount = sql<number>`coalesce((select count(*) from ${leads} where ${leads.propertyPageId} = ${propertyLandingPage.id} and ${leads.createdAt} >= ${currentWeekStart}), 0) + coalesce((select count(*) from ${chatIntakeLead} where ${chatIntakeLead.propertyPageId} = ${propertyLandingPage.id} and ${chatIntakeLead.completedAt} is not null and ${chatIntakeLead.completedAt} >= ${currentWeekStart}), 0)`.mapWith(Number);
+  const weeklyEmailPdfSummaryCount = sql<number>`coalesce((select count(*) from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} and ${propertyPageActivity.eventType} = 'email_pdf_summary' and ${propertyPageActivity.createdAt} >= ${currentWeekStart}), 0)`.mapWith(Number);
   const priorWeekActivityCount = sql<number>`coalesce((select count(*) from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} and ${propertyPageActivity.createdAt} >= ${priorWeekStart} and ${propertyPageActivity.createdAt} < ${currentWeekStart}), 0)`.mapWith(Number);
   const latestActivityType = sql<string | null>`(select ${propertyPageActivity.eventType} from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} and ${propertyPageActivity.createdAt} >= ${currentWeekStart} order by ${propertyPageActivity.createdAt} desc, ${propertyPageActivity.id} desc limit 1)`;
   const latestActivityAt = sql<Date | null>`(select ${propertyPageActivity.createdAt} from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} and ${propertyPageActivity.createdAt} >= ${currentWeekStart} order by ${propertyPageActivity.createdAt} desc, ${propertyPageActivity.id} desc limit 1)`;
@@ -1524,6 +1526,7 @@ export async function listWeeklyPropertyPageEngagement(limit = 5) {
       agentName: agentProfile.name,
       weeklyActivityCount,
       weeklyCapturedLeadCount,
+      weeklyEmailPdfSummaryCount,
       priorWeekActivityCount,
       latestActivityType,
       latestActivityAt,
@@ -1595,6 +1598,21 @@ export async function createPropertyPageAgentEmailTemplate(input: { name: string
   if (!db) throw new Error("Database not available");
   const [result] = await db.insert(propertyPageAgentEmailTemplate).values(input);
   const rows = await db.select().from(propertyPageAgentEmailTemplate).where(eq(propertyPageAgentEmailTemplate.id, Number(result.insertId))).limit(1);
+  return rows[0]!;
+}
+
+/** Private dashboard templates for client-facing buyer calculation summary emails. */
+export async function listPropertyPageBuyerEmailTemplates(ownerUserId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(propertyPageBuyerEmailTemplate).where(eq(propertyPageBuyerEmailTemplate.ownerUserId, ownerUserId)).orderBy(asc(propertyPageBuyerEmailTemplate.name));
+}
+
+export async function createPropertyPageBuyerEmailTemplate(input: { ownerUserId: number; name: string; subjectTemplate: string; bodyTemplate: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(propertyPageBuyerEmailTemplate).values(input);
+  const rows = await db.select().from(propertyPageBuyerEmailTemplate).where(eq(propertyPageBuyerEmailTemplate.id, Number(result.insertId))).limit(1);
   return rows[0]!;
 }
 

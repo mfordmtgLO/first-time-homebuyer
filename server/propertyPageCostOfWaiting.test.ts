@@ -13,6 +13,7 @@ describe("single-property Cost of Waiting section", () => {
     expect(page).toContain("BuyerCalculationActions");
     expect(page).toContain("Your local homebuying team");
     expect(page).toContain("Email PDF summary");
+    expect(page).toContain('eventType: "email_pdf_summary"');
     expect(page).toContain("CalculatorEligibilityBadges");
     expect(page).toContain("OHCS Flex Lending screen");
     expect(page).toContain("USDA RD screen");

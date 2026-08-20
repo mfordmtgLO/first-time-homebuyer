@@ -43,6 +43,7 @@ const ALL_SELECTED_AGENT_EMAILS = "__all_selected_agents_bcc__";
 const ADD_CUSTOM_TEMPLATE = "__add_custom_email_template__";
 const ADD_CUSTOM_PROPERTY_EMAIL_TEMPLATE = "__add_custom_property_email_template__";
 const ADD_CUSTOM_PROPERTY_PAGE_TEMPLATE = "__add_custom_property_page_template__";
+const ADD_CUSTOM_PROPERTY_PAGE_BUYER_TEMPLATE = "__add_custom_property_page_buyer_template__";
 const PROPERTY_EMAIL_TEMPLATES: Array<{ value: PropertyEmailTemplateKey; label: string }> = [
   { value: "property_shortlist_with_agent_follow_up", label: "Property shortlist with agent follow-up" },
   { value: "short_property_update", label: "Short property update" },
@@ -68,6 +69,7 @@ const PROPERTY_ACTIVITY_LABELS: Record<string, string> = {
   buyer_agent_request: "Buyer-agent request",
   social_share: "Shared property page",
   print_export: "Print / PDF export",
+  email_pdf_summary: "Email PDF summary draft",
 };
 
 function PropertyPageTimeline({ propertyLandingPageId }: { propertyLandingPageId: number }) {
@@ -79,7 +81,7 @@ function PropertyPageTimeline({ propertyLandingPageId }: { propertyLandingPageId
     if (filter === "page") return event.eventType === "page_view";
     if (filter === "calculator") return event.eventType === "buydown_calculator" || event.eventType === "cost_of_waiting_calculator";
     if (filter === "lead") return ["roadmap_request", "chat_started", "chat_completed", "homes_list_request", "buyer_agent_request"].includes(event.eventType);
-    return event.eventType === "social_share" || event.eventType === "print_export";
+    return event.eventType === "social_share" || event.eventType === "print_export" || event.eventType === "email_pdf_summary";
   });
   return <div className="mt-4 border-t border-border pt-4">
     <button type="button" className="flex w-full items-center justify-between text-left text-sm font-medium text-primary" onClick={() => setOpen((value) => !value)}>
@@ -228,6 +230,11 @@ export default function GeoSphereListings() {
   const [customPropertyPageTemplateOpen, setCustomPropertyPageTemplateOpen] = useState(false);
   const [customPropertyPageTemplateName, setCustomPropertyPageTemplateName] = useState("");
   const [customPropertyPageTemplateBody, setCustomPropertyPageTemplateBody] = useState("");
+  const [propertyPageBuyerTemplateId, setPropertyPageBuyerTemplateId] = useState("");
+  const [customPropertyPageBuyerTemplateOpen, setCustomPropertyPageBuyerTemplateOpen] = useState(false);
+  const [customPropertyPageBuyerTemplateName, setCustomPropertyPageBuyerTemplateName] = useState("");
+  const [customPropertyPageBuyerTemplateSubject, setCustomPropertyPageBuyerTemplateSubject] = useState("Buyer calculation summary — {{property_address}}");
+  const [customPropertyPageBuyerTemplateBody, setCustomPropertyPageBuyerTemplateBody] = useState("Hi {{client_name}},\n\nI prepared a buyer calculation summary for {{property_address}}. You can review the saved property page here: {{property_url}}\n\nPlease let me know what questions you have about the property or your first-home financing options.\n\n{{loan_officer_signature}}\n\n{{agent_signature}}");
   const [propertyPagePairDrafts, setPropertyPagePairDrafts] = useState<Record<number, { loanOfficerId: string; agentId: string }>>({});
 
   const statusQuery = trpc.geosphere.status.useQuery();
@@ -238,6 +245,7 @@ export default function GeoSphereListings() {
   const propertyTemplatesQuery = trpc.geosphere.listPropertyEmailTemplates.useQuery();
   const propertyPagesQuery = trpc.propertyPages.list.useQuery();
   const propertyPageTemplatesQuery = trpc.propertyPages.listAgentEmailTemplates.useQuery();
+  const propertyPageBuyerTemplatesQuery = trpc.propertyPages.listBuyerEmailTemplates.useQuery();
   const officersQuery = trpc.loanOfficer.list.useQuery();
   const agentsQuery = trpc.agent.list.useQuery();
   const selectedPull = useMemo(
@@ -370,6 +378,16 @@ export default function GeoSphereListings() {
     },
     onError: (error) => toast.error(error.message || "The property-page email template could not be saved."),
   });
+  const savePropertyPageBuyerTemplate = trpc.propertyPages.saveBuyerEmailTemplate.useMutation({
+    onSuccess: async (template) => {
+      await utils.propertyPages.listBuyerEmailTemplates.invalidate();
+      setPropertyPageBuyerTemplateId(String(template.id));
+      setCustomPropertyPageBuyerTemplateOpen(false);
+      setCustomPropertyPageBuyerTemplateName("");
+      toast.success(`${template.name} is now available for buyer email drafts.`);
+    },
+    onError: (error) => toast.error(error.message || "The buyer email template could not be saved."),
+  });
 
   const openListingDraft = () => {
     const listings = visibleListings;
@@ -472,6 +490,10 @@ export default function GeoSphereListings() {
     () => (propertyPageTemplatesQuery.data ?? []).find((template) => String(template.id) === propertyPageTemplateId),
     [propertyPageTemplateId, propertyPageTemplatesQuery.data]
   );
+  const selectedPropertyPageBuyerTemplate = useMemo(
+    () => (propertyPageBuyerTemplatesQuery.data ?? []).find((template) => String(template.id) === propertyPageBuyerTemplateId),
+    [propertyPageBuyerTemplateId, propertyPageBuyerTemplatesQuery.data]
+  );
   const propertyPageListing = useMemo(
     () => (listingsQuery.data ?? []).find((listing) => listing.id === propertyPageListingId) ?? null,
     [listingsQuery.data, propertyPageListingId]
@@ -529,6 +551,34 @@ export default function GeoSphereListings() {
       return;
     }
     setPropertyPageTemplateId(value);
+  };
+  const selectPropertyPageBuyerTemplate = (value: string) => {
+    if (value === ADD_CUSTOM_PROPERTY_PAGE_BUYER_TEMPLATE) {
+      setCustomPropertyPageBuyerTemplateOpen(true);
+      return;
+    }
+    setPropertyPageBuyerTemplateId(value);
+  };
+  const openPropertyPageBuyerDraft = (page: typeof propertyPages[number]) => {
+    const snapshot = parsePropertyLandingSnapshot(page.listingSnapshot);
+    const officer = officers.find((candidate) => candidate.id === page.loanOfficerId);
+    const agent = agents.find((candidate) => candidate.id === page.agentId);
+    if (!snapshot || !officer) {
+      toast.error("This property needs a valid saved snapshot and loan officer before opening a buyer email draft.");
+      return;
+    }
+    const clientEmail = window.prompt("Enter the client email address for this buyer-summary draft:")?.trim();
+    if (!clientEmail) return;
+    const clientName = window.prompt("Optional client first name for the greeting:")?.trim() || "there";
+    const propertyUrl = publicSiteUrl(`/property/${page.slug}`);
+    const loanOfficerSignature = `${officer.name}\n${officer.title}${officer.nmls ? ` · NMLS #${officer.nmls}` : ""}\n${officer.companyName}\n${officer.phone}${officer.email ? ` · ${officer.email}` : ""}`;
+    const agentSignature = agent ? `${agent.name}${agent.companyName ? ` · ${agent.companyName}` : ""}${agent.phone ? ` · ${agent.phone}` : ""}` : "";
+    const values: Record<string, string> = { client_name: clientName, property_address: page.address, property_url: propertyUrl, loan_officer_signature: loanOfficerSignature, agent_signature: agentSignature };
+    const replaceTokens = (value: string) => value.replace(/\{\{(client_name|property_address|property_url|loan_officer_signature|agent_signature)\}\}/g, (_match, token: string) => values[token] ?? "");
+    const subject = replaceTokens(selectedPropertyPageBuyerTemplate?.subjectTemplate ?? "Buyer calculation summary — {{property_address}}");
+    const body = replaceTokens(selectedPropertyPageBuyerTemplate?.bodyTemplate ?? "Hi {{client_name}},\n\nI prepared a buyer calculation summary for {{property_address}}. Review the saved property page and current calculators here: {{property_url}}\n\nUse the page’s Buyer calculation PDF action to save the current scenario before attaching it to this message.\n\n{{loan_officer_signature}}\n\n{{agent_signature}}");
+    window.location.href = `mailto:${encodeURIComponent(clientEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    toast.success(`Buyer email draft opened${selectedPropertyPageBuyerTemplate ? ` using “${selectedPropertyPageBuyerTemplate.name}.”` : "."}`);
   };
   const selectedOutreachTemplate = useMemo(
     () => (outreachTemplatesQuery.data ?? []).find((template) => String(template.id) === selectedOutreachTemplateId) ?? null,
@@ -943,13 +993,22 @@ export default function GeoSphereListings() {
                   <p className="text-sm font-semibold text-foreground">Single-property co-branded pages</p>
                   <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">Create each public page from one saved GeoSphere snapshot. The page preserves the current LO + agent assignment, Roadmap, chat, calculator, and dashboard lead workflows while clearly labeling saved property data as point-in-time information rather than a live listing feed.</p>
                 </div>
-                <Select value={propertyPageTemplateId} onValueChange={selectPropertyPageTemplate}>
-                  <SelectTrigger className="h-9 w-full bg-card text-xs lg:w-[280px]"><SelectValue placeholder={propertyPageTemplatesQuery.isLoading ? "Loading page email templates…" : "Select property-page agent template"} /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ADD_CUSTOM_PROPERTY_PAGE_TEMPLATE}>Add template</SelectItem>
-                    {(propertyPageTemplatesQuery.data ?? []).map((template) => <SelectItem key={template.id} value={String(template.id)}>Saved · {template.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <div className="flex w-full flex-col gap-2 lg:w-auto lg:flex-row">
+                  <Select value={propertyPageTemplateId} onValueChange={selectPropertyPageTemplate}>
+                    <SelectTrigger className="h-9 w-full bg-card text-xs lg:w-[260px]"><SelectValue placeholder={propertyPageTemplatesQuery.isLoading ? "Loading agent templates…" : "Agent email template"} /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ADD_CUSTOM_PROPERTY_PAGE_TEMPLATE}>Add template</SelectItem>
+                      {(propertyPageTemplatesQuery.data ?? []).map((template) => <SelectItem key={template.id} value={String(template.id)}>Saved · {template.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={propertyPageBuyerTemplateId} onValueChange={selectPropertyPageBuyerTemplate}>
+                    <SelectTrigger className="h-9 w-full bg-card text-xs lg:w-[260px]"><SelectValue placeholder={propertyPageBuyerTemplatesQuery.isLoading ? "Loading buyer templates…" : "Buyer email template"} /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ADD_CUSTOM_PROPERTY_PAGE_BUYER_TEMPLATE}>Add buyer template</SelectItem>
+                      {(propertyPageBuyerTemplatesQuery.data ?? []).map((template) => <SelectItem key={template.id} value={String(template.id)}>Saved · {template.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               {propertyPagesQuery.isLoading ? <div className="mt-5 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading saved property pages…</div> : propertyPages.length === 0 ? <div className="mt-5 rounded-lg border border-dashed border-border bg-card/60 p-5 text-sm text-muted-foreground">No property pages yet. Use <strong className="text-foreground">Property page</strong> in any saved listing row above to create one.</div> : <div className="mt-5 grid gap-4 xl:grid-cols-2">
                 {propertyPages.map((page) => {
@@ -965,7 +1024,7 @@ export default function GeoSphereListings() {
                       <label className="text-xs font-semibold text-muted-foreground">Loan officer<Select value={pairDraft.loanOfficerId} onValueChange={(value) => setPropertyPagePairDrafts((current) => ({ ...current, [page.id]: { ...pairDraft, loanOfficerId: value } }))}><SelectTrigger className="mt-1.5 h-9 bg-background text-xs"><SelectValue placeholder="Choose loan officer" /></SelectTrigger><SelectContent>{officers.map((officer) => <SelectItem key={officer.id} value={String(officer.id)}>{officer.name}</SelectItem>)}</SelectContent></Select></label>
                       <label className="text-xs font-semibold text-muted-foreground">Co-branded agent<Select value={pairDraft.agentId} onValueChange={(value) => setPropertyPagePairDrafts((current) => ({ ...current, [page.id]: { ...pairDraft, agentId: value } }))}><SelectTrigger className="mt-1.5 h-9 bg-background text-xs"><SelectValue placeholder="Choose agent" /></SelectTrigger><SelectContent>{agents.map((agent) => <SelectItem key={agent.id} value={String(agent.id)}>{agent.name}</SelectItem>)}</SelectContent></Select></label>
                     </div>
-                    <div className="mt-4 flex flex-wrap items-center gap-2"><Button size="sm" variant="outline" onClick={() => savePropertyPagePair(page.id, page)} disabled={updatePropertyPagePair.isPending}><Link2 className="mr-1.5 h-3.5 w-3.5" /> Save pairing</Button><Button size="sm" onClick={() => openPropertyPageAgentDraft(page)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Agent email draft</Button><Button size="sm" variant="outline" disabled={refreshPropertyPageSnapshot.isPending} onClick={() => refreshPropertyPageSnapshot.mutate({ id: page.id })}><RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Refresh saved snapshot</Button><label className="ml-auto flex items-center gap-2 text-xs font-medium text-muted-foreground">{page.isActive === 1 ? "Public" : "Retired"}<input type="checkbox" role="switch" aria-label={`Make ${page.address} ${page.isActive === 1 ? "retired" : "public"}`} checked={page.isActive === 1} disabled={setPropertyPageActive.isPending} onChange={(event) => setPropertyPageActive.mutate({ id: page.id, isActive: event.target.checked })} className="h-4 w-8 cursor-pointer accent-primary" /></label></div>
+                    <div className="mt-4 flex flex-wrap items-center gap-2"><Button size="sm" variant="outline" onClick={() => savePropertyPagePair(page.id, page)} disabled={updatePropertyPagePair.isPending}><Link2 className="mr-1.5 h-3.5 w-3.5" /> Save pairing</Button><Button size="sm" onClick={() => openPropertyPageAgentDraft(page)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Agent email draft</Button><Button size="sm" variant="outline" onClick={() => openPropertyPageBuyerDraft(page)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Buyer email draft</Button><Button size="sm" variant="outline" disabled={refreshPropertyPageSnapshot.isPending} onClick={() => refreshPropertyPageSnapshot.mutate({ id: page.id })}><RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Refresh saved snapshot</Button><label className="ml-auto flex items-center gap-2 text-xs font-medium text-muted-foreground">{page.isActive === 1 ? "Public" : "Retired"}<input type="checkbox" role="switch" aria-label={`Make ${page.address} ${page.isActive === 1 ? "retired" : "public"}`} checked={page.isActive === 1} disabled={setPropertyPageActive.isPending} onChange={(event) => setPropertyPageActive.mutate({ id: page.id, isActive: event.target.checked })} className="h-4 w-8 cursor-pointer accent-primary" /></label></div>
                     <PropertyPageAiSummaryEditor page={page} />
                     <PropertyPageTimeline propertyLandingPageId={page.id} />
                   </div>;
@@ -1090,6 +1149,20 @@ export default function GeoSphereListings() {
             <div className="space-y-1.5"><Label htmlFor="property-page-agent-template-body">Reusable email introduction</Label><Textarea id="property-page-agent-template-body" value={customPropertyPageTemplateBody} onChange={(event) => setCustomPropertyPageTemplateBody(event.target.value)} maxLength={6000} className="min-h-56 resize-y" placeholder="Explain the shared first-time-buyer attraction opportunity in your own words. The recipient, property URL, saved property facts, current-verification reminder, and signature are added automatically." /><p className="text-right text-xs text-muted-foreground">{customPropertyPageTemplateBody.length}/6000</p></div>
           </div>
           <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setCustomPropertyPageTemplateOpen(false)} disabled={savePropertyPageTemplate.isPending}>Cancel</Button><Button onClick={() => { if (customPropertyPageTemplateName.trim().length < 2 || customPropertyPageTemplateBody.trim().length < 20) { toast.error("Enter a template name and at least 20 characters of reusable email copy."); return; } savePropertyPageTemplate.mutate({ name: customPropertyPageTemplateName.trim(), bodyTemplate: customPropertyPageTemplateBody.trim() }); }} disabled={savePropertyPageTemplate.isPending}>{savePropertyPageTemplate.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}Save email template</Button></div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={customPropertyPageBuyerTemplateOpen} onOpenChange={setCustomPropertyPageBuyerTemplateOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display">Add buyer email template</DialogTitle>
+            <DialogDescription>Save reusable client-facing copy for property-page buyer summaries. Available merge fields: <code>{"{{client_name}}"}</code>, <code>{"{{property_address}}"}</code>, <code>{"{{property_url}}"}</code>, <code>{"{{loan_officer_signature}}"}</code>, and <code>{"{{agent_signature}}"}</code>.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5"><Label htmlFor="property-page-buyer-template-name">Template name</Label><Input id="property-page-buyer-template-name" value={customPropertyPageBuyerTemplateName} onChange={(event) => setCustomPropertyPageBuyerTemplateName(event.target.value)} maxLength={160} placeholder="e.g., Buyer numbers to review" /></div>
+            <div className="space-y-1.5"><Label htmlFor="property-page-buyer-template-subject">Email subject</Label><Input id="property-page-buyer-template-subject" value={customPropertyPageBuyerTemplateSubject} onChange={(event) => setCustomPropertyPageBuyerTemplateSubject(event.target.value)} maxLength={300} placeholder="Buyer calculation summary — {{property_address}}" /></div>
+            <div className="space-y-1.5"><Label htmlFor="property-page-buyer-template-body">Reusable buyer email body</Label><Textarea id="property-page-buyer-template-body" value={customPropertyPageBuyerTemplateBody} onChange={(event) => setCustomPropertyPageBuyerTemplateBody(event.target.value)} maxLength={6000} className="min-h-56 resize-y" placeholder="Write your client message, then use supported merge fields for property and co-brand details." /><p className="text-right text-xs text-muted-foreground">{customPropertyPageBuyerTemplateBody.length}/6000</p></div>
+          </div>
+          <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setCustomPropertyPageBuyerTemplateOpen(false)} disabled={savePropertyPageBuyerTemplate.isPending}>Cancel</Button><Button onClick={() => { if (customPropertyPageBuyerTemplateName.trim().length < 2 || customPropertyPageBuyerTemplateSubject.trim().length < 4 || customPropertyPageBuyerTemplateBody.trim().length < 20) { toast.error("Enter a name, subject, and at least 20 characters of reusable buyer email copy."); return; } savePropertyPageBuyerTemplate.mutate({ name: customPropertyPageBuyerTemplateName.trim(), subjectTemplate: customPropertyPageBuyerTemplateSubject.trim(), bodyTemplate: customPropertyPageBuyerTemplateBody.trim() }); }} disabled={savePropertyPageBuyerTemplate.isPending}>{savePropertyPageBuyerTemplate.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}Save buyer template</Button></div>
         </DialogContent>
       </Dialog>
       <Dialog open={Boolean(bulkOutreachPreview)} onOpenChange={(open) => { if (!open) setBulkOutreachPreview(null); }}>
