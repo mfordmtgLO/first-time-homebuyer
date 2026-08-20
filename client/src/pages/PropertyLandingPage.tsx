@@ -13,7 +13,7 @@ import { getPropertyHeroMedia, parsePropertyLandingSnapshot, propertyEligibility
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { BedDouble, Bath, CalendarDays, ExternalLink, Facebook, Home, Linkedin, Mail, MapPin, Printer, Ruler, Share2, ShieldCheck, SquareStack, Trees } from "lucide-react";
+import { Bath, BedDouble, Building2, CalendarDays, ExternalLink, Facebook, Globe2, Home, Linkedin, Mail, MapPin, Phone, Printer, Ruler, Share2, ShieldCheck, SquareStack, Trees, UserRound } from "lucide-react";
 
 const money = (value: number | null) => value === null ? "Not in saved snapshot" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
 const number = (value: number | null) => value === null ? "Not in saved snapshot" : value.toLocaleString("en-US");
@@ -44,6 +44,19 @@ function SavedLocationMap({ latitude, longitude, address }: { latitude: number; 
 
 function PropertyImageUnavailable() {
   return <div className="grid h-[330px] place-items-center bg-[radial-gradient(circle_at_30%_20%,oklch(0.83_0.1_84),transparent_38%),linear-gradient(135deg,oklch(0.31_0.05_155),oklch(0.17_0.03_152))] px-8 text-center text-primary-foreground"><div><Home className="mx-auto mb-3 h-12 w-12"/><p className="font-display text-2xl">Saved property details</p><p className="mt-2 text-sm text-primary-foreground/80">Listing imagery was not included in this saved snapshot.</p></div></div>;
+}
+
+type PublicTeamProfile = { name: string; title?: string | null; nmls?: string | null; companyName: string; email: string; phone: string; website: string; bio?: string | null; headshotUrl: string; companyLogoUrl: string };
+const profileInitials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "Team";
+
+function TeamProfileCard({ profile, role, showNmls = false }: { profile: PublicTeamProfile; role: string; showNmls?: boolean }) {
+  const website = /^https?:\/\//i.test(profile.website?.trim() ?? "") ? profile.website.trim() : "";
+  return <article className="rounded-xl border border-border bg-background p-4 shadow-sm"><p className="text-[11px] font-bold uppercase tracking-[0.15em] text-primary">{role}</p><div className="mt-3 flex items-start gap-3">{profile.headshotUrl ? <img src={profile.headshotUrl} alt={`${profile.name} headshot`} className="h-16 w-16 shrink-0 rounded-full border border-border object-cover" /> : <div aria-label={`${profile.name} profile placeholder`} className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary">{profileInitials(profile.name)}</div>}<div className="min-w-0 flex-1"><h3 className="font-display text-xl font-semibold leading-tight text-foreground">{profile.name}</h3><p className="mt-0.5 text-sm font-medium text-muted-foreground">{profile.title || (showNmls ? "Loan Officer" : "Co-marketing Real Estate Agent")}{showNmls && profile.nmls ? ` · NMLS #${profile.nmls}` : ""}</p>{profile.companyLogoUrl ? <img src={profile.companyLogoUrl} alt={`${profile.companyName} logo`} className="mt-2 h-7 max-w-40 object-contain object-left" /> : <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-foreground"><Building2 className="h-3.5 w-3.5 text-primary" />{profile.companyName}</p>}</div></div>{profile.companyLogoUrl && profile.companyName ? <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-foreground"><Building2 className="h-3.5 w-3.5 text-primary" />{profile.companyName}</p> : null}{profile.bio ? <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground">{profile.bio}</p> : null}<div className="mt-4 grid gap-2 border-t border-border pt-3 text-sm">{profile.phone ? <a className="inline-flex items-center gap-2 font-medium text-primary hover:underline" href={`tel:${profile.phone.replace(/[^\d+]/g, "")}`}><Phone className="h-3.5 w-3.5" />{profile.phone}</a> : null}{profile.email ? <a className="inline-flex min-w-0 items-center gap-2 font-medium text-primary hover:underline" href={`mailto:${profile.email}`}><Mail className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{profile.email}</span></a> : null}{website ? <a className="inline-flex min-w-0 items-center gap-2 font-medium text-primary hover:underline" href={website} target="_blank" rel="noreferrer"><Globe2 className="h-3.5 w-3.5 shrink-0" /><span className="truncate">Visit profile</span><ExternalLink className="h-3 w-3 shrink-0" /></a> : null}</div></article>;
+}
+
+function PropertyTeamBranding({ officer, agent }: { officer: PublicTeamProfile | null; agent: PublicTeamProfile | null }) {
+  if (!officer || !agent) return <div className="rounded-2xl border border-amber-300 bg-amber-50 p-5 text-sm text-amber-950"><div className="flex items-center gap-2 font-semibold"><UserRound className="h-4 w-4" />Co-branded team profile pending</div><p className="mt-2 leading-relaxed">This saved property page needs an active dashboard loan-officer and agent pairing before it can display the complete local contact team.</p></div>;
+  return <section aria-label="Your local homebuying team" className="rounded-2xl border border-border bg-card p-5 shadow-sm"><div className="mb-4"><p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Co-branded property page</p><h2 className="mt-1 font-display text-2xl font-semibold">Your local homebuying team</h2><p className="mt-1 text-sm leading-relaxed text-muted-foreground">Connect directly with the loan officer and local real estate agent assigned to this saved property page.</p></div><div className="grid gap-4 lg:grid-cols-2"><TeamProfileCard profile={officer} role="Your loan officer" showNmls /><TeamProfileCard profile={agent} role="Your co-marketing real estate agent" /></div></section>;
 }
 
 function PropertyActivityTracker({ slug }: { slug: string }) {
@@ -226,6 +239,7 @@ export default function PropertyLandingPage() {
               </div>
             </section>
 
+            <section className="border-b border-border bg-muted/20 py-8 md:py-10"><div className="container"><PropertyTeamBranding officer={officer} agent={agent} /></div></section>
             <section id="property-details" className="scroll-mt-24 py-12 md:py-16">
               <div className="container grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
                 <div className="rounded-2xl border border-border bg-card p-6 shadow-sm md:p-8">
@@ -244,7 +258,6 @@ export default function PropertyLandingPage() {
                 </div>
                 <aside className="space-y-6">
                   {snapshot.latitude !== null && snapshot.longitude !== null ? <div><div className="mb-3 flex items-center gap-2"><MapPin className="h-5 w-5 text-primary" /><h2 className="font-display text-2xl font-semibold">Saved map location</h2></div><SavedLocationMap latitude={snapshot.latitude} longitude={snapshot.longitude} address={snapshot.address} /><a className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline" href="https://geosphere-map-oregon.vercel.app/" target="_blank" rel="noreferrer">Open the GeoSphere map <ExternalLink className="h-3.5 w-3.5" /></a></div> : null}
-                  <div className="rounded-2xl border border-border bg-card p-6 shadow-sm"><h2 className="font-display text-2xl font-semibold">Your local team</h2><div className="mt-5 space-y-4">{officer && <div><div className="font-semibold">{officer.name}</div><div className="text-sm text-muted-foreground">{officer.title} · NMLS #{officer.nmls}</div><div className="text-sm text-muted-foreground">{officer.companyName} · {officer.phone}</div></div>}{agent && <div className="border-t border-border pt-4"><div className="font-semibold">{agent.name}</div><div className="text-sm text-muted-foreground">{agent.companyName}</div><div className="text-sm text-muted-foreground">{agent.phone}</div></div>}</div></div>
                 </aside>
               </div>
             </section>

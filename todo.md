@@ -449,3 +449,6 @@
 - [x] Apply Mike Ford’s complete default signature to applicable email drafts and new reusable templates
 - [x] Add regression tests and publish the workflow-aware merge-field and signature update
 - [x] Correct Mike Ford’s default email-signature phone to match the website’s (541) 729-0819 contact number
+- [x] Render the assigned dashboard loan-officer profile with headshot, company branding, and contact details on every public single-property page
+- [x] Render the assigned dashboard co-marketing agent profile with headshot, company branding, and contact details on every public single-property page
+- [x] Add regression coverage and publish complete LO-agent single-property co-branding
