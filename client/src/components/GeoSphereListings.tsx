@@ -27,6 +27,7 @@ import {
 } from "@shared/leadEmailDraft";
 import { OVERLAY_LABELS, type GeoSphereOverlayKey } from "@shared/geosphere";
 import { buildGeoSphereInventoryCsv, filterAndSortGeoSphereListings, type GeoSphereInventorySort } from "@shared/geosphereInventory";
+import { firstHomeScreeningLabel, isFirstHomeLmiPriceEligible, parseFirstHomeScreening } from "@shared/geosphereFirstHome";
 import { filterByImportedListingAgent, getImportedListingAgentOptions, parseImportedListingAgent } from "@shared/geosphereListingAgents";
 import { filterPropertyListRecipients, formatRecipientLastFirst, type PropertyListRecipientFilter } from "@shared/geosphereRecipients";
 import { buildPropertyPageAgentDraft } from "@shared/propertyPageEmailDraft";
@@ -209,6 +210,7 @@ export default function GeoSphereListings() {
   const utils = trpc.useUtils();
   const [selectedPullId, setSelectedPullId] = useState<string>("");
   const [overlay, setOverlay] = useState<GeoSphereOverlayKey>("all");
+  const [firstHomeOnly, setFirstHomeOnly] = useState(false);
   const [selectedRecipientValues, setSelectedRecipientValues] = useState<Set<string>>(() => new Set());
   const [recipientLastNameSearch, setRecipientLastNameSearch] = useState("");
   const [recipientSourceFilter, setRecipientSourceFilter] = useState<PropertyListRecipientFilter>("all");
@@ -516,15 +518,27 @@ export default function GeoSphereListings() {
   const listings = listingsQuery.data ?? [];
   const allSnapshotListings = overlay === "all" ? listings : allListingsQuery.data ?? [];
   const listingAgentOptions = useMemo(() => getImportedListingAgentOptions(allSnapshotListings), [allSnapshotListings]);
+  const firstHomeEligibleCount = useMemo(
+    () => allSnapshotListings.filter((listing) => isFirstHomeLmiPriceEligible(listing.sourceData)).length,
+    [allSnapshotListings]
+  );
+  const firstHomeMetadataCount = useMemo(
+    () => allSnapshotListings.filter((listing) => parseFirstHomeScreening(listing.sourceData)?.available).length,
+    [allSnapshotListings]
+  );
   const searchedListings = useMemo(
     () => filterAndSortGeoSphereListings(listings, listingSearch, listingSort),
     [listings, listingSearch, listingSort]
   );
-  const visibleListings = useMemo(
-    () => listingAgentKey === ALL_LISTING_AGENTS ? searchedListings : filterByImportedListingAgent(searchedListings, listingAgentKey),
-    [listingAgentKey, searchedListings]
+  const firstHomeFilteredListings = useMemo(
+    () => firstHomeOnly ? searchedListings.filter((listing) => isFirstHomeLmiPriceEligible(listing.sourceData)) : searchedListings,
+    [firstHomeOnly, searchedListings]
   );
-  const hasInventoryFilters = Boolean(listingSearch.trim()) || listingSort !== "address" || overlay !== "all" || listingAgentKey !== ALL_LISTING_AGENTS;
+  const visibleListings = useMemo(
+    () => listingAgentKey === ALL_LISTING_AGENTS ? firstHomeFilteredListings : filterByImportedListingAgent(firstHomeFilteredListings, listingAgentKey),
+    [firstHomeFilteredListings, listingAgentKey]
+  );
+  const hasInventoryFilters = Boolean(listingSearch.trim()) || listingSort !== "address" || overlay !== "all" || firstHomeOnly || listingAgentKey !== ALL_LISTING_AGENTS;
   const visibleListingAgents = useMemo(
     () => new Map(visibleListings.map((listing) => [listing.id, parseImportedListingAgent(listing.sourceData)])),
     [visibleListings]
@@ -691,6 +705,7 @@ export default function GeoSphereListings() {
     setListingSearch("");
     setListingSort("address");
     setOverlay("all");
+    setFirstHomeOnly(false);
     setListingAgentKey(ALL_LISTING_AGENTS);
   };
 
@@ -922,6 +937,7 @@ export default function GeoSphereListings() {
             <span className="rounded-full bg-amber-500/10 px-3 py-2 text-amber-800">LMI: {selectedPull.lmiCount}</span>
             <span className="rounded-full bg-emerald-600/10 px-3 py-2 text-emerald-800">USDA: {selectedPull.usdaCount}</span>
             <span className="rounded-full bg-muted px-3 py-2">Both: {selectedPull.lmiUsdaCount}</span>
+            {firstHomeMetadataCount > 0 ? <span className="rounded-full bg-sky-500/10 px-3 py-2 text-sky-800">FirstHome screen: {firstHomeEligibleCount}</span> : null}
           </div>}
         </div>
 
@@ -988,8 +1004,19 @@ export default function GeoSphereListings() {
                     <Layers3 className="mr-1 inline-block h-3.5 w-3.5" /> {OVERLAY_LABELS[option]}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => setFirstHomeOnly((value) => !value)}
+                  aria-pressed={firstHomeOnly}
+                  disabled={firstHomeMetadataCount === 0}
+                  title={firstHomeMetadataCount === 0 ? "FirstHome metadata will appear after the next GeoSphere saved-pull sync." : "Show LMI listings at or below the applicable targeted or non-targeted FirstHome purchase-price maximum."}
+                  className={`rounded-full border px-3.5 py-1.5 text-xs font-bold transition-colors ${firstHomeOnly ? "border-sky-700 bg-sky-700 text-white" : "border-sky-500/35 bg-sky-500/10 text-sky-900 hover:bg-sky-500/15"} disabled:cursor-not-allowed disabled:opacity-50`}
+                >
+                  <SearchCheck className="mr-1 inline-block h-3.5 w-3.5" /> FirstHome: LMI + purchase price {firstHomeMetadataCount > 0 ? `(${firstHomeEligibleCount})` : "(sync to load)"}
+                </button>
                 <span className="ml-auto text-xs font-semibold text-muted-foreground" aria-live="polite">Showing {visibleListings.length} of {listings.length}</span>
               </div>
+              {firstHomeOnly ? <p className="mt-3 rounded-md border border-sky-500/25 bg-sky-500/[0.06] px-3 py-2 text-xs leading-relaxed text-sky-950">Showing saved listings that GeoSphere screened as LMI and at or below the applicable <strong>OHCS Flex Lending FirstHome</strong> targeted or non-targeted maximum purchase price. This is saved-screening context only; confirm current program requirements before outreach or borrower guidance.</p> : null}
             </div>
 
             <div className="mt-5 overflow-hidden rounded-xl border border-border">
@@ -1023,8 +1050,9 @@ export default function GeoSphereListings() {
                       </tr>
                     </thead>
                     <tbody>
-                      {visibleListings.map((listing) => (
-                        <tr key={listing.id} className="border-b border-border/60 last:border-0 hover:bg-muted/25">
+                      {visibleListings.map((listing) => {
+                        const firstHomeLabel = firstHomeScreeningLabel(parseFirstHomeScreening(listing.sourceData));
+                        return <tr key={listing.id} className="border-b border-border/60 last:border-0 hover:bg-muted/25">
                           <td className="px-4 py-3 align-top">
                             {visibleListingAgents.get(listing.id) ? (
                               <input
@@ -1041,11 +1069,11 @@ export default function GeoSphereListings() {
                           <td className="px-4 py-3 whitespace-nowrap">{listing.bedrooms ?? "—"} / {listing.bathrooms ?? "—"}</td>
                           <td className="px-4 py-3 whitespace-nowrap">{listing.squareFootage?.toLocaleString("en-US") ?? "—"}</td>
                           <td className="px-4 py-3">{listing.propertyType ?? "—"}</td>
-                          <td className="px-4 py-3"><div className="flex gap-1.5">{listing.isLmi === 1 ? <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-800">LMI</span> : null}{listing.isUsda === 1 ? <span className="rounded-full bg-emerald-600/15 px-2 py-0.5 text-[11px] font-bold text-emerald-800">USDA RD</span> : null}{listing.isLmi === 0 && listing.isUsda === 0 ? <span className="text-xs text-muted-foreground">General</span> : null}</div></td>
+                          <td className="px-4 py-3"><div className="flex flex-wrap gap-1.5">{listing.isLmi === 1 ? <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-800">LMI</span> : null}{listing.isUsda === 1 ? <span className="rounded-full bg-emerald-600/15 px-2 py-0.5 text-[11px] font-bold text-emerald-800">USDA RD</span> : null}{firstHomeLabel ? <span title={firstHomeLabel} className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[11px] font-bold text-sky-900">FirstHome</span> : null}{listing.isLmi === 0 && listing.isUsda === 0 && !firstHomeLabel ? <span className="text-xs text-muted-foreground">General</span> : null}</div>{firstHomeLabel ? <p className="mt-1 max-w-48 text-[10px] leading-snug text-sky-900">{firstHomeLabel}</p> : null}</td>
                           <td className="px-4 py-3 align-top"><ListingCommunicationStatus lastEmailSentAt={listing.lastEmailSentAt} emailResendCount={listing.emailResendCount} lastEmailTemplateName={listing.lastEmailTemplateName} /></td>
                           <td className="px-4 py-3 text-right"><div className="flex items-center justify-end gap-3"><ListingDetails sourceData={listing.sourceData} address={listing.address} /><button type="button" onClick={() => openPropertyPageBuilder(listing.id)} className="text-xs font-semibold text-primary hover:underline">Property page</button>{visibleListingAgents.get(listing.id) ? <button type="button" disabled={recordListingEmailActivity.isPending} onClick={() => openSingleListingAgentDraft(listing)} className="text-xs font-semibold text-primary hover:underline disabled:cursor-wait disabled:opacity-50">Agent draft</button> : null}</div></td>
-                        </tr>
-                      ))}
+                        </tr>;
+                      })}
                     </tbody>
                   </table>
                 </div>

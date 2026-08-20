@@ -475,3 +475,6 @@
 - [x] Add a visual campaign-volume comparison bar chart for tagged submission reporting
 - [x] Add private campaign-spend inputs with cost-per-tagged-lead calculation by campaign and selected date range
 - [x] Add database migration, regression coverage, and publish enhanced campaign reporting
+- [x] Audit synced GeoSphere FirstHome eligibility metadata and the dashboard saved-snapshot filter model
+- [x] Add a FirstHome LMI-plus-purchase-price filter to Search this saved snapshot with targeted and non-targeted limit context
+- [x] Add regression coverage and publish the dashboard FirstHome saved-snapshot filter
