@@ -448,3 +448,4 @@
 - [x] Extract and normalize the supplied Mike Ford email signature for safe dashboard use
 - [x] Apply Mike Ford’s complete default signature to applicable email drafts and new reusable templates
 - [x] Add regression tests and publish the workflow-aware merge-field and signature update
+- [x] Correct Mike Ford’s default email-signature phone to match the website’s (541) 729-0819 contact number

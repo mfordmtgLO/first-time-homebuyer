@@ -2,7 +2,7 @@ export const MIKE_FORD_EMAIL_SIGNATURE_TEXT = `Mike Ford
 Loan Officer
 Cornerstone First Mortgage
 17850 Pilkington Rd | Lake Oswego, OR 97035
-C: (541) 729-2097
+C: (541) 729-0819
 Website: https://cfmtg.com/mford/
 vCard: https://manage.dynasend.net/d/vcf/de71d86c-fc78-446a-b45b-9d44c83b9cd1?signature=8024fabb145cdf22dbc4a0e199902601cb93432d3a0953fb6390b283a816661c
 Email: mford@cfmtg.com

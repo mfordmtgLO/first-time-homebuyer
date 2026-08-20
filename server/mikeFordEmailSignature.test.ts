@@ -5,7 +5,7 @@ import { getEmailTemplateMergeFields } from "../client/src/components/UniversalE
 describe("Mike Ford default email signature", () => {
   it("preserves the uploaded contact, action, review, and licensing details", () => {
     expect(MIKE_FORD_EMAIL_SIGNATURE_TEXT).toContain("17850 Pilkington Rd | Lake Oswego, OR 97035");
-    expect(MIKE_FORD_EMAIL_SIGNATURE_TEXT).toContain("C: (541) 729-2097");
+    expect(MIKE_FORD_EMAIL_SIGNATURE_TEXT).toContain("C: (541) 729-0819");
     expect(MIKE_FORD_EMAIL_SIGNATURE_TEXT).toContain("Apply Now: https://portal.myhometrac.com/borrower/signup/mford@cfmtg.com");
     expect(MIKE_FORD_EMAIL_SIGNATURE_TEXT).toContain("Experience.com Reviews: https://www.experience.com/reviews/mike-ford-457768");
     expect(MIKE_FORD_EMAIL_SIGNATURE_TEXT).toContain("Company NMLS #173855");
