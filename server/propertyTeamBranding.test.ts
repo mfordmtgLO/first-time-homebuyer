@@ -7,10 +7,13 @@ const loanOfficerSettingsSource = readFileSync(resolve(process.cwd(), "client/sr
 const agentSettingsSource = readFileSync(resolve(process.cwd(), "client/src/components/AgentSettings.tsx"), "utf8");
 
 describe("public single-property co-branding", () => {
-  it("renders both assigned dashboard profiles as full contact cards", () => {
+  it("renders both assigned dashboard profiles in a compact expandable contact drawer", () => {
     expect(propertyPageSource).toContain("function PropertyTeamBranding");
     expect(propertyPageSource).toContain("function TeamProfileCard");
     expect(propertyPageSource).toContain("<PropertyTeamBranding officer={officer} agent={agent} onCalendarClick=");
+    expect(propertyPageSource).toContain('id="property-team-drawer"');
+    expect(propertyPageSource).toContain("aria-expanded={isOpen}");
+    expect(propertyPageSource).toContain("Meet your team");
     expect(propertyPageSource).toContain("Your loan officer");
     expect(propertyPageSource).toContain("Your co-marketing real estate agent");
   });
@@ -22,6 +25,7 @@ describe("public single-property co-branding", () => {
     expect(propertyPageSource).toContain("href={`tel:${profile.phone");
     expect(propertyPageSource).toContain("href={`mailto:${profile.email}");
     expect(propertyPageSource).toContain("Visit profile");
+    expect(propertyPageSource).not.toContain("profile.bio");
   });
 
   it("keeps an explicit guard for legacy pages that are missing a complete pairing", () => {
@@ -53,5 +57,12 @@ describe("public single-property co-branding", () => {
     expect(propertyPageSource).toContain('detail: "loan_officer_calendly"');
     expect(propertyPageSource).toContain("externalListingUrl");
     expect(propertyPageSource).toContain("View live listing page");
+  });
+
+  it("uses a restrained scroll-only engagement cue and honors reduced-motion preferences", () => {
+    expect(propertyPageSource).toContain("setIsScrolling(true)");
+    expect(propertyPageSource).toContain("property-team-tab-bump");
+    expect(propertyPageSource).toContain("prefers-reduced-motion");
+    expect(propertyPageSource).toContain("setIsScrolling(false)");
   });
 });

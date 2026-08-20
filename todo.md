@@ -493,3 +493,7 @@
 - [x] Audit the stored Mike Ford loan-officer profile and shared code for all obsolete (541) 729-2097 references
 - [x] Correct Mike Ford’s dashboard profile, public single-property team cards, signatures, and outreach drafts to (541) 729-0819
 - [x] Add regression coverage, visually verify the public profile card, and publish the phone-number correction
+- [x] Remove loan-officer and agent bios from public single-property co-branding to reduce page length
+- [x] Replace the inline property-team section with a right-edge expandable contact tab retaining essential LO and agent actions
+- [x] Add a subtle bump cue only while the property page is actively scrolling, with an idle static state and reduced-motion support
+- [x] Add regression coverage, visually verify desktop and mobile behavior, and publish compact property-team interaction
