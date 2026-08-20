@@ -436,3 +436,5 @@
 - [x] Add template search, bulk selection, and bulk archive actions to the shared template manager
 - [x] Display sent-email usage counts for active custom templates in template management views
 - [x] Add a read-only quick preview action to template-management rows
+- [x] Add bulk restore and permanently delete actions for archived custom email templates
+- [x] Add usage-count sorting to the unified email-template management list
