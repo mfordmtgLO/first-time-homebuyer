@@ -485,3 +485,5 @@
 - [x] Diagnose why the public single-property Cost of Waiting calculator mount is empty
 - [x] Restore the complete interactive Cost of Waiting calculator with property-price prefill on single-property pages
 - [x] Add regression coverage, visually verify an active property page, and publish the calculator repair
+- [x] Add a bounded independent vertical scrollbar to the Spend Tracker Active pairings sidebar for future pairing expansion
+- [x] Add regression coverage, visually verify desktop and mobile compactness, and publish the Active pairings scroll behavior

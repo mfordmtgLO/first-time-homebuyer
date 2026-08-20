@@ -134,12 +134,12 @@ export default function PairingSpendTracker() {
       <div className="mt-5 grid gap-5 xl:grid-cols-[300px_minmax(0,1fr)]">
         <aside className="flex min-h-0 flex-col rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center gap-2 font-semibold"><UsersRound className="h-4 w-4 text-primary" /> Pairing trackers</div>
-          {trackersQuery.isLoading ? <p className="mt-4 text-sm text-muted-foreground">Loading private trackers…</p> : trackers.length === 0 ? <p className="mt-4 text-sm leading-relaxed text-muted-foreground">Create a loan-officer and agent pairing above to begin an internal expense ledger.</p> : <div className="mt-3 max-h-[22rem] space-y-2 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable] xl:max-h-[34rem]">{trackers.map((tracker) => {
+          {trackersQuery.isLoading ? <p className="mt-4 text-sm text-muted-foreground">Loading private trackers…</p> : trackers.length === 0 ? <p className="mt-4 text-sm leading-relaxed text-muted-foreground">Create a loan-officer and agent pairing above to begin an internal expense ledger.</p> : <><p className="mt-2 text-xs text-muted-foreground">{trackers.length} active {trackers.length === 1 ? "pairing" : "pairings"} · scroll for more</p><div tabIndex={0} aria-label="Active pairing trackers" className="mt-2 h-[22rem] space-y-2 overflow-y-scroll overscroll-contain pr-2 outline-none [scrollbar-gutter:stable] focus-visible:ring-2 focus-visible:ring-ring/40 xl:h-[28rem]">{trackers.map((tracker) => {
             const officer = officerById.get(tracker.loanOfficerId)?.name ?? `Loan officer #${tracker.loanOfficerId}`;
             const agent = agentById.get(tracker.agentId)?.name ?? `Agent #${tracker.agentId}`;
             const trackerSummary = calculatePairingSpendSummary(tracker.entries);
             return <button key={tracker.id} type="button" onClick={() => setSelectedTrackerId(String(tracker.id))} className={`w-full rounded-lg border p-3 text-left transition ${tracker.id === selectedTracker?.id ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:border-primary/40 hover:bg-muted/40"}`}><div className="font-medium text-foreground">{officer}</div><div className="mt-0.5 text-xs text-muted-foreground">+ {agent}</div><div className={`mt-2 text-xs font-semibold ${isMoneySplitAttentionRequired(trackerSummary) ? "text-destructive" : "text-emerald-700"}`}>{trackerSummary.totalCents === 0 ? "No spend recorded" : `${trackerSummary.loanOfficerPercent.toFixed(0)}% LO · ${trackerSummary.agentPercent.toFixed(0)}% agent`}</div></button>;
-          })}</div>}
+          })}</div></>}
         </aside>
 
         <div className="min-w-0 max-h-[42rem] overflow-y-auto overscroll-contain rounded-xl border border-border bg-card p-4 pr-3 shadow-sm [scrollbar-gutter:stable] sm:p-5 sm:pr-4 xl:max-h-[54rem]">

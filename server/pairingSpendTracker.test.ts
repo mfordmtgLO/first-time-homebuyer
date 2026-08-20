@@ -34,7 +34,10 @@ describe("LO + agent pairing spend summary", () => {
     const projectRoot = path.resolve(import.meta.dirname, "..");
     const componentSource = readFileSync(path.join(projectRoot, "client/src/components/PairingSpendTracker.tsx"), "utf8");
 
-    expect(componentSource).toContain("max-h-[22rem] space-y-2 overflow-y-auto overscroll-contain");
+    expect(componentSource).toContain('aria-label="Active pairing trackers"');
+    expect(componentSource).toContain("h-[22rem] space-y-2 overflow-y-scroll overscroll-contain");
+    expect(componentSource).toContain("xl:h-[28rem]");
+    expect(componentSource).toContain("scroll for more");
     expect(componentSource).toContain("max-h-[42rem] overflow-y-auto overscroll-contain");
     expect(componentSource).toContain("max-h-[22rem] overflow-auto overscroll-contain");
   });
