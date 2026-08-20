@@ -13,7 +13,7 @@ import { getPropertyHeroMedia, parsePropertyLandingSnapshot, propertyEligibility
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { BedDouble, Bath, CalendarDays, ExternalLink, Facebook, Home, Linkedin, MapPin, Printer, Ruler, Share2, ShieldCheck, SquareStack, Trees } from "lucide-react";
+import { BedDouble, Bath, CalendarDays, ExternalLink, Facebook, Home, Linkedin, Mail, MapPin, Printer, Ruler, Share2, ShieldCheck, SquareStack, Trees } from "lucide-react";
 
 const money = (value: number | null) => value === null ? "Not in saved snapshot" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
 const number = (value: number | null) => value === null ? "Not in saved snapshot" : value.toLocaleString("en-US");
@@ -105,12 +105,21 @@ function PropertySectionNavigator() {
   return <nav aria-label="Property page sections" className="sticky top-0 z-30 border-b border-border bg-card/95 shadow-sm backdrop-blur property-print-hide"><div className="container overflow-x-auto"><div className="flex min-w-max items-center gap-1 py-2">{PROPERTY_NAV_SECTIONS.map((section) => <button key={section.id} type="button" onClick={() => navigate(section.id)} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${section.id === "chat-intake" ? "bg-primary text-primary-foreground hover:brightness-110" : activeSection === section.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>{section.label}</button>)}</div></div></nav>;
 }
 
-function CalculatorEligibilityBadges({ isLmi, isUsda }: { isLmi: boolean; isUsda: boolean }) {
-  return <div className="container property-print-hide"><div className="flex flex-wrap items-center gap-2 pb-2 pt-6"><span className="text-xs font-semibold uppercase tracking-[0.13em] text-muted-foreground">Saved program screen</span>{isLmi && <Badge className="bg-amber-100 text-amber-950 hover:bg-amber-100">OHCS Flex Lending screen</Badge>}{isUsda && <Badge className="bg-emerald-100 text-emerald-950 hover:bg-emerald-100">USDA RD screen</Badge>}{!isLmi && !isUsda && <Badge variant="outline" className="text-muted-foreground">No saved Flex or USDA screen</Badge>}<span className="text-xs text-muted-foreground">Program fit requires current verification and approval.</span></div></div>;
+function CalculatorEligibilityBadges({ isLmi, isUsda, dark = false }: { isLmi: boolean; isUsda: boolean; dark?: boolean }) {
+  const labelClass = dark ? "text-primary-foreground/65" : "text-muted-foreground";
+  const noteClass = dark ? "text-primary-foreground/70" : "text-muted-foreground";
+  return <div className="container property-print-hide"><div className="flex flex-wrap gap-3 pb-3 pt-6"><span className={`w-full text-xs font-semibold uppercase tracking-[0.13em] ${labelClass}`}>Saved program screen</span>{isLmi && <div className="max-w-md"><Badge className="bg-amber-100 text-amber-950 hover:bg-amber-100">OHCS Flex Lending screen</Badge><p className={`mt-1.5 text-xs leading-relaxed ${noteClass}`}>This saved property is within an LMI-screened area used for OHCS Flex Lending outreach. Buyer income, loan, and program requirements still require current verification.</p></div>}{isUsda && <div className="max-w-md"><Badge className="bg-emerald-100 text-emerald-950 hover:bg-emerald-100">USDA RD screen</Badge><p className={`mt-1.5 text-xs leading-relaxed ${noteClass}`}>The saved map screen places this property outside USDA’s ineligible urban overlays. Address, household, and program requirements must still be confirmed.</p></div>}{!isLmi && !isUsda && <div><Badge variant="outline" className={dark ? "border-white/25 text-primary-foreground/75" : "text-muted-foreground"}>No saved Flex or USDA screen</Badge><p className={`mt-1.5 text-xs ${noteClass}`}>No program screen is stored with this snapshot; ask your loan officer to review current options.</p></div>}</div></div>;
 }
 
-function BuyerCalculationPdfButton({ propertyAddress, propertyUrl, isLmi, isUsda }: { propertyAddress: string; propertyUrl: string; isLmi: boolean; isUsda: boolean }) {
+function BuyerCalculationActions({ propertyAddress, propertyUrl, isLmi, isUsda, contactLines }: { propertyAddress: string; propertyUrl: string; isLmi: boolean; isUsda: boolean; contactLines: string[] }) {
   const { scenario, cowScenario } = useScenario();
+  const calculationSummary = () => [
+    `Buyer calculation summary for ${propertyAddress}`,
+    scenario ? `2-1 Buydown: ${money(scenario.purchasePrice)} purchase price, ${scenario.noteRate.toFixed(3).replace(/\.?0+$/, "")}% note rate, ${money(scenario.year1MonthlySavings)} monthly savings in year one, ${money(scenario.year2MonthlySavings)} monthly savings in year two, and ${money(scenario.totalSubsidy)} estimated seller-paid interest subsidy.` : "2-1 Buydown: no scenario was run yet.",
+    cowScenario ? `Cost of Waiting: ${cowScenario.waitYears} year${cowScenario.waitYears === 1 ? "" : "s"}; ${money(cowScenario.totalRentPaid)} rent paid, ${money(cowScenario.equityGained)} potential equity if buying now, and ${money(cowScenario.costOfWaiting)} estimated cost of waiting.` : "Cost of Waiting: no scenario was run yet.",
+    "Educational estimates only; current terms, eligibility, and approval require verification.",
+    `Property page: ${propertyUrl}`,
+  ].join("\n\n");
   const printCalculationPdf = () => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
@@ -121,10 +130,17 @@ function BuyerCalculationPdfButton({ propertyAddress, propertyUrl, isLmi, isUsda
     const programScreening = [isLmi ? "OHCS Flex Lending screen" : null, isUsda ? "USDA RD screen" : null].filter(Boolean).join(" · ") || "No saved Flex or USDA screen";
     const buydownRows = scenario ? `<tr><th>Purchase price</th><td>${money(scenario.purchasePrice)}</td></tr><tr><th>Down payment</th><td>${money(scenario.downPayment)}</td></tr><tr><th>Note rate</th><td>${scenario.noteRate.toFixed(3).replace(/\.?0+$/, "")}%</td></tr><tr><th>Year 1 payment / savings</th><td>${money(scenario.year1Payment)} / ${money(scenario.year1MonthlySavings)} monthly</td></tr><tr><th>Year 2 payment / savings</th><td>${money(scenario.year2Payment)} / ${money(scenario.year2MonthlySavings)} monthly</td></tr><tr><th>Seller-paid interest subsidy</th><td>${money(scenario.totalSubsidy)}</td></tr>` : `<tr><td>This buyer did not run a 2-1 Buydown scenario yet.</td></tr>`;
     const waitingRows = cowScenario ? `<tr><th>Waiting period</th><td>${cowScenario.waitYears} year${cowScenario.waitYears === 1 ? "" : "s"}</td></tr><tr><th>Monthly rent</th><td>${money(cowScenario.monthlyRent)}</td></tr><tr><th>Rent paid while waiting</th><td>${money(cowScenario.totalRentPaid)}</td></tr><tr><th>Equity if buying now</th><td>${money(cowScenario.equityGained)}</td></tr><tr><th>Estimated cost of waiting</th><td>${money(cowScenario.costOfWaiting)}</td></tr>` : `<tr><td>This buyer did not run a Cost of Waiting scenario yet.</td></tr>`;
-    printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"/><title>Buyer calculation summary — ${escapeHtml(propertyAddress)}</title><style>body{font-family:Arial,sans-serif;color:#1d3128;margin:42px;line-height:1.45}h1{font-family:Georgia,serif;font-size:28px;margin:0 0 4px}h2{font-family:Georgia,serif;margin:28px 0 10px;color:#153f30}.tag{display:inline-block;background:#e8b442;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700}.note{color:#56645e;font-size:12px}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #d8dfdb;padding:9px;text-align:left;font-size:14px}th{width:48%;color:#50645a}.disclaimer{margin-top:30px;border-top:1px solid #d8dfdb;padding-top:14px;font-size:10px;color:#56645e}@media print{body{margin:0}}</style></head><body><div class="tag">Buyer calculation summary</div><h1>${escapeHtml(propertyAddress)}</h1><p class="note">Saved property page · ${escapeHtml(programScreening)}</p><h2>2-1 Buydown scenario</h2><table>${buydownRows}</table><h2>Cost of Waiting scenario</h2><table>${waitingRows}</table><p class="disclaimer">Educational estimates only—not a loan offer, rate quote, approval, or eligibility determination. Saved property details, program screens, price, availability, and underwriting requirements require current verification.</p><p class="note">Property page: ${escapeHtml(propertyUrl)}</p><script>window.onload=()=>window.print();<\/script></body></html>`);
+    printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"/><title>Buyer calculation summary — ${escapeHtml(propertyAddress)}</title><style>body{font-family:Arial,sans-serif;color:#1d3128;margin:42px;line-height:1.45}h1{font-family:Georgia,serif;font-size:28px;margin:0 0 4px}h2{font-family:Georgia,serif;margin:28px 0 10px;color:#153f30}.tag{display:inline-block;background:#e8b442;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700}.note{color:#56645e;font-size:12px}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #d8dfdb;padding:9px;text-align:left;font-size:14px}th{width:48%;color:#50645a}.contacts{margin-top:28px;background:#f3f6f3;border:1px solid #d8dfdb;padding:16px}.contacts strong{display:block;margin-bottom:6px}.disclaimer{margin-top:30px;border-top:1px solid #d8dfdb;padding-top:14px;font-size:10px;color:#56645e}@media print{body{margin:0}}</style></head><body><div class="tag">Buyer calculation summary</div><h1>${escapeHtml(propertyAddress)}</h1><p class="note">Saved property page · ${escapeHtml(programScreening)}</p><h2>2-1 Buydown scenario</h2><table>${buydownRows}</table><h2>Cost of Waiting scenario</h2><table>${waitingRows}</table><div class="contacts"><strong>Your local homebuying team</strong>${contactLines.map(escapeHtml).join("<br/>")}</div><p class="disclaimer">Educational estimates only—not a loan offer, rate quote, approval, or eligibility determination. Saved property details, program screens, price, availability, and underwriting requirements require current verification.</p><p class="note">Property page: ${escapeHtml(propertyUrl)}</p><script>window.onload=()=>window.print();<\/script></body></html>`);
     printWindow.document.close();
   };
-  return <Button size="sm" variant="outline" onClick={printCalculationPdf}><Printer className="mr-1.5 h-4 w-4" />Buyer calculation PDF</Button>;
+  const emailCalculationPdf = () => {
+    const clientEmail = window.prompt("Enter the client email address for a prepared buyer-summary draft:");
+    if (!clientEmail) return;
+    const subject = `Buyer calculation summary — ${propertyAddress}`;
+    const body = `Hi,\n\nHere is the buyer calculation summary for ${propertyAddress}. Please see the scenario details below. You can also view the property page here: ${propertyUrl}\n\n${calculationSummary()}\n\nTo include the printable PDF, select “Buyer calculation PDF,” save the browser print dialog as a PDF, and attach it to this message.\n\n${contactLines.join("\n")}`;
+    window.location.href = `mailto:${encodeURIComponent(clientEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+  return <><Button size="sm" variant="outline" onClick={printCalculationPdf}><Printer className="mr-1.5 h-4 w-4" />Buyer calculation PDF</Button><Button size="sm" variant="outline" onClick={emailCalculationPdf}><Mail className="mr-1.5 h-4 w-4" />Email PDF summary</Button></>;
 }
 
 export default function PropertyLandingPage() {
@@ -142,6 +158,11 @@ export default function PropertyLandingPage() {
   const propertyUrl = `https://firsttimehomebuyer.manus.space/property/${data.page.slug}`;
   const eligibility = propertyEligibilityLabel(snapshot);
   const heroMedia = getPropertyHeroMedia(snapshot);
+  const buyerContactLines = [
+    officer ? `${officer.name} · ${officer.title}${officer.nmls ? ` · NMLS #${officer.nmls}` : ""}` : null,
+    officer ? `${officer.companyName} · ${officer.phone}${officer.email ? ` · ${officer.email}` : ""}` : null,
+    agent ? `${agent.name}${agent.companyName ? ` · ${agent.companyName}` : ""}${agent.phone ? ` · ${agent.phone}` : ""}` : null,
+  ].filter((line): line is string => Boolean(line));
   const facts = [
     { label: "Beds", value: snapshot.bedrooms ?? "—", icon: BedDouble },
     { label: "Baths", value: snapshot.bathrooms ?? "—", icon: Bath },
@@ -184,7 +205,7 @@ export default function PropertyLandingPage() {
                   </div>
                   <div className="property-print-hide mt-4 flex flex-wrap gap-2">
                     <Button size="sm" variant="outline" onClick={() => { track.mutate({ slug: data.page.slug, eventType: "print_export" }); window.print(); }}><Printer className="mr-1.5 h-4 w-4" />Print / save PDF</Button>
-                    <BuyerCalculationPdfButton propertyAddress={snapshot.address} propertyUrl={propertyUrl} isLmi={snapshot.isLmi} isUsda={snapshot.isUsda} />
+                    <BuyerCalculationActions propertyAddress={snapshot.address} propertyUrl={propertyUrl} isLmi={snapshot.isLmi} isUsda={snapshot.isUsda} contactLines={buyerContactLines} />
                     <Button size="sm" variant="outline" onClick={async () => {
                       track.mutate({ slug: data.page.slug, eventType: "social_share", detail: "native_share" });
                       if (navigator.share) await navigator.share({ title: snapshot.address, text: `Saved property spotlight: ${snapshot.address}`, url: propertyUrl });
@@ -232,7 +253,7 @@ export default function PropertyLandingPage() {
             </div>
             <section id="cost-of-waiting" className="scroll-mt-24 py-16 text-primary-foreground md:py-20" style={{ background: "oklch(0.27 0.05 162)" }}>
               <div className="container">
-                <div className="property-print-hide mb-2 flex flex-wrap items-center gap-2"><span className="text-xs font-semibold uppercase tracking-[0.13em] text-primary-foreground/65">Saved program screen</span>{snapshot.isLmi && <Badge className="bg-[oklch(0.82_0.12_80)] text-[oklch(0.22_0.04_155)] hover:bg-[oklch(0.82_0.12_80)]">OHCS Flex Lending screen</Badge>}{snapshot.isUsda && <Badge className="bg-emerald-100 text-emerald-950 hover:bg-emerald-100">USDA RD screen</Badge>}{!snapshot.isLmi && !snapshot.isUsda && <Badge variant="outline" className="border-white/25 text-primary-foreground/75">No saved Flex or USDA screen</Badge>}</div>
+                <CalculatorEligibilityBadges isLmi={snapshot.isLmi} isUsda={snapshot.isUsda} dark />
                 <div className="max-w-3xl">
                   <p className="text-sm font-medium uppercase tracking-[0.18em] text-[oklch(0.82_0.12_80)]">Build a plan around this home</p>
                   <h2 className="mt-3 font-display text-3xl font-semibold leading-tight md:text-4xl">What could waiting cost you while this opportunity changes?</h2>

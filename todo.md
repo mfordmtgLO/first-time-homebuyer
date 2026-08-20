@@ -421,3 +421,6 @@
 - [x] Add buyer-ready print-friendly PDF summary generation for current single-property Cost of Waiting and 2-1 Buydown scenarios
 - [x] Display dynamic property loan-program eligibility badges beside single-property calculator sections
 - [x] Include a five-year financial impact summary in copied Cost of Waiting share text
+- [x] Add loan officer and co-branded agent contact block to buyer calculation PDF summaries
+- [x] Add a client-email option for single-property buyer calculation summaries
+- [x] Add property-specific OHCS Flex Lending and USDA RD screening notes below calculator eligibility badges

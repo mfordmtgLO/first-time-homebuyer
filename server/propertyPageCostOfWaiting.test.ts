@@ -10,10 +10,13 @@ describe("single-property Cost of Waiting section", () => {
     expect(page).toContain("What could waiting cost you while this opportunity changes?");
     expect(page).toContain("<CostOfWaiting purchasePrice={snapshot.price ?? undefined} propertyAddress={snapshot.address} />");
     expect(page).toContain("<Buydown purchasePrice={snapshot.price ?? undefined} />");
-    expect(page).toContain("BuyerCalculationPdfButton");
+    expect(page).toContain("BuyerCalculationActions");
+    expect(page).toContain("Your local homebuying team");
+    expect(page).toContain("Email PDF summary");
     expect(page).toContain("CalculatorEligibilityBadges");
     expect(page).toContain("OHCS Flex Lending screen");
     expect(page).toContain("USDA RD screen");
+    expect(page).toContain("outside USDA’s ineligible urban overlays");
     expect(page).toContain("PropertySectionNavigator");
     expect(page).toContain('new Event("open-mortgage-chat")');
     expect(page).toContain("window.addEventListener(\"scroll\", updateActiveSection");
