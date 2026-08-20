@@ -546,3 +546,7 @@
 - [x] Remove the public Cost of Waiting principal-and-interest payment quote from calculator displays and summaries
 - [x] Add regression coverage confirming Cost of Waiting remains comparison-focused without public P&I quotes
 - [x] Publish the Cost of Waiting disclosure-safe display fix
+
+- [x] Expand the single-property Property Highlights disclosure for estimated taxes, HOA dues, and homeowner insurance requiring independent verification
+- [x] Add regression coverage and visually verify the expanded Property Highlights disclosure
+- [x] Publish the single-property property-facts disclosure update

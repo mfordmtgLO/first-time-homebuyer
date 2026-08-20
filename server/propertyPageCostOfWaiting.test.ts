@@ -20,6 +20,9 @@ describe("single-property Cost of Waiting section", () => {
     expect(page).toContain("Email PDF summary");
     expect(page).toContain('eventType: "email_pdf_summary"');
     expect(page).toContain("CalculatorEligibilityBadges");
+    expect(page).toContain("Property highlights");
+    expect(page).toContain("Any property taxes, HOA dues, and homeowner-insurance amounts shown, when listed, are estimates or saved planning figures—not quotes");
+    expect(page).toContain("must be independently verified with the county assessor, homeowners association, insurer");
     expect(page).toContain("OHCS Flex Lending screen");
     expect(page).toContain("USDA RD screen");
     expect(page).toContain("outside USDA’s ineligible urban overlays");
