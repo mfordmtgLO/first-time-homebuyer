@@ -298,6 +298,7 @@ export default function PropertyLandingPage() {
                     <div><dt className="text-sm text-muted-foreground">MLS reference</dt><dd className="mt-1 font-medium">{[snapshot.mlsName, snapshot.mlsNumber].filter(Boolean).join(" · ") || "Not in saved snapshot"}</dd></div>
                     <div><dt className="text-sm text-muted-foreground">Units</dt><dd className="mt-1 font-medium">{snapshot.units ?? "Not in saved snapshot"}</dd></div>
                     <div><dt className="text-sm text-muted-foreground">Property taxes</dt><dd className="mt-1 font-medium">{money(snapshot.propertyTaxes)}</dd></div>
+                    <div><dt className="text-sm text-muted-foreground">HOA dues</dt><dd className="mt-1 font-medium">{snapshot.hoaDues === null ? "Not in saved snapshot" : `${money(snapshot.hoaDues)}/month`}</dd></div>
                     <div><dt className="text-sm text-muted-foreground">Saved status</dt><dd className="mt-1 font-medium">{snapshot.status ?? "Not in saved snapshot"}</dd></div>
                   </dl>
                   {data.page.aiSummary && <div className="mt-8 rounded-xl border border-primary/20 bg-primary/5 p-5"><h3 className="font-semibold text-primary">Property highlights</h3><p className="mt-3 leading-relaxed text-muted-foreground">{data.page.aiSummary}</p><p className="mt-3 text-xs text-muted-foreground">Dashboard-reviewed draft based only on the saved property snapshot; verify current details independently.</p></div>}

@@ -179,6 +179,9 @@ describe("GeoSphere property-list email drafts", () => {
         listingAgentEmail: "avery@example.com",
         listingAgentPhone: "(541) 555-0119",
         zillowUrl: "https://www.zillow.com/homedetails/example-home/123_zpid/",
+        propertyTaxes: 2400,
+        units: "2",
+        hoaDues: 125,
       }],
     });
     expect(draft.subject).toBe("Properties to consider in Portland · OR, Taylor");
@@ -192,6 +195,9 @@ describe("GeoSphere property-list email drafts", () => {
     expect(draft.body).toContain("Phone: (541) 555-0119");
     expect(draft.body).toContain("Email: avery@example.com");
     expect(draft.body).toContain("Zillow listing: https://www.zillow.com/homedetails/example-home/123_zpid/");
+    expect(draft.body).toContain("Saved annual property taxes: $2,400");
+    expect(draft.body).toContain("Units: 2");
+    expect(draft.body).toContain("Saved HOA dues: $125/month");
     expect(draft.body).toContain("check its current status and current price");
     expect(draft.body).toContain("ask the agent any other questions");
     expect(draft.body).toContain("connect you with a great local buyer’s agent");

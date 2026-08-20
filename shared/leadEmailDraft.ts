@@ -69,6 +69,9 @@ export type ListingEmailRow = {
   bathrooms: string | null;
   squareFootage: number | null;
   propertyType: string | null;
+  propertyTaxes?: number | null;
+  units?: string | null;
+  hoaDues?: number | null;
   isLmi: boolean;
   isUsda: boolean;
   listingAgentName?: string;
@@ -275,6 +278,7 @@ ${listing.address}
 • Home type: ${listing.propertyType ?? "Not provided"}
 • Beds / baths: ${listing.bedrooms ?? "—"} / ${listing.bathrooms ?? "—"}
 • Square feet: ${listing.squareFootage === null ? "Not provided" : listing.squareFootage.toLocaleString("en-US")}
+${listing.propertyTaxes === null || listing.propertyTaxes === undefined ? "" : `• Saved annual property taxes: ${money(listing.propertyTaxes)}\n`}${listing.units ? `• Units: ${listing.units}\n` : ""}${listing.hoaDues === null || listing.hoaDues === undefined ? "" : `• Saved HOA dues: ${money(listing.hoaDues)}/month\n`}• Potential financing conversation: ${listingProgramLabel(listing)}${listingLink}
 • Potential financing conversation: ${listingProgramLabel(listing)}${listingLink}
 
 ${contactSection}`;

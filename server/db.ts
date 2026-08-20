@@ -1487,6 +1487,7 @@ export async function createPropertyLandingPage(input: {
   externalListingUrl?: string;
   propertyTaxes?: number | null;
   units?: string | null;
+  hoaDues?: number | null;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -1509,6 +1510,7 @@ export async function createPropertyLandingPage(input: {
     ...importedSnapshot,
     propertyTaxes: input.propertyTaxes ?? existingSnapshot?.propertyTaxes ?? importedSnapshot.propertyTaxes,
     units: input.units ?? existingSnapshot?.units ?? importedSnapshot.units,
+    hoaDues: input.hoaDues ?? existingSnapshot?.hoaDues ?? importedSnapshot.hoaDues,
   };
   if (existing[0]) {
     await db
@@ -1585,6 +1587,31 @@ export async function updatePropertyLandingPageExternalListingUrl(input: { id: n
   const rows = await db.select().from(propertyLandingPage).where(eq(propertyLandingPage.id, input.id)).limit(1);
   if (!rows[0]) throw new Error("Property page not found.");
   return rows[0];
+}
+
+/** Updates owner-entered property facts without mutating the underlying saved GeoSphere listing record. */
+export async function updatePropertyLandingPageMetadata(input: {
+  id: number;
+  propertyTaxes: number | null;
+  units: string | null;
+  hoaDues: number | null;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db.select().from(propertyLandingPage).where(eq(propertyLandingPage.id, input.id)).limit(1);
+  const page = rows[0];
+  if (!page) throw new Error("Property page not found.");
+  const snapshot = parsePropertyLandingSnapshot(page.listingSnapshot);
+  if (!snapshot) throw new Error("The saved property snapshot is unavailable.");
+  const updatedSnapshot = {
+    ...snapshot,
+    propertyTaxes: input.propertyTaxes,
+    units: input.units?.trim() || null,
+    hoaDues: input.hoaDues,
+  };
+  await db.update(propertyLandingPage).set({ listingSnapshot: JSON.stringify(updatedSnapshot) }).where(eq(propertyLandingPage.id, input.id));
+  const updated = await db.select().from(propertyLandingPage).where(eq(propertyLandingPage.id, input.id)).limit(1);
+  return updated[0]!;
 }
 
 /** Rebuilds the public snapshot from the latest saved GeoSphere record; it never calls a live listing provider. */

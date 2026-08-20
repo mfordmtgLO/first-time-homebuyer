@@ -500,3 +500,7 @@
 - [x] Audit existing single-property metadata storage and creation-editor controls for taxes and units
 - [x] Add persisted optional Property taxes and Units inputs to the single-property dashboard creation editor
 - [x] Display provided taxes and unit count in public single-property details with regression coverage and visual verification
+- [x] Add optional HOA dues to the single-property creation editor and saved public snapshot
+- [x] Add a dashboard metadata edit action for an existing property page’s taxes, units, and HOA dues
+- [x] Include saved property tax and unit information in buyer property-list email draft details
+- [x] Add regression coverage and publish expanded property metadata support

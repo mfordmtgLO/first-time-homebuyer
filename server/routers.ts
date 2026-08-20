@@ -119,6 +119,7 @@ import {
   updateLoanOfficer,
   updatePropertyLandingPageAiSummary,
   updatePropertyLandingPageExternalListingUrl,
+  updatePropertyLandingPageMetadata,
   updatePropertyLandingPagePair,
   updatePropertyLandingPageStatus,
 } from "./db";
@@ -1492,6 +1493,7 @@ export const appRouter = router({
         externalListingUrl: optionalPublicHttpUrl,
         propertyTaxes: z.number().finite().min(0).max(10_000_000).nullable().optional(),
         units: z.string().trim().max(80).nullable().optional(),
+        hoaDues: z.number().finite().min(0).max(100_000).nullable().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
@@ -1528,6 +1530,18 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
         return updatePropertyLandingPageExternalListingUrl(input);
+      }),
+    /** Updates owner-entered tax, unit, and HOA snapshot details after a public page exists. */
+    updateMetadata: protectedProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        propertyTaxes: z.number().finite().min(0).max(10_000_000).nullable(),
+        units: z.string().trim().max(80).nullable(),
+        hoaDues: z.number().finite().min(0).max(100_000).nullable(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return updatePropertyLandingPageMetadata(input);
       }),
     /** Refreshes only from the existing saved GeoSphere record; it never invokes a live listing provider. */
     refreshSnapshot: protectedProcedure
