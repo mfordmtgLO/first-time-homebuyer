@@ -429,3 +429,7 @@
 - [x] Add owner-only edit and delete controls for saved buyer email templates
 - [x] Add date-range filtering for Email PDF summary click metrics in the weekly property engagement dashboard widget
 - [x] Add Email PDF summary click-to-captured-lead conversion reporting to the property engagement dashboard
+- [x] Inventory every dashboard email-template workflow and standardize lifecycle requirements
+- [x] Add archive, restore, edit, and permanent deletion support for every custom dashboard email-template type
+- [x] Add consistent create, manage, archive/hide, restore, and delete controls to all dashboard email-template interfaces
+- [x] Test email-template archive, restore, and permanent-delete behavior and verify archived UI states

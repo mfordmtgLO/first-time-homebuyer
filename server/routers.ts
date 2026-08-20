@@ -51,15 +51,28 @@ import {
   getPropertyEngagementSetting,
   getSyncedTopAgent,
   createSyncedAgentOutreachTemplate,
+  updateSyncedAgentOutreachTemplate,
+  setSyncedAgentOutreachTemplateArchived,
+  deleteSyncedAgentOutreachTemplate,
   getLoAgentSpendPairingForOwner,
   listGeoSphereListings,
   listGeoSphereSavedPulls,
   listListingAgentEmailTemplates,
+  updateListingAgentEmailTemplate,
+  setListingAgentEmailTemplateArchived,
+  deleteListingAgentEmailTemplate,
   listPropertyEmailTemplates,
+  updatePropertyEmailTemplate,
+  setPropertyEmailTemplateArchived,
+  deletePropertyEmailTemplate,
   listPropertyLandingPages,
   listWeeklyPropertyPageEngagement,
   listPropertyPageAgentEmailTemplates,
+  updatePropertyPageAgentEmailTemplate,
+  setPropertyPageAgentEmailTemplateArchived,
+  deletePropertyPageAgentEmailTemplate,
   listPropertyPageBuyerEmailTemplates,
+  setPropertyPageBuyerEmailTemplateArchived,
   getPropertyEmailPdfSummaryEngagement,
   loanOfficerSlugTaken,
   recordChatIntakeResendAttempt,
@@ -1250,9 +1263,9 @@ export const appRouter = router({
         return listGeoSphereListings(input.savedPullId, input.overlay);
       }),
     /** Admin-only reusable listing-agent email copy. The builder adds all lead and listing variables separately. */
-    listListingAgentEmailTemplates: protectedProcedure.query(async ({ ctx }) => {
+    listListingAgentEmailTemplates: protectedProcedure.input(z.object({ includeArchived: z.boolean().optional() }).optional()).query(async ({ ctx, input }) => {
       requireAdmin(ctx.user.role);
-      return listListingAgentEmailTemplates();
+      return listListingAgentEmailTemplates(input?.includeArchived ?? false);
     }),
     /** Stores a reusable custom intro; recipient, property details, disclosures, and signature are always composed automatically. */
     saveListingAgentEmailTemplate: protectedProcedure
@@ -1271,10 +1284,13 @@ export const appRouter = router({
           throw error;
         }
       }),
+    updateListingAgentEmailTemplate: protectedProcedure.input(z.object({ id: z.number().int().positive(), name: z.string().trim().min(2).max(160), bodyTemplate: z.string().trim().min(20).max(6000) })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); return updateListingAgentEmailTemplate(input); }),
+    setListingAgentEmailTemplateArchived: protectedProcedure.input(z.object({ id: z.number().int().positive(), archived: z.boolean() })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); await setListingAgentEmailTemplateArchived(input); return { archived: input.archived }; }),
+    deleteListingAgentEmailTemplate: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); await deleteListingAgentEmailTemplate(input.id); return { deleted: true }; }),
     /** Admin-only reusable buyer-facing property-email intros. Property variables and signature remain automatic. */
-    listPropertyEmailTemplates: protectedProcedure.query(async ({ ctx }) => {
+    listPropertyEmailTemplates: protectedProcedure.input(z.object({ includeArchived: z.boolean().optional() }).optional()).query(async ({ ctx, input }) => {
       requireAdmin(ctx.user.role);
-      return listPropertyEmailTemplates();
+      return listPropertyEmailTemplates(input?.includeArchived ?? false);
     }),
     savePropertyEmailTemplate: protectedProcedure
       .input(z.object({
@@ -1292,6 +1308,9 @@ export const appRouter = router({
           throw error;
         }
       }),
+    updatePropertyEmailTemplate: protectedProcedure.input(z.object({ id: z.number().int().positive(), name: z.string().trim().min(2).max(160), bodyTemplate: z.string().trim().min(20).max(6000) })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); return updatePropertyEmailTemplate(input); }),
+    setPropertyEmailTemplateArchived: protectedProcedure.input(z.object({ id: z.number().int().positive(), archived: z.boolean() })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); await setPropertyEmailTemplateArchived(input); return { archived: input.archived }; }),
+    deletePropertyEmailTemplate: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); await deletePropertyEmailTemplate(input.id); return { deleted: true }; }),
     /** Records dashboard-opened listing-agent outreach drafts for per-property communication visibility. */
     recordListingEmailActivity: protectedProcedure
       .input(z.object({
@@ -1504,9 +1523,9 @@ export const appRouter = router({
         requireAdmin(ctx.user.role);
         return updatePropertyLandingPageAiSummary({ id: input.id, aiSummary: input.summary || null });
       }),
-    listAgentEmailTemplates: protectedProcedure.query(async ({ ctx }) => {
+    listAgentEmailTemplates: protectedProcedure.input(z.object({ includeArchived: z.boolean().optional() }).optional()).query(async ({ ctx, input }) => {
       requireAdmin(ctx.user.role);
-      return listPropertyPageAgentEmailTemplates();
+      return listPropertyPageAgentEmailTemplates(input?.includeArchived ?? false);
     }),
     saveAgentEmailTemplate: protectedProcedure
       .input(z.object({
@@ -1524,9 +1543,12 @@ export const appRouter = router({
           throw error;
         }
       }),
-    listBuyerEmailTemplates: protectedProcedure.query(async ({ ctx }) => {
+    updateAgentEmailTemplate: protectedProcedure.input(z.object({ id: z.number().int().positive(), name: z.string().trim().min(2).max(160), bodyTemplate: z.string().trim().min(20).max(6000) })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); return updatePropertyPageAgentEmailTemplate(input); }),
+    setAgentEmailTemplateArchived: protectedProcedure.input(z.object({ id: z.number().int().positive(), archived: z.boolean() })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); await setPropertyPageAgentEmailTemplateArchived(input); return { archived: input.archived }; }),
+    deleteAgentEmailTemplate: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); await deletePropertyPageAgentEmailTemplate(input.id); return { deleted: true }; }),
+    listBuyerEmailTemplates: protectedProcedure.input(z.object({ includeArchived: z.boolean().optional() }).optional()).query(async ({ ctx, input }) => {
       requireAdmin(ctx.user.role);
-      return listPropertyPageBuyerEmailTemplates(ctx.user.id);
+      return input?.includeArchived ? listPropertyPageBuyerEmailTemplates(ctx.user.id, true) : listPropertyPageBuyerEmailTemplates(ctx.user.id);
     }),
     saveBuyerEmailTemplate: protectedProcedure
       .input(z.object({
@@ -1555,6 +1577,13 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
         return updatePropertyPageBuyerEmailTemplate({ ownerUserId: ctx.user.id, ...input });
+      }),
+    setBuyerEmailTemplateArchived: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), archived: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        await setPropertyPageBuyerEmailTemplateArchived({ ownerUserId: ctx.user.id, ...input });
+        return { archived: input.archived };
       }),
     deleteBuyerEmailTemplate: protectedProcedure
       .input(z.object({ id: z.number().int().positive() }))
@@ -1846,9 +1875,9 @@ export const appRouter = router({
         requireAdmin(ctx.user.role);
         return listSyncedTopAgents(ctx.user.id, input?.state ?? "Oregon");
       }),
-    outreachTemplates: protectedProcedure.query(async ({ ctx }) => {
+    outreachTemplates: protectedProcedure.input(z.object({ includeArchived: z.boolean().optional() }).optional()).query(async ({ ctx, input }) => {
       requireAdmin(ctx.user.role);
-      return listSyncedAgentOutreachTemplates(ctx.user.id);
+      return listSyncedAgentOutreachTemplates(ctx.user.id, input?.includeArchived ?? false);
     }),
     createOutreachTemplate: protectedProcedure
       .input(syncedAgentOutreachTemplateInputSchema)
@@ -1863,6 +1892,9 @@ export const appRouter = router({
           throw error;
         }
       }),
+    updateOutreachTemplate: protectedProcedure.input(syncedAgentOutreachTemplateInputSchema.extend({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); const { id, ...values } = input; return updateSyncedAgentOutreachTemplate({ ownerUserId: ctx.user.id, id, ...values }); }),
+    setOutreachTemplateArchived: protectedProcedure.input(z.object({ id: z.number().int().positive(), archived: z.boolean() })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); await setSyncedAgentOutreachTemplateArchived({ ownerUserId: ctx.user.id, ...input }); return { archived: input.archived }; }),
+    deleteOutreachTemplate: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); await deleteSyncedAgentOutreachTemplate({ ownerUserId: ctx.user.id, id: input.id }); return { deleted: true }; }),
     buildOutreachDraft: protectedProcedure
       .input(z.object({
         syncedProfileIds: z.array(z.number().int().positive()).min(1, "Select at least one Oregon profile."),

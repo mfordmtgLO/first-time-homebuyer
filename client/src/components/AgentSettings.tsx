@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { EmailTemplateLifecycleManager } from "@/components/EmailTemplateLifecycleManager";
 import {
   Dialog,
   DialogContent,
@@ -683,12 +684,15 @@ type OutreachDraftPreview = {
 function OregonOutreachWorkspace({ syncedProfiles }: { syncedProfiles: SyncedTopAgentRow[] }) {
   const utils = trpc.useUtils();
   const templatesQuery = trpc.agentSync.outreachTemplates.useQuery();
+  const allTemplatesQuery = trpc.agentSync.outreachTemplates.useQuery({ includeArchived: true });
   const templates = templatesQuery.data ?? [];
   const [search, setSearch] = useState("");
   const [principalBrokerOnly, setPrincipalBrokerOnly] = useState(false);
   const [selectedProfileIds, setSelectedProfileIds] = useState<number[]>([]);
   const [templateId, setTemplateId] = useState<number | null>(null);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [templateManagerOpen, setTemplateManagerOpen] = useState(false);
+  const [editingTemplateId, setEditingTemplateId] = useState<number | null>(null);
   const [templateName, setTemplateName] = useState("");
   const [templateSubject, setTemplateSubject] = useState("Oregon first-time homebuyer outreach opportunity");
   const [templateBody, setTemplateBody] = useState("I’m Mike Ford with Cornerstone First Mortgage. I’m reaching out because I’m building practical first-time homebuyer resources and would welcome a conversation about ways we may be able to support buyers in your Oregon market.");
@@ -715,6 +719,9 @@ function OregonOutreachWorkspace({ syncedProfiles }: { syncedProfiles: SyncedTop
     },
     onError: (error) => toast.error(error.message || "Could not save the Oregon outreach template."),
   });
+  const updateTemplate = trpc.agentSync.updateOutreachTemplate.useMutation({ onSuccess: (template) => { utils.agentSync.outreachTemplates.invalidate(); setTemplateId(template.id); setTemplateDialogOpen(false); setEditingTemplateId(null); toast.success(`Updated “${template.name}”.`); }, onError: (error) => toast.error(error.message || "Could not update the Oregon outreach template.") });
+  const setTemplateArchived = trpc.agentSync.setOutreachTemplateArchived.useMutation({ onSuccess: (result, variables) => { utils.agentSync.outreachTemplates.invalidate(); if (variables.archived) setTemplateId((current) => current === variables.id ? null : current); toast.success(result.archived ? "Oregon outreach template archived." : "Oregon outreach template restored."); }, onError: (error) => toast.error(error.message || "Could not change the Oregon outreach template archive state.") });
+  const deleteTemplate = trpc.agentSync.deleteOutreachTemplate.useMutation({ onSuccess: (_result, variables) => { utils.agentSync.outreachTemplates.invalidate(); setTemplateId((current) => current === variables.id ? null : current); toast.success("Oregon outreach template permanently deleted."); }, onError: (error) => toast.error(error.message || "Could not delete the Oregon outreach template.") });
   const buildDraft = trpc.agentSync.buildOutreachDraft.useMutation({
     onSuccess: (draft) => {
       setDraftPreview(draft);
@@ -736,6 +743,7 @@ function OregonOutreachWorkspace({ syncedProfiles }: { syncedProfiles: SyncedTop
   const clearSelection = () => setSelectedProfileIds([]);
   const chooseTemplate = (value: string) => {
     if (value === "add-template") {
+      setEditingTemplateId(null);
       setTemplateDialogOpen(true);
       return;
     }
@@ -746,7 +754,9 @@ function OregonOutreachWorkspace({ syncedProfiles }: { syncedProfiles: SyncedTop
       toast.error("Template name, subject, and body are all required.");
       return;
     }
-    createTemplate.mutate({ name: templateName, subjectTemplate: templateSubject, bodyTemplate: templateBody });
+    const input = { name: templateName, subjectTemplate: templateSubject, bodyTemplate: templateBody };
+    if (editingTemplateId) updateTemplate.mutate({ id: editingTemplateId, ...input });
+    else createTemplate.mutate(input);
   };
   const createDraft = () => {
     if (!selectedProfileIds.length) {
@@ -775,7 +785,7 @@ function OregonOutreachWorkspace({ syncedProfiles }: { syncedProfiles: SyncedTop
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-end">
+      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:items-end">
         <div>
           <Label htmlFor="oregon-outreach-search" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Find recipients</Label>
           <div className="relative mt-1.5">
@@ -791,6 +801,7 @@ function OregonOutreachWorkspace({ syncedProfiles }: { syncedProfiles: SyncedTop
             {templates.map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}
           </select>
         </div>
+        <Button type="button" variant="outline" className="h-9" onClick={() => setTemplateManagerOpen(true)}>Manage templates</Button>
         <Button className="h-9" onClick={createDraft} disabled={!selectedCount || buildDraft.isPending}>
           {buildDraft.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <MailCheck className="mr-1.5 h-4 w-4" />}
           Create email draft
@@ -833,7 +844,7 @@ function OregonOutreachWorkspace({ syncedProfiles }: { syncedProfiles: SyncedTop
       <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Create Oregon outreach template</DialogTitle>
+            <DialogTitle>{editingTemplateId ? "Edit Oregon outreach template" : "Create Oregon outreach template"}</DialogTitle>
             <DialogDescription>Saved templates are private to this dashboard. The greeting and Mike Ford’s complete signature are added automatically when the email draft opens.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -852,11 +863,12 @@ function OregonOutreachWorkspace({ syncedProfiles }: { syncedProfiles: SyncedTop
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setTemplateDialogOpen(false)} disabled={createTemplate.isPending}>Cancel</Button>
-            <Button onClick={saveTemplate} disabled={createTemplate.isPending}>{createTemplate.isPending && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}Save template</Button>
+            <Button variant="outline" onClick={() => setTemplateDialogOpen(false)} disabled={createTemplate.isPending || updateTemplate.isPending}>Cancel</Button>
+            <Button onClick={saveTemplate} disabled={createTemplate.isPending || updateTemplate.isPending}>{(createTemplate.isPending || updateTemplate.isPending) && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}{editingTemplateId ? "Update template" : "Save template"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <EmailTemplateLifecycleManager open={templateManagerOpen} onOpenChange={setTemplateManagerOpen} title="Manage Oregon outreach templates" description="Archive drafts to hide them from outreach selection, restore them later, or permanently delete them. Templates remain private to this dashboard owner." templates={(allTemplatesQuery.data ?? [])} pending={updateTemplate.isPending || setTemplateArchived.isPending || deleteTemplate.isPending} onEdit={(template) => { setEditingTemplateId(template.id); setTemplateName(template.name); setTemplateSubject(template.subjectTemplate ?? ""); setTemplateBody(template.bodyTemplate); setTemplateManagerOpen(false); setTemplateDialogOpen(true); }} onArchive={(template) => setTemplateArchived.mutate({ id: template.id, archived: true })} onRestore={(template) => setTemplateArchived.mutate({ id: template.id, archived: false })} onDelete={(template) => { if (window.confirm(`Permanently delete “${template.name}”? This cannot be undone.`)) deleteTemplate.mutate({ id: template.id }); }} />
 
       <AlertDialog open={Boolean(draftPreview)} onOpenChange={(open) => !open && setDraftPreview(null)}>
         <AlertDialogContent>

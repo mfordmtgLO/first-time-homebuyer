@@ -32,6 +32,7 @@ import { filterPropertyListRecipients, formatRecipientLastFirst, type PropertyLi
 import { buildPropertyPageAgentDraft } from "@shared/propertyPageEmailDraft";
 import { parsePropertyLandingSnapshot } from "@shared/propertyLandingPage";
 import { publicSiteUrl } from "@shared/publicSiteUrl";
+import { EmailTemplateLifecycleManager, type ManagedEmailTemplate } from "@/components/EmailTemplateLifecycleManager";
 
 const OVERLAYS: GeoSphereOverlayKey[] = ["all", "lmi", "usda", "lmiUsda"];
 
@@ -210,6 +211,8 @@ export default function GeoSphereListings() {
   const [recipientSourceFilter, setRecipientSourceFilter] = useState<PropertyListRecipientFilter>("all");
   const [propertyEmailTemplate, setPropertyEmailTemplate] = useState<string>("property_shortlist_with_agent_follow_up");
   const [customPropertyTemplateOpen, setCustomPropertyTemplateOpen] = useState(false);
+  const [propertyEmailTemplateManagerOpen, setPropertyEmailTemplateManagerOpen] = useState(false);
+  const [editingPropertyEmailTemplateId, setEditingPropertyEmailTemplateId] = useState<number | null>(null);
   const [customPropertyTemplateName, setCustomPropertyTemplateName] = useState("");
   const [customPropertyTemplateBody, setCustomPropertyTemplateBody] = useState("");
   const [listingSearch, setListingSearch] = useState("");
@@ -220,6 +223,8 @@ export default function GeoSphereListings() {
   const [selectedOutreachTemplateId, setSelectedOutreachTemplateId] = useState("");
   const [bulkOutreachPreview, setBulkOutreachPreview] = useState<BulkOutreachPreview | null>(null);
   const [customTemplateOpen, setCustomTemplateOpen] = useState(false);
+  const [listingAgentTemplateManagerOpen, setListingAgentTemplateManagerOpen] = useState(false);
+  const [editingListingAgentTemplateId, setEditingListingAgentTemplateId] = useState<number | null>(null);
   const [customTemplateName, setCustomTemplateName] = useState("");
   const [customTemplateBody, setCustomTemplateBody] = useState("");
   const [propertyPageBuilderOpen, setPropertyPageBuilderOpen] = useState(false);
@@ -228,6 +233,8 @@ export default function GeoSphereListings() {
   const [propertyPageAgentId, setPropertyPageAgentId] = useState("");
   const [propertyPageTemplateId, setPropertyPageTemplateId] = useState("");
   const [customPropertyPageTemplateOpen, setCustomPropertyPageTemplateOpen] = useState(false);
+  const [propertyPageAgentTemplateManagerOpen, setPropertyPageAgentTemplateManagerOpen] = useState(false);
+  const [editingPropertyPageAgentTemplateId, setEditingPropertyPageAgentTemplateId] = useState<number | null>(null);
   const [customPropertyPageTemplateName, setCustomPropertyPageTemplateName] = useState("");
   const [customPropertyPageTemplateBody, setCustomPropertyPageTemplateBody] = useState("");
   const [propertyPageBuyerTemplateId, setPropertyPageBuyerTemplateId] = useState("");
@@ -244,10 +251,14 @@ export default function GeoSphereListings() {
   const leadsQuery = trpc.leads.list.useQuery();
   const chatsQuery = trpc.chat.list.useQuery();
   const outreachTemplatesQuery = trpc.geosphere.listListingAgentEmailTemplates.useQuery();
+  const allOutreachTemplatesQuery = trpc.geosphere.listListingAgentEmailTemplates.useQuery({ includeArchived: true });
   const propertyTemplatesQuery = trpc.geosphere.listPropertyEmailTemplates.useQuery();
+  const allPropertyTemplatesQuery = trpc.geosphere.listPropertyEmailTemplates.useQuery({ includeArchived: true });
   const propertyPagesQuery = trpc.propertyPages.list.useQuery();
   const propertyPageTemplatesQuery = trpc.propertyPages.listAgentEmailTemplates.useQuery();
+  const allPropertyPageTemplatesQuery = trpc.propertyPages.listAgentEmailTemplates.useQuery({ includeArchived: true });
   const propertyPageBuyerTemplatesQuery = trpc.propertyPages.listBuyerEmailTemplates.useQuery();
+  const allPropertyPageBuyerTemplatesQuery = trpc.propertyPages.listBuyerEmailTemplates.useQuery({ includeArchived: true });
   const officersQuery = trpc.loanOfficer.list.useQuery();
   const agentsQuery = trpc.agent.list.useQuery();
   const selectedPull = useMemo(
@@ -325,6 +336,9 @@ export default function GeoSphereListings() {
     },
     onError: (error) => toast.error(error.message || "The custom email template could not be saved."),
   });
+  const updateOutreachTemplate = trpc.geosphere.updateListingAgentEmailTemplate.useMutation({ onSuccess: async (template) => { await utils.geosphere.listListingAgentEmailTemplates.invalidate(); setSelectedOutreachTemplateId(String(template.id)); setCustomTemplateOpen(false); setEditingListingAgentTemplateId(null); toast.success(`${template.name} was updated.`); }, onError: (error) => toast.error(error.message || "The email template could not be updated.") });
+  const setOutreachTemplateArchived = trpc.geosphere.setListingAgentEmailTemplateArchived.useMutation({ onSuccess: async (result, variables) => { await utils.geosphere.listListingAgentEmailTemplates.invalidate(); if (variables.archived) setSelectedOutreachTemplateId((current) => current === String(variables.id) ? "" : current); toast.success(result.archived ? "Email template archived." : "Email template restored."); }, onError: (error) => toast.error(error.message || "The email template archive state could not be changed.") });
+  const deleteOutreachTemplate = trpc.geosphere.deleteListingAgentEmailTemplate.useMutation({ onSuccess: async (_result, variables) => { await utils.geosphere.listListingAgentEmailTemplates.invalidate(); setSelectedOutreachTemplateId((current) => current === String(variables.id) ? "" : current); toast.success("Email template permanently deleted."); }, onError: (error) => toast.error(error.message || "The email template could not be deleted.") });
   const savePropertyEmailTemplate = trpc.geosphere.savePropertyEmailTemplate.useMutation({
     onSuccess: async (template) => {
       await utils.geosphere.listPropertyEmailTemplates.invalidate();
@@ -336,6 +350,9 @@ export default function GeoSphereListings() {
     },
     onError: (error) => toast.error(error.message || "The custom property email template could not be saved."),
   });
+  const updatePropertyEmailTemplate = trpc.geosphere.updatePropertyEmailTemplate.useMutation({ onSuccess: async (template) => { await utils.geosphere.listPropertyEmailTemplates.invalidate(); setPropertyEmailTemplate(`custom:${template.id}`); setCustomPropertyTemplateOpen(false); setEditingPropertyEmailTemplateId(null); toast.success(`${template.name} was updated.`); }, onError: (error) => toast.error(error.message || "The property email template could not be updated.") });
+  const setPropertyEmailTemplateArchived = trpc.geosphere.setPropertyEmailTemplateArchived.useMutation({ onSuccess: async (result, variables) => { await utils.geosphere.listPropertyEmailTemplates.invalidate(); if (variables.archived) setPropertyEmailTemplate((current) => current === `custom:${variables.id}` ? "" : current); toast.success(result.archived ? "Property email template archived." : "Property email template restored."); }, onError: (error) => toast.error(error.message || "The property email template archive state could not be changed.") });
+  const deletePropertyEmailTemplate = trpc.geosphere.deletePropertyEmailTemplate.useMutation({ onSuccess: async (_result, variables) => { await utils.geosphere.listPropertyEmailTemplates.invalidate(); setPropertyEmailTemplate((current) => current === `custom:${variables.id}` ? "" : current); toast.success("Property email template permanently deleted."); }, onError: (error) => toast.error(error.message || "The property email template could not be deleted.") });
   const recordListingEmailActivity = trpc.geosphere.recordListingEmailActivity.useMutation({
     onError: (error) => toast.error(error.message || "The email draft opened, but communication activity could not be recorded."),
   });
@@ -380,6 +397,9 @@ export default function GeoSphereListings() {
     },
     onError: (error) => toast.error(error.message || "The property-page email template could not be saved."),
   });
+  const updatePropertyPageTemplate = trpc.propertyPages.updateAgentEmailTemplate.useMutation({ onSuccess: async (template) => { await utils.propertyPages.listAgentEmailTemplates.invalidate(); setPropertyPageTemplateId(String(template.id)); setCustomPropertyPageTemplateOpen(false); setEditingPropertyPageAgentTemplateId(null); toast.success(`${template.name} was updated.`); }, onError: (error) => toast.error(error.message || "The property-page agent template could not be updated.") });
+  const setPropertyPageTemplateArchived = trpc.propertyPages.setAgentEmailTemplateArchived.useMutation({ onSuccess: async (result, variables) => { await utils.propertyPages.listAgentEmailTemplates.invalidate(); if (variables.archived) setPropertyPageTemplateId((current) => current === String(variables.id) ? "" : current); toast.success(result.archived ? "Property-page agent template archived." : "Property-page agent template restored."); }, onError: (error) => toast.error(error.message || "The property-page agent template archive state could not be changed.") });
+  const deletePropertyPageTemplate = trpc.propertyPages.deleteAgentEmailTemplate.useMutation({ onSuccess: async (_result, variables) => { await utils.propertyPages.listAgentEmailTemplates.invalidate(); setPropertyPageTemplateId((current) => current === String(variables.id) ? "" : current); toast.success("Property-page agent template permanently deleted."); }, onError: (error) => toast.error(error.message || "The property-page agent template could not be deleted.") });
   const savePropertyPageBuyerTemplate = trpc.propertyPages.saveBuyerEmailTemplate.useMutation({
     onSuccess: async (template) => {
       await utils.propertyPages.listBuyerEmailTemplates.invalidate();
@@ -408,6 +428,7 @@ export default function GeoSphereListings() {
     },
     onError: (error) => toast.error(error.message || "The buyer email template could not be deleted."),
   });
+  const setPropertyPageBuyerTemplateArchived = trpc.propertyPages.setBuyerEmailTemplateArchived.useMutation({ onSuccess: async (result, variables) => { await utils.propertyPages.listBuyerEmailTemplates.invalidate(); if (variables.archived) setPropertyPageBuyerTemplateId((current) => current === String(variables.id) ? "" : current); toast.success(result.archived ? "Buyer email template archived." : "Buyer email template restored."); }, onError: (error) => toast.error(error.message || "The buyer email template archive state could not be changed.") });
 
   const openListingDraft = () => {
     const listings = visibleListings;
@@ -567,10 +588,18 @@ export default function GeoSphereListings() {
   };
   const selectPropertyPageTemplate = (value: string) => {
     if (value === ADD_CUSTOM_PROPERTY_PAGE_TEMPLATE) {
+      setEditingPropertyPageAgentTemplateId(null);
       setCustomPropertyPageTemplateOpen(true);
       return;
     }
     setPropertyPageTemplateId(value);
+  };
+  const openPropertyPageAgentTemplateEditor = (template: NonNullable<typeof allPropertyPageTemplatesQuery.data>[number]) => {
+    setEditingPropertyPageAgentTemplateId(template.id);
+    setCustomPropertyPageTemplateName(template.name);
+    setCustomPropertyPageTemplateBody(template.bodyTemplate);
+    setPropertyPageAgentTemplateManagerOpen(false);
+    setCustomPropertyPageTemplateOpen(true);
   };
   const selectPropertyPageBuyerTemplate = (value: string) => {
     if (value === ADD_CUSTOM_PROPERTY_PAGE_BUYER_TEMPLATE) {
@@ -686,7 +715,8 @@ export default function GeoSphereListings() {
       toast.error("Write at least 20 characters for the custom email body.");
       return;
     }
-    saveOutreachTemplate.mutate({ name, bodyTemplate });
+    if (editingListingAgentTemplateId) updateOutreachTemplate.mutate({ id: editingListingAgentTemplateId, name, bodyTemplate });
+    else saveOutreachTemplate.mutate({ name, bodyTemplate });
   };
 
   const selectPropertyEmailTemplate = (value: string) => {
@@ -708,7 +738,8 @@ export default function GeoSphereListings() {
       toast.error("Write at least 20 characters for the property email body.");
       return;
     }
-    savePropertyEmailTemplate.mutate({ name, bodyTemplate });
+    if (editingPropertyEmailTemplateId) updatePropertyEmailTemplate.mutate({ id: editingPropertyEmailTemplateId, name, bodyTemplate });
+    else savePropertyEmailTemplate.mutate({ name, bodyTemplate });
   };
 
   const recordAndOpenListingAgentDraft = (input: { listingIds: number[]; mailto: string; agentName: string }) => {
@@ -953,6 +984,7 @@ export default function GeoSphereListings() {
                       {(outreachTemplatesQuery.data ?? []).map((template) => <SelectItem key={template.id} value={String(template.id)}>{template.isBuiltIn === 1 ? `Built-in · ${template.name}` : `Saved · ${template.name}`}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  <Button type="button" size="sm" variant="outline" className="h-9 text-xs" onClick={() => setListingAgentTemplateManagerOpen(true)}>Manage</Button>
                 </div>
               </div>
               {listingsQuery.isLoading ? (
@@ -1030,6 +1062,7 @@ export default function GeoSphereListings() {
                       {(propertyPageTemplatesQuery.data ?? []).map((template) => <SelectItem key={template.id} value={String(template.id)}>Saved · {template.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  <Button type="button" size="sm" variant="outline" className="h-9 text-xs" onClick={() => setPropertyPageAgentTemplateManagerOpen(true)}>Manage</Button>
                   <Select value={propertyPageBuyerTemplateId} onValueChange={selectPropertyPageBuyerTemplate}>
                     <SelectTrigger className="h-9 w-full bg-card text-xs lg:w-[260px]"><SelectValue placeholder={propertyPageBuyerTemplatesQuery.isLoading ? "Loading buyer templates…" : "Buyer email template"} /></SelectTrigger>
                     <SelectContent>
@@ -1096,6 +1129,7 @@ export default function GeoSphereListings() {
                       {(propertyTemplatesQuery.data ?? []).map((template) => <SelectItem key={template.id} value={`custom:${template.id}`}>Saved · {template.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  <Button type="button" size="sm" variant="outline" className="mt-2 h-8 text-xs" onClick={() => setPropertyEmailTemplateManagerOpen(true)}>Manage saved templates</Button>
                   <p className="mt-2 text-xs text-muted-foreground" aria-live="polite">{visibleRecipients.length} matching {visibleRecipients.length === 1 ? "lead" : "leads"}, ordered by last name. {selectedRecipients.length} selected. The draft includes all currently visible listings above.</p>
                 </div>
                 <Button onClick={openListingDraft} disabled={!visibleListings.length || selectedRecipients.length === 0 || !propertyEmailTemplate}>
@@ -1171,14 +1205,14 @@ export default function GeoSphereListings() {
       <Dialog open={customPropertyPageTemplateOpen} onOpenChange={setCustomPropertyPageTemplateOpen}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="font-display">Add property-page agent email template</DialogTitle>
+            <DialogTitle className="font-display">{editingPropertyPageAgentTemplateId ? "Edit property-page agent email template" : "Add property-page agent email template"}</DialogTitle>
             <DialogDescription>Write only the reusable introduction. Every draft automatically adds the listing-agent recipient, property-page URL, saved property details, program-screening context, snapshot limitation, and the assigned loan officer signature.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5"><Label htmlFor="property-page-agent-template-name">Template name</Label><Input id="property-page-agent-template-name" value={customPropertyPageTemplateName} onChange={(event) => setCustomPropertyPageTemplateName(event.target.value)} maxLength={160} placeholder="e.g., New co-branded property page" /></div>
             <div className="space-y-1.5"><Label htmlFor="property-page-agent-template-body">Reusable email introduction</Label><Textarea id="property-page-agent-template-body" value={customPropertyPageTemplateBody} onChange={(event) => setCustomPropertyPageTemplateBody(event.target.value)} maxLength={6000} className="min-h-56 resize-y" placeholder="Explain the shared first-time-buyer attraction opportunity in your own words. The recipient, property URL, saved property facts, current-verification reminder, and signature are added automatically." /><p className="text-right text-xs text-muted-foreground">{customPropertyPageTemplateBody.length}/6000</p></div>
           </div>
-          <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setCustomPropertyPageTemplateOpen(false)} disabled={savePropertyPageTemplate.isPending}>Cancel</Button><Button onClick={() => { if (customPropertyPageTemplateName.trim().length < 2 || customPropertyPageTemplateBody.trim().length < 20) { toast.error("Enter a template name and at least 20 characters of reusable email copy."); return; } savePropertyPageTemplate.mutate({ name: customPropertyPageTemplateName.trim(), bodyTemplate: customPropertyPageTemplateBody.trim() }); }} disabled={savePropertyPageTemplate.isPending}>{savePropertyPageTemplate.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}Save email template</Button></div>
+          <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setCustomPropertyPageTemplateOpen(false)} disabled={savePropertyPageTemplate.isPending || updatePropertyPageTemplate.isPending}>Cancel</Button><Button onClick={() => { if (customPropertyPageTemplateName.trim().length < 2 || customPropertyPageTemplateBody.trim().length < 20) { toast.error("Enter a template name and at least 20 characters of reusable email copy."); return; } const input = { name: customPropertyPageTemplateName.trim(), bodyTemplate: customPropertyPageTemplateBody.trim() }; if (editingPropertyPageAgentTemplateId) updatePropertyPageTemplate.mutate({ id: editingPropertyPageAgentTemplateId, ...input }); else savePropertyPageTemplate.mutate(input); }} disabled={savePropertyPageTemplate.isPending || updatePropertyPageTemplate.isPending}>{savePropertyPageTemplate.isPending || updatePropertyPageTemplate.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}{editingPropertyPageAgentTemplateId ? "Update email template" : "Save email template"}</Button></div>
         </DialogContent>
       </Dialog>
       <Dialog open={customPropertyPageBuyerTemplateOpen} onOpenChange={(open) => { setCustomPropertyPageBuyerTemplateOpen(open); if (!open) setEditingPropertyPageBuyerTemplateId(null); }}>
@@ -1195,15 +1229,10 @@ export default function GeoSphereListings() {
           <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setCustomPropertyPageBuyerTemplateOpen(false)} disabled={savePropertyPageBuyerTemplate.isPending || updatePropertyPageBuyerTemplate.isPending}>Cancel</Button><Button onClick={() => { if (customPropertyPageBuyerTemplateName.trim().length < 2 || customPropertyPageBuyerTemplateSubject.trim().length < 4 || customPropertyPageBuyerTemplateBody.trim().length < 20) { toast.error("Enter a name, subject, and at least 20 characters of reusable buyer email copy."); return; } const input = { name: customPropertyPageBuyerTemplateName.trim(), subjectTemplate: customPropertyPageBuyerTemplateSubject.trim(), bodyTemplate: customPropertyPageBuyerTemplateBody.trim() }; if (editingPropertyPageBuyerTemplateId) updatePropertyPageBuyerTemplate.mutate({ id: editingPropertyPageBuyerTemplateId, ...input }); else savePropertyPageBuyerTemplate.mutate(input); }} disabled={savePropertyPageBuyerTemplate.isPending || updatePropertyPageBuyerTemplate.isPending}>{savePropertyPageBuyerTemplate.isPending || updatePropertyPageBuyerTemplate.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}{editingPropertyPageBuyerTemplateId ? "Update buyer template" : "Save buyer template"}</Button></div>
         </DialogContent>
       </Dialog>
-      <Dialog open={propertyPageBuyerTemplateManagerOpen} onOpenChange={setPropertyPageBuyerTemplateManagerOpen}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader><DialogTitle className="font-display">Manage buyer email templates</DialogTitle><DialogDescription>Edit or delete your reusable client-summary drafts. Template use stays private to this dashboard owner.</DialogDescription></DialogHeader>
-          <div className="max-h-[55vh] space-y-3 overflow-y-auto pr-1">
-            {(propertyPageBuyerTemplatesQuery.data ?? []).length ? (propertyPageBuyerTemplatesQuery.data ?? []).map((template) => <div key={template.id} className="rounded-lg border border-border bg-muted/20 p-3"><div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><p className="font-semibold text-foreground">{template.name}</p><p className="mt-1 truncate text-xs text-muted-foreground">{template.subjectTemplate}</p></div><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => openPropertyPageBuyerTemplateEditor(template)}>Edit</Button><Button size="sm" variant="outline" className="border-rose-200 text-rose-700 hover:bg-rose-50" disabled={deletePropertyPageBuyerTemplate.isPending} onClick={() => { if (window.confirm(`Delete “${template.name}”? This cannot be undone.`)) deletePropertyPageBuyerTemplate.mutate({ id: template.id }); }}>Delete</Button></div></div></div>) : <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">No buyer email templates saved yet. Use Add buyer template to create your first reusable draft.</p>}
-          </div>
-          <div className="flex justify-end"><Button variant="outline" onClick={() => setPropertyPageBuyerTemplateManagerOpen(false)}>Close</Button></div>
-        </DialogContent>
-      </Dialog>
+      <EmailTemplateLifecycleManager open={listingAgentTemplateManagerOpen} onOpenChange={setListingAgentTemplateManagerOpen} title="Manage listing-agent email templates" description="Built-in templates remain available and protected. Custom drafts can be edited, archived to hide them, restored, or permanently deleted." templates={(allOutreachTemplatesQuery.data ?? [])} pending={updateOutreachTemplate.isPending || setOutreachTemplateArchived.isPending || deleteOutreachTemplate.isPending} onEdit={(template) => { setEditingListingAgentTemplateId(template.id); setCustomTemplateName(template.name); setCustomTemplateBody(template.bodyTemplate); setListingAgentTemplateManagerOpen(false); setCustomTemplateOpen(true); }} onArchive={(template) => setOutreachTemplateArchived.mutate({ id: template.id, archived: true })} onRestore={(template) => setOutreachTemplateArchived.mutate({ id: template.id, archived: false })} onDelete={(template) => { if (window.confirm(`Permanently delete “${template.name}”? This cannot be undone.`)) deleteOutreachTemplate.mutate({ id: template.id }); }} />
+      <EmailTemplateLifecycleManager open={propertyEmailTemplateManagerOpen} onOpenChange={setPropertyEmailTemplateManagerOpen} title="Manage property-list email templates" description="Archive a draft to hide it from property-list email menus, restore it later, or permanently delete it." templates={(allPropertyTemplatesQuery.data ?? [])} pending={updatePropertyEmailTemplate.isPending || setPropertyEmailTemplateArchived.isPending || deletePropertyEmailTemplate.isPending} onEdit={(template) => { setEditingPropertyEmailTemplateId(template.id); setCustomPropertyTemplateName(template.name); setCustomPropertyTemplateBody(template.bodyTemplate); setPropertyEmailTemplateManagerOpen(false); setCustomPropertyTemplateOpen(true); }} onArchive={(template) => setPropertyEmailTemplateArchived.mutate({ id: template.id, archived: true })} onRestore={(template) => setPropertyEmailTemplateArchived.mutate({ id: template.id, archived: false })} onDelete={(template) => { if (window.confirm(`Permanently delete “${template.name}”? This cannot be undone.`)) deletePropertyEmailTemplate.mutate({ id: template.id }); }} />
+      <EmailTemplateLifecycleManager open={propertyPageAgentTemplateManagerOpen} onOpenChange={setPropertyPageAgentTemplateManagerOpen} title="Manage property-page agent templates" description="Archive drafts to hide them from co-branded property page outreach, restore them when needed, or permanently delete them." templates={(allPropertyPageTemplatesQuery.data ?? [])} pending={updatePropertyPageTemplate.isPending || setPropertyPageTemplateArchived.isPending || deletePropertyPageTemplate.isPending} onEdit={(template) => openPropertyPageAgentTemplateEditor(template as NonNullable<typeof allPropertyPageTemplatesQuery.data>[number])} onArchive={(template) => setPropertyPageTemplateArchived.mutate({ id: template.id, archived: true })} onRestore={(template) => setPropertyPageTemplateArchived.mutate({ id: template.id, archived: false })} onDelete={(template) => { if (window.confirm(`Permanently delete “${template.name}”? This cannot be undone.`)) deletePropertyPageTemplate.mutate({ id: template.id }); }} />
+      <EmailTemplateLifecycleManager open={propertyPageBuyerTemplateManagerOpen} onOpenChange={setPropertyPageBuyerTemplateManagerOpen} title="Manage buyer email templates" description="Edit, archive to hide, restore, or permanently delete your private buyer-summary drafts." templates={(allPropertyPageBuyerTemplatesQuery.data ?? [])} pending={updatePropertyPageBuyerTemplate.isPending || setPropertyPageBuyerTemplateArchived.isPending || deletePropertyPageBuyerTemplate.isPending} onEdit={(template) => openPropertyPageBuyerTemplateEditor(template as NonNullable<typeof allPropertyPageBuyerTemplatesQuery.data>[number])} onArchive={(template) => setPropertyPageBuyerTemplateArchived.mutate({ id: template.id, archived: true })} onRestore={(template) => setPropertyPageBuyerTemplateArchived.mutate({ id: template.id, archived: false })} onDelete={(template) => { if (window.confirm(`Permanently delete “${template.name}”? This cannot be undone.`)) deletePropertyPageBuyerTemplate.mutate({ id: template.id }); }} />
       <Dialog open={Boolean(bulkOutreachPreview)} onOpenChange={(open) => { if (!open) setBulkOutreachPreview(null); }}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>

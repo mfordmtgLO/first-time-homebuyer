@@ -12,6 +12,8 @@ vi.mock("./db", async (importOriginal) => {
       createdAt: new Date(),
       updatedAt: new Date(),
     })),
+    setListingAgentEmailTemplateArchived: vi.fn(async () => undefined),
+    deleteListingAgentEmailTemplate: vi.fn(async () => undefined),
     listPropertyEmailTemplates: vi.fn(async () => []),
     createPropertyEmailTemplate: vi.fn(async (input: { name: string; bodyTemplate: string }) => ({
       id: 93,
@@ -52,7 +54,7 @@ vi.mock("./db", async (importOriginal) => {
 });
 
 import { appRouter } from "./routers";
-import { createListingAgentEmailTemplate, createPropertyEmailTemplate, listListingAgentEmailTemplates, listPropertyEmailTemplates, recordGeoSphereListingEmailActivity, createPropertyLandingPage, updatePropertyLandingPagePair, updatePropertyLandingPageStatus, refreshPropertyLandingPage, createPropertyPageAgentEmailTemplate, createPropertyPageBuyerEmailTemplate, updatePropertyPageBuyerEmailTemplate, deletePropertyPageBuyerEmailTemplate, listPropertyPageBuyerEmailTemplates, getPropertyEmailPdfSummaryEngagement, recordPropertyPageActivity, listPropertyPageActivity, listWeeklyPropertyPageEngagement, getPropertyEngagementSetting, savePropertyEngagementThreshold, savePropertyEngagementPreferences, updatePropertyLandingPageAiSummary } from "./db";
+import { createListingAgentEmailTemplate, createPropertyEmailTemplate, listListingAgentEmailTemplates, listPropertyEmailTemplates, recordGeoSphereListingEmailActivity, createPropertyLandingPage, updatePropertyLandingPagePair, updatePropertyLandingPageStatus, refreshPropertyLandingPage, createPropertyPageAgentEmailTemplate, createPropertyPageBuyerEmailTemplate, updatePropertyPageBuyerEmailTemplate, deletePropertyPageBuyerEmailTemplate, listPropertyPageBuyerEmailTemplates, getPropertyEmailPdfSummaryEngagement, recordPropertyPageActivity, listPropertyPageActivity, listWeeklyPropertyPageEngagement, getPropertyEngagementSetting, savePropertyEngagementThreshold, savePropertyEngagementPreferences, updatePropertyLandingPageAiSummary, setListingAgentEmailTemplateArchived, deleteListingAgentEmailTemplate } from "./db";
 import type { TrpcContext } from "./_core/context";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
@@ -78,6 +80,8 @@ function createContext(role: "admin" | "user"): TrpcContext {
 
 const listTemplatesMock = vi.mocked(listListingAgentEmailTemplates);
 const createTemplateMock = vi.mocked(createListingAgentEmailTemplate);
+const setListingTemplateArchivedMock = vi.mocked(setListingAgentEmailTemplateArchived);
+const deleteListingTemplateMock = vi.mocked(deleteListingAgentEmailTemplate);
 const listPropertyTemplatesMock = vi.mocked(listPropertyEmailTemplates);
 const createPropertyTemplateMock = vi.mocked(createPropertyEmailTemplate);
 const recordEmailActivityMock = vi.mocked(recordGeoSphereListingEmailActivity);
@@ -125,6 +129,24 @@ describe("geosphere listing-agent email templates", () => {
       bodyTemplate: "I would like to discuss a buyer-attraction conversation for these properties.",
     });
     expect(result).toMatchObject({ id: 91, isBuiltIn: 0, name: "Open-house follow-up" });
+  });
+
+  it("supports archived template views, restoration, and permanent deletion only for the site owner", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    await caller.geosphere.listListingAgentEmailTemplates({ includeArchived: true });
+    const archived = await caller.geosphere.setListingAgentEmailTemplateArchived({ id: 91, archived: true });
+    const restored = await caller.geosphere.setListingAgentEmailTemplateArchived({ id: 91, archived: false });
+    const deleted = await caller.geosphere.deleteListingAgentEmailTemplate({ id: 91 });
+
+    expect(listTemplatesMock).toHaveBeenCalledWith(true);
+    expect(setListingTemplateArchivedMock).toHaveBeenCalledWith({ id: 91, archived: true });
+    expect(setListingTemplateArchivedMock).toHaveBeenCalledWith({ id: 91, archived: false });
+    expect(deleteListingTemplateMock).toHaveBeenCalledWith(91);
+    expect(archived).toEqual({ archived: true });
+    expect(restored).toEqual({ archived: false });
+    expect(deleted).toEqual({ deleted: true });
+    await expect(appRouter.createCaller(createContext("user")).geosphere.setListingAgentEmailTemplateArchived({ id: 91, archived: true })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(appRouter.createCaller(createContext("user")).geosphere.deleteListingAgentEmailTemplate({ id: 91 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("records original and resend outreach activity for the selected saved properties", async () => {

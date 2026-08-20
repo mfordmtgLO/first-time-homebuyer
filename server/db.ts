@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, getTableColumns, gte, inArray, isNotNull, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, getTableColumns, gte, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -501,13 +501,13 @@ export async function listSyncedTopAgents(ownerUserId: number, state?: string) {
 }
 
 /** Private, reusable subject and body templates for outreach to the synced Oregon directory. */
-export async function listSyncedAgentOutreachTemplates(ownerUserId: number) {
+export async function listSyncedAgentOutreachTemplates(ownerUserId: number, includeArchived = false) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return db
     .select()
     .from(syncedAgentOutreachTemplate)
-    .where(eq(syncedAgentOutreachTemplate.ownerUserId, ownerUserId))
+    .where(and(eq(syncedAgentOutreachTemplate.ownerUserId, ownerUserId), includeArchived ? undefined : isNull(syncedAgentOutreachTemplate.archivedAt)))
     .orderBy(asc(syncedAgentOutreachTemplate.name));
 }
 
@@ -530,6 +530,29 @@ export async function createSyncedAgentOutreachTemplate(input: {
     ))
     .limit(1);
   return rows[0]!;
+}
+
+export async function updateSyncedAgentOutreachTemplate(input: { ownerUserId: number; id: number; name: string; subjectTemplate: string; bodyTemplate: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.update(syncedAgentOutreachTemplate).set({ name: input.name, subjectTemplate: input.subjectTemplate, bodyTemplate: input.bodyTemplate, updatedAt: new Date() }).where(and(eq(syncedAgentOutreachTemplate.id, input.id), eq(syncedAgentOutreachTemplate.ownerUserId, input.ownerUserId)));
+  if (!result[0].affectedRows) throw new Error("Outreach template not found.");
+  const rows = await db.select().from(syncedAgentOutreachTemplate).where(and(eq(syncedAgentOutreachTemplate.id, input.id), eq(syncedAgentOutreachTemplate.ownerUserId, input.ownerUserId))).limit(1);
+  return rows[0]!;
+}
+
+export async function setSyncedAgentOutreachTemplateArchived(input: { ownerUserId: number; id: number; archived: boolean }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.update(syncedAgentOutreachTemplate).set({ archivedAt: input.archived ? new Date() : null, updatedAt: new Date() }).where(and(eq(syncedAgentOutreachTemplate.id, input.id), eq(syncedAgentOutreachTemplate.ownerUserId, input.ownerUserId)));
+  if (!result[0].affectedRows) throw new Error("Outreach template not found.");
+}
+
+export async function deleteSyncedAgentOutreachTemplate(input: { ownerUserId: number; id: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.delete(syncedAgentOutreachTemplate).where(and(eq(syncedAgentOutreachTemplate.id, input.id), eq(syncedAgentOutreachTemplate.ownerUserId, input.ownerUserId)));
+  if (!result[0].affectedRows) throw new Error("Outreach template not found.");
 }
 
 export async function getSyncedTopAgent(ownerUserId: number, id: number) {
@@ -1587,10 +1610,10 @@ export async function updatePropertyLandingPageAiSummary(input: { id: number; ai
   return rows[0];
 }
 
-export async function listPropertyPageAgentEmailTemplates() {
+export async function listPropertyPageAgentEmailTemplates(includeArchived = false) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return db.select().from(propertyPageAgentEmailTemplate).orderBy(asc(propertyPageAgentEmailTemplate.name));
+  return db.select().from(propertyPageAgentEmailTemplate).where(includeArchived ? undefined : isNull(propertyPageAgentEmailTemplate.archivedAt)).orderBy(asc(propertyPageAgentEmailTemplate.name));
 }
 
 export async function createPropertyPageAgentEmailTemplate(input: { name: string; bodyTemplate: string }) {
@@ -1601,11 +1624,34 @@ export async function createPropertyPageAgentEmailTemplate(input: { name: string
   return rows[0]!;
 }
 
-/** Private dashboard templates for client-facing buyer calculation summary emails. */
-export async function listPropertyPageBuyerEmailTemplates(ownerUserId: number) {
+export async function updatePropertyPageAgentEmailTemplate(input: { id: number; name: string; bodyTemplate: string }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return db.select().from(propertyPageBuyerEmailTemplate).where(eq(propertyPageBuyerEmailTemplate.ownerUserId, ownerUserId)).orderBy(asc(propertyPageBuyerEmailTemplate.name));
+  const result = await db.update(propertyPageAgentEmailTemplate).set({ name: input.name, bodyTemplate: input.bodyTemplate, updatedAt: new Date() }).where(eq(propertyPageAgentEmailTemplate.id, input.id));
+  if (!result[0].affectedRows) throw new Error("Property-page agent template not found.");
+  const rows = await db.select().from(propertyPageAgentEmailTemplate).where(eq(propertyPageAgentEmailTemplate.id, input.id)).limit(1);
+  return rows[0]!;
+}
+
+export async function setPropertyPageAgentEmailTemplateArchived(input: { id: number; archived: boolean }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.update(propertyPageAgentEmailTemplate).set({ archivedAt: input.archived ? new Date() : null, updatedAt: new Date() }).where(eq(propertyPageAgentEmailTemplate.id, input.id));
+  if (!result[0].affectedRows) throw new Error("Property-page agent template not found.");
+}
+
+export async function deletePropertyPageAgentEmailTemplate(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.delete(propertyPageAgentEmailTemplate).where(eq(propertyPageAgentEmailTemplate.id, id));
+  if (!result[0].affectedRows) throw new Error("Property-page agent template not found.");
+}
+
+/** Private dashboard templates for client-facing buyer calculation summary emails. */
+export async function listPropertyPageBuyerEmailTemplates(ownerUserId: number, includeArchived = false) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(propertyPageBuyerEmailTemplate).where(and(eq(propertyPageBuyerEmailTemplate.ownerUserId, ownerUserId), includeArchived ? undefined : isNull(propertyPageBuyerEmailTemplate.archivedAt))).orderBy(asc(propertyPageBuyerEmailTemplate.name));
 }
 
 export async function createPropertyPageBuyerEmailTemplate(input: { ownerUserId: number; name: string; subjectTemplate: string; bodyTemplate: string }) {
@@ -1623,6 +1669,13 @@ export async function updatePropertyPageBuyerEmailTemplate(input: { ownerUserId:
   if (!result[0].affectedRows) throw new Error("Buyer email template not found.");
   const rows = await db.select().from(propertyPageBuyerEmailTemplate).where(eq(propertyPageBuyerEmailTemplate.id, input.id)).limit(1);
   return rows[0]!;
+}
+
+export async function setPropertyPageBuyerEmailTemplateArchived(input: { ownerUserId: number; id: number; archived: boolean }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.update(propertyPageBuyerEmailTemplate).set({ archivedAt: input.archived ? new Date() : null, updatedAt: new Date() }).where(and(eq(propertyPageBuyerEmailTemplate.id, input.id), eq(propertyPageBuyerEmailTemplate.ownerUserId, input.ownerUserId)));
+  if (!result[0].affectedRows) throw new Error("Buyer email template not found.");
 }
 
 export async function deletePropertyPageBuyerEmailTemplate(input: { ownerUserId: number; id: number }) {
@@ -1716,12 +1769,13 @@ export async function recordGeoSphereListingEmailActivity(input: {
 }
 
 /** Reusable listing-agent outreach copy, with built-ins displayed before saved custom templates. */
-export async function listListingAgentEmailTemplates() {
+export async function listListingAgentEmailTemplates(includeArchived = false) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return db
     .select()
     .from(listingAgentEmailTemplate)
+    .where(includeArchived ? undefined : isNull(listingAgentEmailTemplate.archivedAt))
     .orderBy(desc(listingAgentEmailTemplate.isBuiltIn), asc(listingAgentEmailTemplate.name));
 }
 
@@ -1742,11 +1796,34 @@ export async function createListingAgentEmailTemplate(input: { name: string; bod
   return rows[0]!;
 }
 
-/** Reusable buyer-facing property-list email introductions, ordered alphabetically for the dashboard selector. */
-export async function listPropertyEmailTemplates() {
+export async function updateListingAgentEmailTemplate(input: { id: number; name: string; bodyTemplate: string }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return db.select().from(propertyEmailTemplate).orderBy(asc(propertyEmailTemplate.name));
+  const result = await db.update(listingAgentEmailTemplate).set({ name: input.name, bodyTemplate: input.bodyTemplate, updatedAt: new Date() }).where(and(eq(listingAgentEmailTemplate.id, input.id), eq(listingAgentEmailTemplate.isBuiltIn, 0)));
+  if (!result[0].affectedRows) throw new Error("Custom listing-agent template not found.");
+  const rows = await db.select().from(listingAgentEmailTemplate).where(eq(listingAgentEmailTemplate.id, input.id)).limit(1);
+  return rows[0]!;
+}
+
+export async function setListingAgentEmailTemplateArchived(input: { id: number; archived: boolean }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.update(listingAgentEmailTemplate).set({ archivedAt: input.archived ? new Date() : null, updatedAt: new Date() }).where(and(eq(listingAgentEmailTemplate.id, input.id), eq(listingAgentEmailTemplate.isBuiltIn, 0)));
+  if (!result[0].affectedRows) throw new Error("Custom listing-agent template not found.");
+}
+
+export async function deleteListingAgentEmailTemplate(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.delete(listingAgentEmailTemplate).where(and(eq(listingAgentEmailTemplate.id, id), eq(listingAgentEmailTemplate.isBuiltIn, 0)));
+  if (!result[0].affectedRows) throw new Error("Custom listing-agent template not found.");
+}
+
+/** Reusable buyer-facing property-list email introductions, ordered alphabetically for the dashboard selector. */
+export async function listPropertyEmailTemplates(includeArchived = false) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(propertyEmailTemplate).where(includeArchived ? undefined : isNull(propertyEmailTemplate.archivedAt)).orderBy(asc(propertyEmailTemplate.name));
 }
 
 /** Saves a dashboard-only custom property-email introduction; automatic listing and signature sections remain separate. */
@@ -1760,6 +1837,29 @@ export async function createPropertyEmailTemplate(input: { name: string; bodyTem
     .where(eq(propertyEmailTemplate.id, Number(result.insertId)))
     .limit(1);
   return rows[0]!;
+}
+
+export async function updatePropertyEmailTemplate(input: { id: number; name: string; bodyTemplate: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.update(propertyEmailTemplate).set({ name: input.name, bodyTemplate: input.bodyTemplate, updatedAt: new Date() }).where(eq(propertyEmailTemplate.id, input.id));
+  if (!result[0].affectedRows) throw new Error("Property email template not found.");
+  const rows = await db.select().from(propertyEmailTemplate).where(eq(propertyEmailTemplate.id, input.id)).limit(1);
+  return rows[0]!;
+}
+
+export async function setPropertyEmailTemplateArchived(input: { id: number; archived: boolean }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.update(propertyEmailTemplate).set({ archivedAt: input.archived ? new Date() : null, updatedAt: new Date() }).where(eq(propertyEmailTemplate.id, input.id));
+  if (!result[0].affectedRows) throw new Error("Property email template not found.");
+}
+
+export async function deletePropertyEmailTemplate(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.delete(propertyEmailTemplate).where(eq(propertyEmailTemplate.id, id));
+  if (!result[0].affectedRows) throw new Error("Property email template not found.");
 }
 
 const GEOSPHERE_SYNC_SETTING_ID = "geosphere-saved-listings";
