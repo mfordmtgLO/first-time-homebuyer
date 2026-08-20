@@ -28,6 +28,11 @@ const CAMPAIGN_PRESETS = [
   { label: "Email", source: "email", medium: "email", campaign: "firsthome", content: "" },
 ] as const;
 
+const AD_PLATFORM_PRESETS = [
+  { key: "facebook", label: "Facebook Ads", source: "facebook", medium: "paid_social" },
+  { key: "google", label: "Google Ads", source: "google", medium: "paid_search" },
+] as const;
+
 function campaignLabel(row: { utmSource?: string | null; utmMedium?: string | null; utmCampaign?: string | null }) {
   if (!row.utmSource && !row.utmCampaign) return "Direct / untagged";
   return [row.utmSource, row.utmMedium, row.utmCampaign].filter(Boolean).join(" · ");
@@ -184,6 +189,24 @@ export default function CampaignFunnelSummary() {
   const campaignChartRows = campaignPerformance.filter((row) => row.submissions > 0);
   const maxCampaignVolume = Math.max(1, ...campaignChartRows.map((row) => row.submissions));
   const totalCampaignSpendCents = filteredSpendEntries.reduce((sum, entry) => sum + entry.spendCents, 0);
+  const platformMetrics = AD_PLATFORM_PRESETS.map((platform) => {
+    const matchesPlatform = (row: { utmSource?: string | null }) => row.utmSource?.trim().toLowerCase() === platform.source;
+    const platformTaggedRows = taggedRows.filter(matchesPlatform);
+    const platformSpendEntries = filteredSpendEntries.filter(matchesPlatform);
+    const platformSpendCents = platformSpendEntries.reduce((sum, entry) => sum + entry.spendCents, 0);
+    const platformHomesList = filteredChats.filter((lead) => matchesPlatform(lead) && lead.lowDownPaymentHomeSearch === 1).length;
+    const platformBuyerAgent = filteredChats.filter((lead) => matchesPlatform(lead) && lead.buyerAgentRequest === 1).length;
+    return {
+      ...platform,
+      taggedLeads: platformTaggedRows.length,
+      roadmapLeads: platformTaggedRows.filter((row) => row.submissionType === "Roadmap request").length,
+      completedChats: platformTaggedRows.filter((row) => row.submissionType === "Completed chat intake").length,
+      homesListRequests: platformHomesList,
+      buyerAgentRequests: platformBuyerAgent,
+      spendCents: platformSpendCents,
+      costPerLeadCents: platformTaggedRows.length && platformSpendCents ? Math.round(platformSpendCents / platformTaggedRows.length) : null,
+    };
+  });
 
   const generatedUrl = useMemo(() => {
     const url = new URL("https://firsttimehomebuyer.manus.space/");
@@ -211,6 +234,12 @@ export default function CampaignFunnelSummary() {
     setUtmCampaign(preset.campaign);
     setUtmContent(preset.content);
     setUtmTerm("");
+  };
+
+  const applySpendPlatformPreset = (preset: (typeof AD_PLATFORM_PRESETS)[number]) => {
+    setSpendSource(preset.source);
+    setSpendMedium(preset.medium);
+    setSpendCampaign("firsthome");
   };
 
   const downloadTaggedRows = () => {
@@ -305,9 +334,10 @@ export default function CampaignFunnelSummary() {
       </section>
       <section className="rounded-lg border border-border bg-background/60 p-4">
         <div className="flex items-start justify-between gap-3">
-          <div><h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground"><DollarSign className="h-4 w-4 text-primary" /> Campaign spend</h2><p className="mt-0.5 text-xs text-muted-foreground">Private dashboard input only. Total in range: {formatCurrency(totalCampaignSpendCents)}.</p></div>
+          <div><h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground"><DollarSign className="h-4 w-4 text-primary" /> Campaign budget & spend</h2><p className="mt-0.5 text-xs text-muted-foreground">Private dashboard input only. Total in range: {formatCurrency(totalCampaignSpendCents)}.</p></div>
           <span className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">CPL = spend ÷ tagged leads</span>
         </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2"><span className="text-xs font-medium text-muted-foreground">Ad platform quick fill</span>{AD_PLATFORM_PRESETS.map((platform) => <Button key={platform.key} type="button" size="sm" variant="outline" onClick={() => applySpendPlatformPreset(platform)}>{platform.label}</Button>)}</div>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <label className="text-xs font-medium text-muted-foreground">Source<input value={spendSource} onChange={(event) => setSpendSource(event.target.value)} className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm text-foreground" /></label>
           <label className="text-xs font-medium text-muted-foreground">Medium<input value={spendMedium} onChange={(event) => setSpendMedium(event.target.value)} className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm text-foreground" /></label>
@@ -318,6 +348,10 @@ export default function CampaignFunnelSummary() {
         </div>
         {spendError && <p className="mt-2 text-xs font-medium text-destructive">{spendError}</p>}
         <Button type="button" size="sm" className="mt-3" disabled={addSpendMutation.isPending} onClick={saveCampaignSpend}>{addSpendMutation.isPending ? "Saving…" : "Add private spend"}</Button>
+      </section>
+      <section className="xl:col-span-2 rounded-lg border border-border bg-background/60 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-sm font-semibold text-foreground">Google Ads and Facebook Ads outcome comparison</h2><p className="mt-0.5 max-w-3xl text-xs text-muted-foreground">Private ROI-style lead outcomes for the selected range. Spend per tagged lead and captured Roadmap/chat outcomes are shown; this is not revenue, booked-loan, click, or platform-reported conversion-value ROI.</p></div><span className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">UTM-attributed</span></div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">{platformMetrics.map((platform) => <div key={platform.key} className="rounded-lg border border-border bg-card p-3"><div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold text-foreground">{platform.label}</h3><p className="mt-0.5 text-xs text-muted-foreground">Budget/spend: {formatCurrency(platform.spendCents)}</p></div><span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">CPL {formatCurrency(platform.costPerLeadCents)}</span></div><dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs"><div><dt className="text-muted-foreground">Tagged leads</dt><dd className="mt-0.5 font-semibold text-foreground">{platform.taggedLeads}</dd></div><div><dt className="text-muted-foreground">Roadmap</dt><dd className="mt-0.5 font-semibold text-foreground">{platform.roadmapLeads}</dd></div><div><dt className="text-muted-foreground">Completed chat</dt><dd className="mt-0.5 font-semibold text-foreground">{platform.completedChats}</dd></div><div><dt className="text-muted-foreground">Homes list / agent</dt><dd className="mt-0.5 font-semibold text-foreground">{platform.homesListRequests} / {platform.buyerAgentRequests}</dd></div></dl></div>)}</div>
       </section>
       <section className="xl:col-span-2 overflow-x-auto rounded-lg border border-border bg-background/60">
         <div className="border-b border-border px-4 py-3"><h2 className="text-sm font-semibold text-foreground">Campaign cost per tagged lead</h2><p className="mt-0.5 text-xs text-muted-foreground">Spend and qualifying submissions are matched by UTM source, medium, and campaign for the selected range.</p></div>

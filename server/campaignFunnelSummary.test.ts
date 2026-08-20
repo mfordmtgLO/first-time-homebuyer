@@ -56,4 +56,14 @@ describe("CampaignFunnelSummary attribution readiness", () => {
     expect(componentSource).toContain("trpc.campaignSpend.list.useQuery()");
     expect(componentSource).toContain("Add private spend");
   });
+
+  it("keeps Google Ads and Facebook Ads budget and captured-outcome metrics comparable", () => {
+    expect(componentSource).toContain("const AD_PLATFORM_PRESETS");
+    expect(componentSource).toContain('label: "Google Ads"');
+    expect(componentSource).toContain('label: "Facebook Ads"');
+    expect(componentSource).toContain("Ad platform quick fill");
+    expect(componentSource).toContain("Google Ads and Facebook Ads outcome comparison");
+    expect(componentSource).toContain("ROI-style lead outcomes");
+    expect(componentSource).toContain("Budget/spend:");
+  });
 });

@@ -478,3 +478,7 @@
 - [x] Audit synced GeoSphere FirstHome eligibility metadata and the dashboard saved-snapshot filter model
 - [x] Add a FirstHome LMI-plus-purchase-price filter to Search this saved snapshot with targeted and non-targeted limit context
 - [x] Add regression coverage and publish the dashboard FirstHome saved-snapshot filter
+- [x] Audit Google Ads and Facebook campaign-spend reporting for comparable budget and outcome metrics
+- [x] Add Google Ads campaign budget tracking through the existing private UTM spend workflow
+- [x] Add comparable Google and Facebook ROI-style performance metrics based on tagged captured outcomes
+- [x] Add regression coverage and publish the Google Ads campaign-reporting update
