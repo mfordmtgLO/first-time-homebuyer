@@ -418,3 +418,6 @@
 - [x] Add a share action for current single-property Cost of Waiting calculation results
 - [x] Show exact year-by-year amounts in five-year Cost of Waiting chart tooltips
 - [x] Ensure the sticky single-property navigator highlights the active scroll section
+- [x] Add buyer-ready print-friendly PDF summary generation for current single-property Cost of Waiting and 2-1 Buydown scenarios
+- [x] Display dynamic property loan-program eligibility badges beside single-property calculator sections
+- [x] Include a five-year financial impact summary in copied Cost of Waiting share text

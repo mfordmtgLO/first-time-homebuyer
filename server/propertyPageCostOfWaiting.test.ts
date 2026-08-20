@@ -10,6 +10,10 @@ describe("single-property Cost of Waiting section", () => {
     expect(page).toContain("What could waiting cost you while this opportunity changes?");
     expect(page).toContain("<CostOfWaiting purchasePrice={snapshot.price ?? undefined} propertyAddress={snapshot.address} />");
     expect(page).toContain("<Buydown purchasePrice={snapshot.price ?? undefined} />");
+    expect(page).toContain("BuyerCalculationPdfButton");
+    expect(page).toContain("CalculatorEligibilityBadges");
+    expect(page).toContain("OHCS Flex Lending screen");
+    expect(page).toContain("USDA RD screen");
     expect(page).toContain("PropertySectionNavigator");
     expect(page).toContain('new Event("open-mortgage-chat")');
     expect(page).toContain("window.addEventListener(\"scroll\", updateActiveSection");
@@ -19,5 +23,6 @@ describe("single-property Cost of Waiting section", () => {
     expect(calculator).toContain("LineChart");
     expect(calculator).toContain("Share this calculation");
     expect(calculator).toContain("FiveYearComparisonTooltip");
+    expect(calculator).toContain("Five-year impact:");
   });
 });

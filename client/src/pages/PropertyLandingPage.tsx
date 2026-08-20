@@ -12,10 +12,12 @@ import { trpc } from "@/lib/trpc";
 import { getPropertyHeroMedia, parsePropertyLandingSnapshot, propertyEligibilityLabel } from "@shared/propertyLandingPage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { BedDouble, Bath, CalendarDays, ExternalLink, Facebook, Home, Linkedin, MapPin, Printer, Ruler, Share2, ShieldCheck, SquareStack, Trees } from "lucide-react";
 
 const money = (value: number | null) => value === null ? "Not in saved snapshot" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
 const number = (value: number | null) => value === null ? "Not in saved snapshot" : value.toLocaleString("en-US");
+const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[character] ?? character));
 
 function SavedLocationMap({ latitude, longitude, address }: { latitude: number; longitude: number; address: string }) {
   const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
@@ -103,6 +105,28 @@ function PropertySectionNavigator() {
   return <nav aria-label="Property page sections" className="sticky top-0 z-30 border-b border-border bg-card/95 shadow-sm backdrop-blur property-print-hide"><div className="container overflow-x-auto"><div className="flex min-w-max items-center gap-1 py-2">{PROPERTY_NAV_SECTIONS.map((section) => <button key={section.id} type="button" onClick={() => navigate(section.id)} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${section.id === "chat-intake" ? "bg-primary text-primary-foreground hover:brightness-110" : activeSection === section.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>{section.label}</button>)}</div></div></nav>;
 }
 
+function CalculatorEligibilityBadges({ isLmi, isUsda }: { isLmi: boolean; isUsda: boolean }) {
+  return <div className="container property-print-hide"><div className="flex flex-wrap items-center gap-2 pb-2 pt-6"><span className="text-xs font-semibold uppercase tracking-[0.13em] text-muted-foreground">Saved program screen</span>{isLmi && <Badge className="bg-amber-100 text-amber-950 hover:bg-amber-100">OHCS Flex Lending screen</Badge>}{isUsda && <Badge className="bg-emerald-100 text-emerald-950 hover:bg-emerald-100">USDA RD screen</Badge>}{!isLmi && !isUsda && <Badge variant="outline" className="text-muted-foreground">No saved Flex or USDA screen</Badge>}<span className="text-xs text-muted-foreground">Program fit requires current verification and approval.</span></div></div>;
+}
+
+function BuyerCalculationPdfButton({ propertyAddress, propertyUrl, isLmi, isUsda }: { propertyAddress: string; propertyUrl: string; isLmi: boolean; isUsda: boolean }) {
+  const { scenario, cowScenario } = useScenario();
+  const printCalculationPdf = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast.error("Please allow pop-ups to create your buyer PDF summary.");
+      return;
+    }
+    printWindow.opener = null;
+    const programScreening = [isLmi ? "OHCS Flex Lending screen" : null, isUsda ? "USDA RD screen" : null].filter(Boolean).join(" · ") || "No saved Flex or USDA screen";
+    const buydownRows = scenario ? `<tr><th>Purchase price</th><td>${money(scenario.purchasePrice)}</td></tr><tr><th>Down payment</th><td>${money(scenario.downPayment)}</td></tr><tr><th>Note rate</th><td>${scenario.noteRate.toFixed(3).replace(/\.?0+$/, "")}%</td></tr><tr><th>Year 1 payment / savings</th><td>${money(scenario.year1Payment)} / ${money(scenario.year1MonthlySavings)} monthly</td></tr><tr><th>Year 2 payment / savings</th><td>${money(scenario.year2Payment)} / ${money(scenario.year2MonthlySavings)} monthly</td></tr><tr><th>Seller-paid interest subsidy</th><td>${money(scenario.totalSubsidy)}</td></tr>` : `<tr><td>This buyer did not run a 2-1 Buydown scenario yet.</td></tr>`;
+    const waitingRows = cowScenario ? `<tr><th>Waiting period</th><td>${cowScenario.waitYears} year${cowScenario.waitYears === 1 ? "" : "s"}</td></tr><tr><th>Monthly rent</th><td>${money(cowScenario.monthlyRent)}</td></tr><tr><th>Rent paid while waiting</th><td>${money(cowScenario.totalRentPaid)}</td></tr><tr><th>Equity if buying now</th><td>${money(cowScenario.equityGained)}</td></tr><tr><th>Estimated cost of waiting</th><td>${money(cowScenario.costOfWaiting)}</td></tr>` : `<tr><td>This buyer did not run a Cost of Waiting scenario yet.</td></tr>`;
+    printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"/><title>Buyer calculation summary — ${escapeHtml(propertyAddress)}</title><style>body{font-family:Arial,sans-serif;color:#1d3128;margin:42px;line-height:1.45}h1{font-family:Georgia,serif;font-size:28px;margin:0 0 4px}h2{font-family:Georgia,serif;margin:28px 0 10px;color:#153f30}.tag{display:inline-block;background:#e8b442;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700}.note{color:#56645e;font-size:12px}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #d8dfdb;padding:9px;text-align:left;font-size:14px}th{width:48%;color:#50645a}.disclaimer{margin-top:30px;border-top:1px solid #d8dfdb;padding-top:14px;font-size:10px;color:#56645e}@media print{body{margin:0}}</style></head><body><div class="tag">Buyer calculation summary</div><h1>${escapeHtml(propertyAddress)}</h1><p class="note">Saved property page · ${escapeHtml(programScreening)}</p><h2>2-1 Buydown scenario</h2><table>${buydownRows}</table><h2>Cost of Waiting scenario</h2><table>${waitingRows}</table><p class="disclaimer">Educational estimates only—not a loan offer, rate quote, approval, or eligibility determination. Saved property details, program screens, price, availability, and underwriting requirements require current verification.</p><p class="note">Property page: ${escapeHtml(propertyUrl)}</p><script>window.onload=()=>window.print();<\/script></body></html>`);
+    printWindow.document.close();
+  };
+  return <Button size="sm" variant="outline" onClick={printCalculationPdf}><Printer className="mr-1.5 h-4 w-4" />Buyer calculation PDF</Button>;
+}
+
 export default function PropertyLandingPage() {
   const [, params] = useRoute("/property/:slug");
   const slug = params?.slug?.toLowerCase() ?? "";
@@ -160,6 +184,7 @@ export default function PropertyLandingPage() {
                   </div>
                   <div className="property-print-hide mt-4 flex flex-wrap gap-2">
                     <Button size="sm" variant="outline" onClick={() => { track.mutate({ slug: data.page.slug, eventType: "print_export" }); window.print(); }}><Printer className="mr-1.5 h-4 w-4" />Print / save PDF</Button>
+                    <BuyerCalculationPdfButton propertyAddress={snapshot.address} propertyUrl={propertyUrl} isLmi={snapshot.isLmi} isUsda={snapshot.isUsda} />
                     <Button size="sm" variant="outline" onClick={async () => {
                       track.mutate({ slug: data.page.slug, eventType: "social_share", detail: "native_share" });
                       if (navigator.share) await navigator.share({ title: snapshot.address, text: `Saved property spotlight: ${snapshot.address}`, url: propertyUrl });
@@ -202,10 +227,12 @@ export default function PropertyLandingPage() {
               </div>
             </section>
             <div id="payment-scenarios">
+              <CalculatorEligibilityBadges isLmi={snapshot.isLmi} isUsda={snapshot.isUsda} />
               <div id="buydown" className="scroll-mt-24"><Buydown purchasePrice={snapshot.price ?? undefined} /></div>
             </div>
             <section id="cost-of-waiting" className="scroll-mt-24 py-16 text-primary-foreground md:py-20" style={{ background: "oklch(0.27 0.05 162)" }}>
               <div className="container">
+                <div className="property-print-hide mb-2 flex flex-wrap items-center gap-2"><span className="text-xs font-semibold uppercase tracking-[0.13em] text-primary-foreground/65">Saved program screen</span>{snapshot.isLmi && <Badge className="bg-[oklch(0.82_0.12_80)] text-[oklch(0.22_0.04_155)] hover:bg-[oklch(0.82_0.12_80)]">OHCS Flex Lending screen</Badge>}{snapshot.isUsda && <Badge className="bg-emerald-100 text-emerald-950 hover:bg-emerald-100">USDA RD screen</Badge>}{!snapshot.isLmi && !snapshot.isUsda && <Badge variant="outline" className="border-white/25 text-primary-foreground/75">No saved Flex or USDA screen</Badge>}</div>
                 <div className="max-w-3xl">
                   <p className="text-sm font-medium uppercase tracking-[0.18em] text-[oklch(0.82_0.12_80)]">Build a plan around this home</p>
                   <h2 className="mt-3 font-display text-3xl font-semibold leading-tight md:text-4xl">What could waiting cost you while this opportunity changes?</h2>

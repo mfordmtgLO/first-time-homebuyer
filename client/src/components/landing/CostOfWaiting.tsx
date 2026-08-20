@@ -238,7 +238,7 @@ export default function CostOfWaiting({ purchasePrice: prefilledPurchasePrice = 
 
   const shareCalculation = async () => {
     const heading = propertyAddress ? `Cost of Waiting for ${propertyAddress}` : "Cost of Waiting calculation";
-    const summary = `${heading}: Waiting ${waitYears} ${waitYears === 1 ? "year" : "years"} estimates ${fmtUsd(Math.max(result.costOfWaiting, 0))} in rent paid plus equity missed. Rent paid: ${fmtUsd(result.totalRentPaid)}. Equity if buying now: ${fmtUsd(Math.max(result.equityGained, 0))}.`;
+    const summary = `${heading}: Waiting ${waitYears} ${waitYears === 1 ? "year" : "years"} estimates ${fmtUsd(Math.max(result.costOfWaiting, 0))} in rent paid plus equity missed. Rent paid: ${fmtUsd(result.totalRentPaid)}. Equity if buying now: ${fmtUsd(Math.max(result.equityGained, 0))}. Five-year impact: ${fmtUsd(Math.max(fiveYearResult.costOfWaiting, 0))} estimated rent paid plus equity missed; ${fmtUsd(fiveYearResult.totalRentPaid)} rent paid and ${fmtUsd(Math.max(fiveYearResult.equityGained, 0))} equity if buying now.`;
     const url = `${window.location.href.split("#")[0]}#cost-of-waiting`;
     try {
       if (navigator.share) {
