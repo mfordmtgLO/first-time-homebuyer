@@ -237,6 +237,8 @@ export default function GeoSphereListings() {
   const [propertyPageLoanOfficerId, setPropertyPageLoanOfficerId] = useState("");
   const [propertyPageAgentId, setPropertyPageAgentId] = useState("");
   const [propertyPageExternalUrl, setPropertyPageExternalUrl] = useState("");
+  const [propertyPageTaxes, setPropertyPageTaxes] = useState("");
+  const [propertyPageUnits, setPropertyPageUnits] = useState("");
   const [propertyPageTemplateId, setPropertyPageTemplateId] = useState("");
   const [customPropertyPageTemplateOpen, setCustomPropertyPageTemplateOpen] = useState(false);
   const [propertyPageAgentTemplateManagerOpen, setPropertyPageAgentTemplateManagerOpen] = useState(false);
@@ -372,6 +374,8 @@ export default function GeoSphereListings() {
       setPropertyPageBuilderOpen(false);
       setPropertyPageListingId(null);
       setPropertyPageExternalUrl("");
+      setPropertyPageTaxes("");
+      setPropertyPageUnits("");
       toast.success(`Saved co-branded property page: ${page.address}`);
     },
     onError: (error) => toast.error(error.message || "The property page could not be saved."),
@@ -575,6 +579,8 @@ export default function GeoSphereListings() {
     setPropertyPageLoanOfficerId(officers[0] ? String(officers[0].id) : "");
     setPropertyPageAgentId(agents[0] ? String(agents[0].id) : "");
     setPropertyPageExternalUrl("");
+    setPropertyPageTaxes("");
+    setPropertyPageUnits("");
     setPropertyPageBuilderOpen(true);
   };
   const submitPropertyPage = () => {
@@ -587,6 +593,8 @@ export default function GeoSphereListings() {
       loanOfficerId: Number(propertyPageLoanOfficerId),
       agentId: Number(propertyPageAgentId),
       externalListingUrl: propertyPageExternalUrl.trim(),
+      ...(propertyPageTaxes.trim() ? { propertyTaxes: Number(propertyPageTaxes) } : {}),
+      ...(propertyPageUnits.trim() ? { units: propertyPageUnits.trim() } : {}),
     });
   };
   const savePropertyPagePair = (pageId: number, page: typeof propertyPages[number]) => {
@@ -1247,6 +1255,10 @@ export default function GeoSphereListings() {
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="space-y-1.5"><span className="text-sm font-medium">Loan officer</span><Select value={propertyPageLoanOfficerId} onValueChange={setPropertyPageLoanOfficerId}><SelectTrigger><SelectValue placeholder="Choose loan officer" /></SelectTrigger><SelectContent>{officers.map((officer) => <SelectItem key={officer.id} value={String(officer.id)}>{officer.name}</SelectItem>)}</SelectContent></Select></label>
               <label className="space-y-1.5"><span className="text-sm font-medium">Co-branded agent</span><Select value={propertyPageAgentId} onValueChange={setPropertyPageAgentId}><SelectTrigger><SelectValue placeholder="Choose agent" /></SelectTrigger><SelectContent>{agents.map((agent) => <SelectItem key={agent.id} value={String(agent.id)}>{agent.name}</SelectItem>)}</SelectContent></Select></label>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5"><Label htmlFor="property-page-taxes">Property taxes <span className="font-normal text-muted-foreground">(annual USD, optional)</span></Label><Input id="property-page-taxes" type="number" min="0" step="1" inputMode="decimal" value={propertyPageTaxes} onChange={(event) => setPropertyPageTaxes(event.target.value)} placeholder="e.g., 2400" /><p className="text-xs text-muted-foreground">Shown as the saved annual tax amount on the public property details.</p></div>
+              <div className="space-y-1.5"><Label htmlFor="property-page-units">Units <span className="font-normal text-muted-foreground">(optional)</span></Label><Input id="property-page-units" value={propertyPageUnits} onChange={(event) => setPropertyPageUnits(event.target.value)} maxLength={80} placeholder="e.g., 2" /><p className="text-xs text-muted-foreground">Use the official unit count or an appropriate property-unit label.</p></div>
             </div>
             <div className="space-y-1.5"><Label htmlFor="property-page-external-url">Existing live property-page URL <span className="font-normal text-muted-foreground">(optional)</span></Label><Input id="property-page-external-url" type="url" value={propertyPageExternalUrl} onChange={(event) => setPropertyPageExternalUrl(event.target.value)} placeholder="https://surefire.com/... or https://totalexpert.com/..." /><p className="text-xs leading-relaxed text-muted-foreground">For an authorized third-party CRM or MLS-vendor property page. We link to it from this saved-snapshot page but do not pull in its photos, description, status, or other listing data.</p></div>
           </div>

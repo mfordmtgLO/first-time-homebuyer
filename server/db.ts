@@ -39,7 +39,7 @@ import {
   type InsertGeoSphereListing,
   type InsertSyncedTopAgent,
 } from "../drizzle/schema";
-import { buildPropertyLandingSnapshot, slugifyPropertyAddress } from "../shared/propertyLandingPage";
+import { buildPropertyLandingSnapshot, parsePropertyLandingSnapshot, slugifyPropertyAddress } from "../shared/propertyLandingPage";
 import { ENV } from './_core/env';
 
 export const EMAIL_TEMPLATE_USAGE_SCOPES = ["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach"] as const;
@@ -1485,6 +1485,8 @@ export async function createPropertyLandingPage(input: {
   loanOfficerId: number;
   agentId: number;
   externalListingUrl?: string;
+  propertyTaxes?: number | null;
+  units?: string | null;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -1496,12 +1498,18 @@ export async function createPropertyLandingPage(input: {
     .limit(1);
   const row = rows[0];
   if (!row) throw new Error("The saved listing is no longer available.");
-  const snapshot = buildPropertyLandingSnapshot(row.listing, row.sourceSavedAt);
+  const importedSnapshot = buildPropertyLandingSnapshot(row.listing, row.sourceSavedAt);
   const existing = await db
     .select()
     .from(propertyLandingPage)
     .where(eq(propertyLandingPage.geosphereListingId, input.geosphereListingId))
     .limit(1);
+  const existingSnapshot = existing[0] ? parsePropertyLandingSnapshot(existing[0].listingSnapshot) : null;
+  const snapshot = {
+    ...importedSnapshot,
+    propertyTaxes: input.propertyTaxes ?? existingSnapshot?.propertyTaxes ?? importedSnapshot.propertyTaxes,
+    units: input.units ?? existingSnapshot?.units ?? importedSnapshot.units,
+  };
   if (existing[0]) {
     await db
       .update(propertyLandingPage)

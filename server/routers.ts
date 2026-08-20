@@ -1490,6 +1490,8 @@ export const appRouter = router({
         loanOfficerId: z.number().int().positive(),
         agentId: z.number().int().positive(),
         externalListingUrl: optionalPublicHttpUrl,
+        propertyTaxes: z.number().finite().min(0).max(10_000_000).nullable().optional(),
+        units: z.string().trim().max(80).nullable().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);

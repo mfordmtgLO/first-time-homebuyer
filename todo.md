@@ -497,3 +497,6 @@
 - [x] Replace the inline property-team section with a right-edge expandable contact tab retaining essential LO and agent actions
 - [x] Add a subtle bump cue only while the property page is actively scrolling, with an idle static state and reduced-motion support
 - [x] Add regression coverage, visually verify desktop and mobile behavior, and publish compact property-team interaction
+- [x] Audit existing single-property metadata storage and creation-editor controls for taxes and units
+- [x] Add persisted optional Property taxes and Units inputs to the single-property dashboard creation editor
+- [x] Display provided taxes and unit count in public single-property details with regression coverage and visual verification

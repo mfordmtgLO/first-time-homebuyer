@@ -15,9 +15,10 @@ const snapshot = buildPropertyLandingSnapshot({
   longitude: "-124.21",
   isLmi: 1,
   isUsda: 1,
-  sourceData: JSON.stringify({
-    description: "Saved listing description.",
-    propertyTaxes: 3100,
+    sourceData: JSON.stringify({
+      description: "Saved listing description.",
+      propertyTaxes: 3100,
+      units: "2",
     mlsName: "Sample MLS",
     mlsNumber: "OR-12345",
     listingAgent: { name: "Taylor Agent", email: "taylor@example.com", phone: "541-555-0100" },
@@ -29,6 +30,7 @@ describe("single-property saved snapshots", () => {
   it("preserves imported property details and the dual-program screening label", () => {
     expect(snapshot.description).toBe("Saved listing description.");
     expect(snapshot.propertyTaxes).toBe(3100);
+    expect(snapshot.units).toBe("2");
     expect(snapshot.photoUrls).toEqual(["https://images.example.com/home.jpg"]);
     expect(snapshot.listingAgent?.email).toBe("taylor@example.com");
     expect(propertyEligibilityLabel(snapshot)).toBe("OHCS Flex Lending or USDA RD potential");

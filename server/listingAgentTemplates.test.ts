@@ -200,16 +200,16 @@ describe("geosphere listing-agent email templates", () => {
     });
   });
 
-  it("creates a saved property page, allows a custom available LO-agent pairing, and saves reusable page-agent copy", async () => {
+  it("creates a saved property page with optional tax and unit details, allows a custom available LO-agent pairing, and saves reusable page-agent copy", async () => {
     const caller = appRouter.createCaller(createContext("admin"));
-    const page = await caller.propertyPages.createFromListing({ geosphereListingId: 44, loanOfficerId: 12, agentId: 7 });
+    const page = await caller.propertyPages.createFromListing({ geosphereListingId: 44, loanOfficerId: 12, agentId: 7, propertyTaxes: 2800, units: "2" });
     const paired = await caller.propertyPages.updatePair({ id: 71, loanOfficerId: 12, agentId: 7 });
     const template = await caller.propertyPages.saveAgentEmailTemplate({
       name: "Co-branded property launch",
       bodyTemplate: "I created a first-time buyer property page and would welcome a conversation about shared buyer attraction.",
     });
 
-    expect(createPropertyPageMock).toHaveBeenCalledWith({ geosphereListingId: 44, loanOfficerId: 12, agentId: 7, externalListingUrl: "" });
+    expect(createPropertyPageMock).toHaveBeenCalledWith({ geosphereListingId: 44, loanOfficerId: 12, agentId: 7, externalListingUrl: "", propertyTaxes: 2800, units: "2" });
     expect(page).toMatchObject({ id: 71, slug: "1024-s-5th-st" });
     expect(updatePropertyPagePairMock).toHaveBeenCalledWith({ id: 71, loanOfficerId: 12, agentId: 7 });
     expect(paired).toEqual({ id: 71, loanOfficerId: 12, agentId: 7 });
