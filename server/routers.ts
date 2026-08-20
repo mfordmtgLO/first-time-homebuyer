@@ -73,6 +73,8 @@ import {
   deletePropertyPageAgentEmailTemplate,
   listPropertyPageBuyerEmailTemplates,
   setPropertyPageBuyerEmailTemplateArchived,
+  getEmailTemplateUsageCounts,
+  recordEmailTemplateUsage,
   getPropertyEmailPdfSummaryEngagement,
   loanOfficerSlugTaken,
   recordChatIntakeResendAttempt,
@@ -540,6 +542,24 @@ function buildChatAgentMailto(lead: CompletedChatIntake, agent: { name: string; 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
+  templateUsage: router({
+    listCounts: protectedProcedure.input(z.object({
+      templateScope: z.enum(["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach"]),
+    })).query(async ({ ctx, input }) => {
+      requireAdmin(ctx.user.role);
+      const ownerUserId = input.templateScope === "property_page_buyer" || input.templateScope === "oregon_outreach" ? ctx.user.id : null;
+      return getEmailTemplateUsageCounts({ templateScope: input.templateScope, ownerUserId });
+    }),
+    recordDraftOpen: protectedProcedure.input(z.object({
+      templateScope: z.enum(["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach"]),
+      templateId: z.number().int().positive(),
+    })).mutation(async ({ ctx, input }) => {
+      requireAdmin(ctx.user.role);
+      const ownerUserId = input.templateScope === "property_page_buyer" || input.templateScope === "oregon_outreach" ? ctx.user.id : null;
+      await recordEmailTemplateUsage({ ...input, ownerUserId });
+      return { recorded: true };
+    }),
+  }),
   site: router({
     /** Public metadata used to validate the configured hosted-site title. */
     notificationTitle: publicProcedure.query(() => ({

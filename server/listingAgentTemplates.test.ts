@@ -44,6 +44,8 @@ vi.mock("./db", async (importOriginal) => {
     createPropertyPageBuyerEmailTemplate: vi.fn(async (input: { ownerUserId: number; name: string; subjectTemplate: string; bodyTemplate: string }) => ({ id: 82, ...input, createdAt: new Date(), updatedAt: new Date() })),
     updatePropertyPageBuyerEmailTemplate: vi.fn(async (input: { ownerUserId: number; id: number; name: string; subjectTemplate: string; bodyTemplate: string }) => ({ ...input, createdAt: new Date(), updatedAt: new Date() })),
     deletePropertyPageBuyerEmailTemplate: vi.fn(async () => undefined),
+    getEmailTemplateUsageCounts: vi.fn(async () => [{ templateId: 93, usageCount: 4 }]),
+    recordEmailTemplateUsage: vi.fn(async () => undefined),
     getPropertyEmailPdfSummaryEngagement: vi.fn(async () => ({ emailPdfSummaryClicks: 3, capturedLeadsAfterEmail: 1, propertyPages: [{ id: 71, address: "1024 S 5th St", slug: "1024-s-5th-st", emailPdfSummaryClicks: 3, capturedLeadsAfterEmail: 1 }] })),
     recordPropertyPageActivity: vi.fn(async (input: { propertyLandingPageId: number; eventType: string; detail?: string | null }) => ({ id: 201, ...input, createdAt: new Date() })),
     listPropertyPageActivity: vi.fn(async () => [{ id: 202, propertyLandingPageId: 71, eventType: "chat_completed", detail: null, createdAt: new Date() }]),
@@ -54,7 +56,7 @@ vi.mock("./db", async (importOriginal) => {
 });
 
 import { appRouter } from "./routers";
-import { createListingAgentEmailTemplate, createPropertyEmailTemplate, listListingAgentEmailTemplates, listPropertyEmailTemplates, recordGeoSphereListingEmailActivity, createPropertyLandingPage, updatePropertyLandingPagePair, updatePropertyLandingPageStatus, refreshPropertyLandingPage, createPropertyPageAgentEmailTemplate, createPropertyPageBuyerEmailTemplate, updatePropertyPageBuyerEmailTemplate, deletePropertyPageBuyerEmailTemplate, listPropertyPageBuyerEmailTemplates, getPropertyEmailPdfSummaryEngagement, recordPropertyPageActivity, listPropertyPageActivity, listWeeklyPropertyPageEngagement, getPropertyEngagementSetting, savePropertyEngagementThreshold, savePropertyEngagementPreferences, updatePropertyLandingPageAiSummary, setListingAgentEmailTemplateArchived, deleteListingAgentEmailTemplate } from "./db";
+import { createListingAgentEmailTemplate, createPropertyEmailTemplate, listListingAgentEmailTemplates, listPropertyEmailTemplates, recordGeoSphereListingEmailActivity, createPropertyLandingPage, updatePropertyLandingPagePair, updatePropertyLandingPageStatus, refreshPropertyLandingPage, createPropertyPageAgentEmailTemplate, createPropertyPageBuyerEmailTemplate, updatePropertyPageBuyerEmailTemplate, deletePropertyPageBuyerEmailTemplate, listPropertyPageBuyerEmailTemplates, getEmailTemplateUsageCounts, recordEmailTemplateUsage, getPropertyEmailPdfSummaryEngagement, recordPropertyPageActivity, listPropertyPageActivity, listWeeklyPropertyPageEngagement, getPropertyEngagementSetting, savePropertyEngagementThreshold, savePropertyEngagementPreferences, updatePropertyLandingPageAiSummary, setListingAgentEmailTemplateArchived, deleteListingAgentEmailTemplate } from "./db";
 import type { TrpcContext } from "./_core/context";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
@@ -94,6 +96,8 @@ const createPropertyPageBuyerTemplateMock = vi.mocked(createPropertyPageBuyerEma
 const listPropertyPageBuyerTemplatesMock = vi.mocked(listPropertyPageBuyerEmailTemplates);
 const updatePropertyPageBuyerTemplateMock = vi.mocked(updatePropertyPageBuyerEmailTemplate);
 const deletePropertyPageBuyerTemplateMock = vi.mocked(deletePropertyPageBuyerEmailTemplate);
+const listTemplateUsageCountsMock = vi.mocked(getEmailTemplateUsageCounts);
+const recordTemplateUsageMock = vi.mocked(recordEmailTemplateUsage);
 const emailPdfSummaryEngagementMock = vi.mocked(getPropertyEmailPdfSummaryEngagement);
 const recordPropertyPageActivityMock = vi.mocked(recordPropertyPageActivity);
 const listPropertyPageActivityMock = vi.mocked(listPropertyPageActivity);
@@ -306,5 +310,14 @@ describe("geosphere listing-agent email templates", () => {
 
   it("restricts AI-summary tone choices before a model is invoked", async () => {
     await expect(appRouter.createCaller(createContext("admin")).propertyPages.generateAiSummary({ id: 71, tone: "casual" as never })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("records and returns private template usage counts only for dashboard owners", async () => {
+    const admin = appRouter.createCaller(createContext("admin"));
+    await expect(admin.templateUsage.recordDraftOpen({ templateScope: "property_list", templateId: 93 })).resolves.toEqual({ recorded: true });
+    await expect(admin.templateUsage.listCounts({ templateScope: "property_list" })).resolves.toEqual([{ templateId: 93, usageCount: 4 }]);
+    expect(recordTemplateUsageMock).toHaveBeenCalledWith({ templateScope: "property_list", templateId: 93, ownerUserId: null });
+    expect(listTemplateUsageCountsMock).toHaveBeenCalledWith({ templateScope: "property_list", ownerUserId: null });
+    await expect(appRouter.createCaller(createContext("user")).templateUsage.listCounts({ templateScope: "property_list" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

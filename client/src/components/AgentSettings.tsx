@@ -731,6 +731,9 @@ function OregonOutreachWorkspace({ syncedProfiles }: { syncedProfiles: SyncedTop
     },
     onError: (error) => toast.error(error.message || "Could not create the Oregon outreach draft."),
   });
+  const recordTemplateUsage = trpc.templateUsage.recordDraftOpen.useMutation({
+    onSuccess: () => utils.templateUsage.listCounts.invalidate(),
+  });
 
   const toggleProfile = (profileId: number) => {
     setSelectedProfileIds((current) => current.includes(profileId)
@@ -868,7 +871,7 @@ function OregonOutreachWorkspace({ syncedProfiles }: { syncedProfiles: SyncedTop
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <EmailTemplateLifecycleManager open={templateManagerOpen} onOpenChange={setTemplateManagerOpen} title="Manage Oregon outreach templates" description="Archive drafts to hide them from outreach selection, restore them later, or permanently delete them. Templates remain private to this dashboard owner." templates={(allTemplatesQuery.data ?? [])} pending={updateTemplate.isPending || setTemplateArchived.isPending || deleteTemplate.isPending} onEdit={(template) => { setEditingTemplateId(template.id); setTemplateName(template.name); setTemplateSubject(template.subjectTemplate ?? ""); setTemplateBody(template.bodyTemplate); setTemplateManagerOpen(false); setTemplateDialogOpen(true); }} onArchive={(template) => setTemplateArchived.mutate({ id: template.id, archived: true })} onRestore={(template) => setTemplateArchived.mutate({ id: template.id, archived: false })} onDelete={(template) => { if (window.confirm(`Permanently delete “${template.name}”? This cannot be undone.`)) deleteTemplate.mutate({ id: template.id }); }} />
+      <EmailTemplateLifecycleManager open={templateManagerOpen} onOpenChange={setTemplateManagerOpen} title="Manage Oregon outreach templates" description="Archive drafts to hide them from outreach selection, restore them later, or permanently delete them. Templates remain private to this dashboard owner." templateScope="oregon_outreach" templates={(allTemplatesQuery.data ?? [])} pending={updateTemplate.isPending || setTemplateArchived.isPending || deleteTemplate.isPending} onEdit={(template) => { setEditingTemplateId(template.id); setTemplateName(template.name); setTemplateSubject(template.subjectTemplate ?? ""); setTemplateBody(template.bodyTemplate); setTemplateManagerOpen(false); setTemplateDialogOpen(true); }} onArchive={(template) => setTemplateArchived.mutate({ id: template.id, archived: true })} onRestore={(template) => setTemplateArchived.mutate({ id: template.id, archived: false })} onDelete={(template) => { if (window.confirm(`Permanently delete “${template.name}”? This cannot be undone.`)) deleteTemplate.mutate({ id: template.id }); }} onBulkArchive={(ids) => ids.forEach((id) => setTemplateArchived.mutate({ id, archived: true }))} />
 
       <AlertDialog open={Boolean(draftPreview)} onOpenChange={(open) => !open && setDraftPreview(null)}>
         <AlertDialogContent>
@@ -883,7 +886,7 @@ function OregonOutreachWorkspace({ syncedProfiles }: { syncedProfiles: SyncedTop
           {draftPreview && <div className="max-h-52 overflow-y-auto rounded-md border border-border bg-muted/20 p-3 text-sm whitespace-pre-wrap text-foreground">Subject: {draftPreview.subject}\n\n{draftPreview.body}</div>}
           <AlertDialogFooter>
             <AlertDialogCancel>Back</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { if (draftPreview) window.location.href = draftPreview.mailto; setDraftPreview(null); }}>Open email draft</AlertDialogAction>
+            <AlertDialogAction onClick={() => { if (draftPreview) { if (templateId !== null) recordTemplateUsage.mutate({ templateScope: "oregon_outreach", templateId }); window.location.href = draftPreview.mailto; } setDraftPreview(null); }}>Open email draft</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

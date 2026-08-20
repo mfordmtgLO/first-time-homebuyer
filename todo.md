@@ -433,3 +433,6 @@
 - [x] Add archive, restore, edit, and permanent deletion support for every custom dashboard email-template type
 - [x] Add consistent create, manage, archive/hide, restore, and delete controls to all dashboard email-template interfaces
 - [x] Test email-template archive, restore, and permanent-delete behavior and verify archived UI states
+- [x] Add template search, bulk selection, and bulk archive actions to the shared template manager
+- [x] Display sent-email usage counts for active custom templates in template management views
+- [x] Add a read-only quick preview action to template-management rows

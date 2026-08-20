@@ -651,6 +651,26 @@ export const propertyPageBuyerEmailTemplate = mysqlTable(
 export type PropertyPageBuyerEmailTemplate = typeof propertyPageBuyerEmailTemplate.$inferSelect;
 export type InsertPropertyPageBuyerEmailTemplate = typeof propertyPageBuyerEmailTemplate.$inferInsert;
 
+/** Private usage records for custom dashboard email templates. No recipient or message content is retained here. */
+export const emailTemplateUsage = mysqlTable(
+  "email_template_usage",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    templateScope: mysqlEnum("templateScope", ["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach"]).notNull(),
+    templateId: int("templateId").notNull(),
+    ownerUserId: int("ownerUserId"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [
+    index("email_template_usage_scope_template_idx").on(table.templateScope, table.templateId),
+    index("email_template_usage_owner_idx").on(table.ownerUserId),
+    index("email_template_usage_created_idx").on(table.createdAt),
+  ]
+);
+
+export type EmailTemplateUsage = typeof emailTemplateUsage.$inferSelect;
+export type InsertEmailTemplateUsage = typeof emailTemplateUsage.$inferInsert;
+
 /** Private, owner-scoped LO and agent pairing used only for internal spend management. */
 export const loAgentSpendPairing = mysqlTable(
   "lo_agent_spend_pairing",

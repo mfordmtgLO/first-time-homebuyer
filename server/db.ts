@@ -15,6 +15,7 @@ import {
   propertyEmailTemplate,
   propertyPageAgentEmailTemplate,
   propertyPageBuyerEmailTemplate,
+  emailTemplateUsage,
   syncedAgentOutreachTemplate,
   loAgentSpendEntry,
   loAgentSpendPairing,
@@ -39,7 +40,36 @@ import {
 import { buildPropertyLandingSnapshot, slugifyPropertyAddress } from "../shared/propertyLandingPage";
 import { ENV } from './_core/env';
 
+export const EMAIL_TEMPLATE_USAGE_SCOPES = ["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach"] as const;
+export type EmailTemplateUsageScope = (typeof EMAIL_TEMPLATE_USAGE_SCOPES)[number];
+
 let _db: ReturnType<typeof drizzle> | null = null;
+
+/** Records a draft-opening event without retaining recipient addresses or message contents. */
+export async function recordEmailTemplateUsage(input: { templateScope: EmailTemplateUsageScope; templateId: number; ownerUserId?: number | null }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.insert(emailTemplateUsage).values({
+    templateScope: input.templateScope,
+    templateId: input.templateId,
+    ownerUserId: input.ownerUserId ?? null,
+  });
+}
+
+export async function getEmailTemplateUsageCounts(input: { templateScope: EmailTemplateUsageScope; ownerUserId?: number | null }) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [eq(emailTemplateUsage.templateScope, input.templateScope)];
+  if (input.ownerUserId !== undefined) {
+    conditions.push(input.ownerUserId === null ? isNull(emailTemplateUsage.ownerUserId) : eq(emailTemplateUsage.ownerUserId, input.ownerUserId));
+  }
+  const rows = await db
+    .select({ templateId: emailTemplateUsage.templateId, usageCount: sql<number>`count(*)` })
+    .from(emailTemplateUsage)
+    .where(and(...conditions))
+    .groupBy(emailTemplateUsage.templateId);
+  return rows.map((row) => ({ templateId: row.templateId, usageCount: Number(row.usageCount) }));
+}
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
