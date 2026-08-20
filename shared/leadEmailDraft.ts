@@ -4,6 +4,7 @@
  * message before sending. Supporting PDFs are included as stable download links.
  */
 import { richEmailTemplateToText } from "./emailTemplateText";
+import { MIKE_FORD_EMAIL_SIGNATURE_TEXT } from "./mikeFordEmailSignature";
 
 export type LeadEmailBuydownScenario = {
   purchasePrice: number;
@@ -339,10 +340,7 @@ I’d be glad to review your budget, loan options, occupancy requirements, and t
 And when you’re ready, I can connect you with a great local buyer’s agent to help schedule a showing for any property highlighted here. If you are still refining what feels right, we can also dial in your custom home-search criteria and work together to find your first home soon. You will have a local team in your corner every step of the way.
 
 Warmly,
-Mike Ford
-Loan Officer | NMLS #288455
-Cornerstone First Mortgage | Company NMLS #173855
-(541) 729-0819`;
+${MIKE_FORD_EMAIL_SIGNATURE_TEXT}`;
   return {
     subject,
     body,
@@ -385,10 +383,7 @@ This is not a program approval or a guarantee of property or borrower eligibilit
 Would you be open to a brief conversation about buyer-attraction marketing opportunities for ${input.listings.length === 1 ? "this home" : "these homes"}?
 
 Best,
-Mike Ford
-Loan Officer | NMLS #288455
-Cornerstone First Mortgage | Company NMLS #173855
-(541) 729-0819`;
+${MIKE_FORD_EMAIL_SIGNATURE_TEXT}`;
   return {
     subject,
     body,
@@ -440,10 +435,7 @@ ${agentBlock}` : ""}
 If you have any questions about the cost of waiting, how a 2-1 buydown works, or what it could take to get pre-approved, please reach out anytime. I’m here to help you with your Roadmap to Homeownership. Feel free to head back to the website to run more scenarios or learn more about home loan financing products here: ${contextualWebsiteUrl}
 
 Warmly,
-Mike Ford
-Loan Officer | NMLS #288455
-Cornerstone First Mortgage | Company NMLS #173855
-(541) 729-0819`;
+${MIKE_FORD_EMAIL_SIGNATURE_TEXT}`;
 
   const subject = `Your First-Time Homebuyer Roadmap, ${input.firstName}`;
   return {

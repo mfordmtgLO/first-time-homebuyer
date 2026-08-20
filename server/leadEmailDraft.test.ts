@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildLeadWelcomeDraft, buildListingAgentOutreachDraft, buildListingEmailDraft, formatListingTable } from "../shared/leadEmailDraft";
+import { MIKE_FORD_EMAIL_SIGNATURE_TEXT } from "../shared/mikeFordEmailSignature";
 
 const BUYDOWN = {
   purchasePrice: 425000,
@@ -310,7 +311,7 @@ describe("GeoSphere property-list email drafts", () => {
     expect(draft.body).toContain("SELECTED PROPERTY DETAILS");
     expect(draft.body).toContain("Saved program option: OHCS Flex Lending");
     expect(draft.body).toContain("not a program approval or a guarantee");
-    expect(draft.body).toContain("Mike Ford\nLoan Officer | NMLS #288455\nCornerstone First Mortgage");
+    expect(draft.body).toContain(MIKE_FORD_EMAIL_SIGNATURE_TEXT);
     expect(draft.mailto).toContain("jamie%40example.com");
   });
 });

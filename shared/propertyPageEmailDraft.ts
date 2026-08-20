@@ -1,4 +1,5 @@
 import { propertyEligibilityLabel, propertyFinancingContext, type PropertyLandingSnapshot } from "./propertyLandingPage";
+import { buildLoanOfficerEmailSignature } from "./mikeFordEmailSignature";
 
 type OfficerSignature = { name: string; email: string; phone: string; nmls: string; companyName: string };
 
@@ -36,7 +37,7 @@ export function buildPropertyPageAgentDraft(input: {
     "",
     "If you are open to it, I would enjoy strategizing about first-time-buyer attraction for this property and helping interested buyers understand their next financing and home-search questions.",
     "",
-    `Thanks,\n${input.loanOfficer.name}\n${input.loanOfficer.companyName}\nNMLS #${input.loanOfficer.nmls}\n${input.loanOfficer.phone}\n${input.loanOfficer.email}`,
+    `Thanks,\n${buildLoanOfficerEmailSignature(input.loanOfficer)}`,
   ].join("\n");
   const subject = `First-time buyer attraction idea — ${input.snapshot.address}`;
   return `mailto:${encodeURIComponent(input.listingAgentEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;

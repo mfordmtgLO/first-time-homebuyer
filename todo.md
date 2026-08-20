@@ -444,3 +444,7 @@
 - [x] Add reusable merge-field insertion controls beside rich email template editors
 - [x] Add safe HTML email preview rendering for reusable dashboard templates
 - [x] Add owner-scoped template version history with review and restore controls
+- [x] Filter the universal merge-field picker to only fields supported by the active email-template workflow
+- [x] Extract and normalize the supplied Mike Ford email signature for safe dashboard use
+- [x] Apply Mike Ford’s complete default signature to applicable email drafts and new reusable templates
+- [x] Add regression tests and publish the workflow-aware merge-field and signature update

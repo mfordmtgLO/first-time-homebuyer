@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildSyncedAgentOutreachDraft } from "../shared/syncedAgentOutreachDraft";
+import { MIKE_FORD_EMAIL_SIGNATURE_TEXT } from "../shared/mikeFordEmailSignature";
 
 describe("buildSyncedAgentOutreachDraft", () => {
   it("uses a direct recipient and a complete loan-officer signature for one Oregon profile", () => {
@@ -10,7 +11,7 @@ describe("buildSyncedAgentOutreachDraft", () => {
     expect(draft.bcc).toBe(false);
     expect(draft.mailto).toMatch(/^mailto:tiffany%40example\.test\?subject=/);
     expect(draft.body).toContain("Hi Tiffany,");
-    expect(draft.body).toContain("Mike Ford\nLoan Officer | NMLS #288455\nCornerstone First Mortgage | Company NMLS #173855\n(541) 729-0819");
+    expect(draft.body).toContain(MIKE_FORD_EMAIL_SIGNATURE_TEXT);
   });
 
   it("uses BCC, deduplicates addresses, and merges generic copy for a multi-profile draft", () => {

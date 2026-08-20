@@ -1,4 +1,5 @@
 import { richEmailTemplateToText } from "./emailTemplateText";
+import { MIKE_FORD_EMAIL_SIGNATURE_TEXT } from "./mikeFordEmailSignature";
 
 export type SyncedAgentOutreachRecipient = {
   fullName: string;
@@ -69,10 +70,7 @@ ${introduction}
 
 Thank you,
 
-Mike Ford
-Loan Officer | NMLS #288455
-Cornerstone First Mortgage | Company NMLS #173855
-(541) 729-0819`;
+${MIKE_FORD_EMAIL_SIGNATURE_TEXT}`;
   const bcc = recipientCount > 1;
   const recipientEmails = recipients.map((item) => item.email);
   const mailto = bcc

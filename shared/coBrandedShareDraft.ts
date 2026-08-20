@@ -1,3 +1,5 @@
+import { MIKE_FORD_EMAIL_SIGNATURE_TEXT } from "./mikeFordEmailSignature";
+
 export type CoBrandedShareDraftInput = {
   agentName: string;
   agentEmail: string;
@@ -20,8 +22,6 @@ Leads captured through your co-branded page remain associated with your profile,
 
 I look forward to our next deal together!
 
-Mike Ford
-Cornerstone First Mortgage
-(541) 729-0819`;
+${MIKE_FORD_EMAIL_SIGNATURE_TEXT}`;
   return `mailto:${agentEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }

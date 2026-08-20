@@ -4,7 +4,17 @@ import mammoth from "mammoth";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-type Props = { id: string; value: string; onChange: (value: string) => void; placeholder?: string; maxLength?: number; className?: string };
+export type EmailTemplateWorkflow = "listing_agent" | "property_list" | "property_page_agent" | "property_page_buyer" | "oregon_outreach";
+type MergeField = { token: string; label: string };
+const MERGE_FIELDS: Record<EmailTemplateWorkflow, MergeField[]> = {
+  listing_agent: [],
+  property_list: [],
+  property_page_agent: [],
+  property_page_buyer: [{ token: "{{client_name}}", label: "Client name" }, { token: "{{property_address}}", label: "Property address" }, { token: "{{property_url}}", label: "Property link" }, { token: "{{loan_officer_signature}}", label: "Loan officer signature" }, { token: "{{agent_signature}}", label: "Agent signature" }],
+  oregon_outreach: [{ token: "{{recipient_name}}", label: "Recipient first name" }, { token: "{{brokerage}}", label: "Brokerage" }, { token: "{{recipient_type}}", label: "Recipient type" }, { token: "{{recipient_count}}", label: "Recipient count" }],
+};
+export function getEmailTemplateMergeFields(workflow: EmailTemplateWorkflow) { return MERGE_FIELDS[workflow]; }
+type Props = { id: string; value: string; onChange: (value: string) => void; workflow: EmailTemplateWorkflow; placeholder?: string; maxLength?: number; className?: string };
 
 export function sanitizeEmailTemplateHtml(html: string) {
   const doc = new DOMParser().parseFromString(html, "text/html");
@@ -25,11 +35,12 @@ export function htmlToEmailText(value: string) {
   return (doc.body.textContent ?? "").replace(/\n{3,}/g, "\n\n").trim();
 }
 
-export function UniversalEmailTemplateEditor({ id, value, onChange, placeholder, maxLength = 8000, className = "" }: Props) {
+export function UniversalEmailTemplateEditor({ id, value, onChange, workflow, placeholder, maxLength = 8000, className = "" }: Props) {
   const editorRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const mergeFields = getEmailTemplateMergeFields(workflow);
   const commit = () => onChange(sanitizeEmailTemplateHtml(editorRef.current?.innerHTML ?? ""));
   const format = (command: "bold" | "italic" | "underline") => { editorRef.current?.focus(); document.execCommand(command); commit(); };
   const addLink = () => {
@@ -50,8 +61,8 @@ export function UniversalEmailTemplateEditor({ id, value, onChange, placeholder,
       <Button type="button" size="icon" variant="ghost" className="h-7 w-7" aria-label="Italic" onClick={() => format("italic")}><Italic className="h-3.5 w-3.5" /></Button>
       <Button type="button" size="icon" variant="ghost" className="h-7 w-7" aria-label="Underline" onClick={() => format("underline")}><Underline className="h-3.5 w-3.5" /></Button>
       <Button type="button" size="icon" variant="ghost" className="h-7 w-7" aria-label="Insert link" onClick={addLink}><Link2 className="h-3.5 w-3.5" /></Button>
-      <select aria-label="Insert merge field" defaultValue="" className="h-7 max-w-44 rounded border border-input bg-background px-2 text-xs" onChange={(event) => { const token = event.target.value; if (token) { editorRef.current?.focus(); document.execCommand("insertText", false, token); commit(); event.currentTarget.value = ""; } }}>
-        <option value="" disabled>Insert merge field</option><option value="{{client_name}}">Client name</option><option value="{{property_address}}">Property address</option><option value="{{property_url}}">Property link</option><option value="{{loan_officer_signature}}">Loan officer signature</option><option value="{{agent_signature}}">Agent signature</option><option value="{{listing_agent_name}}">Listing agent name</option><option value="{{listing_agent_email}}">Listing agent email</option>
+      <select aria-label="Insert merge field" defaultValue="" disabled={!mergeFields.length} className="h-7 max-w-52 rounded border border-input bg-background px-2 text-xs disabled:cursor-not-allowed disabled:opacity-60" onChange={(event) => { const token = event.target.value; if (token) { editorRef.current?.focus(); document.execCommand("insertText", false, token); commit(); event.currentTarget.value = ""; } }}>
+        <option value="" disabled>{mergeFields.length ? "Insert merge field" : "Signature and details added automatically"}</option>{mergeFields.map((field) => <option key={field.token} value={field.token}>{field.label}</option>)}
       </select>
       <input ref={fileRef} className="hidden" type="file" accept=".doc,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importWord(file); }} />
       <Button type="button" size="sm" variant="ghost" disabled={importing} onClick={() => fileRef.current?.click()}><FileUp className="mr-1.5 h-3.5 w-3.5" />{importing ? "Importing…" : "Import Word"}</Button>

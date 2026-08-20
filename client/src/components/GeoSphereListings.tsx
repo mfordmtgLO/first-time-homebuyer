@@ -35,6 +35,7 @@ import { publicSiteUrl } from "@shared/publicSiteUrl";
 import { EmailTemplateLifecycleManager, type ManagedEmailTemplate } from "@/components/EmailTemplateLifecycleManager";
 import { UniversalEmailTemplateEditor } from "@/components/UniversalEmailTemplateEditor";
 import { richEmailTemplateToText } from "@shared/emailTemplateText";
+import { buildLoanOfficerEmailSignature } from "@shared/mikeFordEmailSignature";
 
 const OVERLAYS: GeoSphereOverlayKey[] = ["all", "lmi", "usda", "lmiUsda"];
 
@@ -636,12 +637,13 @@ export default function GeoSphereListings() {
     if (!clientEmail) return;
     const clientName = window.prompt("Optional client first name for the greeting:")?.trim() || "there";
     const propertyUrl = publicSiteUrl(`/property/${page.slug}`);
-    const loanOfficerSignature = `${officer.name}\n${officer.title}${officer.nmls ? ` · NMLS #${officer.nmls}` : ""}\n${officer.companyName}\n${officer.phone}${officer.email ? ` · ${officer.email}` : ""}`;
+    const loanOfficerSignature = buildLoanOfficerEmailSignature(officer);
     const agentSignature = agent ? `${agent.name}${agent.companyName ? ` · ${agent.companyName}` : ""}${agent.phone ? ` · ${agent.phone}` : ""}` : "";
     const values: Record<string, string> = { client_name: clientName, property_address: page.address, property_url: propertyUrl, loan_officer_signature: loanOfficerSignature, agent_signature: agentSignature };
     const replaceTokens = (value: string) => value.replace(/\{\{(client_name|property_address|property_url|loan_officer_signature|agent_signature)\}\}/g, (_match, token: string) => values[token] ?? "");
     const subject = replaceTokens(selectedPropertyPageBuyerTemplate?.subjectTemplate ?? "Buyer calculation summary — {{property_address}}");
-    const body = replaceTokens(selectedPropertyPageBuyerTemplate?.bodyTemplate ? richEmailTemplateToText(selectedPropertyPageBuyerTemplate.bodyTemplate) : "Hi {{client_name}},\n\nI prepared a buyer calculation summary for {{property_address}}. Review the saved property page and current calculators here: {{property_url}}\n\nUse the page’s Buyer calculation PDF action to save the current scenario before attaching it to this message.\n\n{{loan_officer_signature}}\n\n{{agent_signature}}");
+    const resolvedBody = replaceTokens(selectedPropertyPageBuyerTemplate?.bodyTemplate ? richEmailTemplateToText(selectedPropertyPageBuyerTemplate.bodyTemplate) : "Hi {{client_name}},\n\nI prepared a buyer calculation summary for {{property_address}}. Review the saved property page and current calculators here: {{property_url}}\n\nUse the page’s Buyer calculation PDF action to save the current scenario before attaching it to this message.\n\n{{loan_officer_signature}}\n\n{{agent_signature}}");
+    const body = resolvedBody.includes(loanOfficerSignature) ? resolvedBody : `${resolvedBody.trim()}\n\n${loanOfficerSignature}${agentSignature && !resolvedBody.includes(agentSignature) ? `\n\n${agentSignature}` : ""}`;
     if (selectedPropertyPageBuyerTemplate) recordTemplateUsage.mutate({ templateScope: "property_page_buyer", templateId: selectedPropertyPageBuyerTemplate.id });
     window.location.href = `mailto:${encodeURIComponent(clientEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     toast.success(`Buyer email draft opened${selectedPropertyPageBuyerTemplate ? ` using “${selectedPropertyPageBuyerTemplate.name}.”` : "."}`);
@@ -1162,7 +1164,7 @@ export default function GeoSphereListings() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="listing-agent-template-body">Reusable email body</Label>
-              <UniversalEmailTemplateEditor id="listing-agent-template-body" value={customTemplateBody} onChange={setCustomTemplateBody} maxLength={6000} placeholder="Describe the buyer-attraction opportunity in your own words. The greeting, property lines, saved program labels, required eligibility language, and signature are added automatically." />
+              <UniversalEmailTemplateEditor id="listing-agent-template-body" value={customTemplateBody} onChange={setCustomTemplateBody} workflow="listing_agent" maxLength={6000} placeholder="Describe the buyer-attraction opportunity in your own words. The greeting, property lines, saved program labels, required eligibility language, and Mike Ford’s complete signature are added automatically." />
             </div>
           </div>
           <div className="flex justify-end gap-2">
@@ -1184,7 +1186,7 @@ export default function GeoSphereListings() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="property-email-template-body">Reusable email introduction</Label>
-              <UniversalEmailTemplateEditor id="property-email-template-body" value={customPropertyTemplateBody} onChange={setCustomPropertyTemplateBody} maxLength={6000} placeholder="Write your warm introductory message. The greeting, selected properties, Zillow links, listing-agent contacts, buyer-agent assistance, and signature are added automatically." />
+              <UniversalEmailTemplateEditor id="property-email-template-body" value={customPropertyTemplateBody} onChange={setCustomPropertyTemplateBody} workflow="property_list" maxLength={6000} placeholder="Write your warm introductory message. The greeting, selected properties, Zillow links, listing-agent contacts, buyer-agent assistance, and Mike Ford’s complete signature are added automatically." />
             </div>
           </div>
           <div className="flex justify-end gap-2">
@@ -1217,7 +1219,7 @@ export default function GeoSphereListings() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5"><Label htmlFor="property-page-agent-template-name">Template name</Label><Input id="property-page-agent-template-name" value={customPropertyPageTemplateName} onChange={(event) => setCustomPropertyPageTemplateName(event.target.value)} maxLength={160} placeholder="e.g., New co-branded property page" /></div>
-            <div className="space-y-1.5"><Label htmlFor="property-page-agent-template-body">Reusable email introduction</Label><UniversalEmailTemplateEditor id="property-page-agent-template-body" value={customPropertyPageTemplateBody} onChange={setCustomPropertyPageTemplateBody} maxLength={6000} placeholder="Explain the shared first-time-buyer attraction opportunity in your own words. The recipient, property URL, saved property facts, current-verification reminder, and signature are added automatically." /></div>
+            <div className="space-y-1.5"><Label htmlFor="property-page-agent-template-body">Reusable email introduction</Label><UniversalEmailTemplateEditor id="property-page-agent-template-body" value={customPropertyPageTemplateBody} onChange={setCustomPropertyPageTemplateBody} workflow="property_page_agent" maxLength={6000} placeholder="Explain the shared first-time-buyer attraction opportunity in your own words. The recipient, property URL, saved property facts, current-verification reminder, and Mike Ford’s complete signature are added automatically." /></div>
           </div>
           <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setCustomPropertyPageTemplateOpen(false)} disabled={savePropertyPageTemplate.isPending || updatePropertyPageTemplate.isPending}>Cancel</Button><Button onClick={() => { if (customPropertyPageTemplateName.trim().length < 2 || customPropertyPageTemplateBody.trim().length < 20) { toast.error("Enter a template name and at least 20 characters of reusable email copy."); return; } const input = { name: customPropertyPageTemplateName.trim(), bodyTemplate: customPropertyPageTemplateBody.trim() }; if (editingPropertyPageAgentTemplateId) updatePropertyPageTemplate.mutate({ id: editingPropertyPageAgentTemplateId, ...input }); else savePropertyPageTemplate.mutate(input); }} disabled={savePropertyPageTemplate.isPending || updatePropertyPageTemplate.isPending}>{savePropertyPageTemplate.isPending || updatePropertyPageTemplate.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}{editingPropertyPageAgentTemplateId ? "Update email template" : "Save email template"}</Button></div>
         </DialogContent>
@@ -1231,7 +1233,7 @@ export default function GeoSphereListings() {
           <div className="space-y-4">
             <div className="space-y-1.5"><Label htmlFor="property-page-buyer-template-name">Template name</Label><Input id="property-page-buyer-template-name" value={customPropertyPageBuyerTemplateName} onChange={(event) => setCustomPropertyPageBuyerTemplateName(event.target.value)} maxLength={160} placeholder="e.g., Buyer numbers to review" /></div>
             <div className="space-y-1.5"><Label htmlFor="property-page-buyer-template-subject">Email subject</Label><Input id="property-page-buyer-template-subject" value={customPropertyPageBuyerTemplateSubject} onChange={(event) => setCustomPropertyPageBuyerTemplateSubject(event.target.value)} maxLength={300} placeholder="Buyer calculation summary — {{property_address}}" /></div>
-            <div className="space-y-1.5"><Label htmlFor="property-page-buyer-template-body">Reusable buyer email body</Label><UniversalEmailTemplateEditor id="property-page-buyer-template-body" value={customPropertyPageBuyerTemplateBody} onChange={setCustomPropertyPageBuyerTemplateBody} maxLength={6000} placeholder="Write your client message, then use supported merge fields for property and co-brand details." /></div>
+            <div className="space-y-1.5"><Label htmlFor="property-page-buyer-template-body">Reusable buyer email body</Label><UniversalEmailTemplateEditor id="property-page-buyer-template-body" value={customPropertyPageBuyerTemplateBody} onChange={setCustomPropertyPageBuyerTemplateBody} workflow="property_page_buyer" maxLength={6000} placeholder="Write your client message, then use supported merge fields for property and co-brand details." /></div>
           </div>
           <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setCustomPropertyPageBuyerTemplateOpen(false)} disabled={savePropertyPageBuyerTemplate.isPending || updatePropertyPageBuyerTemplate.isPending}>Cancel</Button><Button onClick={() => { if (customPropertyPageBuyerTemplateName.trim().length < 2 || customPropertyPageBuyerTemplateSubject.trim().length < 4 || customPropertyPageBuyerTemplateBody.trim().length < 20) { toast.error("Enter a name, subject, and at least 20 characters of reusable buyer email copy."); return; } const input = { name: customPropertyPageBuyerTemplateName.trim(), subjectTemplate: customPropertyPageBuyerTemplateSubject.trim(), bodyTemplate: customPropertyPageBuyerTemplateBody.trim() }; if (editingPropertyPageBuyerTemplateId) updatePropertyPageBuyerTemplate.mutate({ id: editingPropertyPageBuyerTemplateId, ...input }); else savePropertyPageBuyerTemplate.mutate(input); }} disabled={savePropertyPageBuyerTemplate.isPending || updatePropertyPageBuyerTemplate.isPending}>{savePropertyPageBuyerTemplate.isPending || updatePropertyPageBuyerTemplate.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}{editingPropertyPageBuyerTemplateId ? "Update buyer template" : "Save buyer template"}</Button></div>
         </DialogContent>

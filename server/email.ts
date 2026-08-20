@@ -1,3 +1,5 @@
+import { MIKE_FORD_EMAIL_SIGNATURE_TEXT } from "../shared/mikeFordEmailSignature";
+
 /**
  * Lead referral email — sends the assigned co-marketing agent an intro email
  * when the owner clicks "Send to agent" in the /leads dashboard.
@@ -45,9 +47,7 @@ Submitted: ${input.submittedAt.toLocaleString("en-US", { timeZone: "America/Los_
 They're working with me on financing — please reach out and introduce yourself when you get a chance.
 
 Thanks,
-${input.ownerName}
-Cornerstone First Mortgage
-(541) 729-0819`;
+${input.ownerName === "Mike Ford" ? MIKE_FORD_EMAIL_SIGNATURE_TEXT : `${input.ownerName}\nCornerstone First Mortgage`}`;
   return { subject, text };
 }
 
@@ -157,9 +157,7 @@ Annual household income: ${intakeMoney(input.annualIncome)}
 
 Please follow up within one business day. This intake is an educational starting point and is not a loan approval.
 
-Mike Ford
-Cornerstone First Mortgage
-(541) 729-0819`;
+${MIKE_FORD_EMAIL_SIGNATURE_TEXT}`;
   return { subject, text };
 }
 
