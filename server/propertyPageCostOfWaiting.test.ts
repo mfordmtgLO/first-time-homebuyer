@@ -11,6 +11,9 @@ describe("single-property Cost of Waiting section", () => {
     expect(page).toContain("What could waiting cost you while this opportunity changes?");
     expect(page).toContain("monthlyPropertyTaxes={snapshot.propertyTaxes === null ? undefined : snapshot.propertyTaxes / 12}");
     expect(page).toContain("monthlyHoaDues={snapshot.hoaDues ?? undefined}");
+    expect(page).toContain("monthlyHomeownerInsurance={snapshot.homeownerInsurance ?? undefined}");
+    expect(page).toContain("Saved annual property taxes are divided by 12");
+    expect(page).toContain("Saved HOA dues are treated as a monthly planning cost");
     expect(page).toContain("BuyerCalculationActions");
     expect(page).toContain("Your local homebuying team");
     expect(page).toContain("Email PDF summary");
@@ -32,13 +35,14 @@ describe("single-property Cost of Waiting section", () => {
     expect(calculator).toContain("Cost of Waiting scenario");
     expect(calculator).toContain("FiveYearComparisonTooltip");
     expect(calculator).toContain("Five-year impact:");
-    expect(calculator).toContain("Saved property-cost planning context");
+    expect(calculator).toContain("Saved all-in monthly planning context");
     expect(calculator).toContain("monthlyPropertyTaxes?: number");
     expect(calculator).toContain("monthlyHoaDues?: number");
+    expect(calculator).toContain("monthlyHomeownerInsurance?: number");
     expect(buydown).toContain("propertyAddress?: string");
     expect(buydown).toContain("2-1 Buydown scenario for");
     expect(buydown).toContain("Share this scenario");
     expect(buydown).toContain("#buydown");
-    expect(buydown).toContain("Saved property-cost planning context");
+    expect(buydown).toContain("Saved all-in monthly planning context");
   });
 });

@@ -10,7 +10,25 @@ export type GeoSphereInventoryListing = {
   propertyTaxes?: number | null;
   units?: string | null;
   hoaDues?: number | null;
+  homeownerInsurance?: number | null;
 };
+
+const EXPORT_ESTIMATE_RATE = 0.065;
+const EXPORT_ESTIMATE_DOWN_PAYMENT_PERCENT = 0.05;
+
+export function estimateExportMonthlyPrincipalAndInterest(price: number | null) {
+  if (price === null || !Number.isFinite(price) || price < 0) return null;
+  const loanAmount = price * (1 - EXPORT_ESTIMATE_DOWN_PAYMENT_PERCENT);
+  const monthlyRate = EXPORT_ESTIMATE_RATE / 12;
+  const months = 30 * 12;
+  return Math.round((loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1)) * 100) / 100;
+}
+
+export function estimateExportTotalMonthlyPayment(listing: GeoSphereInventoryListing) {
+  const principalAndInterest = estimateExportMonthlyPrincipalAndInterest(listing.price);
+  if (principalAndInterest === null) return null;
+  return Math.round((principalAndInterest + Math.max(listing.propertyTaxes ?? 0, 0) / 12 + Math.max(listing.hoaDues ?? 0, 0) + Math.max(listing.homeownerInsurance ?? 0, 0)) * 100) / 100;
+}
 
 export type GeoSphereInventorySort = "address" | "price-low" | "price-high" | "size-high";
 
@@ -42,7 +60,7 @@ function escapeCsvCell(value: string | number | null) {
 }
 
 export function buildGeoSphereInventoryCsv(listings: GeoSphereInventoryListing[]) {
-  const headers = ["Address", "Price", "Bedrooms", "Bathrooms", "Square footage", "Property type", "Property taxes (annual)", "Units", "HOA dues (monthly)", "LMI", "USDA RD eligible"];
+  const headers = ["Address", "Price", "Bedrooms", "Bathrooms", "Square footage", "Property type", "Property taxes (annual)", "Units", "HOA dues (monthly)", "Homeowner insurance (monthly)", "Estimated P&I/month (30y, 6.5%, 5% down)", "Estimated total monthly payment (P&I + taxes + HOA + insurance)", "LMI", "USDA RD eligible"];
   const rows = listings.map((listing) => [
     listing.address,
     listing.price,
@@ -53,6 +71,9 @@ export function buildGeoSphereInventoryCsv(listings: GeoSphereInventoryListing[]
     listing.propertyTaxes ?? null,
     listing.units ?? null,
     listing.hoaDues ?? null,
+    listing.homeownerInsurance ?? null,
+    estimateExportMonthlyPrincipalAndInterest(listing.price),
+    estimateExportTotalMonthlyPayment(listing),
     Boolean(listing.isLmi) ? "Yes" : "No",
     Boolean(listing.isUsda) ? "Yes" : "No",
   ]);

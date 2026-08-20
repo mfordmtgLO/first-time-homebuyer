@@ -37,9 +37,10 @@ type BuydownProps = {
   propertyAddress?: string;
   monthlyPropertyTaxes?: number;
   monthlyHoaDues?: number;
+  monthlyHomeownerInsurance?: number;
 };
 
-export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000, propertyAddress, monthlyPropertyTaxes = 0, monthlyHoaDues = 0 }: BuydownProps) {
+export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000, propertyAddress, monthlyPropertyTaxes = 0, monthlyHoaDues = 0, monthlyHomeownerInsurance = 0 }: BuydownProps) {
   const ref = useReveal<HTMLElement>();
   const { setScenario, setAttached } = useScenario();
 
@@ -63,7 +64,7 @@ export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000
     }),
     [purchasePrice, downDollars, noteRate]
   );
-  const savedMonthlyPropertyCosts = Math.max(monthlyPropertyTaxes, 0) + Math.max(monthlyHoaDues, 0);
+  const savedMonthlyPropertyCosts = Math.max(monthlyPropertyTaxes, 0) + Math.max(monthlyHoaDues, 0) + Math.max(monthlyHomeownerInsurance, 0);
 
   // Keep the shared scenario in sync with the latest calculator run so the
   // Roadmap form can attach it when the visitor opts in.
@@ -89,7 +90,8 @@ export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000
 
   const shareScenario = async () => {
     const heading = propertyAddress ? `2-1 Buydown scenario for ${propertyAddress}` : "2-1 Buydown scenario";
-    const savedCosts = savedMonthlyPropertyCosts > 0 ? ` Saved property planning costs: ${monthlyPropertyTaxes > 0 ? `${fmtUsd(monthlyPropertyTaxes)}/mo taxes` : ""}${monthlyPropertyTaxes > 0 && monthlyHoaDues > 0 ? " and " : ""}${monthlyHoaDues > 0 ? `${fmtUsd(monthlyHoaDues)}/mo HOA` : ""}; estimated note-rate P&I plus those saved costs: ${fmtUsd(result.notePayment + savedMonthlyPropertyCosts)}/mo before insurance.` : "";
+    const savedCostLabels = [monthlyPropertyTaxes > 0 ? `${fmtUsd(monthlyPropertyTaxes)}/mo taxes` : null, monthlyHoaDues > 0 ? `${fmtUsd(monthlyHoaDues)}/mo HOA` : null, monthlyHomeownerInsurance > 0 ? `${fmtUsd(monthlyHomeownerInsurance)}/mo homeowner insurance` : null].filter(Boolean).join(", ");
+    const savedCosts = savedMonthlyPropertyCosts > 0 ? ` Saved property planning costs: ${savedCostLabels}; estimated note-rate P&I plus those saved costs: ${fmtUsd(result.notePayment + savedMonthlyPropertyCosts)}/mo before mortgage insurance.` : "";
     const summary = `${heading}: ${fmtUsd(purchasePrice)} purchase price with ${fmtUsd(downDollars)} down and a ${noteRate.toFixed(3).replace(/\.?0+$/, "")}% note rate. Estimated monthly principal-and-interest savings: ${fmtUsd(result.year1MonthlySavings)} in year one and ${fmtUsd(result.year2MonthlySavings)} in year two. Estimated seller-paid interest subsidy: ${fmtUsd(result.totalSubsidy)}.${savedCosts}`;
     const url = `${window.location.href.split("#")[0]}#buydown`;
     try {
@@ -355,7 +357,7 @@ export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000
                   <div className="text-sm text-muted-foreground">total cost covered by the seller</div>
                 </div>
               </div>
-              {savedMonthlyPropertyCosts > 0 ? <div className="mt-5 rounded-md border border-primary/15 bg-primary/[0.05] p-4 text-sm text-muted-foreground"><p className="font-semibold text-foreground">Saved property-cost planning context</p><p className="mt-1 leading-relaxed">{monthlyPropertyTaxes > 0 ? `Property taxes ${fmtUsd(monthlyPropertyTaxes)}/mo` : ""}{monthlyPropertyTaxes > 0 && monthlyHoaDues > 0 ? " · " : ""}{monthlyHoaDues > 0 ? `HOA dues ${fmtUsd(monthlyHoaDues)}/mo` : ""}. Estimated note-rate P&amp;I plus these saved costs: <span className="font-semibold text-foreground">{fmtUsd(result.notePayment + savedMonthlyPropertyCosts)}/mo</span> before insurance and mortgage insurance.</p></div> : null}
+              {savedMonthlyPropertyCosts > 0 ? <div className="mt-5 rounded-md border border-primary/15 bg-primary/[0.05] p-4 text-sm text-muted-foreground"><p className="font-semibold text-foreground">Saved all-in monthly planning context</p><p className="mt-1 leading-relaxed">{monthlyPropertyTaxes > 0 ? `Property taxes ${fmtUsd(monthlyPropertyTaxes)}/mo` : ""}{monthlyPropertyTaxes > 0 && (monthlyHoaDues > 0 || monthlyHomeownerInsurance > 0) ? " · " : ""}{monthlyHoaDues > 0 ? `HOA dues ${fmtUsd(monthlyHoaDues)}/mo` : ""}{monthlyHoaDues > 0 && monthlyHomeownerInsurance > 0 ? " · " : ""}{monthlyHomeownerInsurance > 0 ? `Homeowner insurance ${fmtUsd(monthlyHomeownerInsurance)}/mo` : ""}. Estimated note-rate P&amp;I plus these saved costs: <span className="font-semibold text-foreground">{fmtUsd(result.notePayment + savedMonthlyPropertyCosts)}/mo</span> before mortgage insurance.</p></div> : null}
             </div>
 
             <div className="mt-6 rounded-lg bg-secondary p-5 md:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -392,7 +394,7 @@ export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000
             </div>
 
             <p className="mt-4 text-xs text-muted-foreground leading-relaxed">
-              Buydown math shows principal &amp; interest only on a 30-year fixed loan. When saved property taxes or HOA dues are available above, they are shown separately for planning and still exclude insurance and mortgage insurance. You must qualify at the full note rate. This is not a commitment to lend
+              Buydown math shows principal &amp; interest only on a 30-year fixed loan. When saved property taxes, HOA dues, or homeowner insurance are available above, they are shown separately for planning; mortgage insurance remains excluded. You must qualify at the full note rate. This is not a commitment to lend
               or an offer of credit; rates shown are illustrative examples, not quotes.
             </p>
           </div>

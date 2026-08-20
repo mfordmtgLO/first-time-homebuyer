@@ -508,3 +508,8 @@
 - [x] Include saved property taxes and HOA dues in single-property calculator assumptions and buyer-facing summaries
 - [x] Add client-side and server-side numeric validation for property tax and HOA dues editor fields
 - [x] Add regression coverage and publish property export, calculator, and validation enhancements
+- [x] Audit saved property-fact storage and extend it safely for optional homeowner-insurance values
+- [x] Add optional homeowner-insurance inputs to single-property creation and post-creation editing with numeric validation
+- [x] Add clear hover tooltips for property taxes and HOA dues on public single-property details and scenario planning context
+- [x] Include saved taxes, HOA dues, and homeowner insurance in scenario planning context and total estimated monthly-payment CSV export
+- [x] Add regression coverage and publish all-in property planning enhancements

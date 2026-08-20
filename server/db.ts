@@ -1488,6 +1488,7 @@ export async function createPropertyLandingPage(input: {
   propertyTaxes?: number | null;
   units?: string | null;
   hoaDues?: number | null;
+  homeownerInsurance?: number | null;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -1511,6 +1512,7 @@ export async function createPropertyLandingPage(input: {
     propertyTaxes: input.propertyTaxes ?? existingSnapshot?.propertyTaxes ?? importedSnapshot.propertyTaxes,
     units: input.units ?? existingSnapshot?.units ?? importedSnapshot.units,
     hoaDues: input.hoaDues ?? existingSnapshot?.hoaDues ?? importedSnapshot.hoaDues,
+    homeownerInsurance: input.homeownerInsurance ?? existingSnapshot?.homeownerInsurance ?? importedSnapshot.homeownerInsurance,
   };
   if (existing[0]) {
     await db
@@ -1595,6 +1597,7 @@ export async function updatePropertyLandingPageMetadata(input: {
   propertyTaxes: number | null;
   units: string | null;
   hoaDues: number | null;
+  homeownerInsurance: number | null;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -1608,6 +1611,7 @@ export async function updatePropertyLandingPageMetadata(input: {
     propertyTaxes: input.propertyTaxes,
     units: input.units?.trim() || null,
     hoaDues: input.hoaDues,
+    homeownerInsurance: input.homeownerInsurance,
   };
   await db.update(propertyLandingPage).set({ listingSnapshot: JSON.stringify(updatedSnapshot) }).where(eq(propertyLandingPage.id, input.id));
   const updated = await db.select().from(propertyLandingPage).where(eq(propertyLandingPage.id, input.id)).limit(1);

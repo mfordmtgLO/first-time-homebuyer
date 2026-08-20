@@ -17,6 +17,7 @@ export type PropertyLandingSnapshot = {
   propertyTaxes: number | null;
   units: string | null;
   hoaDues: number | null;
+  homeownerInsurance: number | null;
   propertyType: string | null;
   manufacturedHomeType: string | null;
   yearBuilt: number | null;
@@ -131,6 +132,7 @@ export function buildPropertyLandingSnapshot(listing: SavedListingLike, sourceSa
     propertyTaxes: firstNumber(source, ["propertyTaxes", "annualPropertyTax", "taxes"]),
     units: firstString(source, ["units", "unitCount", "numberOfUnits"]),
     hoaDues: firstNumber(source, ["hoaDues", "monthlyHoaDues", "hoaFee", "monthlyHoaFee"]),
+    homeownerInsurance: firstNumber(source, ["homeownerInsurance", "homeownersInsurance", "monthlyHomeInsurance", "monthlyInsurance"]),
     propertyType,
     manufacturedHomeType: manufactured,
     yearBuilt: firstNumber(source, ["yearBuilt"]),

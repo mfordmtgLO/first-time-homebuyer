@@ -12,12 +12,16 @@ import { trpc } from "@/lib/trpc";
 import { getPropertyHeroMedia, parsePropertyLandingSnapshot, propertyEligibilityLabel } from "@shared/propertyLandingPage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import { Bath, BedDouble, Building2, CalendarCheck, CalendarDays, ChevronLeft, ExternalLink, Facebook, Globe2, Home, Instagram, Linkedin, Mail, MapPin, Phone, Printer, Ruler, Share2, ShieldCheck, SquareStack, Trees, UserRound, UsersRound, X } from "lucide-react";
+import { Bath, BedDouble, Building2, CalendarCheck, CalendarDays, ChevronLeft, ExternalLink, Facebook, Globe2, Home, Info, Instagram, Linkedin, Mail, MapPin, Phone, Printer, Ruler, Share2, ShieldCheck, SquareStack, Trees, UserRound, UsersRound, X } from "lucide-react";
 
 const money = (value: number | null) => value === null ? "Not in saved snapshot" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
 const number = (value: number | null) => value === null ? "Not in saved snapshot" : value.toLocaleString("en-US");
 const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[character] ?? character));
+function FactTooltip({ children }: { children: React.ReactNode }) {
+  return <Tooltip><TooltipTrigger asChild><button type="button" className="ml-1 inline-flex align-middle text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50" aria-label="How this saved property cost is used"><Info className="h-3.5 w-3.5" /></button></TooltipTrigger><TooltipContent className="max-w-64 text-xs leading-relaxed">{children}</TooltipContent></Tooltip>;
+}
 
 function SavedLocationMap({ latitude, longitude, address }: { latitude: number; longitude: number; address: string }) {
   const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
@@ -297,8 +301,9 @@ export default function PropertyLandingPage() {
                     <div><dt className="text-sm text-muted-foreground">Screening context</dt><dd className="mt-1 font-semibold">{eligibility}</dd></div>
                     <div><dt className="text-sm text-muted-foreground">MLS reference</dt><dd className="mt-1 font-medium">{[snapshot.mlsName, snapshot.mlsNumber].filter(Boolean).join(" · ") || "Not in saved snapshot"}</dd></div>
                     <div><dt className="text-sm text-muted-foreground">Units</dt><dd className="mt-1 font-medium">{snapshot.units ?? "Not in saved snapshot"}</dd></div>
-                    <div><dt className="text-sm text-muted-foreground">Property taxes</dt><dd className="mt-1 font-medium">{money(snapshot.propertyTaxes)}</dd></div>
-                    <div><dt className="text-sm text-muted-foreground">HOA dues</dt><dd className="mt-1 font-medium">{snapshot.hoaDues === null ? "Not in saved snapshot" : `${money(snapshot.hoaDues)}/month`}</dd></div>
+                    <div><dt className="text-sm text-muted-foreground">Property taxes<FactTooltip>Saved annual property taxes are divided by 12 for the monthly scenario-planning context. Verify the current tax amount and assessment before relying on it.</FactTooltip></dt><dd className="mt-1 font-medium">{money(snapshot.propertyTaxes)}</dd></div>
+                    <div><dt className="text-sm text-muted-foreground">HOA dues<FactTooltip>Saved HOA dues are treated as a monthly planning cost. Confirm the current dues, assessments, and what the association fee includes.</FactTooltip></dt><dd className="mt-1 font-medium">{snapshot.hoaDues === null ? "Not in saved snapshot" : `${money(snapshot.hoaDues)}/month`}</dd></div>
+                    <div><dt className="text-sm text-muted-foreground">Homeowner insurance</dt><dd className="mt-1 font-medium">{snapshot.homeownerInsurance === null ? "Not in saved snapshot" : `${money(snapshot.homeownerInsurance)}/month`}</dd></div>
                     <div><dt className="text-sm text-muted-foreground">Saved status</dt><dd className="mt-1 font-medium">{snapshot.status ?? "Not in saved snapshot"}</dd></div>
                   </dl>
                   {data.page.aiSummary && <div className="mt-8 rounded-xl border border-primary/20 bg-primary/5 p-5"><h3 className="font-semibold text-primary">Property highlights</h3><p className="mt-3 leading-relaxed text-muted-foreground">{data.page.aiSummary}</p><p className="mt-3 text-xs text-muted-foreground">Dashboard-reviewed draft based only on the saved property snapshot; verify current details independently.</p></div>}
@@ -312,7 +317,7 @@ export default function PropertyLandingPage() {
             </section>
             <div id="payment-scenarios">
               <CalculatorEligibilityBadges isLmi={snapshot.isLmi} isUsda={snapshot.isUsda} />
-              <div id="buydown" className="scroll-mt-24"><Buydown purchasePrice={snapshot.price ?? undefined} propertyAddress={snapshot.address} monthlyPropertyTaxes={snapshot.propertyTaxes === null ? undefined : snapshot.propertyTaxes / 12} monthlyHoaDues={snapshot.hoaDues ?? undefined} /></div>
+              <div id="buydown" className="scroll-mt-24"><Buydown purchasePrice={snapshot.price ?? undefined} propertyAddress={snapshot.address} monthlyPropertyTaxes={snapshot.propertyTaxes === null ? undefined : snapshot.propertyTaxes / 12} monthlyHoaDues={snapshot.hoaDues ?? undefined} monthlyHomeownerInsurance={snapshot.homeownerInsurance ?? undefined} /></div>
             </div>
             <section id="cost-of-waiting" className="scroll-mt-24 py-16 text-primary-foreground md:py-20" style={{ background: "oklch(0.27 0.05 162)" }}>
               <div className="container">
@@ -322,7 +327,7 @@ export default function PropertyLandingPage() {
                   <h2 className="mt-3 font-display text-3xl font-semibold leading-tight md:text-4xl">What could waiting cost you while this opportunity changes?</h2>
                   <p className="mt-4 max-w-2xl leading-relaxed text-primary-foreground/75">Use the calculator below to compare rent paid with the home equity you could build. The estimate is educational and can be saved with your Roadmap request for a conversation about this saved property.</p>
                 </div>
-                <CostOfWaiting purchasePrice={snapshot.price ?? undefined} propertyAddress={snapshot.address} monthlyPropertyTaxes={snapshot.propertyTaxes === null ? undefined : snapshot.propertyTaxes / 12} monthlyHoaDues={snapshot.hoaDues ?? undefined} revealImmediately />
+                <CostOfWaiting purchasePrice={snapshot.price ?? undefined} propertyAddress={snapshot.address} monthlyPropertyTaxes={snapshot.propertyTaxes === null ? undefined : snapshot.propertyTaxes / 12} monthlyHoaDues={snapshot.hoaDues ?? undefined} monthlyHomeownerInsurance={snapshot.homeownerInsurance ?? undefined} revealImmediately />
               </div>
             </section>
             <div id="roadmap" className="scroll-mt-24"><LeadMagnet /></div>
