@@ -75,6 +75,9 @@ import {
   setPropertyPageBuyerEmailTemplateArchived,
   getEmailTemplateUsageCounts,
   recordEmailTemplateUsage,
+  recordEmailTemplateVersion,
+  listEmailTemplateVersions,
+  getEmailTemplateVersion,
   getPropertyEmailPdfSummaryEngagement,
   loanOfficerSlugTaken,
   recordChatIntakeResendAttempt,
@@ -558,6 +561,30 @@ export const appRouter = router({
       const ownerUserId = input.templateScope === "property_page_buyer" || input.templateScope === "oregon_outreach" ? ctx.user.id : null;
       await recordEmailTemplateUsage({ ...input, ownerUserId });
       return { recorded: true };
+    }),
+  }),
+  templateVersions: router({
+    list: protectedProcedure.input(z.object({
+      templateScope: z.enum(["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach"]),
+      templateId: z.number().int().positive(),
+    })).query(async ({ ctx, input }) => {
+      requireAdmin(ctx.user.role);
+      return listEmailTemplateVersions({ ...input, ownerUserId: ctx.user.id });
+    }),
+    restore: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      requireAdmin(ctx.user.role);
+      const version = await getEmailTemplateVersion({ id: input.id, ownerUserId: ctx.user.id });
+      if (!version) throw new TRPCError({ code: "NOT_FOUND", message: "Template version not found." });
+      const subjectTemplate = version.subjectTemplate ?? "";
+      switch (version.templateScope) {
+        case "listing_agent": await updateListingAgentEmailTemplate({ id: version.templateId, name: version.name, bodyTemplate: version.bodyTemplate }); break;
+        case "property_list": await updatePropertyEmailTemplate({ id: version.templateId, name: version.name, bodyTemplate: version.bodyTemplate }); break;
+        case "property_page_agent": await updatePropertyPageAgentEmailTemplate({ id: version.templateId, name: version.name, bodyTemplate: version.bodyTemplate }); break;
+        case "property_page_buyer": await updatePropertyPageBuyerEmailTemplate({ ownerUserId: ctx.user.id, id: version.templateId, name: version.name, subjectTemplate, bodyTemplate: version.bodyTemplate }); break;
+        case "oregon_outreach": await updateSyncedAgentOutreachTemplate({ ownerUserId: ctx.user.id, id: version.templateId, name: version.name, subjectTemplate, bodyTemplate: version.bodyTemplate }); break;
+      }
+      await recordEmailTemplateVersion({ templateScope: version.templateScope, templateId: version.templateId, ownerUserId: ctx.user.id, name: version.name, subjectTemplate: version.subjectTemplate, bodyTemplate: version.bodyTemplate });
+      return { restored: true };
     }),
   }),
   site: router({
@@ -1296,7 +1323,9 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
         try {
-          return await createListingAgentEmailTemplate(input);
+          const template = await createListingAgentEmailTemplate(input);
+          await recordEmailTemplateVersion({ templateScope: "listing_agent", templateId: template.id, ownerUserId: ctx.user.id, name: template.name, bodyTemplate: template.bodyTemplate });
+          return template;
         } catch (error) {
           if (error instanceof Error && /duplicate|unique/i.test(error.message)) {
             throw new TRPCError({ code: "CONFLICT", message: "A template with that name already exists." });
@@ -1304,7 +1333,7 @@ export const appRouter = router({
           throw error;
         }
       }),
-    updateListingAgentEmailTemplate: protectedProcedure.input(z.object({ id: z.number().int().positive(), name: z.string().trim().min(2).max(160), bodyTemplate: z.string().trim().min(20).max(6000) })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); return updateListingAgentEmailTemplate(input); }),
+    updateListingAgentEmailTemplate: protectedProcedure.input(z.object({ id: z.number().int().positive(), name: z.string().trim().min(2).max(160), bodyTemplate: z.string().trim().min(20).max(6000) })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); const template = await updateListingAgentEmailTemplate(input); await recordEmailTemplateVersion({ templateScope: "listing_agent", templateId: template.id, ownerUserId: ctx.user.id, name: template.name, bodyTemplate: template.bodyTemplate }); return template; }),
     setListingAgentEmailTemplateArchived: protectedProcedure.input(z.object({ id: z.number().int().positive(), archived: z.boolean() })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); await setListingAgentEmailTemplateArchived(input); return { archived: input.archived }; }),
     deleteListingAgentEmailTemplate: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); await deleteListingAgentEmailTemplate(input.id); return { deleted: true }; }),
     /** Admin-only reusable buyer-facing property-email intros. Property variables and signature remain automatic. */
@@ -1320,7 +1349,9 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
         try {
-          return await createPropertyEmailTemplate(input);
+          const template = await createPropertyEmailTemplate(input);
+          await recordEmailTemplateVersion({ templateScope: "property_list", templateId: template.id, ownerUserId: ctx.user.id, name: template.name, bodyTemplate: template.bodyTemplate });
+          return template;
         } catch (error) {
           if (error instanceof Error && /duplicate|unique/i.test(error.message)) {
             throw new TRPCError({ code: "CONFLICT", message: "A template with that name already exists." });
@@ -1328,7 +1359,7 @@ export const appRouter = router({
           throw error;
         }
       }),
-    updatePropertyEmailTemplate: protectedProcedure.input(z.object({ id: z.number().int().positive(), name: z.string().trim().min(2).max(160), bodyTemplate: z.string().trim().min(20).max(6000) })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); return updatePropertyEmailTemplate(input); }),
+    updatePropertyEmailTemplate: protectedProcedure.input(z.object({ id: z.number().int().positive(), name: z.string().trim().min(2).max(160), bodyTemplate: z.string().trim().min(20).max(6000) })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); const template = await updatePropertyEmailTemplate(input); await recordEmailTemplateVersion({ templateScope: "property_list", templateId: template.id, ownerUserId: ctx.user.id, name: template.name, bodyTemplate: template.bodyTemplate }); return template; }),
     setPropertyEmailTemplateArchived: protectedProcedure.input(z.object({ id: z.number().int().positive(), archived: z.boolean() })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); await setPropertyEmailTemplateArchived(input); return { archived: input.archived }; }),
     deletePropertyEmailTemplate: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); await deletePropertyEmailTemplate(input.id); return { deleted: true }; }),
     /** Records dashboard-opened listing-agent outreach drafts for per-property communication visibility. */
@@ -1555,7 +1586,9 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
         try {
-          return await createPropertyPageAgentEmailTemplate(input);
+          const template = await createPropertyPageAgentEmailTemplate(input);
+          await recordEmailTemplateVersion({ templateScope: "property_page_agent", templateId: template.id, ownerUserId: ctx.user.id, name: template.name, bodyTemplate: template.bodyTemplate });
+          return template;
         } catch (error) {
           if (error instanceof Error && /duplicate|unique/i.test(error.message)) {
             throw new TRPCError({ code: "CONFLICT", message: "A template with that name already exists." });
@@ -1563,7 +1596,7 @@ export const appRouter = router({
           throw error;
         }
       }),
-    updateAgentEmailTemplate: protectedProcedure.input(z.object({ id: z.number().int().positive(), name: z.string().trim().min(2).max(160), bodyTemplate: z.string().trim().min(20).max(6000) })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); return updatePropertyPageAgentEmailTemplate(input); }),
+    updateAgentEmailTemplate: protectedProcedure.input(z.object({ id: z.number().int().positive(), name: z.string().trim().min(2).max(160), bodyTemplate: z.string().trim().min(20).max(6000) })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); const template = await updatePropertyPageAgentEmailTemplate(input); await recordEmailTemplateVersion({ templateScope: "property_page_agent", templateId: template.id, ownerUserId: ctx.user.id, name: template.name, bodyTemplate: template.bodyTemplate }); return template; }),
     setAgentEmailTemplateArchived: protectedProcedure.input(z.object({ id: z.number().int().positive(), archived: z.boolean() })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); await setPropertyPageAgentEmailTemplateArchived(input); return { archived: input.archived }; }),
     deleteAgentEmailTemplate: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); await deletePropertyPageAgentEmailTemplate(input.id); return { deleted: true }; }),
     listBuyerEmailTemplates: protectedProcedure.input(z.object({ includeArchived: z.boolean().optional() }).optional()).query(async ({ ctx, input }) => {
@@ -1579,7 +1612,9 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
         try {
-          return await createPropertyPageBuyerEmailTemplate({ ownerUserId: ctx.user.id, ...input });
+          const template = await createPropertyPageBuyerEmailTemplate({ ownerUserId: ctx.user.id, ...input });
+          await recordEmailTemplateVersion({ templateScope: "property_page_buyer", templateId: template.id, ownerUserId: ctx.user.id, name: template.name, subjectTemplate: template.subjectTemplate, bodyTemplate: template.bodyTemplate });
+          return template;
         } catch (error) {
           if (error instanceof Error && /duplicate|unique/i.test(error.message)) {
             throw new TRPCError({ code: "CONFLICT", message: "A buyer email template with that name already exists." });
@@ -1596,7 +1631,9 @@ export const appRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
-        return updatePropertyPageBuyerEmailTemplate({ ownerUserId: ctx.user.id, ...input });
+        const template = await updatePropertyPageBuyerEmailTemplate({ ownerUserId: ctx.user.id, ...input });
+        await recordEmailTemplateVersion({ templateScope: "property_page_buyer", templateId: template.id, ownerUserId: ctx.user.id, name: template.name, subjectTemplate: template.subjectTemplate, bodyTemplate: template.bodyTemplate });
+        return template;
       }),
     setBuyerEmailTemplateArchived: protectedProcedure
       .input(z.object({ id: z.number().int().positive(), archived: z.boolean() }))
@@ -1904,7 +1941,9 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
         try {
-          return await createSyncedAgentOutreachTemplate({ ownerUserId: ctx.user.id, ...input });
+          const template = await createSyncedAgentOutreachTemplate({ ownerUserId: ctx.user.id, ...input });
+          await recordEmailTemplateVersion({ templateScope: "oregon_outreach", templateId: template.id, ownerUserId: ctx.user.id, name: template.name, subjectTemplate: template.subjectTemplate, bodyTemplate: template.bodyTemplate });
+          return template;
         } catch (error) {
           if ((error as { code?: string }).code === "ER_DUP_ENTRY") {
             throw new TRPCError({ code: "CONFLICT", message: "A saved Oregon outreach template already has that name." });
@@ -1912,7 +1951,7 @@ export const appRouter = router({
           throw error;
         }
       }),
-    updateOutreachTemplate: protectedProcedure.input(syncedAgentOutreachTemplateInputSchema.extend({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); const { id, ...values } = input; return updateSyncedAgentOutreachTemplate({ ownerUserId: ctx.user.id, id, ...values }); }),
+    updateOutreachTemplate: protectedProcedure.input(syncedAgentOutreachTemplateInputSchema.extend({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); const { id, ...values } = input; const template = await updateSyncedAgentOutreachTemplate({ ownerUserId: ctx.user.id, id, ...values }); await recordEmailTemplateVersion({ templateScope: "oregon_outreach", templateId: template.id, ownerUserId: ctx.user.id, name: template.name, subjectTemplate: template.subjectTemplate, bodyTemplate: template.bodyTemplate }); return template; }),
     setOutreachTemplateArchived: protectedProcedure.input(z.object({ id: z.number().int().positive(), archived: z.boolean() })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); await setSyncedAgentOutreachTemplateArchived({ ownerUserId: ctx.user.id, ...input }); return { archived: input.archived }; }),
     deleteOutreachTemplate: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); await deleteSyncedAgentOutreachTemplate({ ownerUserId: ctx.user.id, id: input.id }); return { deleted: true }; }),
     buildOutreachDraft: protectedProcedure

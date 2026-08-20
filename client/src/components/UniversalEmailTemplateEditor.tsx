@@ -1,12 +1,12 @@
 import { useRef, useState } from "react";
-import { Bold, FileUp, Italic, Link2, Underline } from "lucide-react";
+import { Bold, Eye, FileUp, Italic, Link2, Underline } from "lucide-react";
 import mammoth from "mammoth";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 type Props = { id: string; value: string; onChange: (value: string) => void; placeholder?: string; maxLength?: number; className?: string };
 
-function sanitize(html: string) {
+export function sanitizeEmailTemplateHtml(html: string) {
   const doc = new DOMParser().parseFromString(html, "text/html");
   const allowed = new Set(["A", "B", "STRONG", "I", "EM", "U", "BR", "P", "DIV", "UL", "OL", "LI", "SPAN"]);
   doc.body.querySelectorAll("*").forEach((node) => {
@@ -29,7 +29,8 @@ export function UniversalEmailTemplateEditor({ id, value, onChange, placeholder,
   const editorRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
-  const commit = () => onChange(sanitize(editorRef.current?.innerHTML ?? ""));
+  const [showPreview, setShowPreview] = useState(false);
+  const commit = () => onChange(sanitizeEmailTemplateHtml(editorRef.current?.innerHTML ?? ""));
   const format = (command: "bold" | "italic" | "underline") => { editorRef.current?.focus(); document.execCommand(command); commit(); };
   const addLink = () => {
     const href = window.prompt("Paste a full https:// or mailto: link");
@@ -39,7 +40,7 @@ export function UniversalEmailTemplateEditor({ id, value, onChange, placeholder,
   const importWord = async (file: File) => {
     if (!/\.docx$/i.test(file.name)) { toast.error("Please save legacy .doc files as .docx before importing."); return; }
     setImporting(true);
-    try { const result = await mammoth.convertToHtml({ arrayBuffer: await file.arrayBuffer() }); onChange(sanitize(result.value)); toast.success(`Imported ${file.name}.`); }
+    try { const result = await mammoth.convertToHtml({ arrayBuffer: await file.arrayBuffer() }); onChange(sanitizeEmailTemplateHtml(result.value)); toast.success(`Imported ${file.name}.`); }
     catch { toast.error("This Word file could not be imported."); }
     finally { setImporting(false); if (fileRef.current) fileRef.current.value = ""; }
   };
@@ -49,10 +50,15 @@ export function UniversalEmailTemplateEditor({ id, value, onChange, placeholder,
       <Button type="button" size="icon" variant="ghost" className="h-7 w-7" aria-label="Italic" onClick={() => format("italic")}><Italic className="h-3.5 w-3.5" /></Button>
       <Button type="button" size="icon" variant="ghost" className="h-7 w-7" aria-label="Underline" onClick={() => format("underline")}><Underline className="h-3.5 w-3.5" /></Button>
       <Button type="button" size="icon" variant="ghost" className="h-7 w-7" aria-label="Insert link" onClick={addLink}><Link2 className="h-3.5 w-3.5" /></Button>
+      <select aria-label="Insert merge field" defaultValue="" className="h-7 max-w-44 rounded border border-input bg-background px-2 text-xs" onChange={(event) => { const token = event.target.value; if (token) { editorRef.current?.focus(); document.execCommand("insertText", false, token); commit(); event.currentTarget.value = ""; } }}>
+        <option value="" disabled>Insert merge field</option><option value="{{client_name}}">Client name</option><option value="{{property_address}}">Property address</option><option value="{{property_url}}">Property link</option><option value="{{loan_officer_signature}}">Loan officer signature</option><option value="{{agent_signature}}">Agent signature</option><option value="{{listing_agent_name}}">Listing agent name</option><option value="{{listing_agent_email}}">Listing agent email</option>
+      </select>
       <input ref={fileRef} className="hidden" type="file" accept=".doc,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importWord(file); }} />
       <Button type="button" size="sm" variant="ghost" disabled={importing} onClick={() => fileRef.current?.click()}><FileUp className="mr-1.5 h-3.5 w-3.5" />{importing ? "Importing…" : "Import Word"}</Button>
+      <Button type="button" size="sm" variant="ghost" onClick={() => setShowPreview((current) => !current)}><Eye className="mr-1.5 h-3.5 w-3.5" />{showPreview ? "Hide preview" : "HTML preview"}</Button>
     </div>
-    <div id={id} ref={editorRef} contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-placeholder={placeholder} onBlur={commit} onInput={commit} className="min-h-44 px-3 py-2 text-sm leading-6 outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground" dangerouslySetInnerHTML={{ __html: sanitize(value) }} />
+    <div id={id} ref={editorRef} contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-placeholder={placeholder} onBlur={commit} onInput={commit} className="min-h-44 px-3 py-2 text-sm leading-6 outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground" dangerouslySetInnerHTML={{ __html: sanitizeEmailTemplateHtml(value) }} />
+    {showPreview ? <section aria-label="HTML email preview" className="border-t border-border bg-muted/20 p-3"><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Email preview</p><div className="prose prose-sm max-w-none break-words text-foreground prose-a:text-primary" dangerouslySetInnerHTML={{ __html: sanitizeEmailTemplateHtml(value) }} /></section> : null}
     <p className="border-t border-border px-3 py-1.5 text-right text-xs text-muted-foreground">{htmlToEmailText(value).length}/{maxLength} characters · Word imports accept .docx</p>
   </div>;
 }

@@ -441,3 +441,6 @@
 - [x] Add validated export and import for custom reusable email templates across dashboard workflows
 - [x] Add a universal rich-text email template editor with safe hyperlinks and formatting controls
 - [x] Add browser-based Word document content import to the universal email template editor
+- [x] Add reusable merge-field insertion controls beside rich email template editors
+- [x] Add safe HTML email preview rendering for reusable dashboard templates
+- [x] Add owner-scoped template version history with review and restore controls

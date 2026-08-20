@@ -671,6 +671,29 @@ export const emailTemplateUsage = mysqlTable(
 export type EmailTemplateUsage = typeof emailTemplateUsage.$inferSelect;
 export type InsertEmailTemplateUsage = typeof emailTemplateUsage.$inferInsert;
 
+/** Immutable owner-scoped snapshots created whenever a reusable custom template is saved or edited. */
+export const emailTemplateVersion = mysqlTable(
+  "email_template_version",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    templateScope: mysqlEnum("templateScope", ["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach"]).notNull(),
+    templateId: int("templateId").notNull(),
+    ownerUserId: int("ownerUserId").notNull(),
+    versionNumber: int("versionNumber").notNull(),
+    name: varchar("name", { length: 160 }).notNull(),
+    subjectTemplate: varchar("subjectTemplate", { length: 300 }),
+    bodyTemplate: text("bodyTemplate").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("email_template_version_scope_template_number_unique").on(table.templateScope, table.templateId, table.versionNumber),
+    index("email_template_version_owner_idx").on(table.ownerUserId),
+  ]
+);
+
+export type EmailTemplateVersion = typeof emailTemplateVersion.$inferSelect;
+export type InsertEmailTemplateVersion = typeof emailTemplateVersion.$inferInsert;
+
 /** Private, owner-scoped LO and agent pairing used only for internal spend management. */
 export const loAgentSpendPairing = mysqlTable(
   "lo_agent_spend_pairing",

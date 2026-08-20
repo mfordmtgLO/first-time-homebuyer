@@ -16,6 +16,7 @@ import {
   propertyPageAgentEmailTemplate,
   propertyPageBuyerEmailTemplate,
   emailTemplateUsage,
+  emailTemplateVersion,
   syncedAgentOutreachTemplate,
   loAgentSpendEntry,
   loAgentSpendPairing,
@@ -42,6 +43,7 @@ import { ENV } from './_core/env';
 
 export const EMAIL_TEMPLATE_USAGE_SCOPES = ["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach"] as const;
 export type EmailTemplateUsageScope = (typeof EMAIL_TEMPLATE_USAGE_SCOPES)[number];
+export type EmailTemplateVersionScope = EmailTemplateUsageScope;
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -69,6 +71,45 @@ export async function getEmailTemplateUsageCounts(input: { templateScope: EmailT
     .where(and(...conditions))
     .groupBy(emailTemplateUsage.templateId);
   return rows.map((row) => ({ templateId: row.templateId, usageCount: Number(row.usageCount) }));
+}
+
+/** Creates a complete immutable snapshot after a custom template is created, edited, or restored. */
+export async function recordEmailTemplateVersion(input: {
+  templateScope: EmailTemplateVersionScope;
+  templateId: number;
+  ownerUserId: number;
+  name: string;
+  subjectTemplate?: string | null;
+  bodyTemplate: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const rows = await db
+    .select({ versionNumber: emailTemplateVersion.versionNumber })
+    .from(emailTemplateVersion)
+    .where(and(eq(emailTemplateVersion.templateScope, input.templateScope), eq(emailTemplateVersion.templateId, input.templateId), eq(emailTemplateVersion.ownerUserId, input.ownerUserId)))
+    .orderBy(desc(emailTemplateVersion.versionNumber))
+    .limit(1);
+  const versionNumber = (rows[0]?.versionNumber ?? 0) + 1;
+  await db.insert(emailTemplateVersion).values({ ...input, subjectTemplate: input.subjectTemplate ?? null, versionNumber });
+  return versionNumber;
+}
+
+export async function listEmailTemplateVersions(input: { templateScope: EmailTemplateVersionScope; templateId: number; ownerUserId: number }) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(emailTemplateVersion)
+    .where(and(eq(emailTemplateVersion.templateScope, input.templateScope), eq(emailTemplateVersion.templateId, input.templateId), eq(emailTemplateVersion.ownerUserId, input.ownerUserId)))
+    .orderBy(desc(emailTemplateVersion.versionNumber));
+}
+
+export async function getEmailTemplateVersion(input: { id: number; ownerUserId: number }) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(emailTemplateVersion).where(and(eq(emailTemplateVersion.id, input.id), eq(emailTemplateVersion.ownerUserId, input.ownerUserId))).limit(1);
+  return rows[0];
 }
 
 // Lazily create the drizzle instance so local tooling can run without a DB.

@@ -1,9 +1,10 @@
 import { useMemo, useRef, useState } from "react";
-import { Archive, ArchiveRestore, CheckSquare, Download, Eye, LockKeyhole, Pencil, Search, Trash2, Upload } from "lucide-react";
+import { Archive, ArchiveRestore, CheckSquare, Download, Eye, History, LockKeyhole, Pencil, Search, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { sanitizeEmailTemplateHtml } from "@/components/UniversalEmailTemplateEditor";
 
 export type ManagedEmailTemplate = {
   id: number;
@@ -33,17 +34,22 @@ type Props = {
   onBulkRestore: (templateIds: number[]) => void;
   onBulkDelete: (templateIds: number[]) => void;
   onImport: (templates: PortableEmailTemplate[]) => Promise<void>;
+  onVersionRestored?: () => void;
 };
 
 /** Consistent owner-facing lifecycle UI for reusable dashboard email templates. Built-ins remain read-only. */
-export function EmailTemplateLifecycleManager({ open, onOpenChange, title, description, templateScope, templates, pending = false, onEdit, onArchive, onRestore, onDelete, onBulkArchive, onBulkRestore, onBulkDelete, onImport }: Props) {
+export function EmailTemplateLifecycleManager({ open, onOpenChange, title, description, templateScope, templates, pending = false, onEdit, onArchive, onRestore, onDelete, onBulkArchive, onBulkRestore, onBulkDelete, onImport, onVersionRestored }: Props) {
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [previewTemplate, setPreviewTemplate] = useState<ManagedEmailTemplate | null>(null);
+  const [historyTemplate, setHistoryTemplate] = useState<ManagedEmailTemplate | null>(null);
+  const [restoredTemplates, setRestoredTemplates] = useState<Map<number, Partial<ManagedEmailTemplate>>>(new Map());
   const [sortBy, setSortBy] = useState<"name" | "most_used" | "least_used">("name");
   const [importing, setImporting] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
   const usageQuery = trpc.templateUsage.listCounts.useQuery({ templateScope }, { enabled: open });
+  const historyQuery = trpc.templateVersions.list.useQuery({ templateScope, templateId: historyTemplate?.id ?? 1 }, { enabled: Boolean(historyTemplate) });
+  const restoreVersion = trpc.templateVersions.restore.useMutation({ onSuccess: (_result, variables) => { const version = historyQuery.data?.find((item) => item.id === variables.id); if (historyTemplate && version) setRestoredTemplates((current) => new Map(current).set(historyTemplate.id, { name: version.name, subjectTemplate: version.subjectTemplate ?? undefined, bodyTemplate: version.bodyTemplate })); toast.success("Template version restored as a new current revision."); onVersionRestored?.(); historyQuery.refetch(); } });
   const usageById = useMemo(() => new Map((usageQuery.data ?? []).map((row) => [row.templateId, row.usageCount])), [usageQuery.data]);
   const normalizedSearch = search.trim().toLocaleLowerCase();
   const matchesSearch = (template: ManagedEmailTemplate) => !normalizedSearch || `${template.name} ${template.subjectTemplate ?? ""} ${template.bodyTemplate}`.toLocaleLowerCase().includes(normalizedSearch);
@@ -53,8 +59,9 @@ export function EmailTemplateLifecycleManager({ open, onOpenChange, title, descr
     if (sortBy === "least_used" && usageDifference !== 0) return -usageDifference;
     return left.name.localeCompare(right.name);
   });
-  const active = sortTemplates(templates.filter((template) => !template.archivedAt && matchesSearch(template)));
-  const archived = sortTemplates(templates.filter((template) => Boolean(template.archivedAt) && matchesSearch(template)));
+  const displayedTemplates = useMemo(() => templates.map((template) => ({ ...template, ...restoredTemplates.get(template.id) })), [restoredTemplates, templates]);
+  const active = sortTemplates(displayedTemplates.filter((template) => !template.archivedAt && matchesSearch(template)));
+  const archived = sortTemplates(displayedTemplates.filter((template) => Boolean(template.archivedAt) && matchesSearch(template)));
   const selectableActiveIds = active.filter((template) => template.isBuiltIn !== 1).map((template) => template.id);
   const selectableArchivedIds = archived.filter((template) => template.isBuiltIn !== 1).map((template) => template.id);
   const allVisibleActiveSelected = selectableActiveIds.length > 0 && selectableActiveIds.every((id) => selectedIds.has(id));
@@ -140,7 +147,7 @@ export function EmailTemplateLifecycleManager({ open, onOpenChange, title, descr
             <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{template.bodyTemplate}</p>
           </div>
         </div>
-        {builtIn ? <p className="text-xs text-muted-foreground">Available to use; protected from changes.</p> : <div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => setPreviewTemplate(template)}><Eye className="mr-1.5 h-3.5 w-3.5" />Preview</Button>{isArchived ? <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => onRestore(template)}><ArchiveRestore className="mr-1.5 h-3.5 w-3.5" />Restore</Button> : <><Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => onEdit(template)}><Pencil className="mr-1.5 h-3.5 w-3.5" />Edit</Button><Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => onArchive(template)}><Archive className="mr-1.5 h-3.5 w-3.5" />Archive</Button></>}<Button type="button" size="sm" variant="outline" className="border-rose-200 text-rose-700 hover:bg-rose-50" disabled={pending} onClick={() => onDelete(template)}><Trash2 className="mr-1.5 h-3.5 w-3.5" />Delete</Button></div>}
+        {builtIn ? <p className="text-xs text-muted-foreground">Available to use; protected from changes.</p> : <div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => setPreviewTemplate(template)}><Eye className="mr-1.5 h-3.5 w-3.5" />Preview</Button><Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => setHistoryTemplate(template)}><History className="mr-1.5 h-3.5 w-3.5" />History</Button>{isArchived ? <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => onRestore(template)}><ArchiveRestore className="mr-1.5 h-3.5 w-3.5" />Restore</Button> : <><Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => onEdit(template)}><Pencil className="mr-1.5 h-3.5 w-3.5" />Edit</Button><Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => onArchive(template)}><Archive className="mr-1.5 h-3.5 w-3.5" />Archive</Button></>}<Button type="button" size="sm" variant="outline" className="border-rose-200 text-rose-700 hover:bg-rose-50" disabled={pending} onClick={() => onDelete(template)}><Trash2 className="mr-1.5 h-3.5 w-3.5" />Delete</Button></div>}
       </div>
     </div>;
   };
@@ -164,6 +171,7 @@ export function EmailTemplateLifecycleManager({ open, onOpenChange, title, descr
         <div className="flex justify-end"><Button type="button" variant="outline" onClick={() => closeManager(false)}>Close</Button></div>
       </DialogContent>
     </Dialog>
-    <Dialog open={Boolean(previewTemplate)} onOpenChange={(isOpen) => !isOpen && setPreviewTemplate(null)}><DialogContent className="sm:max-w-xl"><DialogHeader><DialogTitle className="font-display">{previewTemplate?.name}</DialogTitle><DialogDescription>Read-only template preview. Property and recipient details are merged only when a draft is opened.</DialogDescription></DialogHeader>{previewTemplate?.subjectTemplate ? <div className="rounded-md border border-border bg-muted/30 p-3 text-sm"><span className="font-semibold">Subject: </span>{previewTemplate.subjectTemplate}</div> : null}<pre className="max-h-[45vh] overflow-auto whitespace-pre-wrap rounded-md border border-border bg-muted/20 p-4 font-sans text-sm leading-6 text-foreground">{previewTemplate?.bodyTemplate}</pre><div className="flex justify-end"><Button type="button" variant="outline" onClick={() => setPreviewTemplate(null)}>Close preview</Button></div></DialogContent></Dialog>
+    <Dialog open={Boolean(previewTemplate)} onOpenChange={(isOpen) => !isOpen && setPreviewTemplate(null)}><DialogContent className="sm:max-w-xl"><DialogHeader><DialogTitle className="font-display">{previewTemplate?.name}</DialogTitle><DialogDescription>Rendered HTML preview. Property and recipient details are merged only when a draft is opened.</DialogDescription></DialogHeader>{previewTemplate?.subjectTemplate ? <div className="rounded-md border border-border bg-muted/30 p-3 text-sm"><span className="font-semibold">Subject: </span>{previewTemplate.subjectTemplate}</div> : null}<div className="prose prose-sm max-h-[45vh] max-w-none overflow-auto rounded-md border border-border bg-muted/20 p-4 leading-6 text-foreground prose-a:text-primary" dangerouslySetInnerHTML={{ __html: sanitizeEmailTemplateHtml(previewTemplate?.bodyTemplate ?? "") }} /><div className="flex justify-end"><Button type="button" variant="outline" onClick={() => setPreviewTemplate(null)}>Close preview</Button></div></DialogContent></Dialog>
+    <Dialog open={Boolean(historyTemplate)} onOpenChange={(isOpen) => !isOpen && setHistoryTemplate(null)}><DialogContent className="sm:max-w-2xl"><DialogHeader><DialogTitle className="font-display">{historyTemplate?.name} — version history</DialogTitle><DialogDescription>Restoring a past version creates a new current revision; existing history is never overwritten.</DialogDescription></DialogHeader><div className="max-h-[55vh] space-y-3 overflow-y-auto pr-1">{historyQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading versions…</p> : historyQuery.data?.length ? historyQuery.data.map((version) => <div key={version.id} className="rounded-lg border border-border bg-muted/20 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-semibold text-foreground">Version {version.versionNumber}</p><div className="flex items-center gap-2"><span className="text-xs text-muted-foreground">{new Date(version.createdAt).toLocaleString()}</span><Button type="button" size="sm" variant="outline" disabled={restoreVersion.isPending} onClick={() => { if (window.confirm(`Restore version ${version.versionNumber} as the current template?`)) restoreVersion.mutate({ id: version.id }); }}><ArchiveRestore className="mr-1.5 h-3.5 w-3.5" />Restore</Button></div></div>{version.subjectTemplate ? <p className="mt-2 text-sm"><span className="font-semibold">Subject: </span>{version.subjectTemplate}</p> : null}<div className="prose prose-sm mt-2 max-w-none rounded border border-border bg-background p-3 prose-a:text-primary" dangerouslySetInnerHTML={{ __html: sanitizeEmailTemplateHtml(version.bodyTemplate) }} /></div>) : <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">No saved versions yet. Versions begin after a custom template is created or edited.</p>}</div><div className="flex justify-end"><Button type="button" variant="outline" onClick={() => setHistoryTemplate(null)}>Close history</Button></div></DialogContent></Dialog>
   </>;
 }

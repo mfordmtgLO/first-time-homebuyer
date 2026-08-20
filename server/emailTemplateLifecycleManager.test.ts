@@ -33,4 +33,21 @@ describe("EmailTemplateLifecycleManager bulk archived lifecycle", () => {
     expect(editorSource).toContain("mammoth.convertToHtml");
     expect(editorSource).toContain("https?:|mailto:");
   });
+
+  it("offers supported merge-field insertion and a safe rendered HTML preview", () => {
+    expect(editorSource).toContain("Insert merge field");
+    expect(editorSource).toContain("{{client_name}}");
+    expect(editorSource).toContain("{{property_address}}");
+    expect(editorSource).toContain("HTML preview");
+    expect(editorSource).toContain("sanitizeEmailTemplateHtml");
+  });
+
+  it("keeps rendered previews and owner-scoped version-history restore controls visible", () => {
+    expect(managerSource).toContain("Rendered HTML preview");
+    expect(managerSource).toContain("dangerouslySetInnerHTML");
+    expect(managerSource).toContain("templateVersions.list");
+    expect(managerSource).toContain("templateVersions.restore");
+    expect(managerSource).toContain("version history");
+    expect(managerSource).toContain("Restore version");
+  });
 });
