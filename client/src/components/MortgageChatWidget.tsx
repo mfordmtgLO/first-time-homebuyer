@@ -48,7 +48,7 @@ type Officer = {
 
 type Agent = { name: string; companyName: string; phone: string; email: string } | null;
 
-export default function MortgageChatWidget() {
+export default function MortgageChatWidget({ compactWhenIdle = false }: { compactWhenIdle?: boolean }) {
   const agentSlug = useAgentSlug();
   const loanOfficerSlug = useLoanOfficerSlug();
   const propertyPageSlug = usePropertyPageSlug();
@@ -271,6 +271,13 @@ export default function MortgageChatWidget() {
   const displayQuickReplies = displayStep ? QUICK_REPLIES[displayStep] ?? [] : [];
   const hideCollapsedLauncherDuringHero = shouldHideMobileChatLauncher(heroActionsVisible, open);
   const launcherPresentation = getMobileChatLauncherPresentation(open, pageRecentlyScrolled);
+  const launcherIsExpanded = !compactWhenIdle || launcherPresentation === "expanded";
+  const launcherSizing = compactWhenIdle
+    ? launcherIsExpanded ? "w-auto px-5" : "w-14 justify-center px-0"
+    : launcherIsExpanded ? "max-md:w-auto max-md:px-5" : "max-md:w-14 max-md:justify-center max-md:px-0";
+  const launcherTextSizing = compactWhenIdle
+    ? launcherIsExpanded ? "max-w-40 opacity-100" : "max-w-0 opacity-0"
+    : launcherIsExpanded ? "max-md:max-w-40 max-md:opacity-100" : "max-md:max-w-0 max-md:opacity-0";
 
   useEffect(() => {
     if (isProcessing || complete || nextQuestionFocusTarget !== "guided") return;
@@ -481,14 +488,12 @@ export default function MortgageChatWidget() {
             if (!open) { setOpen(true); setMinimized(false); return; }
             setMinimized(false);
           }}
-          className={`btn-press fixed bottom-[5.5rem] right-5 z-50 inline-flex h-14 items-center gap-2 rounded-full bg-primary text-sm font-semibold text-primary-foreground shadow-xl transition-[width,padding,opacity,transform,filter] duration-200 hover:brightness-110 sm:bottom-24 sm:right-6 sm:px-5 ${
-            launcherPresentation === "expanded" ? "max-md:w-auto max-md:px-5" : "max-md:w-14 max-md:justify-center max-md:px-0"
-          } ${hideCollapsedLauncherDuringHero ? "max-md:pointer-events-none max-md:translate-y-4 max-md:opacity-0" : ""}`}
+          className={`btn-press fixed bottom-[5.5rem] right-5 z-50 inline-flex h-14 items-center gap-2 rounded-full bg-primary text-sm font-semibold text-primary-foreground shadow-xl transition-[width,padding,opacity,transform,filter] duration-200 hover:brightness-110 sm:bottom-24 sm:right-6 ${launcherSizing} ${hideCollapsedLauncherDuringHero ? "max-md:pointer-events-none max-md:translate-y-4 max-md:opacity-0" : ""}`}
           aria-expanded={open && !minimized}
           aria-label={!open ? "Open mortgage intake chat" : "Resume mortgage intake chat"}
         >
           <MessageCircle className="h-5 w-5" />
-          <span className={`overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-200 ${launcherPresentation === "expanded" ? "max-md:max-w-40 max-md:opacity-100" : "max-md:max-w-0 max-md:opacity-0"}`}>
+          <span className={`overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-200 ${launcherTextSizing}`}>
             {!open ? "Ask about buying" : "Resume chat"}
           </span>
         </button>

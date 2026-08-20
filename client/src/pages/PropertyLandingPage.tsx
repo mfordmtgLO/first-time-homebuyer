@@ -80,33 +80,17 @@ function TeamProfileCard({ profile, role, showNmls = false, onCalendarClick }: {
   return <article className="rounded-xl border border-border bg-background p-4 shadow-sm"><p className="text-[11px] font-bold uppercase tracking-[0.15em] text-primary">{role}</p><div className="mt-3 flex items-start gap-3">{profile.headshotUrl ? <img src={profile.headshotUrl} alt={`${profile.name} headshot`} className="h-16 w-16 shrink-0 rounded-full border border-border object-cover" /> : <div aria-label={`${profile.name} profile placeholder`} className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary">{profileInitials(profile.name)}</div>}<div className="min-w-0 flex-1"><h3 className="font-display text-xl font-semibold leading-tight text-foreground">{profile.name}</h3><p className="mt-0.5 text-sm font-medium text-muted-foreground">{profile.title || (showNmls ? "Loan Officer" : "Co-marketing Real Estate Agent")}{showNmls && profile.nmls ? ` · NMLS #${profile.nmls}` : ""}</p>{profile.companyLogoUrl ? <img src={profile.companyLogoUrl} alt={`${profile.companyName} logo`} className="mt-2 h-7 max-w-40 object-contain object-left" /> : <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-foreground"><Building2 className="h-3.5 w-3.5 text-primary" />{profile.companyName}</p>}</div></div>{profile.companyLogoUrl && profile.companyName ? <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-foreground"><Building2 className="h-3.5 w-3.5 text-primary" />{profile.companyName}</p> : null}<div className="mt-4 grid gap-2 border-t border-border pt-3 text-sm">{profile.phone ? <a className="inline-flex items-center gap-2 font-medium text-primary hover:underline" href={`tel:${profile.phone.replace(/[^\d+]/g, "")}`}><Phone className="h-3.5 w-3.5" />{profile.phone}</a> : null}{profile.email ? <a className="inline-flex min-w-0 items-center gap-2 font-medium text-primary hover:underline" href={`mailto:${profile.email}`}><Mail className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{profile.email}</span></a> : null}{website ? <a className="inline-flex min-w-0 items-center gap-2 font-medium text-primary hover:underline" href={website} target="_blank" rel="noreferrer"><Globe2 className="h-3.5 w-3.5 shrink-0" /><span className="truncate">Visit profile</span><ExternalLink className="h-3 w-3 shrink-0" /></a> : null}{showNmls && calendlyUrl ? <a className="mt-1 inline-flex items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 font-semibold text-primary-foreground transition hover:brightness-110" href={calendlyUrl} target="_blank" rel="noreferrer" onClick={onCalendarClick}><CalendarCheck className="h-4 w-4" />Schedule a call</a> : null}{socialLinks.length ? <div className="mt-1 flex items-center gap-2"><span className="text-xs font-medium text-muted-foreground">Social:</span>{socialLinks.map(({ label, url, Icon }) => <a key={label} href={url} target="_blank" rel="noreferrer" aria-label={`${profile.name} on ${label}`} title={`${profile.name} on ${label}`} className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-primary/25 text-primary transition hover:bg-primary hover:text-primary-foreground"><Icon className="h-4 w-4" /></a>)}</div> : null}</div></article>;
 }
 
-function PropertyTeamBranding({ officer, agent, onCalendarClick }: { officer: PublicTeamProfile | null; agent: PublicTeamProfile | null; onCalendarClick: () => void }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isScrolling, setIsScrolling] = useState(false);
-  const scrollTimeoutRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolling(true);
-      if (scrollTimeoutRef.current) window.clearTimeout(scrollTimeoutRef.current);
-      scrollTimeoutRef.current = window.setTimeout(() => setIsScrolling(false), 180);
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      if (scrollTimeoutRef.current) window.clearTimeout(scrollTimeoutRef.current);
-    };
-  }, []);
+function PropertyTeamBranding({ officer, agent, onCalendarClick, isOpen, onOpenChange }: { officer: PublicTeamProfile | null; agent: PublicTeamProfile | null; onCalendarClick: () => void; isOpen: boolean; onOpenChange: (open: boolean) => void }) {
 
   useEffect(() => {
     if (!isOpen) return;
-    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setIsOpen(false); };
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") onOpenChange(false); };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [isOpen]);
+  }, [isOpen, onOpenChange]);
 
   if (!officer || !agent) return <div className="rounded-2xl border border-amber-300 bg-amber-50 p-5 text-sm text-amber-950"><div className="flex items-center gap-2 font-semibold"><UserRound className="h-4 w-4" />Co-branded team profile pending</div><p className="mt-2 leading-relaxed">This saved property page needs an active dashboard loan-officer and agent pairing before it can display the complete local contact team.</p></div>;
-  return <div className="property-print-hide"><button type="button" aria-expanded={isOpen} aria-controls="property-team-drawer" onClick={() => setIsOpen(true)} className="fixed bottom-44 right-0 z-40 rounded-l-full bg-primary px-3 py-3 text-sm font-semibold text-primary-foreground shadow-lg transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 md:bottom-auto md:top-1/2 md:-translate-y-1/2"><span className={`inline-flex items-center gap-2 ${isScrolling ? "property-team-tab-bump" : ""}`}><UsersRound className="h-4 w-4" /><span>Meet your team</span><ChevronLeft className="h-4 w-4" /></span></button>{isOpen ? <button type="button" aria-label="Close your local homebuying team" className="fixed inset-0 z-40 bg-foreground/25 backdrop-blur-[1px]" onClick={() => setIsOpen(false)} /> : null}<aside id="property-team-drawer" aria-label="Your local homebuying team" className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-border bg-card shadow-2xl transition-transform duration-200 ${isOpen ? "translate-x-0" : "translate-x-full"}`}><div className="flex items-start justify-between gap-4 border-b border-border px-5 py-5"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Co-branded property page</p><h2 className="mt-1 font-display text-2xl font-semibold">Your local homebuying team</h2><p className="mt-1 text-sm leading-relaxed text-muted-foreground">Direct contacts for this saved property page.</p></div><Button size="icon" variant="ghost" aria-label="Close team panel" onClick={() => setIsOpen(false)}><X className="h-5 w-5" /></Button></div><div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-5 [scrollbar-gutter:stable]"><TeamProfileCard profile={officer} role="Your loan officer" showNmls onCalendarClick={onCalendarClick} /><TeamProfileCard profile={agent} role="Your co-marketing real estate agent" /></div></aside></div>;
+  return <div className="property-print-hide">{isOpen ? <button type="button" aria-label="Close your local homebuying team" className="fixed inset-0 z-40 bg-foreground/25 backdrop-blur-[1px]" onClick={() => onOpenChange(false)} /> : null}<aside id="property-team-drawer" aria-label="Your local homebuying team" className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-border bg-card shadow-2xl transition-transform duration-200 ${isOpen ? "translate-x-0" : "translate-x-full"}`}><div className="flex items-start justify-between gap-4 border-b border-border px-5 py-5"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Co-branded property page</p><h2 className="mt-1 font-display text-2xl font-semibold">Your local homebuying team</h2><p className="mt-1 text-sm leading-relaxed text-muted-foreground">Direct contacts for this saved property page.</p></div><Button size="icon" variant="ghost" aria-label="Close team panel" onClick={() => onOpenChange(false)}><X className="h-5 w-5" /></Button></div><div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-5 [scrollbar-gutter:stable]"><TeamProfileCard profile={officer} role="Your loan officer" showNmls onCalendarClick={onCalendarClick} /><TeamProfileCard profile={agent} role="Your co-marketing real estate agent" /></div></aside></div>;
 }
 
 function PropertyActivityTracker({ slug }: { slug: string }) {
@@ -134,7 +118,7 @@ const PROPERTY_NAV_SECTIONS = [
   { id: "chat-intake", label: "Chat intake" },
 ] as const;
 
-function PropertySectionNavigator() {
+function PropertySectionNavigator({ onTeamClick, isTeamOpen }: { onTeamClick: () => void; isTeamOpen: boolean }) {
   const [activeSection, setActiveSection] = useState<string>("property-details");
 
   useEffect(() => {
@@ -165,7 +149,7 @@ function PropertySectionNavigator() {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  return <nav aria-label="Property page sections" className="sticky top-0 z-30 border-b border-border bg-card/95 shadow-sm backdrop-blur property-print-hide"><div className="container overflow-x-auto"><div className="flex min-w-max items-center gap-1 py-2">{PROPERTY_NAV_SECTIONS.map((section) => <button key={section.id} type="button" onClick={() => navigate(section.id)} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${section.id === "chat-intake" ? "bg-primary text-primary-foreground hover:brightness-110" : activeSection === section.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>{section.label}</button>)}</div></div></nav>;
+  return <nav aria-label="Property page sections" className="sticky top-0 z-30 border-b border-border bg-card/95 shadow-sm backdrop-blur property-print-hide"><div className="flex w-full items-center gap-2 px-3 sm:px-5"><div className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none]"><div className="flex min-w-max items-center gap-1 py-2">{PROPERTY_NAV_SECTIONS.map((section) => <button key={section.id} type="button" onClick={() => navigate(section.id)} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${section.id === "chat-intake" ? "bg-primary text-primary-foreground hover:brightness-110" : activeSection === section.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>{section.label}</button>)}</div></div><button type="button" onClick={onTeamClick} aria-expanded={isTeamOpen} aria-controls="property-team-drawer" className="btn-press shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"><span className="inline-flex items-center gap-1.5"><UsersRound className="h-3.5 w-3.5" /><span className="hidden sm:inline">Meet your team</span><span className="sm:hidden">Team</span></span></button></div></nav>;
 }
 
 function CalculatorEligibilityBadges({ isLmi, isUsda, dark = false }: { isLmi: boolean; isUsda: boolean; dark?: boolean }) {
@@ -213,6 +197,7 @@ export default function PropertyLandingPage() {
   const { data, isLoading } = trpc.propertyPages.getPublic.useQuery({ slug }, { enabled: Boolean(slug) });
   const snapshot = useMemo(() => data?.page ? parsePropertyLandingSnapshot(data.page.listingSnapshot) : null, [data?.page?.listingSnapshot]);
   const track = trpc.propertyPages.trackActivity.useMutation();
+  const [isTeamDrawerOpen, setTeamDrawerOpen] = useState(false);
 
   if (isLoading) return <div className="min-h-screen grid place-items-center text-muted-foreground">Loading saved property details…</div>;
   if (!data?.page || !snapshot) return <div className="min-h-screen grid place-items-center px-6 text-center"><div><h1 className="font-display text-3xl font-semibold">Property page unavailable</h1><p className="mt-3 text-muted-foreground">This saved property page may have been retired or its snapshot is unavailable.</p></div></div>;
@@ -242,7 +227,7 @@ export default function PropertyLandingPage() {
       <ScenarioProvider>
         <div className="min-h-screen bg-background text-foreground">
           <PropertyActivityTracker slug={data.page.slug} />
-          <style>{`@media print { header, footer, #payment-scenarios, #cost-of-waiting, .property-print-hide, [data-chat-launcher] { display: none !important; } main { color: #111 !important; } } @keyframes property-team-tab-bump { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-7px); } } @media (prefers-reduced-motion: no-preference) { .property-team-tab-bump { animation: property-team-tab-bump 420ms var(--ease-out-snappy) infinite; } } @media (prefers-reduced-motion: reduce) { .property-team-tab-bump { animation: none !important; } }`}</style>
+          <style>{`@media print { header, footer, #payment-scenarios, #cost-of-waiting, .property-print-hide, [data-chat-launcher] { display: none !important; } main { color: #111 !important; } }`}</style>
           <header className="property-print-hide border-b border-border bg-card/95 backdrop-blur">
             <div className="container flex flex-wrap items-center justify-between gap-3 py-4">
               <a href="/" className="font-display text-lg font-semibold text-primary">First-Time Homebuyer</a>
@@ -253,7 +238,7 @@ export default function PropertyLandingPage() {
             </div>
           </header>
           <main>
-            <PropertySectionNavigator />
+            <PropertySectionNavigator onTeamClick={() => setTeamDrawerOpen(true)} isTeamOpen={isTeamDrawerOpen} />
             <section className="border-b border-border bg-[linear-gradient(135deg,oklch(0.96_0.025_84),oklch(0.91_0.04_145))] py-10 md:py-16">
               <div className="container grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
                 <div>
@@ -291,7 +276,7 @@ export default function PropertyLandingPage() {
               </div>
             </section>
 
-            <PropertyTeamBranding officer={officer} agent={agent} onCalendarClick={() => track.mutate({ slug: data.page.slug, eventType: "calendar_click", detail: "loan_officer_calendly" })} />
+            <PropertyTeamBranding officer={officer} agent={agent} isOpen={isTeamDrawerOpen} onOpenChange={setTeamDrawerOpen} onCalendarClick={() => track.mutate({ slug: data.page.slug, eventType: "calendar_click", detail: "loan_officer_calendly" })} />
             <section id="property-details" className="scroll-mt-24 py-12 md:py-16">
               <div className="container grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
                 <div className="rounded-2xl border border-border bg-card p-6 shadow-sm md:p-8">
@@ -333,7 +318,7 @@ export default function PropertyLandingPage() {
             <div id="roadmap" className="scroll-mt-24"><LeadMagnet /></div>
           </main>
           <Footer />
-          <MortgageChatWidget />
+          <MortgageChatWidget compactWhenIdle />
         </div>
       </ScenarioProvider>
     </AgentPageProvider>

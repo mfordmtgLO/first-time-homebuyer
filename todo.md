@@ -522,3 +522,7 @@
 - [x] Add a For Internal Use Only watermark to the dashboard-generated all-in monthly-cost worksheet
 - [x] Add a validated maximum seller-contribution limit to property facts and use it to contextualize the 2-1 Buydown subsidy
 - [x] Add regression coverage and publish compliance-oriented single-property controls
+- [x] Match the single-property Ask about buying launcher to the main site’s idle-icon and scroll-expanded behavior
+- [x] Move Meet your team from the side tab into the far-right sticky property section menu
+- [x] Keep the sticky property menu’s Meet your team action visible and accessible at desktop and mobile widths
+- [x] Add regression coverage, visually verify scroll behavior, and publish compact property-page controls

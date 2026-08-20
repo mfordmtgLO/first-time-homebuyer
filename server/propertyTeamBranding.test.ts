@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const propertyPageSource = readFileSync(resolve(process.cwd(), "client/src/pages/PropertyLandingPage.tsx"), "utf8");
+const mortgageChatSource = readFileSync(resolve(process.cwd(), "client/src/components/MortgageChatWidget.tsx"), "utf8");
 const loanOfficerSettingsSource = readFileSync(resolve(process.cwd(), "client/src/components/LoanOfficerSettings.tsx"), "utf8");
 const agentSettingsSource = readFileSync(resolve(process.cwd(), "client/src/components/AgentSettings.tsx"), "utf8");
 
@@ -10,9 +11,9 @@ describe("public single-property co-branding", () => {
   it("renders both assigned dashboard profiles in a compact expandable contact drawer", () => {
     expect(propertyPageSource).toContain("function PropertyTeamBranding");
     expect(propertyPageSource).toContain("function TeamProfileCard");
-    expect(propertyPageSource).toContain("<PropertyTeamBranding officer={officer} agent={agent} onCalendarClick=");
+    expect(propertyPageSource).toContain("<PropertyTeamBranding officer={officer} agent={agent} isOpen={isTeamDrawerOpen}");
     expect(propertyPageSource).toContain('id="property-team-drawer"');
-    expect(propertyPageSource).toContain("aria-expanded={isOpen}");
+    expect(propertyPageSource).toContain("aria-expanded={isTeamOpen}");
     expect(propertyPageSource).toContain("Meet your team");
     expect(propertyPageSource).toContain("Your loan officer");
     expect(propertyPageSource).toContain("Your co-marketing real estate agent");
@@ -59,10 +60,18 @@ describe("public single-property co-branding", () => {
     expect(propertyPageSource).toContain("View live listing page");
   });
 
-  it("uses a restrained scroll-only engagement cue and honors reduced-motion preferences", () => {
-    expect(propertyPageSource).toContain("setIsScrolling(true)");
-    expect(propertyPageSource).toContain("property-team-tab-bump");
-    expect(propertyPageSource).toContain("prefers-reduced-motion");
-    expect(propertyPageSource).toContain("setIsScrolling(false)");
+  it("keeps Meet your team as a static far-right action in the sticky property menu", () => {
+    expect(propertyPageSource).toContain("function PropertySectionNavigator({ onTeamClick, isTeamOpen }");
+    expect(propertyPageSource).toContain("onClick={onTeamClick}");
+    expect(propertyPageSource).toContain('aria-controls="property-team-drawer"');
+    expect(propertyPageSource).toContain("<span className=\"hidden sm:inline\">Meet your team</span>");
+    expect(propertyPageSource).not.toContain("property-team-tab-bump");
+  });
+
+  it("uses the main-site scroll-responsive chat launcher pattern on property pages", () => {
+    expect(propertyPageSource).toContain("<MortgageChatWidget compactWhenIdle />");
+    expect(mortgageChatSource).toContain("compactWhenIdle = false");
+    expect(mortgageChatSource).toContain("const launcherIsExpanded = !compactWhenIdle || launcherPresentation === \"expanded\"");
+    expect(mortgageChatSource).toContain('"Ask about buying"');
   });
 });
