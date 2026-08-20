@@ -513,3 +513,8 @@
 - [x] Add clear hover tooltips for property taxes and HOA dues on public single-property details and scenario planning context
 - [x] Include saved taxes, HOA dues, and homeowner insurance in scenario planning context and total estimated monthly-payment CSV export
 - [x] Add regression coverage and publish all-in property planning enhancements
+- [x] Add optional monthly mortgage-insurance input to single-property creation and post-creation property facts with validation
+- [x] Create a dashboard-only printable all-in monthly-cost summary for loan-officer use, including saved property planning facts
+- [x] Remove public 2-1 Buydown principal-and-interest payment quotes and retain year-one/year-two savings plus seller-funded subsidy education
+- [x] Add seller-contribution assumption and non-commitment language to the public 2-1 Buydown presentation for compliance review
+- [x] Add regression coverage, visually verify dashboard and public property pages, and publish the revised calculator experience

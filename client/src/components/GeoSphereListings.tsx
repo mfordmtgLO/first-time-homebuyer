@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Activity, Copy, Download, ExternalLink, Layers3, Link2, Loader2, Mail, MapPin, Plus, RefreshCw, SearchCheck, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import { Activity, Copy, Download, ExternalLink, Layers3, Link2, Loader2, Mail, MapPin, Plus, Printer, RefreshCw, SearchCheck, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import {
   buildListingAgentOutreachDraft,
   buildListingEmailDraft,
@@ -26,7 +26,7 @@ import {
   type PropertyEmailTemplateKey,
 } from "@shared/leadEmailDraft";
 import { OVERLAY_LABELS, type GeoSphereOverlayKey } from "@shared/geosphere";
-import { buildGeoSphereInventoryCsv, filterAndSortGeoSphereListings, type GeoSphereInventorySort } from "@shared/geosphereInventory";
+import { buildGeoSphereInventoryCsv, estimateExportMonthlyPrincipalAndInterest, estimateExportTotalMonthlyPayment, filterAndSortGeoSphereListings, type GeoSphereInventorySort } from "@shared/geosphereInventory";
 import { firstHomeScreeningLabel, isFirstHomeLmiPriceEligible, parseFirstHomeScreening } from "@shared/geosphereFirstHome";
 import { filterByImportedListingAgent, getImportedListingAgentOptions, parseImportedListingAgent } from "@shared/geosphereListingAgents";
 import { filterPropertyListRecipients, formatRecipientLastFirst, type PropertyListRecipientFilter } from "@shared/geosphereRecipients";
@@ -42,6 +42,30 @@ const OVERLAYS: GeoSphereOverlayKey[] = ["all", "lmi", "usda", "lmiUsda"];
 
 const usd = (value: number | null) =>
   value === null ? "—" : value.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+
+const escapePrintHtml = (value: string) => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+
+function printAllInMonthlyCostSummary(address: string, snapshot: { price: number | null; propertyTaxes: number | null; hoaDues: number | null; homeownerInsurance: number | null; mortgageInsurance: number | null }) {
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) {
+    toast.error("Please allow pop-ups to print the all-in monthly-cost summary.");
+    return;
+  }
+  printWindow.opener = null;
+  const estimatedPrincipalAndInterest = estimateExportMonthlyPrincipalAndInterest(snapshot.price);
+  const estimatedTotal = estimateExportTotalMonthlyPayment(snapshot);
+  const rows = [
+    ["Saved price", usd(snapshot.price)],
+    ["Estimated P&I", usd(estimatedPrincipalAndInterest)],
+    ["Property taxes", snapshot.propertyTaxes === null ? "Not saved" : `${usd(snapshot.propertyTaxes / 12)}/mo (${usd(snapshot.propertyTaxes)}/yr)`],
+    ["HOA dues", snapshot.hoaDues === null ? "Not saved" : `${usd(snapshot.hoaDues)}/mo`],
+    ["Homeowner insurance", snapshot.homeownerInsurance === null ? "Not saved" : `${usd(snapshot.homeownerInsurance)}/mo`],
+    ["Mortgage insurance", snapshot.mortgageInsurance === null ? "Not saved" : `${usd(snapshot.mortgageInsurance)}/mo`],
+    ["Estimated all-in monthly planning total", usd(estimatedTotal)],
+  ];
+  printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"/><title>All-in monthly-cost summary — ${escapePrintHtml(address)}</title><style>body{font-family:Arial,sans-serif;color:#1d3128;margin:42px;line-height:1.45}h1{font-family:Georgia,serif;font-size:28px;margin:0 0 4px}p{color:#56645e}.tag{display:inline-block;background:#e8b442;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700}table{width:100%;border-collapse:collapse;margin-top:22px}th,td{border-bottom:1px solid #d8dfdb;padding:10px;text-align:left;font-size:14px}th{width:58%;color:#50645a}.total th,.total td{font-weight:700;color:#153f30;background:#f3f6f3}.note{margin-top:28px;border-top:1px solid #d8dfdb;padding-top:14px;font-size:11px;color:#56645e}@media print{body{margin:0}}</style></head><body><div class="tag">Loan officer planning worksheet</div><h1>${escapePrintHtml(address)}</h1><p>Saved-property monthly-cost planning summary</p><table>${rows.map(([label, value], index) => `<tr class="${index === rows.length - 1 ? "total" : ""}"><th>${escapePrintHtml(label)}</th><td>${escapePrintHtml(value)}</td></tr>`).join("")}</table><p class="note">Internal planning worksheet only. Estimated P&I assumes a 30-year fixed loan, 6.5% rate, and 5% down. This is not a payment quote, APR quote, loan estimate, commitment to lend, or offer of credit. Actual terms, mortgage insurance, fees, discount points, closing costs, prepaids, seller contributions, eligibility, and underwriting may change results.</p><script>window.onload=()=>window.print();<\/script></body></html>`);
+  printWindow.document.close();
+}
 
 const ALL_LISTING_AGENTS = "__all_listing_agents__";
 const ALL_SELECTED_AGENT_EMAILS = "__all_selected_agents_bcc__";
@@ -249,6 +273,7 @@ export default function GeoSphereListings() {
   const [propertyPageUnits, setPropertyPageUnits] = useState("");
   const [propertyPageHoaDues, setPropertyPageHoaDues] = useState("");
   const [propertyPageHomeownerInsurance, setPropertyPageHomeownerInsurance] = useState("");
+  const [propertyPageMortgageInsurance, setPropertyPageMortgageInsurance] = useState("");
   const [propertyPageTemplateId, setPropertyPageTemplateId] = useState("");
   const [customPropertyPageTemplateOpen, setCustomPropertyPageTemplateOpen] = useState(false);
   const [propertyPageAgentTemplateManagerOpen, setPropertyPageAgentTemplateManagerOpen] = useState(false);
@@ -265,7 +290,7 @@ export default function GeoSphereListings() {
   const [propertyPagePairDrafts, setPropertyPagePairDrafts] = useState<Record<number, { loanOfficerId: string; agentId: string }>>({});
   const [propertyPageExternalUrlDrafts, setPropertyPageExternalUrlDrafts] = useState<Record<number, string>>({});
   const [propertyPageMetadataEditorId, setPropertyPageMetadataEditorId] = useState<number | null>(null);
-  const [propertyPageMetadataDrafts, setPropertyPageMetadataDrafts] = useState<Record<number, { propertyTaxes: string; units: string; hoaDues: string; homeownerInsurance: string }>>({});
+  const [propertyPageMetadataDrafts, setPropertyPageMetadataDrafts] = useState<Record<number, { propertyTaxes: string; units: string; hoaDues: string; homeownerInsurance: string; mortgageInsurance: string }>>({});
 
   const statusQuery = trpc.geosphere.status.useQuery();
   const pullsQuery = trpc.geosphere.listPulls.useQuery();
@@ -609,6 +634,7 @@ export default function GeoSphereListings() {
     setPropertyPageUnits("");
     setPropertyPageHoaDues("");
     setPropertyPageHomeownerInsurance("");
+    setPropertyPageMortgageInsurance("");
     setPropertyPageBuilderOpen(true);
   };
   const submitPropertyPage = () => {
@@ -619,9 +645,11 @@ export default function GeoSphereListings() {
     const taxes = parseOptionalCurrencyAmount(propertyPageTaxes, "Annual property taxes", 10_000_000);
     const hoaDues = parseOptionalCurrencyAmount(propertyPageHoaDues, "Monthly HOA dues", 100_000);
     const homeownerInsurance = parseOptionalCurrencyAmount(propertyPageHomeownerInsurance, "Monthly homeowner insurance", 100_000);
+    const mortgageInsurance = parseOptionalCurrencyAmount(propertyPageMortgageInsurance, "Monthly mortgage insurance", 100_000);
     if ("error" in taxes) { toast.error(taxes.error); return; }
     if ("error" in hoaDues) { toast.error(hoaDues.error); return; }
     if ("error" in homeownerInsurance) { toast.error(homeownerInsurance.error); return; }
+    if ("error" in mortgageInsurance) { toast.error(mortgageInsurance.error); return; }
     createPropertyPage.mutate({
       geosphereListingId: propertyPageListingId,
       loanOfficerId: Number(propertyPageLoanOfficerId),
@@ -631,16 +659,19 @@ export default function GeoSphereListings() {
       ...(propertyPageUnits.trim() ? { units: propertyPageUnits.trim() } : {}),
       ...(hoaDues.value !== null ? { hoaDues: hoaDues.value } : {}),
       ...(homeownerInsurance.value !== null ? { homeownerInsurance: homeownerInsurance.value } : {}),
+      ...(mortgageInsurance.value !== null ? { mortgageInsurance: mortgageInsurance.value } : {}),
     });
   };
-  const savePropertyPageFacts = (pageId: number, draft: { propertyTaxes: string; units: string; hoaDues: string; homeownerInsurance: string }) => {
+  const savePropertyPageFacts = (pageId: number, draft: { propertyTaxes: string; units: string; hoaDues: string; homeownerInsurance: string; mortgageInsurance: string }) => {
     const taxes = parseOptionalCurrencyAmount(draft.propertyTaxes, "Annual property taxes", 10_000_000);
     const hoaDues = parseOptionalCurrencyAmount(draft.hoaDues, "Monthly HOA dues", 100_000);
     const homeownerInsurance = parseOptionalCurrencyAmount(draft.homeownerInsurance, "Monthly homeowner insurance", 100_000);
+    const mortgageInsurance = parseOptionalCurrencyAmount(draft.mortgageInsurance, "Monthly mortgage insurance", 100_000);
     if ("error" in taxes) { toast.error(taxes.error); return; }
     if ("error" in hoaDues) { toast.error(hoaDues.error); return; }
     if ("error" in homeownerInsurance) { toast.error(homeownerInsurance.error); return; }
-    updatePropertyPageMetadata.mutate({ id: pageId, propertyTaxes: taxes.value, units: draft.units.trim() || null, hoaDues: hoaDues.value, homeownerInsurance: homeownerInsurance.value });
+    if ("error" in mortgageInsurance) { toast.error(mortgageInsurance.error); return; }
+    updatePropertyPageMetadata.mutate({ id: pageId, propertyTaxes: taxes.value, units: draft.units.trim() || null, hoaDues: hoaDues.value, homeownerInsurance: homeownerInsurance.value, mortgageInsurance: mortgageInsurance.value });
   };
   const savePropertyPagePair = (pageId: number, page: typeof propertyPages[number]) => {
     const draft = propertyPagePairDrafts[pageId] ?? { loanOfficerId: String(page.loanOfficerId ?? ""), agentId: String(page.agentId ?? "") };
@@ -920,7 +951,7 @@ export default function GeoSphereListings() {
   const downloadVisibleInventory = () => {
     const csv = buildGeoSphereInventoryCsv(visibleListings.map((listing) => {
       const snapshot = buildPropertyLandingSnapshot(listing);
-      return { ...listing, propertyTaxes: snapshot.propertyTaxes, units: snapshot.units, hoaDues: snapshot.hoaDues, homeownerInsurance: snapshot.homeownerInsurance };
+      return { ...listing, propertyTaxes: snapshot.propertyTaxes, units: snapshot.units, hoaDues: snapshot.hoaDues, homeownerInsurance: snapshot.homeownerInsurance, mortgageInsurance: snapshot.mortgageInsurance };
     }));
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const href = URL.createObjectURL(blob);
@@ -1189,6 +1220,7 @@ export default function GeoSphereListings() {
                     units: snapshot?.units ?? "",
                     hoaDues: snapshot?.hoaDues === null || snapshot?.hoaDues === undefined ? "" : String(snapshot.hoaDues),
                     homeownerInsurance: snapshot?.homeownerInsurance === null || snapshot?.homeownerInsurance === undefined ? "" : String(snapshot.homeownerInsurance),
+                    mortgageInsurance: snapshot?.mortgageInsurance === null || snapshot?.mortgageInsurance === undefined ? "" : String(snapshot.mortgageInsurance),
                   };
                   const url = publicSiteUrl(`/property/${page.slug}`);
                   return <div key={page.id} className="rounded-xl border border-border bg-card p-4 shadow-sm">
@@ -1202,16 +1234,17 @@ export default function GeoSphereListings() {
                     </div>
                     <div className="mt-3 rounded-lg border border-border bg-muted/20 p-3"><div className="flex flex-col gap-2 sm:flex-row sm:items-end"><label className="min-w-0 flex-1 text-xs font-semibold text-muted-foreground">External live-listing URL <span className="font-normal">(optional)</span><Input className="mt-1.5 h-9 bg-background text-xs" type="url" value={propertyPageExternalUrlDrafts[page.id] ?? page.externalListingUrl ?? ""} onChange={(event) => setPropertyPageExternalUrlDrafts((current) => ({ ...current, [page.id]: event.target.value }))} placeholder="https://your-crm.example/property/..." /></label><Button size="sm" variant="outline" disabled={updatePropertyPageExternalUrl.isPending} onClick={() => updatePropertyPageExternalUrl.mutate({ id: page.id, externalListingUrl: (propertyPageExternalUrlDrafts[page.id] ?? page.externalListingUrl ?? "").trim() })}><Link2 className="mr-1.5 h-3.5 w-3.5" />Save live link</Button></div><p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Use an authorized Surefire, Total Expert, MLS-vendor, or other third-party property URL. This page only links out—it does not fetch, copy, or represent third-party listing data as live.</p>{page.externalListingUrl ? <a href={page.externalListingUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">Open saved live-listing link <ExternalLink className="h-3 w-3" /></a> : null}</div>
                     <div className="mt-3 rounded-lg border border-border bg-muted/20 p-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-semibold text-foreground">Saved property facts</p><Button size="sm" variant="outline" onClick={() => { setPropertyPageMetadataDrafts((current) => ({ ...current, [page.id]: metadataDraft })); setPropertyPageMetadataEditorId((current) => current === page.id ? null : page.id); }}>{propertyPageMetadataEditorId === page.id ? "Close editor" : "Edit taxes, units, HOA & insurance"}</Button></div>
-                      {propertyPageMetadataEditorId === page.id ? <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-semibold text-foreground">Saved property facts</p><Button size="sm" variant="outline" onClick={() => { setPropertyPageMetadataDrafts((current) => ({ ...current, [page.id]: metadataDraft })); setPropertyPageMetadataEditorId((current) => current === page.id ? null : page.id); }}>{propertyPageMetadataEditorId === page.id ? "Close editor" : "Edit property facts"}</Button></div>
+                      {propertyPageMetadataEditorId === page.id ? <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                         <label className="text-xs font-semibold text-muted-foreground">Annual property taxes<Input className="mt-1.5 h-9 bg-background text-xs" type="number" min="0" step="1" value={metadataDraft.propertyTaxes} onChange={(event) => setPropertyPageMetadataDrafts((current) => ({ ...current, [page.id]: { ...metadataDraft, propertyTaxes: event.target.value } }))} placeholder="e.g., 2400" /></label>
                         <label className="text-xs font-semibold text-muted-foreground">Units<Input className="mt-1.5 h-9 bg-background text-xs" value={metadataDraft.units} maxLength={80} onChange={(event) => setPropertyPageMetadataDrafts((current) => ({ ...current, [page.id]: { ...metadataDraft, units: event.target.value } }))} placeholder="e.g., 2" /></label>
                         <label className="text-xs font-semibold text-muted-foreground">Monthly HOA dues<Input className="mt-1.5 h-9 bg-background text-xs" type="number" min="0" step="0.01" value={metadataDraft.hoaDues} onChange={(event) => setPropertyPageMetadataDrafts((current) => ({ ...current, [page.id]: { ...metadataDraft, hoaDues: event.target.value } }))} placeholder="e.g., 125" /></label>
                         <label className="text-xs font-semibold text-muted-foreground">Monthly homeowner insurance<Input className="mt-1.5 h-9 bg-background text-xs" type="number" min="0" step="0.01" value={metadataDraft.homeownerInsurance} onChange={(event) => setPropertyPageMetadataDrafts((current) => ({ ...current, [page.id]: { ...metadataDraft, homeownerInsurance: event.target.value } }))} placeholder="e.g., 145" /></label>
-                        <div className="sm:col-span-2 xl:col-span-4 flex items-center justify-between gap-3"><p className="text-[11px] leading-relaxed text-muted-foreground">Saved property facts require current verification. Leave a field blank to clear it from this public saved snapshot.</p><Button size="sm" disabled={updatePropertyPageMetadata.isPending} onClick={() => savePropertyPageFacts(page.id, metadataDraft)}>Save facts</Button></div>
-                      </div> : <p className="mt-2 text-[11px] text-muted-foreground">Taxes: {snapshot?.propertyTaxes === null || snapshot?.propertyTaxes === undefined ? "not saved" : usd(snapshot.propertyTaxes)} · Units: {snapshot?.units ?? "not saved"} · HOA: {snapshot?.hoaDues === null || snapshot?.hoaDues === undefined ? "not saved" : `${usd(snapshot.hoaDues)}/mo`} · Insurance: {snapshot?.homeownerInsurance === null || snapshot?.homeownerInsurance === undefined ? "not saved" : `${usd(snapshot.homeownerInsurance)}/mo`}</p>}
+                        <label className="text-xs font-semibold text-muted-foreground">Monthly mortgage insurance<Input className="mt-1.5 h-9 bg-background text-xs" type="number" min="0" step="0.01" value={metadataDraft.mortgageInsurance} onChange={(event) => setPropertyPageMetadataDrafts((current) => ({ ...current, [page.id]: { ...metadataDraft, mortgageInsurance: event.target.value } }))} placeholder="e.g., 180" /></label>
+                        <div className="sm:col-span-2 xl:col-span-5 flex items-center justify-between gap-3"><p className="text-[11px] leading-relaxed text-muted-foreground">Saved property facts require current verification. Leave a field blank to clear it from this public saved snapshot.</p><Button size="sm" disabled={updatePropertyPageMetadata.isPending} onClick={() => savePropertyPageFacts(page.id, metadataDraft)}>Save facts</Button></div>
+                      </div> : <p className="mt-2 text-[11px] text-muted-foreground">Taxes: {snapshot?.propertyTaxes === null || snapshot?.propertyTaxes === undefined ? "not saved" : usd(snapshot.propertyTaxes)} · Units: {snapshot?.units ?? "not saved"} · HOA: {snapshot?.hoaDues === null || snapshot?.hoaDues === undefined ? "not saved" : `${usd(snapshot.hoaDues)}/mo`} · Home insurance: {snapshot?.homeownerInsurance === null || snapshot?.homeownerInsurance === undefined ? "not saved" : `${usd(snapshot.homeownerInsurance)}/mo`} · Mortgage insurance: {snapshot?.mortgageInsurance === null || snapshot?.mortgageInsurance === undefined ? "not saved" : `${usd(snapshot.mortgageInsurance)}/mo`}</p>}
                     </div>
-                    <div className="mt-4 flex flex-wrap items-center gap-2"><Button size="sm" variant="outline" onClick={() => savePropertyPagePair(page.id, page)} disabled={updatePropertyPagePair.isPending}><Link2 className="mr-1.5 h-3.5 w-3.5" /> Save pairing</Button><Button size="sm" onClick={() => openPropertyPageAgentDraft(page)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Agent email draft</Button><Button size="sm" variant="outline" onClick={() => openPropertyPageBuyerDraft(page)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Buyer email draft</Button><Button size="sm" variant="outline" disabled={refreshPropertyPageSnapshot.isPending} onClick={() => refreshPropertyPageSnapshot.mutate({ id: page.id })}><RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Refresh saved snapshot</Button><label className="ml-auto flex items-center gap-2 text-xs font-medium text-muted-foreground">{page.isActive === 1 ? "Public" : "Retired"}<input type="checkbox" role="switch" aria-label={`Make ${page.address} ${page.isActive === 1 ? "retired" : "public"}`} checked={page.isActive === 1} disabled={setPropertyPageActive.isPending} onChange={(event) => setPropertyPageActive.mutate({ id: page.id, isActive: event.target.checked })} className="h-4 w-8 cursor-pointer accent-primary" /></label></div>
+                    <div className="mt-4 flex flex-wrap items-center gap-2"><Button size="sm" variant="outline" onClick={() => savePropertyPagePair(page.id, page)} disabled={updatePropertyPagePair.isPending}><Link2 className="mr-1.5 h-3.5 w-3.5" /> Save pairing</Button><Button size="sm" onClick={() => openPropertyPageAgentDraft(page)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Agent email draft</Button><Button size="sm" variant="outline" onClick={() => openPropertyPageBuyerDraft(page)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Buyer email draft</Button>{snapshot ? <Button size="sm" variant="outline" onClick={() => printAllInMonthlyCostSummary(page.address, snapshot)}><Printer className="mr-1.5 h-3.5 w-3.5" /> Print all-in costs</Button> : null}<Button size="sm" variant="outline" disabled={refreshPropertyPageSnapshot.isPending} onClick={() => refreshPropertyPageSnapshot.mutate({ id: page.id })}><RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Refresh saved snapshot</Button><label className="ml-auto flex items-center gap-2 text-xs font-medium text-muted-foreground">{page.isActive === 1 ? "Public" : "Retired"}<input type="checkbox" role="switch" aria-label={`Make ${page.address} ${page.isActive === 1 ? "retired" : "public"}`} checked={page.isActive === 1} disabled={setPropertyPageActive.isPending} onChange={(event) => setPropertyPageActive.mutate({ id: page.id, isActive: event.target.checked })} className="h-4 w-8 cursor-pointer accent-primary" /></label></div>
                     <PropertyPageAiSummaryEditor page={page} />
                     <PropertyPageTimeline propertyLandingPageId={page.id} />
                   </div>;
@@ -1320,11 +1353,12 @@ export default function GeoSphereListings() {
               <label className="space-y-1.5"><span className="text-sm font-medium">Loan officer</span><Select value={propertyPageLoanOfficerId} onValueChange={setPropertyPageLoanOfficerId}><SelectTrigger><SelectValue placeholder="Choose loan officer" /></SelectTrigger><SelectContent>{officers.map((officer) => <SelectItem key={officer.id} value={String(officer.id)}>{officer.name}</SelectItem>)}</SelectContent></Select></label>
               <label className="space-y-1.5"><span className="text-sm font-medium">Co-branded agent</span><Select value={propertyPageAgentId} onValueChange={setPropertyPageAgentId}><SelectTrigger><SelectValue placeholder="Choose agent" /></SelectTrigger><SelectContent>{agents.map((agent) => <SelectItem key={agent.id} value={String(agent.id)}>{agent.name}</SelectItem>)}</SelectContent></Select></label>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
               <div className="space-y-1.5"><Label htmlFor="property-page-taxes">Property taxes <span className="font-normal text-muted-foreground">(annual USD, optional)</span></Label><Input id="property-page-taxes" type="number" min="0" step="1" inputMode="decimal" value={propertyPageTaxes} onChange={(event) => setPropertyPageTaxes(event.target.value)} placeholder="e.g., 2400" /><p className="text-xs text-muted-foreground">Shown as the saved annual tax amount on the public property details.</p></div>
               <div className="space-y-1.5"><Label htmlFor="property-page-units">Units <span className="font-normal text-muted-foreground">(optional)</span></Label><Input id="property-page-units" value={propertyPageUnits} onChange={(event) => setPropertyPageUnits(event.target.value)} maxLength={80} placeholder="e.g., 2" /><p className="text-xs text-muted-foreground">Use the official unit count or an appropriate property-unit label.</p></div>
               <div className="space-y-1.5"><Label htmlFor="property-page-hoa-dues">HOA dues <span className="font-normal text-muted-foreground">(monthly USD, optional)</span></Label><Input id="property-page-hoa-dues" type="number" min="0" step="0.01" inputMode="decimal" value={propertyPageHoaDues} onChange={(event) => setPropertyPageHoaDues(event.target.value)} placeholder="e.g., 125" /><p className="text-xs text-muted-foreground">Shown as saved monthly HOA dues on the public property details.</p></div>
               <div className="space-y-1.5"><Label htmlFor="property-page-homeowner-insurance">Homeowner insurance <span className="font-normal text-muted-foreground">(monthly USD, optional)</span></Label><Input id="property-page-homeowner-insurance" type="number" min="0" step="0.01" inputMode="decimal" value={propertyPageHomeownerInsurance} onChange={(event) => setPropertyPageHomeownerInsurance(event.target.value)} placeholder="e.g., 145" /><p className="text-xs text-muted-foreground">Used as saved monthly planning context, not an insurance quote.</p></div>
+              <div className="space-y-1.5"><Label htmlFor="property-page-mortgage-insurance">Mortgage insurance <span className="font-normal text-muted-foreground">(monthly USD, optional)</span></Label><Input id="property-page-mortgage-insurance" type="number" min="0" step="0.01" inputMode="decimal" value={propertyPageMortgageInsurance} onChange={(event) => setPropertyPageMortgageInsurance(event.target.value)} placeholder="e.g., 180" /><p className="text-xs text-muted-foreground">Planning estimate only; verify loan-specific mortgage insurance with the loan officer.</p></div>
             </div>
             <div className="space-y-1.5"><Label htmlFor="property-page-external-url">Existing live property-page URL <span className="font-normal text-muted-foreground">(optional)</span></Label><Input id="property-page-external-url" type="url" value={propertyPageExternalUrl} onChange={(event) => setPropertyPageExternalUrl(event.target.value)} placeholder="https://surefire.com/... or https://totalexpert.com/..." /><p className="text-xs leading-relaxed text-muted-foreground">For an authorized third-party CRM or MLS-vendor property page. We link to it from this saved-snapshot page but do not pull in its photos, description, status, or other listing data.</p></div>
           </div>

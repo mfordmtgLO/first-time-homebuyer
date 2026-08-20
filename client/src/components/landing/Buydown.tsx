@@ -7,16 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { ArrowRight, FileDown, Share2 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  LabelList,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-} from "recharts";
 
 const fmtUsd = (v: number, digits = 0) =>
   v.toLocaleString("en-US", {
@@ -26,21 +16,16 @@ const fmtUsd = (v: number, digits = 0) =>
     maximumFractionDigits: digits,
   });
 
-const BAR_COLORS = {
-  year1: "oklch(0.72 0.13 75)", // honey amber
-  year2: "oklch(0.55 0.11 75)", // deeper amber
-  note: "oklch(0.32 0.06 155)", // evergreen
-};
-
 type BuydownProps = {
   purchasePrice?: number;
   propertyAddress?: string;
   monthlyPropertyTaxes?: number;
   monthlyHoaDues?: number;
   monthlyHomeownerInsurance?: number;
+  monthlyMortgageInsurance?: number;
 };
 
-export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000, propertyAddress, monthlyPropertyTaxes = 0, monthlyHoaDues = 0, monthlyHomeownerInsurance = 0 }: BuydownProps) {
+export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000, propertyAddress, monthlyPropertyTaxes = 0, monthlyHoaDues = 0, monthlyHomeownerInsurance = 0, monthlyMortgageInsurance = 0 }: BuydownProps) {
   const ref = useReveal<HTMLElement>();
   const { setScenario, setAttached } = useScenario();
 
@@ -64,7 +49,8 @@ export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000
     }),
     [purchasePrice, downDollars, noteRate]
   );
-  const savedMonthlyPropertyCosts = Math.max(monthlyPropertyTaxes, 0) + Math.max(monthlyHoaDues, 0) + Math.max(monthlyHomeownerInsurance, 0);
+  const savedMonthlyPropertyCosts = Math.max(monthlyPropertyTaxes, 0) + Math.max(monthlyHoaDues, 0) + Math.max(monthlyHomeownerInsurance, 0) + Math.max(monthlyMortgageInsurance, 0);
+  const savedCostLabels = [monthlyPropertyTaxes > 0 ? `${fmtUsd(monthlyPropertyTaxes)}/mo taxes` : null, monthlyHoaDues > 0 ? `${fmtUsd(monthlyHoaDues)}/mo HOA` : null, monthlyHomeownerInsurance > 0 ? `${fmtUsd(monthlyHomeownerInsurance)}/mo homeowner insurance` : null, monthlyMortgageInsurance > 0 ? `${fmtUsd(monthlyMortgageInsurance)}/mo mortgage insurance` : null].filter(Boolean).join(", ");
 
   // Keep the shared scenario in sync with the latest calculator run so the
   // Roadmap form can attach it when the visitor opts in.
@@ -90,8 +76,7 @@ export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000
 
   const shareScenario = async () => {
     const heading = propertyAddress ? `2-1 Buydown scenario for ${propertyAddress}` : "2-1 Buydown scenario";
-    const savedCostLabels = [monthlyPropertyTaxes > 0 ? `${fmtUsd(monthlyPropertyTaxes)}/mo taxes` : null, monthlyHoaDues > 0 ? `${fmtUsd(monthlyHoaDues)}/mo HOA` : null, monthlyHomeownerInsurance > 0 ? `${fmtUsd(monthlyHomeownerInsurance)}/mo homeowner insurance` : null].filter(Boolean).join(", ");
-    const savedCosts = savedMonthlyPropertyCosts > 0 ? ` Saved property planning costs: ${savedCostLabels}; estimated note-rate P&I plus those saved costs: ${fmtUsd(result.notePayment + savedMonthlyPropertyCosts)}/mo before mortgage insurance.` : "";
+    const savedCosts = savedMonthlyPropertyCosts > 0 ? ` Saved property planning costs to review: ${savedCostLabels}.` : "";
     const summary = `${heading}: ${fmtUsd(purchasePrice)} purchase price with ${fmtUsd(downDollars)} down and a ${noteRate.toFixed(3).replace(/\.?0+$/, "")}% note rate. Estimated monthly principal-and-interest savings: ${fmtUsd(result.year1MonthlySavings)} in year one and ${fmtUsd(result.year2MonthlySavings)} in year two. Estimated seller-paid interest subsidy: ${fmtUsd(result.totalSubsidy)}.${savedCosts}`;
     const url = `${window.location.href.split("#")[0]}#buydown`;
     try {
@@ -106,30 +91,6 @@ export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000
       toast.error("Unable to share this scenario. Please try again.");
     }
   };
-
-  const chartData = useMemo(
-    () => [
-      {
-        label: `Year 1 · ${result.year1Rate.toFixed(3).replace(/\.?0+$/, "")}%`,
-        key: "year1",
-        payment: Math.round(result.year1Payment),
-        savings: Math.round(result.year1MonthlySavings),
-      },
-      {
-        label: `Year 2 · ${result.year2Rate.toFixed(3).replace(/\.?0+$/, "")}%`,
-        key: "year2",
-        payment: Math.round(result.year2Payment),
-        savings: Math.round(result.year2MonthlySavings),
-      },
-      {
-        label: `Years 3–30 · ${noteRate.toFixed(3).replace(/\.?0+$/, "")}%`,
-        key: "note",
-        payment: Math.round(result.notePayment),
-        savings: 0,
-      },
-    ],
-    [result, noteRate]
-  );
 
   const handleDollarInput = (raw: string) => {
     const v = Number(raw.replace(/[^0-9.]/g, ""));
@@ -147,10 +108,9 @@ export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000
             The 2-1 buydown: <span className="amber-underline">ease into your payment.</span>
           </h2>
           <p className="mt-5 text-lg text-muted-foreground leading-relaxed">
-            With a seller-paid 2-1 temporary buydown, the seller funds an interest subsidy that lowers your
-            rate by <strong className="text-foreground">2% in year one</strong> and{" "}
-            <strong className="text-foreground">1% in year two</strong> — then your payment settles at the
-            note rate. Try your own numbers below.
+            A seller-paid 2-1 temporary buydown can be a potential short-run affordability option. It may lower
+            the rate by <strong className="text-foreground">2% in year one</strong> and{" "}
+            <strong className="text-foreground">1% in year two</strong>. Use the inputs below to explore potential monthly savings.
           </p>
         </div>
 
@@ -300,40 +260,15 @@ export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000
           <div className="reveal" style={{ transitionDelay: "80ms" }}>
             <div className="rounded-lg bg-background border border-foreground/12 shadow-sm p-5 md:p-7">
               <h3 className="font-display font-semibold text-xl text-foreground">
-                Monthly principal &amp; interest by year
+                Potential monthly payment savings
               </h3>
-              <div className="mt-4 h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 28, right: 8, left: 8, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="oklch(0.32 0.06 155 / 0.12)" />
-                    <XAxis
-                      dataKey="label"
-                      tickLine={false}
-                      axisLine={false}
-                      tick={{ fontSize: 12, fill: "oklch(0.45 0.03 155)" }}
-                    />
-                    <YAxis hide domain={[0, (dataMax: number) => dataMax * 1.15]} />
-                    <Bar dataKey="payment" radius={[6, 6, 0, 0]} maxBarSize={110}>
-                      {chartData.map((d) => (
-                        <Cell key={d.key} fill={BAR_COLORS[d.key as keyof typeof BAR_COLORS]} />
-                      ))}
-                      <LabelList
-                        dataKey="payment"
-                        position="top"
-                        formatter={(v: number) => fmtUsd(v)}
-                        style={{ fontSize: 13, fontWeight: 700, fill: "oklch(0.25 0.04 155)" }}
-                      />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">This educational comparison shows potential monthly principal-and-interest savings from a fully seller-funded 2-1 interest subsidy. It does not quote a payment, APR, loan fees, closing costs, or loan terms.</p>
               <div className="mt-6 grid sm:grid-cols-3 gap-4 border-t border-foreground/10 pt-6">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                     Year 1 savings
                   </div>
-                  <div className="mt-1 font-display font-semibold text-2xl" style={{ color: BAR_COLORS.year2 }}>
+                  <div className="mt-1 font-display font-semibold text-2xl text-amber-700">
                     {fmtUsd(result.year1MonthlySavings)}/mo
                   </div>
                   <div className="text-sm text-muted-foreground">{fmtUsd(result.year1AnnualSavings)} for the year</div>
@@ -342,7 +277,7 @@ export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000
                   <div className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                     Year 2 savings
                   </div>
-                  <div className="mt-1 font-display font-semibold text-2xl" style={{ color: BAR_COLORS.year2 }}>
+                  <div className="mt-1 font-display font-semibold text-2xl text-amber-700">
                     {fmtUsd(result.year2MonthlySavings)}/mo
                   </div>
                   <div className="text-sm text-muted-foreground">{fmtUsd(result.year2AnnualSavings)} for the year</div>
@@ -357,15 +292,12 @@ export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000
                   <div className="text-sm text-muted-foreground">total cost covered by the seller</div>
                 </div>
               </div>
-              {savedMonthlyPropertyCosts > 0 ? <div className="mt-5 rounded-md border border-primary/15 bg-primary/[0.05] p-4 text-sm text-muted-foreground"><p className="font-semibold text-foreground">Saved all-in monthly planning context</p><p className="mt-1 leading-relaxed">{monthlyPropertyTaxes > 0 ? `Property taxes ${fmtUsd(monthlyPropertyTaxes)}/mo` : ""}{monthlyPropertyTaxes > 0 && (monthlyHoaDues > 0 || monthlyHomeownerInsurance > 0) ? " · " : ""}{monthlyHoaDues > 0 ? `HOA dues ${fmtUsd(monthlyHoaDues)}/mo` : ""}{monthlyHoaDues > 0 && monthlyHomeownerInsurance > 0 ? " · " : ""}{monthlyHomeownerInsurance > 0 ? `Homeowner insurance ${fmtUsd(monthlyHomeownerInsurance)}/mo` : ""}. Estimated note-rate P&amp;I plus these saved costs: <span className="font-semibold text-foreground">{fmtUsd(result.notePayment + savedMonthlyPropertyCosts)}/mo</span> before mortgage insurance.</p></div> : null}
+              {savedMonthlyPropertyCosts > 0 ? <div className="mt-5 rounded-md border border-primary/15 bg-primary/[0.05] p-4 text-sm text-muted-foreground"><p className="font-semibold text-foreground">Saved property costs to discuss</p><p className="mt-1 leading-relaxed">{savedCostLabels}. Your loan officer can prepare a complete, loan-specific payment and APR disclosure after reviewing the full application, loan terms, fees, and program eligibility.</p></div> : null}
             </div>
 
             <div className="mt-6 rounded-lg bg-secondary p-5 md:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <p className="flex-1 text-sm md:text-base text-secondary-foreground leading-relaxed">
-                <strong className="font-semibold text-foreground">How it works:</strong> the seller deposits the
-                subsidy into an escrow account at closing. Each month, it covers the gap between your reduced
-                payment and the real note-rate payment — giving you two years to grow into the full payment
-                while your income rises.
+                <strong className="font-semibold text-foreground">How it works:</strong> the seller-funded interest subsidy is generally paid through the closing process and may reduce the rate for the first two years. This example assumes the purchase contract includes sufficient negotiated seller contributions toward the 2-1 buydown subsidy, buyer closing costs, and prepaids as applicable. Contribution limits, underwriting, and program rules apply.
               </p>
               <div className="flex flex-col gap-2.5">
                 {propertyAddress ? <button
@@ -394,8 +326,7 @@ export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000
             </div>
 
             <p className="mt-4 text-xs text-muted-foreground leading-relaxed">
-              Buydown math shows principal &amp; interest only on a 30-year fixed loan. When saved property taxes, HOA dues, or homeowner insurance are available above, they are shown separately for planning; mortgage insurance remains excluded. You must qualify at the full note rate. This is not a commitment to lend
-              or an offer of credit; rates shown are illustrative examples, not quotes.
+              Educational savings illustration only—not a payment quote, APR quote, loan estimate, commitment to lend, or offer of credit. Actual financing depends on the complete application, credit, income, assets, property, program availability, loan fees, discount points, seller concessions, closing costs, prepaid items, mortgage insurance, and underwriting approval. You must qualify at the full note rate.
             </p>
           </div>
         </div>

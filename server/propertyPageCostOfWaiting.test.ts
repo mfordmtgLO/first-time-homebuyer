@@ -12,6 +12,7 @@ describe("single-property Cost of Waiting section", () => {
     expect(page).toContain("monthlyPropertyTaxes={snapshot.propertyTaxes === null ? undefined : snapshot.propertyTaxes / 12}");
     expect(page).toContain("monthlyHoaDues={snapshot.hoaDues ?? undefined}");
     expect(page).toContain("monthlyHomeownerInsurance={snapshot.homeownerInsurance ?? undefined}");
+    expect(page).toContain("monthlyMortgageInsurance={snapshot.mortgageInsurance ?? undefined}");
     expect(page).toContain("Saved annual property taxes are divided by 12");
     expect(page).toContain("Saved HOA dues are treated as a monthly planning cost");
     expect(page).toContain("BuyerCalculationActions");
@@ -39,10 +40,16 @@ describe("single-property Cost of Waiting section", () => {
     expect(calculator).toContain("monthlyPropertyTaxes?: number");
     expect(calculator).toContain("monthlyHoaDues?: number");
     expect(calculator).toContain("monthlyHomeownerInsurance?: number");
+    expect(calculator).toContain("monthlyMortgageInsurance?: number");
     expect(buydown).toContain("propertyAddress?: string");
     expect(buydown).toContain("2-1 Buydown scenario for");
     expect(buydown).toContain("Share this scenario");
     expect(buydown).toContain("#buydown");
-    expect(buydown).toContain("Saved all-in monthly planning context");
+    expect(buydown).toContain("Potential monthly payment savings");
+    expect(buydown).toContain("seller contributions toward the 2-1 buydown subsidy");
+    expect(buydown).toContain("not a payment quote, APR quote");
+    expect(buydown).not.toContain("Monthly principal & interest by year");
+    expect(buydown).not.toContain("Estimated note-rate P&I");
+    expect(page).not.toContain("Year 1 payment / savings");
   });
 });

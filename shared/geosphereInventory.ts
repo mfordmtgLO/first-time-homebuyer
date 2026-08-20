@@ -11,6 +11,7 @@ export type GeoSphereInventoryListing = {
   units?: string | null;
   hoaDues?: number | null;
   homeownerInsurance?: number | null;
+  mortgageInsurance?: number | null;
 };
 
 const EXPORT_ESTIMATE_RATE = 0.065;
@@ -24,10 +25,10 @@ export function estimateExportMonthlyPrincipalAndInterest(price: number | null) 
   return Math.round((loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1)) * 100) / 100;
 }
 
-export function estimateExportTotalMonthlyPayment(listing: GeoSphereInventoryListing) {
+export function estimateExportTotalMonthlyPayment(listing: Pick<GeoSphereInventoryListing, "price" | "propertyTaxes" | "hoaDues" | "homeownerInsurance" | "mortgageInsurance">) {
   const principalAndInterest = estimateExportMonthlyPrincipalAndInterest(listing.price);
   if (principalAndInterest === null) return null;
-  return Math.round((principalAndInterest + Math.max(listing.propertyTaxes ?? 0, 0) / 12 + Math.max(listing.hoaDues ?? 0, 0) + Math.max(listing.homeownerInsurance ?? 0, 0)) * 100) / 100;
+  return Math.round((principalAndInterest + Math.max(listing.propertyTaxes ?? 0, 0) / 12 + Math.max(listing.hoaDues ?? 0, 0) + Math.max(listing.homeownerInsurance ?? 0, 0) + Math.max(listing.mortgageInsurance ?? 0, 0)) * 100) / 100;
 }
 
 export type GeoSphereInventorySort = "address" | "price-low" | "price-high" | "size-high";
@@ -60,7 +61,7 @@ function escapeCsvCell(value: string | number | null) {
 }
 
 export function buildGeoSphereInventoryCsv(listings: GeoSphereInventoryListing[]) {
-  const headers = ["Address", "Price", "Bedrooms", "Bathrooms", "Square footage", "Property type", "Property taxes (annual)", "Units", "HOA dues (monthly)", "Homeowner insurance (monthly)", "Estimated P&I/month (30y, 6.5%, 5% down)", "Estimated total monthly payment (P&I + taxes + HOA + insurance)", "LMI", "USDA RD eligible"];
+  const headers = ["Address", "Price", "Bedrooms", "Bathrooms", "Square footage", "Property type", "Property taxes (annual)", "Units", "HOA dues (monthly)", "Homeowner insurance (monthly)", "Mortgage insurance (monthly)", "Estimated P&I/month (30y, 6.5%, 5% down)", "Estimated total monthly payment (P&I + taxes + HOA + home insurance + mortgage insurance)", "LMI", "USDA RD eligible"];
   const rows = listings.map((listing) => [
     listing.address,
     listing.price,
@@ -72,6 +73,7 @@ export function buildGeoSphereInventoryCsv(listings: GeoSphereInventoryListing[]
     listing.units ?? null,
     listing.hoaDues ?? null,
     listing.homeownerInsurance ?? null,
+    listing.mortgageInsurance ?? null,
     estimateExportMonthlyPrincipalAndInterest(listing.price),
     estimateExportTotalMonthlyPayment(listing),
     Boolean(listing.isLmi) ? "Yes" : "No",
