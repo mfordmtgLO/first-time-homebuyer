@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { EmailTemplateLifecycleManager } from "@/components/EmailTemplateLifecycleManager";
+import { UniversalEmailTemplateEditor } from "@/components/UniversalEmailTemplateEditor";
 import {
   Dialog,
   DialogContent,
@@ -861,7 +862,7 @@ function OregonOutreachWorkspace({ syncedProfiles }: { syncedProfiles: SyncedTop
             </div>
             <div>
               <Label htmlFor="oregon-template-body">Email body</Label>
-              <Textarea id="oregon-template-body" className="mt-1.5 min-h-44" value={templateBody} onChange={(event) => setTemplateBody(event.target.value)} maxLength={8000} />
+              <UniversalEmailTemplateEditor id="oregon-template-body" className="mt-1.5" value={templateBody} onChange={setTemplateBody} maxLength={8000} placeholder="Write your Oregon outreach email body." />
               <p className="mt-1.5 text-xs text-muted-foreground">Optional merge tokens: <code>{"{{recipient_name}}"}</code>, <code>{"{{brokerage}}"}</code>, <code>{"{{recipient_type}}"}</code>, and <code>{"{{recipient_count}}"}</code>. For a BCC draft, recipient-specific tokens use neutral wording.</p>
             </div>
           </div>
@@ -871,7 +872,7 @@ function OregonOutreachWorkspace({ syncedProfiles }: { syncedProfiles: SyncedTop
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <EmailTemplateLifecycleManager open={templateManagerOpen} onOpenChange={setTemplateManagerOpen} title="Manage Oregon outreach templates" description="Archive drafts to hide them from outreach selection, restore them later, or permanently delete them. Templates remain private to this dashboard owner." templateScope="oregon_outreach" templates={(allTemplatesQuery.data ?? [])} pending={updateTemplate.isPending || setTemplateArchived.isPending || deleteTemplate.isPending} onEdit={(template) => { setEditingTemplateId(template.id); setTemplateName(template.name); setTemplateSubject(template.subjectTemplate ?? ""); setTemplateBody(template.bodyTemplate); setTemplateManagerOpen(false); setTemplateDialogOpen(true); }} onArchive={(template) => setTemplateArchived.mutate({ id: template.id, archived: true })} onRestore={(template) => setTemplateArchived.mutate({ id: template.id, archived: false })} onDelete={(template) => { if (window.confirm(`Permanently delete “${template.name}”? This cannot be undone.`)) deleteTemplate.mutate({ id: template.id }); }} onBulkArchive={(ids) => ids.forEach((id) => setTemplateArchived.mutate({ id, archived: true }))} onBulkRestore={(ids) => ids.forEach((id) => setTemplateArchived.mutate({ id, archived: false }))} onBulkDelete={(ids) => ids.forEach((id) => deleteTemplate.mutate({ id }))} />
+      <EmailTemplateLifecycleManager open={templateManagerOpen} onOpenChange={setTemplateManagerOpen} title="Manage Oregon outreach templates" description="Archive drafts to hide them from outreach selection, restore them later, or permanently delete them. Templates remain private to this dashboard owner." templateScope="oregon_outreach" templates={(allTemplatesQuery.data ?? [])} pending={updateTemplate.isPending || setTemplateArchived.isPending || deleteTemplate.isPending} onEdit={(template) => { setEditingTemplateId(template.id); setTemplateName(template.name); setTemplateSubject(template.subjectTemplate ?? ""); setTemplateBody(template.bodyTemplate); setTemplateManagerOpen(false); setTemplateDialogOpen(true); }} onArchive={(template) => setTemplateArchived.mutate({ id: template.id, archived: true })} onRestore={(template) => setTemplateArchived.mutate({ id: template.id, archived: false })} onDelete={(template) => { if (window.confirm(`Permanently delete “${template.name}”? This cannot be undone.`)) deleteTemplate.mutate({ id: template.id }); }} onBulkArchive={(ids) => ids.forEach((id) => setTemplateArchived.mutate({ id, archived: true }))} onBulkRestore={(ids) => ids.forEach((id) => setTemplateArchived.mutate({ id, archived: false }))} onBulkDelete={(ids) => ids.forEach((id) => deleteTemplate.mutate({ id }))} onImport={async (templates) => { for (const template of templates) await createTemplate.mutateAsync({ name: template.name, subjectTemplate: template.subjectTemplate || "Oregon first-time homebuyer outreach opportunity", bodyTemplate: template.bodyTemplate }); }} />
 
       <AlertDialog open={Boolean(draftPreview)} onOpenChange={(open) => !open && setDraftPreview(null)}>
         <AlertDialogContent>

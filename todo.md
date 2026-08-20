@@ -438,3 +438,6 @@
 - [x] Add a read-only quick preview action to template-management rows
 - [x] Add bulk restore and permanently delete actions for archived custom email templates
 - [x] Add usage-count sorting to the unified email-template management list
+- [x] Add validated export and import for custom reusable email templates across dashboard workflows
+- [x] Add a universal rich-text email template editor with safe hyperlinks and formatting controls
+- [x] Add browser-based Word document content import to the universal email template editor

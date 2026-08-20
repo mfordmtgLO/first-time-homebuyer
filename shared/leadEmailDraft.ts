@@ -3,6 +3,7 @@
  * This stays client-side by design: a `mailto:` draft lets Mike review each
  * message before sending. Supporting PDFs are included as stable download links.
  */
+import { richEmailTemplateToText } from "./emailTemplateText";
 
 export type LeadEmailBuydownScenario = {
   purchasePrice: number;
@@ -322,7 +323,7 @@ export function buildListingEmailDraft(input: ListingEmailDraftInput) {
     ? {
         subject: `Properties to consider in ${input.areaLabel}`,
         heading: input.customTemplateName?.trim() || "PROPERTY LIST",
-        opening: savedCustomBody,
+        opening: richEmailTemplateToText(savedCustomBody),
       }
     : getPropertyEmailTemplateCopy(template, input.areaLabel);
   const subject = isMultiRecipient ? templateCopy.subject : `${templateCopy.subject}, ${input.firstName}`;
@@ -356,7 +357,7 @@ export function buildListingAgentOutreachDraft(input: ListingAgentOutreachDraftI
   const isMultiRecipient = recipientEmails.length > 1;
   const firstName = isMultiRecipient ? "there" : input.agentName.trim().split(/\s+/)[0] || "there";
   const listingLabel = input.listings.length === 1 ? "listing" : "listings";
-  const selectedTemplate = input.bodyTemplate?.trim();
+  const selectedTemplate = input.bodyTemplate?.trim() ? richEmailTemplateToText(input.bodyTemplate) : "";
   const listingSummary = input.listings.map((listing) => {
     const price = listing.price === null ? "price not listed" : money(listing.price);
     const programOption = listing.isLmi && listing.isUsda

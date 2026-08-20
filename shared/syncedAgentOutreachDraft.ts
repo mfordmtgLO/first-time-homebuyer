@@ -1,3 +1,5 @@
+import { richEmailTemplateToText } from "./emailTemplateText";
+
 export type SyncedAgentOutreachRecipient = {
   fullName: string;
   email: string;
@@ -60,7 +62,7 @@ export function buildSyncedAgentOutreachDraft(input: {
 
 If it makes sense, I’d be glad to share the buyer education tools and co-branded lead-capture options available through my First-Time Homebuyer site, then hear what would be most helpful for your office and clients.`;
   const subject = mergeTemplate(input.template?.subjectTemplate?.trim() || DEFAULT_SUBJECT, recipient, recipientCount);
-  const introduction = mergeTemplate(input.template?.bodyTemplate?.trim() || defaultBody, recipient, recipientCount);
+  const introduction = mergeTemplate(input.template?.bodyTemplate?.trim() ? richEmailTemplateToText(input.template.bodyTemplate) : defaultBody, recipient, recipientCount);
   const body = `${greeting}
 
 ${introduction}

@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
-import { Archive, ArchiveRestore, CheckSquare, Eye, LockKeyhole, Pencil, Search, Trash2 } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Archive, ArchiveRestore, CheckSquare, Download, Eye, LockKeyhole, Pencil, Search, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 export type ManagedEmailTemplate = {
   id: number;
@@ -14,6 +15,7 @@ export type ManagedEmailTemplate = {
 };
 
 type TemplateUsageScope = "listing_agent" | "property_list" | "property_page_agent" | "property_page_buyer" | "oregon_outreach";
+export type PortableEmailTemplate = Pick<ManagedEmailTemplate, "name" | "bodyTemplate" | "subjectTemplate">;
 
 type Props = {
   open: boolean;
@@ -30,14 +32,17 @@ type Props = {
   onBulkArchive: (templateIds: number[]) => void;
   onBulkRestore: (templateIds: number[]) => void;
   onBulkDelete: (templateIds: number[]) => void;
+  onImport: (templates: PortableEmailTemplate[]) => Promise<void>;
 };
 
 /** Consistent owner-facing lifecycle UI for reusable dashboard email templates. Built-ins remain read-only. */
-export function EmailTemplateLifecycleManager({ open, onOpenChange, title, description, templateScope, templates, pending = false, onEdit, onArchive, onRestore, onDelete, onBulkArchive, onBulkRestore, onBulkDelete }: Props) {
+export function EmailTemplateLifecycleManager({ open, onOpenChange, title, description, templateScope, templates, pending = false, onEdit, onArchive, onRestore, onDelete, onBulkArchive, onBulkRestore, onBulkDelete, onImport }: Props) {
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [previewTemplate, setPreviewTemplate] = useState<ManagedEmailTemplate | null>(null);
   const [sortBy, setSortBy] = useState<"name" | "most_used" | "least_used">("name");
+  const [importing, setImporting] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const usageQuery = trpc.templateUsage.listCounts.useQuery({ templateScope }, { enabled: open });
   const usageById = useMemo(() => new Map((usageQuery.data ?? []).map((row) => [row.templateId, row.usageCount])), [usageQuery.data]);
   const normalizedSearch = search.trim().toLocaleLowerCase();
@@ -80,6 +85,46 @@ export function EmailTemplateLifecycleManager({ open, onOpenChange, title, descr
     }
     onOpenChange(isOpen);
   };
+  const exportTemplates = () => {
+    const payload = {
+      format: "first-time-homebuyer-email-templates",
+      version: 1,
+      templateScope,
+      exportedAt: new Date().toISOString(),
+      templates: templates.filter((template) => template.isBuiltIn !== 1).map(({ name, subjectTemplate, bodyTemplate, archivedAt }) => ({ name, subjectTemplate, bodyTemplate, archived: Boolean(archivedAt) })),
+    };
+    const href = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }));
+    const anchor = document.createElement("a");
+    anchor.href = href;
+    anchor.download = `${templateScope}-email-templates.json`;
+    anchor.click();
+    URL.revokeObjectURL(href);
+    toast.success("Email templates exported.");
+  };
+  const importTemplates = async (file: File) => {
+    setImporting(true);
+    try {
+      const parsed = JSON.parse(await file.text()) as { templateScope?: string; templates?: unknown };
+      if (parsed.templateScope && parsed.templateScope !== templateScope) throw new Error("This backup belongs to a different email workflow.");
+      if (!Array.isArray(parsed.templates)) throw new Error("The backup does not contain email templates.");
+      const valid = parsed.templates.flatMap((candidate) => {
+        if (!candidate || typeof candidate !== "object") return [];
+        const record = candidate as Record<string, unknown>;
+        const name = typeof record.name === "string" ? record.name.trim().slice(0, 160) : "";
+        const bodyTemplate = typeof record.bodyTemplate === "string" ? record.bodyTemplate.trim().replace(/<script[\s\S]*?<\/script>/gi, "") : "";
+        const subjectTemplate = typeof record.subjectTemplate === "string" ? record.subjectTemplate.trim().slice(0, 300) : undefined;
+        return name.length >= 2 && bodyTemplate.length >= 20 ? [{ name, bodyTemplate, subjectTemplate }] : [];
+      });
+      if (!valid.length) throw new Error("No valid templates were found in this backup.");
+      await onImport(valid);
+      toast.success(`${valid.length} email template${valid.length === 1 ? "" : "s"} imported.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "This template backup could not be imported.");
+    } finally {
+      setImporting(false);
+      if (importInputRef.current) importInputRef.current.value = "";
+    }
+  };
   const renderTemplate = (template: ManagedEmailTemplate) => {
     const builtIn = template.isBuiltIn === 1;
     const isArchived = Boolean(template.archivedAt);
@@ -100,7 +145,25 @@ export function EmailTemplateLifecycleManager({ open, onOpenChange, title, descr
     </div>;
   };
   return <>
-    <Dialog open={open} onOpenChange={closeManager}><DialogContent className="sm:max-w-2xl"><DialogHeader><DialogTitle className="font-display">{title}</DialogTitle><DialogDescription>{description}</DialogDescription></DialogHeader><div className="flex flex-col gap-3 border-y border-border py-3 sm:flex-row sm:items-center"><label className="relative block min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search templates" className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" /></label><select aria-label="Sort templates" value={sortBy} onChange={(event) => setSortBy(event.target.value as typeof sortBy)} className="h-9 rounded-md border border-input bg-background px-3 text-sm"><option value="name">Name A–Z</option><option value="most_used">Most used</option><option value="least_used">Least used</option></select></div><div className="max-h-[52vh] space-y-5 overflow-y-auto pr-1"><section><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Active templates · {active.length}</p><div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" disabled={!selectableActiveIds.length || pending} onClick={() => toggleVisibleSelection(selectableActiveIds, allVisibleActiveSelected)}><CheckSquare className="mr-1.5 h-3.5 w-3.5" />{allVisibleActiveSelected ? "Clear active" : "Select active"}</Button><Button type="button" size="sm" disabled={!selectedActiveIds.length || pending} onClick={() => { onBulkArchive(selectedActiveIds); setSelectedIds(new Set()); }}><Archive className="mr-1.5 h-3.5 w-3.5" />Archive selected ({selectedActiveIds.length})</Button></div></div><div className="space-y-3">{active.length ? active.map(renderTemplate) : <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">No active templates match this search.</p>}</div></section><section><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Archived templates · {archived.length}</p><div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" disabled={!selectableArchivedIds.length || pending} onClick={() => toggleVisibleSelection(selectableArchivedIds, allVisibleArchivedSelected)}><CheckSquare className="mr-1.5 h-3.5 w-3.5" />{allVisibleArchivedSelected ? "Clear archived" : "Select archived"}</Button><Button type="button" size="sm" variant="outline" disabled={!selectedArchivedIds.length || pending} onClick={() => { onBulkRestore(selectedArchivedIds); setSelectedIds(new Set()); }}><ArchiveRestore className="mr-1.5 h-3.5 w-3.5" />Restore selected ({selectedArchivedIds.length})</Button><Button type="button" size="sm" className="bg-rose-700 hover:bg-rose-800" disabled={!selectedArchivedIds.length || pending} onClick={() => { if (window.confirm(`Permanently delete ${selectedArchivedIds.length} archived template${selectedArchivedIds.length === 1 ? "" : "s"}? This cannot be undone.`)) { onBulkDelete(selectedArchivedIds); setSelectedIds(new Set()); } }}><Trash2 className="mr-1.5 h-3.5 w-3.5" />Delete selected ({selectedArchivedIds.length})</Button></div></div><div className="space-y-3">{archived.length ? archived.map(renderTemplate) : <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">No archived templates match this search.</p>}</div></section></div><div className="flex justify-end"><Button type="button" variant="outline" onClick={() => closeManager(false)}>Close</Button></div></DialogContent></Dialog>
+    <Dialog open={open} onOpenChange={closeManager}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader><DialogTitle className="font-display">{title}</DialogTitle><DialogDescription>{description}</DialogDescription></DialogHeader>
+        <div className="flex flex-col gap-3 border-y border-border py-3 sm:flex-row sm:items-center">
+          <label className="relative block min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search templates" className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" /></label>
+          <select aria-label="Sort templates" value={sortBy} onChange={(event) => setSortBy(event.target.value as typeof sortBy)} className="h-9 rounded-md border border-input bg-background px-3 text-sm"><option value="name">Name A–Z</option><option value="most_used">Most used</option><option value="least_used">Least used</option></select>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={exportTemplates}><Download className="mr-1.5 h-3.5 w-3.5" />Export custom</Button>
+          <input ref={importInputRef} className="hidden" type="file" accept="application/json,.json" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importTemplates(file); }} />
+          <Button type="button" size="sm" variant="outline" disabled={importing || pending} onClick={() => importInputRef.current?.click()}><Upload className="mr-1.5 h-3.5 w-3.5" />{importing ? "Importing…" : "Import backup"}</Button>
+        </div>
+        <div className="max-h-[52vh] space-y-5 overflow-y-auto pr-1">
+          <section><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Active templates · {active.length}</p><div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" disabled={!selectableActiveIds.length || pending} onClick={() => toggleVisibleSelection(selectableActiveIds, allVisibleActiveSelected)}><CheckSquare className="mr-1.5 h-3.5 w-3.5" />{allVisibleActiveSelected ? "Clear active" : "Select active"}</Button><Button type="button" size="sm" disabled={!selectedActiveIds.length || pending} onClick={() => { onBulkArchive(selectedActiveIds); setSelectedIds(new Set()); }}><Archive className="mr-1.5 h-3.5 w-3.5" />Archive selected ({selectedActiveIds.length})</Button></div></div><div className="space-y-3">{active.length ? active.map(renderTemplate) : <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">No active templates match this search.</p>}</div></section>
+          <section><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Archived templates · {archived.length}</p><div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" disabled={!selectableArchivedIds.length || pending} onClick={() => toggleVisibleSelection(selectableArchivedIds, allVisibleArchivedSelected)}><CheckSquare className="mr-1.5 h-3.5 w-3.5" />{allVisibleArchivedSelected ? "Clear archived" : "Select archived"}</Button><Button type="button" size="sm" variant="outline" disabled={!selectedArchivedIds.length || pending} onClick={() => { onBulkRestore(selectedArchivedIds); setSelectedIds(new Set()); }}><ArchiveRestore className="mr-1.5 h-3.5 w-3.5" />Restore selected ({selectedArchivedIds.length})</Button><Button type="button" size="sm" className="bg-rose-700 hover:bg-rose-800" disabled={!selectedArchivedIds.length || pending} onClick={() => { if (window.confirm(`Permanently delete ${selectedArchivedIds.length} archived template${selectedArchivedIds.length === 1 ? "" : "s"}? This cannot be undone.`)) { onBulkDelete(selectedArchivedIds); setSelectedIds(new Set()); } }}><Trash2 className="mr-1.5 h-3.5 w-3.5" />Delete selected ({selectedArchivedIds.length})</Button></div></div><div className="space-y-3">{archived.length ? archived.map(renderTemplate) : <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">No archived templates match this search.</p>}</div></section>
+        </div>
+        <div className="flex justify-end"><Button type="button" variant="outline" onClick={() => closeManager(false)}>Close</Button></div>
+      </DialogContent>
+    </Dialog>
     <Dialog open={Boolean(previewTemplate)} onOpenChange={(isOpen) => !isOpen && setPreviewTemplate(null)}><DialogContent className="sm:max-w-xl"><DialogHeader><DialogTitle className="font-display">{previewTemplate?.name}</DialogTitle><DialogDescription>Read-only template preview. Property and recipient details are merged only when a draft is opened.</DialogDescription></DialogHeader>{previewTemplate?.subjectTemplate ? <div className="rounded-md border border-border bg-muted/30 p-3 text-sm"><span className="font-semibold">Subject: </span>{previewTemplate.subjectTemplate}</div> : null}<pre className="max-h-[45vh] overflow-auto whitespace-pre-wrap rounded-md border border-border bg-muted/20 p-4 font-sans text-sm leading-6 text-foreground">{previewTemplate?.bodyTemplate}</pre><div className="flex justify-end"><Button type="button" variant="outline" onClick={() => setPreviewTemplate(null)}>Close preview</Button></div></DialogContent></Dialog>
   </>;
 }
