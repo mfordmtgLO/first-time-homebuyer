@@ -234,6 +234,7 @@ export default function GeoSphereListings() {
   const [propertyPageListingId, setPropertyPageListingId] = useState<number | null>(null);
   const [propertyPageLoanOfficerId, setPropertyPageLoanOfficerId] = useState("");
   const [propertyPageAgentId, setPropertyPageAgentId] = useState("");
+  const [propertyPageExternalUrl, setPropertyPageExternalUrl] = useState("");
   const [propertyPageTemplateId, setPropertyPageTemplateId] = useState("");
   const [customPropertyPageTemplateOpen, setCustomPropertyPageTemplateOpen] = useState(false);
   const [propertyPageAgentTemplateManagerOpen, setPropertyPageAgentTemplateManagerOpen] = useState(false);
@@ -248,6 +249,7 @@ export default function GeoSphereListings() {
   const [customPropertyPageBuyerTemplateSubject, setCustomPropertyPageBuyerTemplateSubject] = useState("Buyer calculation summary — {{property_address}}");
   const [customPropertyPageBuyerTemplateBody, setCustomPropertyPageBuyerTemplateBody] = useState("Hi {{client_name}},\n\nI prepared a buyer calculation summary for {{property_address}}. You can review the saved property page here: {{property_url}}\n\nPlease let me know what questions you have about the property or your first-home financing options.\n\n{{loan_officer_signature}}\n\n{{agent_signature}}");
   const [propertyPagePairDrafts, setPropertyPagePairDrafts] = useState<Record<number, { loanOfficerId: string; agentId: string }>>({});
+  const [propertyPageExternalUrlDrafts, setPropertyPageExternalUrlDrafts] = useState<Record<number, string>>({});
 
   const statusQuery = trpc.geosphere.status.useQuery();
   const pullsQuery = trpc.geosphere.listPulls.useQuery();
@@ -367,6 +369,7 @@ export default function GeoSphereListings() {
       await utils.propertyPages.list.invalidate();
       setPropertyPageBuilderOpen(false);
       setPropertyPageListingId(null);
+      setPropertyPageExternalUrl("");
       toast.success(`Saved co-branded property page: ${page.address}`);
     },
     onError: (error) => toast.error(error.message || "The property page could not be saved."),
@@ -377,6 +380,13 @@ export default function GeoSphereListings() {
       toast.success("Property-page co-brand pairing saved.");
     },
     onError: (error) => toast.error(error.message || "The property-page pairing could not be saved."),
+  });
+  const updatePropertyPageExternalUrl = trpc.propertyPages.updateExternalListingUrl.useMutation({
+    onSuccess: async () => {
+      await utils.propertyPages.list.invalidate();
+      toast.success("External live-listing link saved.");
+    },
+    onError: (error) => toast.error(error.message || "The external live-listing link could not be saved."),
   });
   const setPropertyPageActive = trpc.propertyPages.setActive.useMutation({
     onSuccess: async (page) => {
@@ -550,6 +560,7 @@ export default function GeoSphereListings() {
     setPropertyPageListingId(listingId);
     setPropertyPageLoanOfficerId(officers[0] ? String(officers[0].id) : "");
     setPropertyPageAgentId(agents[0] ? String(agents[0].id) : "");
+    setPropertyPageExternalUrl("");
     setPropertyPageBuilderOpen(true);
   };
   const submitPropertyPage = () => {
@@ -561,6 +572,7 @@ export default function GeoSphereListings() {
       geosphereListingId: propertyPageListingId,
       loanOfficerId: Number(propertyPageLoanOfficerId),
       agentId: Number(propertyPageAgentId),
+      externalListingUrl: propertyPageExternalUrl.trim(),
     });
   };
   const savePropertyPagePair = (pageId: number, page: typeof propertyPages[number]) => {
@@ -1098,6 +1110,7 @@ export default function GeoSphereListings() {
                       <label className="text-xs font-semibold text-muted-foreground">Loan officer<Select value={pairDraft.loanOfficerId} onValueChange={(value) => setPropertyPagePairDrafts((current) => ({ ...current, [page.id]: { ...pairDraft, loanOfficerId: value } }))}><SelectTrigger className="mt-1.5 h-9 bg-background text-xs"><SelectValue placeholder="Choose loan officer" /></SelectTrigger><SelectContent>{officers.map((officer) => <SelectItem key={officer.id} value={String(officer.id)}>{officer.name}</SelectItem>)}</SelectContent></Select></label>
                       <label className="text-xs font-semibold text-muted-foreground">Co-branded agent<Select value={pairDraft.agentId} onValueChange={(value) => setPropertyPagePairDrafts((current) => ({ ...current, [page.id]: { ...pairDraft, agentId: value } }))}><SelectTrigger className="mt-1.5 h-9 bg-background text-xs"><SelectValue placeholder="Choose agent" /></SelectTrigger><SelectContent>{agents.map((agent) => <SelectItem key={agent.id} value={String(agent.id)}>{agent.name}</SelectItem>)}</SelectContent></Select></label>
                     </div>
+                    <div className="mt-3 rounded-lg border border-border bg-muted/20 p-3"><div className="flex flex-col gap-2 sm:flex-row sm:items-end"><label className="min-w-0 flex-1 text-xs font-semibold text-muted-foreground">External live-listing URL <span className="font-normal">(optional)</span><Input className="mt-1.5 h-9 bg-background text-xs" type="url" value={propertyPageExternalUrlDrafts[page.id] ?? page.externalListingUrl ?? ""} onChange={(event) => setPropertyPageExternalUrlDrafts((current) => ({ ...current, [page.id]: event.target.value }))} placeholder="https://your-crm.example/property/..." /></label><Button size="sm" variant="outline" disabled={updatePropertyPageExternalUrl.isPending} onClick={() => updatePropertyPageExternalUrl.mutate({ id: page.id, externalListingUrl: (propertyPageExternalUrlDrafts[page.id] ?? page.externalListingUrl ?? "").trim() })}><Link2 className="mr-1.5 h-3.5 w-3.5" />Save live link</Button></div><p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Use an authorized Surefire, Total Expert, MLS-vendor, or other third-party property URL. This page only links out—it does not fetch, copy, or represent third-party listing data as live.</p>{page.externalListingUrl ? <a href={page.externalListingUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">Open saved live-listing link <ExternalLink className="h-3 w-3" /></a> : null}</div>
                     <div className="mt-4 flex flex-wrap items-center gap-2"><Button size="sm" variant="outline" onClick={() => savePropertyPagePair(page.id, page)} disabled={updatePropertyPagePair.isPending}><Link2 className="mr-1.5 h-3.5 w-3.5" /> Save pairing</Button><Button size="sm" onClick={() => openPropertyPageAgentDraft(page)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Agent email draft</Button><Button size="sm" variant="outline" onClick={() => openPropertyPageBuyerDraft(page)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Buyer email draft</Button><Button size="sm" variant="outline" disabled={refreshPropertyPageSnapshot.isPending} onClick={() => refreshPropertyPageSnapshot.mutate({ id: page.id })}><RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Refresh saved snapshot</Button><label className="ml-auto flex items-center gap-2 text-xs font-medium text-muted-foreground">{page.isActive === 1 ? "Public" : "Retired"}<input type="checkbox" role="switch" aria-label={`Make ${page.address} ${page.isActive === 1 ? "retired" : "public"}`} checked={page.isActive === 1} disabled={setPropertyPageActive.isPending} onChange={(event) => setPropertyPageActive.mutate({ id: page.id, isActive: event.target.checked })} className="h-4 w-8 cursor-pointer accent-primary" /></label></div>
                     <PropertyPageAiSummaryEditor page={page} />
                     <PropertyPageTimeline propertyLandingPageId={page.id} />
@@ -1207,6 +1220,7 @@ export default function GeoSphereListings() {
               <label className="space-y-1.5"><span className="text-sm font-medium">Loan officer</span><Select value={propertyPageLoanOfficerId} onValueChange={setPropertyPageLoanOfficerId}><SelectTrigger><SelectValue placeholder="Choose loan officer" /></SelectTrigger><SelectContent>{officers.map((officer) => <SelectItem key={officer.id} value={String(officer.id)}>{officer.name}</SelectItem>)}</SelectContent></Select></label>
               <label className="space-y-1.5"><span className="text-sm font-medium">Co-branded agent</span><Select value={propertyPageAgentId} onValueChange={setPropertyPageAgentId}><SelectTrigger><SelectValue placeholder="Choose agent" /></SelectTrigger><SelectContent>{agents.map((agent) => <SelectItem key={agent.id} value={String(agent.id)}>{agent.name}</SelectItem>)}</SelectContent></Select></label>
             </div>
+            <div className="space-y-1.5"><Label htmlFor="property-page-external-url">Existing live property-page URL <span className="font-normal text-muted-foreground">(optional)</span></Label><Input id="property-page-external-url" type="url" value={propertyPageExternalUrl} onChange={(event) => setPropertyPageExternalUrl(event.target.value)} placeholder="https://surefire.com/... or https://totalexpert.com/..." /><p className="text-xs leading-relaxed text-muted-foreground">For an authorized third-party CRM or MLS-vendor property page. We link to it from this saved-snapshot page but do not pull in its photos, description, status, or other listing data.</p></div>
           </div>
           <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setPropertyPageBuilderOpen(false)} disabled={createPropertyPage.isPending}>Cancel</Button><Button onClick={submitPropertyPage} disabled={createPropertyPage.isPending || !propertyPageListingId || !propertyPageLoanOfficerId || !propertyPageAgentId}>{createPropertyPage.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Plus className="mr-1.5 h-4 w-4" />} Save property page</Button></div>
         </DialogContent>

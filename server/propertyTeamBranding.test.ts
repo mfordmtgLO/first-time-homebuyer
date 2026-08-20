@@ -10,7 +10,7 @@ describe("public single-property co-branding", () => {
   it("renders both assigned dashboard profiles as full contact cards", () => {
     expect(propertyPageSource).toContain("function PropertyTeamBranding");
     expect(propertyPageSource).toContain("function TeamProfileCard");
-    expect(propertyPageSource).toContain("<PropertyTeamBranding officer={officer} agent={agent} />");
+    expect(propertyPageSource).toContain("<PropertyTeamBranding officer={officer} agent={agent} onCalendarClick=");
     expect(propertyPageSource).toContain("Your loan officer");
     expect(propertyPageSource).toContain("Your co-marketing real estate agent");
   });
@@ -46,5 +46,12 @@ describe("public single-property co-branding", () => {
     expect(agentSettingsSource).toContain("agent-facebook");
     expect(agentSettingsSource).toContain("agent-instagram");
     expect(agentSettingsSource).toContain("agent-linkedin");
+  });
+
+  it("tracks calendar actions and clearly labels optional third-party listing links without importing their content", () => {
+    expect(propertyPageSource).toContain('eventType: "calendar_click"');
+    expect(propertyPageSource).toContain('detail: "loan_officer_calendly"');
+    expect(propertyPageSource).toContain("externalListingUrl");
+    expect(propertyPageSource).toContain("View live listing page");
   });
 });

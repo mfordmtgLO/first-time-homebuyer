@@ -47,16 +47,18 @@ vi.mock("./db", async (importOriginal) => {
     getEmailTemplateUsageCounts: vi.fn(async () => [{ templateId: 93, usageCount: 4 }]),
     recordEmailTemplateUsage: vi.fn(async () => undefined),
     getPropertyEmailPdfSummaryEngagement: vi.fn(async () => ({ emailPdfSummaryClicks: 3, capturedLeadsAfterEmail: 1, propertyPages: [{ id: 71, address: "1024 S 5th St", slug: "1024-s-5th-st", emailPdfSummaryClicks: 3, capturedLeadsAfterEmail: 1 }] })),
+    getPropertyCalendarClickEngagement: vi.fn(async () => ({ calendarClicks: 2, propertyPages: [{ id: 71, address: "1024 S 5th St", slug: "1024-s-5th-st", calendarClicks: 2 }] })),
     recordPropertyPageActivity: vi.fn(async (input: { propertyLandingPageId: number; eventType: string; detail?: string | null }) => ({ id: 201, ...input, createdAt: new Date() })),
     listPropertyPageActivity: vi.fn(async () => [{ id: 202, propertyLandingPageId: 71, eventType: "chat_completed", detail: null, createdAt: new Date() }]),
     updatePropertyLandingPageAiSummary: vi.fn(async (input: { id: number; aiSummary: string | null }) => ({ ...input, updatedAt: new Date() })),
+    updatePropertyLandingPageExternalListingUrl: vi.fn(async (input: { id: number; externalListingUrl: string }) => ({ ...input, updatedAt: new Date() })),
     getLoanOfficerById: vi.fn(async () => ({ id: 12, visible: 1 })),
     getAgentById: vi.fn(async () => ({ id: 7, visible: 1 })),
   };
 });
 
 import { appRouter } from "./routers";
-import { createListingAgentEmailTemplate, createPropertyEmailTemplate, listListingAgentEmailTemplates, listPropertyEmailTemplates, recordGeoSphereListingEmailActivity, createPropertyLandingPage, updatePropertyLandingPagePair, updatePropertyLandingPageStatus, refreshPropertyLandingPage, createPropertyPageAgentEmailTemplate, createPropertyPageBuyerEmailTemplate, updatePropertyPageBuyerEmailTemplate, deletePropertyPageBuyerEmailTemplate, listPropertyPageBuyerEmailTemplates, getEmailTemplateUsageCounts, recordEmailTemplateUsage, getPropertyEmailPdfSummaryEngagement, recordPropertyPageActivity, listPropertyPageActivity, listWeeklyPropertyPageEngagement, getPropertyEngagementSetting, savePropertyEngagementThreshold, savePropertyEngagementPreferences, updatePropertyLandingPageAiSummary, setListingAgentEmailTemplateArchived, deleteListingAgentEmailTemplate } from "./db";
+import { createListingAgentEmailTemplate, createPropertyEmailTemplate, listListingAgentEmailTemplates, listPropertyEmailTemplates, recordGeoSphereListingEmailActivity, createPropertyLandingPage, updatePropertyLandingPagePair, updatePropertyLandingPageStatus, refreshPropertyLandingPage, createPropertyPageAgentEmailTemplate, createPropertyPageBuyerEmailTemplate, updatePropertyPageBuyerEmailTemplate, deletePropertyPageBuyerEmailTemplate, listPropertyPageBuyerEmailTemplates, getEmailTemplateUsageCounts, recordEmailTemplateUsage, getPropertyEmailPdfSummaryEngagement, getPropertyCalendarClickEngagement, recordPropertyPageActivity, listPropertyPageActivity, listWeeklyPropertyPageEngagement, getPropertyEngagementSetting, savePropertyEngagementThreshold, savePropertyEngagementPreferences, updatePropertyLandingPageAiSummary, updatePropertyLandingPageExternalListingUrl, setListingAgentEmailTemplateArchived, deleteListingAgentEmailTemplate } from "./db";
 import type { TrpcContext } from "./_core/context";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
@@ -99,6 +101,7 @@ const deletePropertyPageBuyerTemplateMock = vi.mocked(deletePropertyPageBuyerEma
 const listTemplateUsageCountsMock = vi.mocked(getEmailTemplateUsageCounts);
 const recordTemplateUsageMock = vi.mocked(recordEmailTemplateUsage);
 const emailPdfSummaryEngagementMock = vi.mocked(getPropertyEmailPdfSummaryEngagement);
+const calendarClickEngagementMock = vi.mocked(getPropertyCalendarClickEngagement);
 const recordPropertyPageActivityMock = vi.mocked(recordPropertyPageActivity);
 const listPropertyPageActivityMock = vi.mocked(listPropertyPageActivity);
 const listWeeklyPropertyEngagementMock = vi.mocked(listWeeklyPropertyPageEngagement);
@@ -106,6 +109,7 @@ const getPropertyEngagementSettingMock = vi.mocked(getPropertyEngagementSetting)
 const savePropertyEngagementThresholdMock = vi.mocked(savePropertyEngagementThreshold);
 const savePropertyEngagementPreferencesMock = vi.mocked(savePropertyEngagementPreferences);
 const updatePropertyPageAiSummaryMock = vi.mocked(updatePropertyLandingPageAiSummary);
+const updatePropertyPageExternalUrlMock = vi.mocked(updatePropertyLandingPageExternalListingUrl);
 
 describe("geosphere listing-agent email templates", () => {
   beforeEach(() => {
@@ -205,7 +209,7 @@ describe("geosphere listing-agent email templates", () => {
       bodyTemplate: "I created a first-time buyer property page and would welcome a conversation about shared buyer attraction.",
     });
 
-    expect(createPropertyPageMock).toHaveBeenCalledWith({ geosphereListingId: 44, loanOfficerId: 12, agentId: 7 });
+    expect(createPropertyPageMock).toHaveBeenCalledWith({ geosphereListingId: 44, loanOfficerId: 12, agentId: 7, externalListingUrl: "" });
     expect(page).toMatchObject({ id: 71, slug: "1024-s-5th-st" });
     expect(updatePropertyPagePairMock).toHaveBeenCalledWith({ id: 71, loanOfficerId: 12, agentId: 7 });
     expect(paired).toEqual({ id: 71, loanOfficerId: 12, agentId: 7 });
@@ -215,9 +219,11 @@ describe("geosphere listing-agent email templates", () => {
 
   it("records privacy-minimized public activity and exposes the timeline only to the site owner", async () => {
     await appRouter.createCaller(createContext("admin")).propertyPages.trackActivity({ slug: "1024-s-5th-st", eventType: "social_share", detail: "facebook" });
+    await appRouter.createCaller(createContext("admin")).propertyPages.trackActivity({ slug: "1024-s-5th-st", eventType: "calendar_click", detail: "loan_officer_calendly" });
     const activity = await appRouter.createCaller(createContext("admin")).propertyPages.activity({ propertyLandingPageId: 71 });
 
     expect(recordPropertyPageActivityMock).toHaveBeenCalledWith({ propertyLandingPageId: expect.any(Number), eventType: "social_share", detail: "facebook" });
+    expect(recordPropertyPageActivityMock).toHaveBeenCalledWith({ propertyLandingPageId: expect.any(Number), eventType: "calendar_click", detail: "loan_officer_calendly" });
     expect(activity).toEqual(expect.arrayContaining([expect.objectContaining({ eventType: "chat_completed" })]));
     expect(listPropertyPageActivityMock).toHaveBeenCalledWith(71, null);
     await expect(appRouter.createCaller(createContext("user")).propertyPages.activity({ propertyLandingPageId: 71 })).rejects.toMatchObject({ code: "FORBIDDEN" });
@@ -294,6 +300,18 @@ describe("geosphere listing-agent email templates", () => {
     expect(emailPdfSummaryEngagementMock).toHaveBeenCalledWith(expect.any(Date));
     expect(result).toMatchObject({ emailPdfSummaryClicks: 3, capturedLeadsAfterEmail: 1 });
     await expect(appRouter.createCaller(createContext("user")).propertyPages.emailPdfSummaryEngagement({ range: "30d" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("saves third-party live-listing links and returns calendar-click engagement only to the dashboard owner", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    const saved = await caller.propertyPages.updateExternalListingUrl({ id: 71, externalListingUrl: "https://example.totalexpert.com/property/1024-s-5th" });
+    const report = await caller.propertyPages.calendarClickEngagement({ range: "30d" });
+    expect(updatePropertyPageExternalUrlMock).toHaveBeenCalledWith({ id: 71, externalListingUrl: "https://example.totalexpert.com/property/1024-s-5th" });
+    expect(saved).toMatchObject({ id: 71, externalListingUrl: "https://example.totalexpert.com/property/1024-s-5th" });
+    expect(calendarClickEngagementMock).toHaveBeenCalledWith(expect.any(Date));
+    expect(report).toMatchObject({ calendarClicks: 2 });
+    await expect(appRouter.createCaller(createContext("user")).propertyPages.updateExternalListingUrl({ id: 71, externalListingUrl: "https://example.com/live" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(appRouter.createCaller(createContext("user")).propertyPages.calendarClickEngagement({ range: "30d" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("retires or restores a property page and refreshes only from its saved snapshot", async () => {

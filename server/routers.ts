@@ -79,6 +79,7 @@ import {
   listEmailTemplateVersions,
   getEmailTemplateVersion,
   getPropertyEmailPdfSummaryEngagement,
+  getPropertyCalendarClickEngagement,
   loanOfficerSlugTaken,
   recordChatIntakeResendAttempt,
   recordGeoSphereListingEmailActivity,
@@ -114,6 +115,7 @@ import {
   updateLeadNotes,
   updateLoanOfficer,
   updatePropertyLandingPageAiSummary,
+  updatePropertyLandingPageExternalListingUrl,
   updatePropertyLandingPagePair,
   updatePropertyLandingPageStatus,
 } from "./db";
@@ -1430,7 +1432,7 @@ export const appRouter = router({
     trackActivity: publicProcedure
       .input(z.object({
         slug: propertyPageSlugSchema,
-        eventType: z.enum(["page_view", "buydown_calculator", "cost_of_waiting_calculator", "social_share", "print_export", "email_pdf_summary"]),
+        eventType: z.enum(["page_view", "buydown_calculator", "cost_of_waiting_calculator", "social_share", "print_export", "email_pdf_summary", "calendar_click"]),
         detail: z.string().trim().max(500).optional(),
       }))
       .mutation(async ({ input }) => {
@@ -1484,6 +1486,7 @@ export const appRouter = router({
         geosphereListingId: z.number().int().positive(),
         loanOfficerId: z.number().int().positive(),
         agentId: z.number().int().positive(),
+        externalListingUrl: optionalPublicHttpUrl,
       }))
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
@@ -1513,6 +1516,13 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
         return updatePropertyLandingPageStatus(input);
+      }),
+    /** Saves an optional, owner-supplied third-party live property-page link without importing its content. */
+    updateExternalListingUrl: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), externalListingUrl: optionalPublicHttpUrl }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return updatePropertyLandingPageExternalListingUrl(input);
       }),
     /** Refreshes only from the existing saved GeoSphere record; it never invokes a live listing provider. */
     refreshSnapshot: protectedProcedure
@@ -1667,6 +1677,12 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
         return getPropertyEmailPdfSummaryEngagement(getPropertyActivitySince(input?.range ?? "7d"));
+      }),
+    calendarClickEngagement: protectedProcedure
+      .input(z.object({ range: z.enum(PROPERTY_ACTIVITY_RANGES).default("7d") }).optional())
+      .query(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return getPropertyCalendarClickEngagement(getPropertyActivitySince(input?.range ?? "7d"));
       }),
   }),
 

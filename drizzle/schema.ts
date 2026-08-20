@@ -555,6 +555,8 @@ export const propertyLandingPage = mysqlTable(
     address: varchar("address", { length: 700 }).notNull(),
     /** Immutable saved-listing data available when the page was created or refreshed. */
     listingSnapshot: text("listingSnapshot").notNull(),
+    /** Optional link to an authorized third-party live property page; its data is never imported into this app. */
+    externalListingUrl: varchar("externalListingUrl", { length: 500 }).default("").notNull(),
     sourceSavedAt: timestamp("sourceSavedAt"),
     /** Drafted from the saved snapshot only and published only after dashboard review. */
     aiSummary: text("aiSummary"),
@@ -591,6 +593,7 @@ export const propertyPageActivity = mysqlTable(
       "social_share",
       "print_export",
       "email_pdf_summary",
+      "calendar_click",
     ]).notNull(),
     /** Non-identifying detail such as the share destination; do not store visitor contact data here. */
     detail: varchar("detail", { length: 500 }),

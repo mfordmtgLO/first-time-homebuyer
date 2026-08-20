@@ -20,5 +20,8 @@ describe("weekly property engagement summary presentation", () => {
     expect(widget).toContain("agentName");
     expect(widget).toContain("weeklyEmailPdfSummaryCount");
     expect(widget).toContain("Email PDF");
+    expect(widget).toContain("weeklyCalendarClickCount");
+    expect(widget).toContain("Calendar-button engagement");
+    expect(widget).toContain("calendarClickEngagement");
   });
 });

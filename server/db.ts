@@ -1446,6 +1446,7 @@ export async function createPropertyLandingPage(input: {
   geosphereListingId: number;
   loanOfficerId: number;
   agentId: number;
+  externalListingUrl?: string;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -1471,11 +1472,12 @@ export async function createPropertyLandingPage(input: {
         agentId: input.agentId,
         address: snapshot.address,
         listingSnapshot: JSON.stringify(snapshot),
+        externalListingUrl: input.externalListingUrl ?? existing[0].externalListingUrl,
         sourceSavedAt: row.sourceSavedAt ?? null,
         isActive: 1,
       })
       .where(eq(propertyLandingPage.id, existing[0].id));
-    return { ...existing[0], loanOfficerId: input.loanOfficerId, agentId: input.agentId, address: snapshot.address, listingSnapshot: JSON.stringify(snapshot), sourceSavedAt: row.sourceSavedAt ?? null, isActive: 1 };
+    return { ...existing[0], loanOfficerId: input.loanOfficerId, agentId: input.agentId, address: snapshot.address, listingSnapshot: JSON.stringify(snapshot), externalListingUrl: input.externalListingUrl ?? existing[0].externalListingUrl, sourceSavedAt: row.sourceSavedAt ?? null, isActive: 1 };
   }
   const slug = `${slugifyPropertyAddress(snapshot.address)}-${input.geosphereListingId}`;
   const [result] = await db.insert(propertyLandingPage).values({
@@ -1486,6 +1488,7 @@ export async function createPropertyLandingPage(input: {
     agentId: input.agentId,
     address: snapshot.address,
     listingSnapshot: JSON.stringify(snapshot),
+    externalListingUrl: input.externalListingUrl ?? "",
     sourceSavedAt: row.sourceSavedAt ?? null,
     isActive: 1,
   });
@@ -1523,6 +1526,16 @@ export async function updatePropertyLandingPageStatus(input: { id: number; isAct
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(propertyLandingPage).set({ isActive: input.isActive ? 1 : 0 }).where(eq(propertyLandingPage.id, input.id));
+  const rows = await db.select().from(propertyLandingPage).where(eq(propertyLandingPage.id, input.id)).limit(1);
+  if (!rows[0]) throw new Error("Property page not found.");
+  return rows[0];
+}
+
+/** Saves an owner-supplied external property-page link; no third-party listing content is collected. */
+export async function updatePropertyLandingPageExternalListingUrl(input: { id: number; externalListingUrl: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(propertyLandingPage).set({ externalListingUrl: input.externalListingUrl }).where(eq(propertyLandingPage.id, input.id));
   const rows = await db.select().from(propertyLandingPage).where(eq(propertyLandingPage.id, input.id)).limit(1);
   if (!rows[0]) throw new Error("Property page not found.");
   return rows[0];
@@ -1569,7 +1582,7 @@ export async function getPropertyLandingPageById(id: number) {
   return rows[0];
 }
 
-export type PropertyPageActivityType = "page_view" | "buydown_calculator" | "cost_of_waiting_calculator" | "roadmap_request" | "chat_started" | "chat_completed" | "homes_list_request" | "buyer_agent_request" | "social_share" | "print_export" | "email_pdf_summary";
+export type PropertyPageActivityType = "page_view" | "buydown_calculator" | "cost_of_waiting_calculator" | "roadmap_request" | "chat_started" | "chat_completed" | "homes_list_request" | "buyer_agent_request" | "social_share" | "print_export" | "email_pdf_summary" | "calendar_click";
 
 /** Stores only page-level interaction metadata; visitor contact data remains in protected lead tables. */
 export async function recordPropertyPageActivity(input: { propertyLandingPageId: number; eventType: PropertyPageActivityType; detail?: string | null }) {
@@ -1607,6 +1620,7 @@ export async function listWeeklyPropertyPageEngagement(limit = 5) {
   const weeklyActivityCount = sql<number>`coalesce((select count(*) from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} and ${propertyPageActivity.createdAt} >= ${currentWeekStart}), 0)`.mapWith(Number);
   const weeklyCapturedLeadCount = sql<number>`coalesce((select count(*) from ${leads} where ${leads.propertyPageId} = ${propertyLandingPage.id} and ${leads.createdAt} >= ${currentWeekStart}), 0) + coalesce((select count(*) from ${chatIntakeLead} where ${chatIntakeLead.propertyPageId} = ${propertyLandingPage.id} and ${chatIntakeLead.completedAt} is not null and ${chatIntakeLead.completedAt} >= ${currentWeekStart}), 0)`.mapWith(Number);
   const weeklyEmailPdfSummaryCount = sql<number>`coalesce((select count(*) from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} and ${propertyPageActivity.eventType} = 'email_pdf_summary' and ${propertyPageActivity.createdAt} >= ${currentWeekStart}), 0)`.mapWith(Number);
+  const weeklyCalendarClickCount = sql<number>`coalesce((select count(*) from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} and ${propertyPageActivity.eventType} = 'calendar_click' and ${propertyPageActivity.createdAt} >= ${currentWeekStart}), 0)`.mapWith(Number);
   const priorWeekActivityCount = sql<number>`coalesce((select count(*) from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} and ${propertyPageActivity.createdAt} >= ${priorWeekStart} and ${propertyPageActivity.createdAt} < ${currentWeekStart}), 0)`.mapWith(Number);
   const latestActivityType = sql<string | null>`(select ${propertyPageActivity.eventType} from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} and ${propertyPageActivity.createdAt} >= ${currentWeekStart} order by ${propertyPageActivity.createdAt} desc, ${propertyPageActivity.id} desc limit 1)`;
   const latestActivityAt = sql<Date | null>`(select ${propertyPageActivity.createdAt} from ${propertyPageActivity} where ${propertyPageActivity.propertyLandingPageId} = ${propertyLandingPage.id} and ${propertyPageActivity.createdAt} >= ${currentWeekStart} order by ${propertyPageActivity.createdAt} desc, ${propertyPageActivity.id} desc limit 1)`;
@@ -1621,6 +1635,7 @@ export async function listWeeklyPropertyPageEngagement(limit = 5) {
       weeklyActivityCount,
       weeklyCapturedLeadCount,
       weeklyEmailPdfSummaryCount,
+      weeklyCalendarClickCount,
       priorWeekActivityCount,
       latestActivityType,
       latestActivityAt,
@@ -1797,6 +1812,26 @@ export async function getPropertyEmailPdfSummaryEngagement(since: Date | null) {
   const emailPdfSummaryClicks = propertyPages.reduce((total, page) => total + page.emailPdfSummaryClicks, 0);
   const capturedLeadsAfterEmail = propertyPages.reduce((total, page) => total + page.capturedLeadsAfterEmail, 0);
   return { emailPdfSummaryClicks, capturedLeadsAfterEmail, propertyPages };
+}
+
+/** Aggregates privacy-minimized public calendar-button clicks by active saved property page. */
+export async function getPropertyCalendarClickEngagement(since: Date | null) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const calendarCondition = since
+    ? and(eq(propertyPageActivity.eventType, "calendar_click"), gte(propertyPageActivity.createdAt, since))
+    : eq(propertyPageActivity.eventType, "calendar_click");
+  const [pages, clickEvents] = await Promise.all([
+    db.select({ id: propertyLandingPage.id, address: propertyLandingPage.address, slug: propertyLandingPage.slug }).from(propertyLandingPage).where(eq(propertyLandingPage.isActive, 1)),
+    db.select({ propertyLandingPageId: propertyPageActivity.propertyLandingPageId }).from(propertyPageActivity).where(calendarCondition),
+  ]);
+  const clicksByPage = new Map<number, number>();
+  clickEvents.forEach((event) => clicksByPage.set(event.propertyLandingPageId, (clicksByPage.get(event.propertyLandingPageId) ?? 0) + 1));
+  const propertyPages = pages
+    .map((page) => ({ ...page, calendarClicks: clicksByPage.get(page.id) ?? 0 }))
+    .filter((page) => page.calendarClicks > 0)
+    .sort((left, right) => right.calendarClicks - left.calendarClicks || left.address.localeCompare(right.address));
+  return { calendarClicks: propertyPages.reduce((total, page) => total + page.calendarClicks, 0), propertyPages };
 }
 
 /**

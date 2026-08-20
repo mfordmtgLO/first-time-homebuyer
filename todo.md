@@ -456,3 +456,7 @@
 - [x] Add optional dashboard-managed social profile links to each public single-property co-marketing agent card
 - [x] Add regression coverage and publish the public property-team profile-link enhancement
 - [x] Make the future loan-officer Calendly profile field optional and show the public appointment action only when that officer provides a valid link
+- [x] Track public single-property loan-officer calendar-button clicks without storing visitor identity
+- [x] Display calendar-click counts in the private property engagement dashboard and date-range reporting
+- [x] Audit and add a controlled optional third-party single-property CRM URL link for existing live property pages
+- [x] Add regression coverage and publish property calendar analytics and third-party-link support

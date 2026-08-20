@@ -1,0 +1,2 @@
+ALTER TABLE `property_page_activity` MODIFY COLUMN `eventType` enum('page_view','buydown_calculator','cost_of_waiting_calculator','roadmap_request','chat_started','chat_completed','homes_list_request','buyer_agent_request','social_share','print_export','email_pdf_summary','calendar_click') NOT NULL;--> statement-breakpoint
+ALTER TABLE `property_landing_page` ADD `externalListingUrl` varchar(500) DEFAULT '' NOT NULL;
