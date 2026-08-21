@@ -652,3 +652,11 @@
 - [x] Add per-lead follow-up reminders for phone, text, email, listing list, agent connection, and Roadmap actions
 - [x] Add template-backed platform-lead and platform-agent draft-email workflows with LO-only or LO-plus-agent branding and full template lifecycle management
 - [x] Add regression coverage and publish the expanded platform-lead workspace
+
+- [x] Diagnose and safely resolve the GitHub fetch failure affecting batch project download/export
+
+- [x] Retry direct project archive creation and verify the connected GitHub repository status
+
+- [x] Repair Mortgage chat intake filters so controls do not overlap at desktop or responsive widths
+- [x] Compact saved planning snapshots in the Mortgage chat intakes table with accessible expanded detail
+- [x] Add regression coverage and publish the Mortgage chat intakes layout repair
