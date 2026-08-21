@@ -645,3 +645,10 @@
 - [x] Add platform-lead dashboard filters for progress status and assigned co-branded agent
 - [x] Add an owner-only AI summary action for timestamped platform-lead interaction history
 - [x] Add regression coverage and publish the inline status, filtering, and AI summary enhancements
+
+- [x] Allow Campaign and Lead ID editing in the private platform-lead edit modal
+- [x] Extend AI interaction summaries with an evidence-based next-best-action and follow-up suggestion
+- [x] Add a Kanban-style status pipeline with accessible drag-and-drop progress updates
+- [x] Add per-lead follow-up reminders for phone, text, email, listing list, agent connection, and Roadmap actions
+- [ ] Add template-backed platform-lead and platform-agent draft-email workflows with LO-only or LO-plus-agent branding and full template lifecycle management
+- [ ] Add regression coverage and publish the expanded platform-lead workspace

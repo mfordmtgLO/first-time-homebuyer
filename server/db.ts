@@ -22,6 +22,7 @@ import {
   platformLead,
   platformLeadNote,
   platformLeadProgressStatus,
+  platformLeadOutreachTemplate,
   emailTemplateUsage,
   emailTemplateVersion,
   syncedAgentOutreachTemplate,
@@ -189,6 +190,10 @@ export async function updatePlatformLeadDetails(input: {
   email: string;
   phone: string;
   leadSource: "facebook" | "google_ads" | "organic";
+  externalFormId: string | null;
+  externalCampaignId: string | null;
+  followUpAt: Date | null;
+  followUpChannel: "phone" | "text" | "email" | "listings" | "agent_connection" | "roadmap" | null;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
@@ -202,6 +207,11 @@ export async function updatePlatformLeadDetails(input: {
       email: input.email.trim(),
       phone: input.phone.trim(),
       leadSource: input.leadSource,
+      externalFormId: input.externalFormId,
+      externalCampaignId: input.externalCampaignId,
+      followUpAt: input.followUpAt,
+      followUpChannel: input.followUpChannel,
+      followUpCompletedAt: null,
     })
     .where(and(eq(platformLead.id, input.id), eq(platformLead.ownerUserId, input.ownerUserId)));
 }
@@ -220,6 +230,38 @@ export async function updatePlatformLeadAssignments(input: { ownerUserId: number
     .update(platformLead)
     .set({ assignedLoanOfficerId: input.assignedLoanOfficerId, assignedAgentId: input.assignedAgentId })
     .where(and(eq(platformLead.id, input.id), eq(platformLead.ownerUserId, input.ownerUserId)));
+}
+
+export async function listPlatformLeadOutreachTemplates(ownerUserId: number, audience: "lead" | "agent", includeArchived = false) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const conditions = [eq(platformLeadOutreachTemplate.ownerUserId, ownerUserId), eq(platformLeadOutreachTemplate.audience, audience)];
+  if (!includeArchived) conditions.push(isNull(platformLeadOutreachTemplate.archivedAt));
+  return db.select().from(platformLeadOutreachTemplate).where(and(...conditions)).orderBy(asc(platformLeadOutreachTemplate.name));
+}
+
+export async function savePlatformLeadOutreachTemplate(input: { ownerUserId: number; audience: "lead" | "agent"; id?: number; name: string; subjectTemplate: string; bodyTemplate: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  if (input.id) {
+    await db.update(platformLeadOutreachTemplate).set({ name: input.name, subjectTemplate: input.subjectTemplate, bodyTemplate: input.bodyTemplate, archivedAt: null }).where(and(eq(platformLeadOutreachTemplate.id, input.id), eq(platformLeadOutreachTemplate.ownerUserId, input.ownerUserId), eq(platformLeadOutreachTemplate.audience, input.audience)));
+    return input.id;
+  }
+  const result = await db.insert(platformLeadOutreachTemplate).values({ ownerUserId: input.ownerUserId, audience: input.audience, name: input.name, subjectTemplate: input.subjectTemplate, bodyTemplate: input.bodyTemplate });
+  return Number(result[0].insertId);
+}
+
+export async function setPlatformLeadOutreachTemplateArchived(input: { ownerUserId: number; audience: "lead" | "agent"; id: number; archived: boolean }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.update(platformLeadOutreachTemplate).set({ archivedAt: input.archived ? new Date() : null }).where(and(eq(platformLeadOutreachTemplate.id, input.id), eq(platformLeadOutreachTemplate.ownerUserId, input.ownerUserId), eq(platformLeadOutreachTemplate.audience, input.audience)));
+}
+
+export async function deletePlatformLeadOutreachTemplates(input: { ownerUserId: number; audience: "lead" | "agent"; ids: number[] }) {
+  if (!input.ids.length) return;
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.delete(platformLeadOutreachTemplate).where(and(eq(platformLeadOutreachTemplate.ownerUserId, input.ownerUserId), eq(platformLeadOutreachTemplate.audience, input.audience), inArray(platformLeadOutreachTemplate.id, input.ids)));
 }
 
 let _db: ReturnType<typeof drizzle> | null = null;

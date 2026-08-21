@@ -104,4 +104,17 @@ describe("native platform lead receiver and manual-entry safeguards", () => {
     expect(routerSource).toContain('model: "gpt-5-mini"');
     expect(routerSource).toContain("State only what the notes support.");
   });
+
+  it("supports editable campaign and Lead ID fields, dashboard-only follow-ups, and accessible pipeline progress updates", () => {
+    expect(inboxSource).toContain("edit-platform-id");
+    expect(inboxSource).toContain("edit-platform-campaign");
+    expect(inboxSource).toContain("Follow-up reminder");
+    expect(inboxSource).toContain("Visible in this private dashboard only");
+    expect(inboxSource).toContain("Pipeline view");
+    expect(inboxSource).toContain("Platform lead progress pipeline");
+    expect(inboxSource).toContain("platform-lead-id");
+    expect(routerSource).toContain("Suggested next best action:");
+    expect(routerSource).toContain("followUpChannel");
+    expect(routerSource).toContain("externalCampaignId");
+  });
 });

@@ -107,6 +107,10 @@ export const platformLead = mysqlTable(
     googleClickId: varchar("googleClickId", { length: 255 }),
     assignedLoanOfficerId: int("assignedLoanOfficerId"),
     assignedAgentId: int("assignedAgentId"),
+    /** Dashboard-visible follow-up reminder; no external message is sent automatically. */
+    followUpAt: timestamp("followUpAt"),
+    followUpChannel: mysqlEnum("followUpChannel", ["phone", "text", "email", "listings", "agent_connection", "roadmap"]),
+    followUpCompletedAt: timestamp("followUpCompletedAt"),
     providerSubmittedAt: timestamp("providerSubmittedAt"),
     receivedAt: timestamp("receivedAt").defaultNow().notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -160,6 +164,29 @@ export const platformLeadProgressStatus = mysqlTable(
 
 export type PlatformLeadProgressStatus = typeof platformLeadProgressStatus.$inferSelect;
 export type InsertPlatformLeadProgressStatus = typeof platformLeadProgressStatus.$inferInsert;
+
+/** Private reusable outreach templates opened from the Ad platform leads inbox. */
+export const platformLeadOutreachTemplate = mysqlTable(
+  "platform_lead_outreach_template",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerUserId: int("ownerUserId").notNull(),
+    audience: mysqlEnum("audience", ["lead", "agent"]).notNull(),
+    name: varchar("name", { length: 160 }).notNull(),
+    subjectTemplate: varchar("subjectTemplate", { length: 300 }).notNull(),
+    bodyTemplate: text("bodyTemplate").notNull(),
+    archivedAt: timestamp("archivedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("platform_lead_outreach_template_owner_audience_name_unique").on(table.ownerUserId, table.audience, table.name),
+    index("platform_lead_outreach_template_owner_audience_idx").on(table.ownerUserId, table.audience),
+  ]
+);
+
+export type PlatformLeadOutreachTemplate = typeof platformLeadOutreachTemplate.$inferSelect;
+export type InsertPlatformLeadOutreachTemplate = typeof platformLeadOutreachTemplate.$inferInsert;
 
 /**
  * Co-marketing real estate agent profiles, editable from the /leads dashboard.

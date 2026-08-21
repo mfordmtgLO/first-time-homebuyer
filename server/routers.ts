@@ -37,6 +37,7 @@ import {
   listDirectoryOutreachEmailTemplates,
   listDirectoryFilterPresets,
   listPlatformLeadNotes,
+  listPlatformLeadOutreachTemplates,
   ensurePlatformLeadProgressStatuses,
   listPlatformLeads,
   recordDirectoryOutreachDrafts,
@@ -47,6 +48,9 @@ import {
   updatePlatformLeadDetails,
   updatePlatformLeadAssignments,
   deletePlatformLeads,
+  savePlatformLeadOutreachTemplate,
+  setPlatformLeadOutreachTemplateArchived,
+  deletePlatformLeadOutreachTemplates,
   updateDirectoryOutreachEmailTemplate,
   createAgent,
   createLoanOfficer,
@@ -2214,6 +2218,10 @@ export const appRouter = router({
         email: z.string().trim().email("Enter a valid email address.").max(320).optional().or(z.literal("")),
         phone: z.string().trim().max(40).optional(),
         leadSource: z.enum(["facebook", "google_ads", "organic"]),
+        externalFormId: z.string().trim().max(80).optional().or(z.literal("")),
+        externalCampaignId: z.string().trim().max(80).optional().or(z.literal("")),
+        followUpAt: z.coerce.date().nullable().optional(),
+        followUpChannel: z.enum(["phone", "text", "email", "listings", "agent_connection", "roadmap"]).nullable().optional(),
       }).superRefine((value, context) => {
         if (!value.email?.trim() && !value.phone?.trim()) {
           context.addIssue({ code: z.ZodIssueCode.custom, path: ["email"], message: "Enter an email address or phone number." });
@@ -2228,6 +2236,10 @@ export const appRouter = router({
           email: input.email?.trim() ?? "",
           phone: input.phone?.trim() ?? "",
           leadSource: input.leadSource,
+          externalFormId: input.externalFormId?.trim() || null,
+          externalCampaignId: input.externalCampaignId?.trim() || null,
+          followUpAt: input.followUpAt ?? null,
+          followUpChannel: input.followUpChannel ?? null,
         });
         return { success: true } as const;
       }),
@@ -2267,13 +2279,34 @@ export const appRouter = router({
           model: "gpt-5-mini",
           maxTokens: 350,
           messages: [
-            { role: "system", content: "Summarize private mortgage-lead interaction notes. State only what the notes support. Do not infer qualifications, credit, consent, or outcomes. Use brief chronological bullets covering outreach, stated interest, follow-up commitments, and unresolved items. If any category is absent, omit it." },
+            { role: "system", content: "Summarize private mortgage-lead interaction notes. State only what the notes support. Do not infer qualifications, credit, consent, permission to text, or outcomes. Use brief chronological bullets covering outreach, stated interest, follow-up commitments, and unresolved items. End with exactly one 'Suggested next best action:' line only when it is directly supported by a documented unresolved item or stated commitment; otherwise say 'Suggested next best action: Review the notes before choosing a follow-up.' Do not claim an action was completed or recommended by the lead when it was not documented." },
             { role: "user", content: `Private interaction history:\n${transcript}` },
           ],
         });
         const content = response.choices[0]?.message.content;
         const summary = typeof content === "string" ? content.trim() : "";
         return { summary: summary || "The interaction history could not be summarized. Review the timestamped notes directly." } as const;
+      }),
+    }),
+    outreachTemplates: router({
+      list: protectedProcedure.input(z.object({ audience: z.enum(["lead", "agent"]), includeArchived: z.boolean().optional() })).query(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return listPlatformLeadOutreachTemplates(ctx.user.id, input.audience, input.includeArchived ?? false);
+      }),
+      save: protectedProcedure.input(z.object({ audience: z.enum(["lead", "agent"]), id: z.number().int().positive().optional(), name: z.string().trim().min(2).max(160), subjectTemplate: z.string().trim().min(2).max(300), bodyTemplate: z.string().trim().min(10).max(20000) })).mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const id = await savePlatformLeadOutreachTemplate({ ownerUserId: ctx.user.id, ...input });
+        return { id } as const;
+      }),
+      setArchived: protectedProcedure.input(z.object({ audience: z.enum(["lead", "agent"]), id: z.number().int().positive(), archived: z.boolean() })).mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        await setPlatformLeadOutreachTemplateArchived({ ownerUserId: ctx.user.id, ...input });
+        return { archived: input.archived } as const;
+      }),
+      delete: protectedProcedure.input(z.object({ audience: z.enum(["lead", "agent"]), ids: z.array(z.number().int().positive()).min(1).max(100) })).mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        await deletePlatformLeadOutreachTemplates({ ownerUserId: ctx.user.id, ...input });
+        return { deleted: input.ids.length } as const;
       }),
     }),
     setProgressStatus: protectedProcedure
