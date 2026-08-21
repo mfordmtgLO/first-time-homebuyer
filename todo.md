@@ -559,3 +559,7 @@
 - [x] Add clear keyboard-only focus indicators to completed-chat navigation cards
 - [x] Add regression coverage for completed-chat navigation focus styling
 - [x] Publish the completed-chat keyboard accessibility improvement
+
+- [x] Restore the public chat launcher to icon-only while idle and Ask about buying while actively scrolling
+- [x] Verify compact-idle and scroll-expanded chat launcher behavior on homepage and single-property pages
+- [x] Add regression coverage and publish the chat launcher behavior restoration

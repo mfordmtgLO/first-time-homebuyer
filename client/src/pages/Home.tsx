@@ -42,7 +42,7 @@ export default function Home({
             <div id="local-agent" className="scroll-mt-36 md:scroll-mt-40"><LocalAgent /></div>
             <Footer />
           </main>
-          <MortgageChatWidget />
+          <MortgageChatWidget compactWhenIdle />
         </div>
       </ScenarioProvider>
     </AgentPageProvider>
