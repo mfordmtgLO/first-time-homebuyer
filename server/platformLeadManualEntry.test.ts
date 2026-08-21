@@ -36,6 +36,8 @@ describe("native platform lead receiver and manual-entry safeguards", () => {
   it("provides an owner-protected manual lead procedure that stores explicit manual provenance", () => {
     expect(routerSource).toContain("createManual: protectedProcedure");
     expect(routerSource).toContain('ingestionMethod: "manual"');
+    expect(routerSource).toContain('provider: "manual"');
+    expect(routerSource).toContain('leadSource: z.enum(["facebook", "google_ads", "organic"])');
     expect(routerSource).toContain("manual-${nanoid(16)}");
     expect(routerSource).toContain("Enter an email address or phone number.");
   });
@@ -45,5 +47,18 @@ describe("native platform lead receiver and manual-entry safeguards", () => {
     expect(inboxSource).toContain("Manual entry");
     expect(inboxSource).toContain("will not be counted as a website Roadmap or chat submission");
     expect(inboxSource).toContain("Do not assume SMS consent");
+  });
+
+  it("offers Facebook, Google Ads, and Organic source selection plus searchable assignment management", () => {
+    expect(inboxSource).toContain("Lead Source");
+    expect(inboxSource).toContain('<SelectItem value="facebook">Facebook</SelectItem>');
+    expect(inboxSource).toContain('<SelectItem value="google_ads">Google Ads</SelectItem>');
+    expect(inboxSource).toContain('<SelectItem value="organic">Organic</SelectItem>');
+    expect(inboxSource).toContain("Search name, email, phone, form, campaign, or lead ID");
+    expect(inboxSource).toContain("All assignments");
+    expect(inboxSource).toContain("Loan officer assignment");
+    expect(inboxSource).toContain("Co-branded agent assignment");
+    expect(inboxSource).toContain("platformLeads.updateAssignments");
+    expect(routerSource).toContain("updateAssignments: protectedProcedure");
   });
 });

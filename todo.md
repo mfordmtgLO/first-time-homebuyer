@@ -619,3 +619,8 @@
 - [x] Add protected manual native-platform lead creation with explicit manual provenance while webhooks are paused
 - [x] Add a private manual lead-entry form to the Ad platform leads dashboard inbox
 - [x] Add regression coverage and publish the manual platform-lead entry workflow
+
+- [x] Add Facebook, Google Ads, and Organic source selection to manual platform-lead entry
+- [x] Add enhanced private platform-lead inbox search and source filtering
+- [x] Add protected loan-officer and co-branded-agent assignment controls for platform leads
+- [x] Add regression coverage and publish the enhanced platform lead-management workflow

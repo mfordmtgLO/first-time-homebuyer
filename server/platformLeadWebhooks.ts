@@ -155,6 +155,8 @@ export function registerPlatformLeadWebhooks(app: Express) {
           provider: "meta",
           externalLeadId: event.leadgenId,
           status: "new",
+          ingestionMethod: "webhook",
+          leadSource: "facebook",
           ...contact,
           consentText: null,
           externalPageId: event.pageId,
@@ -164,6 +166,8 @@ export function registerPlatformLeadWebhooks(app: Express) {
           externalAdId: optionalText(details.ad_id, 80),
           externalCreativeId: null,
           googleClickId: null,
+          assignedLoanOfficerId: null,
+          assignedAgentId: null,
           providerSubmittedAt: parseProviderTime(details.created_time),
         });
         if (result.created) stored += 1;
@@ -199,6 +203,8 @@ export function registerPlatformLeadWebhooks(app: Express) {
         provider: "google",
         externalLeadId: leadId,
         status: payload.is_test ? "test" : "new",
+        ingestionMethod: "webhook",
+        leadSource: "google_ads",
         ...contact,
         consentText: null,
         externalPageId: null,
@@ -208,6 +214,8 @@ export function registerPlatformLeadWebhooks(app: Express) {
         externalAdId: null,
         externalCreativeId: optionalText(payload.creative_id, 80),
         googleClickId: optionalText(payload.gcl_id, 255),
+        assignedLoanOfficerId: null,
+        assignedAgentId: null,
         providerSubmittedAt: parseProviderTime(payload.lead_submit_time),
       });
       res.status(200).json({ received: true, stored: result.created ? 1 : 0, test: payload.is_test === true });

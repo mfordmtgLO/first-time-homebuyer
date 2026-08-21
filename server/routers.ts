@@ -37,6 +37,7 @@ import {
   recordDirectoryOutreachDrafts,
   setDirectoryOutreachEmailTemplateArchived,
   setPlatformLeadArchived,
+  updatePlatformLeadAssignments,
   updateDirectoryOutreachEmailTemplate,
   createAgent,
   createLoanOfficer,
@@ -2140,7 +2141,7 @@ export const appRouter = router({
       }),
     createManual: protectedProcedure
       .input(z.object({
-        provider: z.enum(["meta", "google"]),
+        leadSource: z.enum(["facebook", "google_ads", "organic"]),
         fullName: z.string().trim().min(1, "A lead name is required.").max(240),
         email: z.string().trim().email("Enter a valid email address.").max(320).optional().or(z.literal("")),
         phone: z.string().trim().max(40).optional(),
@@ -2157,9 +2158,10 @@ export const appRouter = router({
         const names = input.fullName.split(/\s+/);
         const result = await createPlatformLeadIfAbsent({
           ownerUserId: ctx.user.id,
-          provider: input.provider,
+          provider: "manual",
           externalLeadId: `manual-${nanoid(16)}`,
           ingestionMethod: "manual",
+          leadSource: input.leadSource,
           status: "new",
           firstName: names[0] ?? "",
           lastName: names.slice(1).join(" "),
@@ -2174,9 +2176,24 @@ export const appRouter = router({
           externalAdId: null,
           externalCreativeId: null,
           googleClickId: null,
+          assignedLoanOfficerId: null,
+          assignedAgentId: null,
           providerSubmittedAt: null,
         });
         return { id: result.id, created: result.created } as const;
+      }),
+    updateAssignments: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), assignedLoanOfficerId: z.number().int().positive().nullable(), assignedAgentId: z.number().int().positive().nullable() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        if (input.assignedLoanOfficerId && !(await getLoanOfficerById(input.assignedLoanOfficerId))) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "The selected loan officer is no longer available." });
+        }
+        if (input.assignedAgentId && !(await getAgentById(input.assignedAgentId))) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "The selected co-branded agent is no longer available." });
+        }
+        await updatePlatformLeadAssignments({ ownerUserId: ctx.user.id, ...input });
+        return { success: true } as const;
       }),
     setArchived: protectedProcedure
       .input(z.object({ id: z.number().int().positive(), archived: z.boolean() }))

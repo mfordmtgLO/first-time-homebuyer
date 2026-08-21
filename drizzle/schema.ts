@@ -82,10 +82,12 @@ export const platformLead = mysqlTable(
   {
     id: int("id").autoincrement().primaryKey(),
     ownerUserId: int("ownerUserId").notNull(),
-    provider: mysqlEnum("provider", ["meta", "google"]).notNull(),
+    provider: mysqlEnum("provider", ["meta", "google", "manual"]).notNull(),
     externalLeadId: varchar("externalLeadId", { length: 255 }).notNull(),
     /** Distinguishes dashboard-entered leads from future provider webhook deliveries. */
     ingestionMethod: mysqlEnum("ingestionMethod", ["webhook", "manual"]).default("webhook").notNull(),
+    /** Original advertising or acquisition source, required for manual entry and populated by receivers. */
+    leadSource: mysqlEnum("leadSource", ["facebook", "google_ads", "organic"]),
     status: mysqlEnum("status", ["test", "new", "archived"]).default("new").notNull(),
     firstName: varchar("firstName", { length: 120 }).default("").notNull(),
     lastName: varchar("lastName", { length: 120 }).default("").notNull(),
@@ -101,6 +103,8 @@ export const platformLead = mysqlTable(
     externalAdId: varchar("externalAdId", { length: 80 }),
     externalCreativeId: varchar("externalCreativeId", { length: 80 }),
     googleClickId: varchar("googleClickId", { length: 255 }),
+    assignedLoanOfficerId: int("assignedLoanOfficerId"),
+    assignedAgentId: int("assignedAgentId"),
     providerSubmittedAt: timestamp("providerSubmittedAt"),
     receivedAt: timestamp("receivedAt").defaultNow().notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),

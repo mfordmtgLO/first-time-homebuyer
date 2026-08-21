@@ -116,6 +116,15 @@ export async function setPlatformLeadArchived(ownerUserId: number, id: number, a
     .where(and(eq(platformLead.id, id), eq(platformLead.ownerUserId, ownerUserId)));
 }
 
+export async function updatePlatformLeadAssignments(input: { ownerUserId: number; id: number; assignedLoanOfficerId: number | null; assignedAgentId: number | null }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db
+    .update(platformLead)
+    .set({ assignedLoanOfficerId: input.assignedLoanOfficerId, assignedAgentId: input.assignedAgentId })
+    .where(and(eq(platformLead.id, input.id), eq(platformLead.ownerUserId, input.ownerUserId)));
+}
+
 let _db: ReturnType<typeof drizzle> | null = null;
 
 /** Records a draft-opening event without retaining recipient addresses or message contents. */
