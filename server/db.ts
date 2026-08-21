@@ -20,6 +20,8 @@ import {
   directoryOutreachDraft,
   directoryFilterPreset,
   platformLead,
+  platformLeadNote,
+  platformLeadProgressStatus,
   emailTemplateUsage,
   emailTemplateVersion,
   syncedAgentOutreachTemplate,
@@ -59,6 +61,13 @@ export type EmailTemplateUsageScope = (typeof EMAIL_TEMPLATE_USAGE_SCOPES)[numbe
 export type EmailTemplateVersionScope = EmailTemplateUsageScope;
 
 export type PlatformLeadStatus = "test" | "new" | "archived";
+export const PLATFORM_LEAD_STATUS_COLORS = ["slate", "blue", "amber", "violet", "emerald", "rose"] as const;
+export type PlatformLeadStatusColor = (typeof PLATFORM_LEAD_STATUS_COLORS)[number];
+const DEFAULT_PLATFORM_LEAD_PROGRESS_STATUSES = [
+  { statusKey: "new", label: "New", color: "slate" as const, sortOrder: 0 },
+  { statusKey: "contacted", label: "Contacted", color: "blue" as const, sortOrder: 1 },
+  { statusKey: "qualified", label: "Qualified", color: "emerald" as const, sortOrder: 2 },
+];
 
 export type PlatformLeadInput = Omit<InsertPlatformLead, "id" | "receivedAt" | "createdAt">;
 
@@ -107,6 +116,53 @@ export async function listPlatformLeads(ownerUserId: number, status?: PlatformLe
   return db.select().from(platformLead).where(and(...conditions)).orderBy(desc(platformLead.receivedAt));
 }
 
+export async function ensurePlatformLeadProgressStatuses(ownerUserId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const existing = await db.select().from(platformLeadProgressStatus).where(eq(platformLeadProgressStatus.ownerUserId, ownerUserId));
+  const existingKeys = new Set(existing.map((status) => status.statusKey));
+  const missing = DEFAULT_PLATFORM_LEAD_PROGRESS_STATUSES.filter((status) => !existingKeys.has(status.statusKey));
+  if (missing.length) await db.insert(platformLeadProgressStatus).values(missing.map((status) => ({ ownerUserId, ...status })));
+  return db.select().from(platformLeadProgressStatus).where(eq(platformLeadProgressStatus.ownerUserId, ownerUserId)).orderBy(asc(platformLeadProgressStatus.sortOrder), asc(platformLeadProgressStatus.label));
+}
+
+export async function createPlatformLeadProgressStatus(input: { ownerUserId: number; statusKey: string; label: string; color: PlatformLeadStatusColor; sortOrder: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.insert(platformLeadProgressStatus).values(input);
+  const rows = await db.select().from(platformLeadProgressStatus).where(and(eq(platformLeadProgressStatus.ownerUserId, input.ownerUserId), eq(platformLeadProgressStatus.statusKey, input.statusKey))).limit(1);
+  return rows[0];
+}
+
+export async function deletePlatformLeadProgressStatus(ownerUserId: number, statusKey: string) {
+  if (["new", "contacted", "qualified"].includes(statusKey)) throw new Error("Default progress statuses cannot be permanently removed.");
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.update(platformLead).set({ progressStatus: "new" }).where(and(eq(platformLead.ownerUserId, ownerUserId), eq(platformLead.progressStatus, statusKey)));
+  await db.delete(platformLeadProgressStatus).where(and(eq(platformLeadProgressStatus.ownerUserId, ownerUserId), eq(platformLeadProgressStatus.statusKey, statusKey)));
+}
+
+export async function listPlatformLeadNotes(ownerUserId: number, platformLeadId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(platformLeadNote).where(and(eq(platformLeadNote.ownerUserId, ownerUserId), eq(platformLeadNote.platformLeadId, platformLeadId))).orderBy(desc(platformLeadNote.createdAt), desc(platformLeadNote.id));
+}
+
+export async function createPlatformLeadNote(input: { ownerUserId: number; platformLeadId: number; body: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const result = await db.insert(platformLeadNote).values(input);
+  return Number(result[0].insertId);
+}
+
+export async function setPlatformLeadProgressStatus(ownerUserId: number, id: number, progressStatus: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const available = await db.select({ statusKey: platformLeadProgressStatus.statusKey }).from(platformLeadProgressStatus).where(and(eq(platformLeadProgressStatus.ownerUserId, ownerUserId), eq(platformLeadProgressStatus.statusKey, progressStatus))).limit(1);
+  if (!available[0]) throw new Error("The selected progress status is not available.");
+  await db.update(platformLead).set({ progressStatus }).where(and(eq(platformLead.id, id), eq(platformLead.ownerUserId, ownerUserId)));
+}
+
 export async function setPlatformLeadArchived(ownerUserId: number, id: number, archived: boolean) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
@@ -133,7 +189,6 @@ export async function updatePlatformLeadDetails(input: {
   email: string;
   phone: string;
   leadSource: "facebook" | "google_ads" | "organic";
-  notes: string | null;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
@@ -147,7 +202,6 @@ export async function updatePlatformLeadDetails(input: {
       email: input.email.trim(),
       phone: input.phone.trim(),
       leadSource: input.leadSource,
-      consentText: input.notes,
     })
     .where(and(eq(platformLead.id, input.id), eq(platformLead.ownerUserId, input.ownerUserId)));
 }

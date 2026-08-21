@@ -635,3 +635,8 @@
 - [x] Keep archived platform leads searchable by name, contact, source, and Lead ID
 - [x] Add individual and select-all checkboxes plus bulk restore and permanent delete actions in the platform lead inbox
 - [x] Add regression coverage and publish the platform lead lifecycle management upgrade
+
+- [x] Add timestamped private interaction-note history for each platform lead
+- [x] Add configurable New, Contacted, and Qualified-style progress statuses for platform leads
+- [x] Add CSV export for selected platform leads in active and archived inbox views
+- [x] Add regression coverage and publish the platform lead history, status, and export enhancements

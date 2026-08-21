@@ -89,6 +89,8 @@ export const platformLead = mysqlTable(
     /** Original advertising or acquisition source, required for manual entry and populated by receivers. */
     leadSource: mysqlEnum("leadSource", ["facebook", "google_ads", "organic"]),
     status: mysqlEnum("status", ["test", "new", "archived"]).default("new").notNull(),
+    /** Private workflow progress; the display label/color is owner-configurable. */
+    progressStatus: varchar("progressStatus", { length: 80 }).default("new").notNull(),
     firstName: varchar("firstName", { length: 120 }).default("").notNull(),
     lastName: varchar("lastName", { length: 120 }).default("").notNull(),
     fullName: varchar("fullName", { length: 240 }).default("").notNull(),
@@ -118,6 +120,46 @@ export const platformLead = mysqlTable(
 
 export type PlatformLead = typeof platformLead.$inferSelect;
 export type InsertPlatformLead = typeof platformLead.$inferInsert;
+
+/** Timestamped private interaction notes for a platform lead; notes do not alter consent capture. */
+export const platformLeadNote = mysqlTable(
+  "platform_lead_note",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerUserId: int("ownerUserId").notNull(),
+    platformLeadId: int("platformLeadId").notNull(),
+    body: text("body").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [
+    index("platform_lead_note_owner_lead_time_idx").on(table.ownerUserId, table.platformLeadId, table.createdAt),
+  ]
+);
+
+export type PlatformLeadNote = typeof platformLeadNote.$inferSelect;
+export type InsertPlatformLeadNote = typeof platformLeadNote.$inferInsert;
+
+/** Owner-configurable display definitions for private platform lead workflow progress. */
+export const platformLeadProgressStatus = mysqlTable(
+  "platform_lead_progress_status",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerUserId: int("ownerUserId").notNull(),
+    statusKey: varchar("statusKey", { length: 80 }).notNull(),
+    label: varchar("label", { length: 80 }).notNull(),
+    color: mysqlEnum("color", ["slate", "blue", "amber", "violet", "emerald", "rose"]).default("slate").notNull(),
+    sortOrder: int("sortOrder").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("platform_lead_progress_status_owner_key_unique").on(table.ownerUserId, table.statusKey),
+    index("platform_lead_progress_status_owner_sort_idx").on(table.ownerUserId, table.sortOrder),
+  ]
+);
+
+export type PlatformLeadProgressStatus = typeof platformLeadProgressStatus.$inferSelect;
+export type InsertPlatformLeadProgressStatus = typeof platformLeadProgressStatus.$inferInsert;
 
 /**
  * Co-marketing real estate agent profiles, editable from the /leads dashboard.

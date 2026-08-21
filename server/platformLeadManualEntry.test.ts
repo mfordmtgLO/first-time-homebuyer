@@ -76,4 +76,18 @@ describe("native platform lead receiver and manual-entry safeguards", () => {
     expect(inboxSource).toContain("Permanently delete selected leads?");
     expect(inboxSource).toContain("This action cannot be undone.");
   });
+
+  it("provides timestamped interaction history, configurable progress, and selected CSV export", () => {
+    expect(routerSource).toContain("progressStatuses: router");
+    expect(routerSource).toContain("notes: router");
+    expect(routerSource).toContain("setProgressStatus: protectedProcedure");
+    expect(routerSource).toContain("createPlatformLeadNote");
+    expect(inboxSource).toContain("Interaction notes");
+    expect(inboxSource).toContain("Add timestamped note");
+    expect(inboxSource).toContain("Progress statuses");
+    expect(inboxSource).toContain("Contacted");
+    expect(inboxSource).toContain("Qualified");
+    expect(inboxSource).toContain("Export selected CSV");
+    expect(inboxSource).toContain("platform-leads-");
+  });
 });

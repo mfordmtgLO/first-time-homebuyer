@@ -27,17 +27,23 @@ import {
   deletePropertyPageBuyerEmailTemplate,
   createDirectoryOutreachEmailTemplate,
   createPlatformLeadIfAbsent,
+  createPlatformLeadNote,
+  createPlatformLeadProgressStatus,
   deleteDirectoryOutreachEmailTemplate,
   createDirectoryFilterPreset,
   deleteDirectoryFilterPreset,
+  deletePlatformLeadProgressStatus,
   getDirectoryOutreachLastDrafts,
   listDirectoryOutreachEmailTemplates,
   listDirectoryFilterPresets,
+  listPlatformLeadNotes,
+  ensurePlatformLeadProgressStatuses,
   listPlatformLeads,
   recordDirectoryOutreachDrafts,
   setDirectoryOutreachEmailTemplateArchived,
   setPlatformLeadArchived,
   setPlatformLeadsArchived,
+  setPlatformLeadProgressStatus,
   updatePlatformLeadDetails,
   updatePlatformLeadAssignments,
   deletePlatformLeads,
@@ -2171,7 +2177,7 @@ export const appRouter = router({
           fullName: input.fullName,
           email: input.email?.trim() ?? "",
           phone: input.phone?.trim() ?? "",
-          consentText: input.notes?.trim() || null,
+          consentText: null,
           externalPageId: null,
           externalFormId: input.externalFormId?.trim() || null,
           externalCampaignId: input.externalCampaignId?.trim() || null,
@@ -2183,6 +2189,9 @@ export const appRouter = router({
           assignedAgentId: null,
           providerSubmittedAt: null,
         });
+        if (result.created && input.notes?.trim()) {
+          await createPlatformLeadNote({ ownerUserId: ctx.user.id, platformLeadId: result.id, body: input.notes.trim() });
+        }
         return { id: result.id, created: result.created } as const;
       }),
     updateAssignments: protectedProcedure
@@ -2205,7 +2214,6 @@ export const appRouter = router({
         email: z.string().trim().email("Enter a valid email address.").max(320).optional().or(z.literal("")),
         phone: z.string().trim().max(40).optional(),
         leadSource: z.enum(["facebook", "google_ads", "organic"]),
-        notes: z.string().trim().max(1000).optional(),
       }).superRefine((value, context) => {
         if (!value.email?.trim() && !value.phone?.trim()) {
           context.addIssue({ code: z.ZodIssueCode.custom, path: ["email"], message: "Enter an email address or phone number." });
@@ -2220,10 +2228,40 @@ export const appRouter = router({
           email: input.email?.trim() ?? "",
           phone: input.phone?.trim() ?? "",
           leadSource: input.leadSource,
-          notes: input.notes?.trim() || null,
         });
         return { success: true } as const;
       }),
+    progressStatuses: router({
+      list: protectedProcedure.query(async ({ ctx }) => {
+        requireAdmin(ctx.user.role);
+        return ensurePlatformLeadProgressStatuses(ctx.user.id);
+      }),
+      create: protectedProcedure
+        .input(z.object({ label: z.string().trim().min(1).max(80), color: z.enum(["slate", "blue", "amber", "violet", "emerald", "rose"]) }))
+        .mutation(async ({ ctx, input }) => {
+          requireAdmin(ctx.user.role);
+          const statusKey = slugify(input.label).slice(0, 80);
+          if (!statusKey) throw new TRPCError({ code: "BAD_REQUEST", message: "Enter a status name using letters or numbers." });
+          const statuses = await ensurePlatformLeadProgressStatuses(ctx.user.id);
+          const sortOrder = (statuses.at(-1)?.sortOrder ?? -1) + 1;
+          try {
+            return await createPlatformLeadProgressStatus({ ownerUserId: ctx.user.id, statusKey, label: input.label, color: input.color, sortOrder });
+          } catch (error) {
+            if ((error as { code?: string }).code === "ER_DUP_ENTRY") throw new TRPCError({ code: "CONFLICT", message: "A status with that name already exists." });
+            throw error;
+          }
+        }),
+      delete: protectedProcedure
+        .input(z.object({ statusKey: z.string().min(1).max(80) }))
+        .mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); await deletePlatformLeadProgressStatus(ctx.user.id, input.statusKey); return { success: true } as const; }),
+    }),
+    notes: router({
+      list: protectedProcedure.input(z.object({ platformLeadId: z.number().int().positive() })).query(async ({ ctx, input }) => { requireAdmin(ctx.user.role); return listPlatformLeadNotes(ctx.user.id, input.platformLeadId); }),
+      add: protectedProcedure.input(z.object({ platformLeadId: z.number().int().positive(), body: z.string().trim().min(1).max(1000) })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); const id = await createPlatformLeadNote({ ownerUserId: ctx.user.id, platformLeadId: input.platformLeadId, body: input.body.trim() }); return { id } as const; }),
+    }),
+    setProgressStatus: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), progressStatus: z.string().min(1).max(80) }))
+      .mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); await setPlatformLeadProgressStatus(ctx.user.id, input.id, input.progressStatus); return { success: true } as const; }),
     setArchived: protectedProcedure
       .input(z.object({ id: z.number().int().positive(), archived: z.boolean() }))
       .mutation(async ({ ctx, input }) => {
