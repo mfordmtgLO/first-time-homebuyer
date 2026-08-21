@@ -581,3 +581,8 @@
 - [x] Add a one-click cleaned template-body preview to the listing-agent template manager
 - [x] Allow dashboard users to customize agent-draft subject lines before generating Saved qualified listings and single-property agent emails
 - [x] Add regression coverage and publish the agent email-drafting workflow improvements
+
+- [x] Compact the Single-property co-branded pages dashboard workspace into a vertically scrollable property-card list
+- [x] Open a selected property card or address into a complete single-property detail workspace with all current controls
+- [x] Add regression coverage and verify the compact property workspace on desktop and mobile
+- [x] Publish the compact single-property dashboard workspace redesign

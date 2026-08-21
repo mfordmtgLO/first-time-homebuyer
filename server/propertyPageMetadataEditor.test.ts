@@ -73,6 +73,17 @@ describe("single-property dashboard metadata editor", () => {
     expect(workspaceSource).toContain('className="flex shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-6 py-4 sm:flex-row sm:justify-end"');
   });
 
+  it("compacts co-branded property pages into a vertical card rail with one selected full workspace", () => {
+    expect(workspaceSource).toContain("selectedPropertyPageId");
+    expect(workspaceSource).toContain("Property cards");
+    expect(workspaceSource).toContain("Open full workspace");
+    expect(workspaceSource).toContain("Full property workspace");
+    expect(workspaceSource).toContain("Back to cards");
+    expect(workspaceSource).toContain("xl:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)]");
+    expect(workspaceSource).toContain("overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable]");
+    expect(workspaceSource).toContain("propertyPages.filter((page) => page.id === selectedPropertyPageId)");
+  });
+
   it("automatically changes an over-limit contribution to Needs Review and shows the exact screening feedback", () => {
     expect(workspaceSource).toContain('value: "needs_review", label: "Needs review · contribution over limit"');
     expect(workspaceSource).toContain("getContributionScreeningFeedback");

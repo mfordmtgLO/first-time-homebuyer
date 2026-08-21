@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Activity, Copy, Download, ExternalLink, Layers3, Link2, Loader2, Mail, MapPin, Plus, Printer, RefreshCw, SearchCheck, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import { Activity, ChevronRight, Copy, Download, ExternalLink, Layers3, Link2, Loader2, Mail, MapPin, Plus, Printer, RefreshCw, SearchCheck, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import {
   buildListingAgentOutreachDraft,
   buildListingEmailDraft,
@@ -304,6 +304,7 @@ export default function GeoSphereListings() {
   const [customTemplateName, setCustomTemplateName] = useState("");
   const [customTemplateBody, setCustomTemplateBody] = useState("");
   const [propertyPageBuilderOpen, setPropertyPageBuilderOpen] = useState(false);
+  const [selectedPropertyPageId, setSelectedPropertyPageId] = useState<number | null>(null);
   const [propertyPageListingId, setPropertyPageListingId] = useState<number | null>(null);
   const [propertyPageLoanOfficerId, setPropertyPageLoanOfficerId] = useState("");
   const [propertyPageAgentId, setPropertyPageAgentId] = useState("");
@@ -1328,8 +1329,19 @@ export default function GeoSphereListings() {
                 </div>
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2"><p className="text-[11px] text-muted-foreground">For conventional primary/second-home cases, the relevant LTV screen also applies when selected; the lowest resulting cap wins.</p><Button type="button" size="sm" disabled={saveProgramContributionLimits.isPending} onClick={() => saveProgramContributionLimits.mutate({ limits: programLimitDrafts })}>{saveProgramContributionLimits.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}Save program limits</Button></div>
               </details>
-              {propertyPagesQuery.isLoading ? <div className="mt-5 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading saved property pages…</div> : propertyPages.length === 0 ? <div className="mt-5 rounded-lg border border-dashed border-border bg-card/60 p-5 text-sm text-muted-foreground">No property pages yet. Use <strong className="text-foreground">Property page</strong> in any saved listing row above to create one.</div> : <div className="mt-5 grid gap-4 xl:grid-cols-2">
-                {propertyPages.map((page) => {
+              {propertyPagesQuery.isLoading ? <div className="mt-5 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading saved property pages…</div> : propertyPages.length === 0 ? <div className="mt-5 rounded-lg border border-dashed border-border bg-card/60 p-5 text-sm text-muted-foreground">No property pages yet. Use <strong className="text-foreground">Property page</strong> in any saved listing row above to create one.</div> : <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)]">
+                <aside className="rounded-xl border border-border bg-card/70 p-3 shadow-sm xl:sticky xl:top-24 xl:max-h-[calc(100vh-8rem)]">
+                  <div className="flex items-center justify-between gap-2 border-b border-border pb-2"><div><p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Property cards</p><p className="mt-0.5 text-[11px] text-muted-foreground">Choose an address to open its complete workspace.</p></div><span className="rounded-full bg-primary/10 px-2 py-1 text-[11px] font-bold text-primary">{propertyPages.length}</span></div>
+                  <div className="mt-3 max-h-[36rem] space-y-2 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable] xl:max-h-[calc(100vh-13rem)]">
+                    {propertyPages.map((page) => {
+                      const cardSnapshot = parsePropertyLandingSnapshot(page.listingSnapshot);
+                      const cardSelected = selectedPropertyPageId === page.id;
+                      return <button key={page.id} type="button" onClick={() => setSelectedPropertyPageId(page.id)} aria-pressed={cardSelected} className={`w-full rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${cardSelected ? "border-primary bg-primary/[0.08] shadow-sm" : "border-border bg-background hover:border-primary/45 hover:bg-muted/30"}`}><div className="flex items-start justify-between gap-2"><p className="min-w-0 break-words text-sm font-semibold text-foreground">{page.address}</p><ChevronRight className={`mt-0.5 h-4 w-4 shrink-0 text-primary transition-transform ${cardSelected ? "translate-x-0.5" : ""}`} /></div><div className="mt-2 flex flex-wrap gap-1.5"><span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${page.isActive === 1 ? "bg-emerald-500/15 text-emerald-800" : "bg-muted text-muted-foreground"}`}>{page.isActive === 1 ? "Public" : "Retired"}</span>{cardSnapshot?.isLmi ? <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-800">Flex screen</span> : null}{cardSnapshot?.isUsda ? <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-800">USDA RD</span> : null}</div><p className="mt-2 truncate text-[11px] text-muted-foreground" title={publicSiteUrl(`/property/${page.slug}`)}>{publicSiteUrl(`/property/${page.slug}`)}</p><p className="mt-1 text-[11px] font-semibold text-primary">Open full workspace</p></button>;
+                    })}
+                  </div>
+                </aside>
+                <div className="min-w-0">
+                {selectedPropertyPageId === null ? <div className="grid min-h-72 place-items-center rounded-xl border border-dashed border-primary/30 bg-card/60 p-6 text-center"><div><p className="font-display text-xl font-semibold text-foreground">Choose a property card</p><p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">Select an address or its property-page URL card to open all pairing, saved-property facts, private compliance, outreach, activity, and page controls.</p></div></div> : propertyPages.filter((page) => page.id === selectedPropertyPageId).map((page) => {
                   const snapshot = parsePropertyLandingSnapshot(page.listingSnapshot);
                   const pairDraft = propertyPagePairDrafts[page.id] ?? { loanOfficerId: String(page.loanOfficerId ?? ""), agentId: String(page.agentId ?? "") };
                   const metadataDraft = propertyPageMetadataDrafts[page.id] ?? {
@@ -1350,7 +1362,7 @@ export default function GeoSphereListings() {
                   const contributionIndicatorWidth = Math.min(Math.max(contributionFeedback.percentOfLimit ?? 0, 0), 100);
                   const contributionIndicatorClass = contributionFeedback.state === "over" ? "bg-rose-500" : contributionFeedback.state === "near" ? "bg-amber-500" : "bg-emerald-500";
                   const url = publicSiteUrl(`/property/${page.slug}`);
-                  return <div key={page.id} className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                  return <div key={page.id} className="rounded-xl border border-border bg-card p-4 shadow-sm"><div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3"><div><p className="text-xs font-bold uppercase tracking-wide text-primary">Full property workspace</p><p className="mt-0.5 text-xs text-muted-foreground">All dashboard controls for the selected co-branded property page.</p></div><Button type="button" size="sm" variant="outline" onClick={() => setSelectedPropertyPageId(null)}>Back to cards</Button></div>
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-semibold text-foreground">{page.address}</p><span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${page.isActive === 1 ? "bg-emerald-100 text-emerald-800" : "bg-muted text-muted-foreground"}`}>{page.isActive === 1 ? "Public" : "Retired"}</span><span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${snapshot?.complianceApprovalStatus === "approved" ? "bg-emerald-100 text-emerald-800" : snapshot?.complianceApprovalStatus === "changes_requested" ? "bg-rose-100 text-rose-800" : snapshot?.complianceApprovalStatus === "needs_review" ? "bg-orange-100 text-orange-800" : snapshot?.complianceApprovalStatus === "submitted" ? "bg-sky-100 text-sky-800" : "bg-amber-100 text-amber-800"}`}>Compliance · {COMPLIANCE_STATUS_OPTIONS.find((option) => option.value === (snapshot?.complianceApprovalStatus ?? "draft"))?.label}</span></div><p className="mt-1 text-xs text-muted-foreground">Saved snapshot {page.sourceSavedAt ? new Date(page.sourceSavedAt).toLocaleString() : "date unavailable"} · {snapshot?.isLmi && snapshot?.isUsda ? "LMI + USDA RD screen" : snapshot?.isLmi ? "LMI screen" : snapshot?.isUsda ? "USDA RD screen" : "general financing review"}</p></div>
                       <div className="flex shrink-0 gap-2"><Button variant="outline" size="sm" asChild><a href={url} target="_blank" rel="noreferrer"><ExternalLink className="mr-1.5 h-3.5 w-3.5" /> View</a></Button><Button variant="outline" size="sm" onClick={async () => { try { await navigator.clipboard.writeText(url); toast.success("Property-page URL copied."); } catch { toast.error("Copy failed; select the URL from View instead."); } }}><Copy className="mr-1.5 h-3.5 w-3.5" /> Copy</Button></div>
@@ -1381,7 +1393,7 @@ export default function GeoSphereListings() {
                     <PropertyPageAiSummaryEditor page={page} />
                     <PropertyPageTimeline propertyLandingPageId={page.id} />
                   </div>;
-                })}
+                })}</div>
               </div>}
             </section>
 
