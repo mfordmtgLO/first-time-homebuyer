@@ -1,0 +1,1 @@
+ALTER TABLE `platform_lead` ADD `ingestionMethod` enum('webhook','manual') DEFAULT 'webhook' NOT NULL;

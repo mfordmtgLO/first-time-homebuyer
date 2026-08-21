@@ -84,6 +84,8 @@ export const platformLead = mysqlTable(
     ownerUserId: int("ownerUserId").notNull(),
     provider: mysqlEnum("provider", ["meta", "google"]).notNull(),
     externalLeadId: varchar("externalLeadId", { length: 255 }).notNull(),
+    /** Distinguishes dashboard-entered leads from future provider webhook deliveries. */
+    ingestionMethod: mysqlEnum("ingestionMethod", ["webhook", "manual"]).default("webhook").notNull(),
     status: mysqlEnum("status", ["test", "new", "archived"]).default("new").notNull(),
     firstName: varchar("firstName", { length: 120 }).default("").notNull(),
     lastName: varchar("lastName", { length: 120 }).default("").notNull(),

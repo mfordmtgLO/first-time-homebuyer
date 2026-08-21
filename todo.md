@@ -615,3 +615,7 @@
 - [ ] Validate and publish the webhook integration
 
 - [ ] Resume native Meta and Google lead-form webhook activation after platform credentials, form mappings, consent language, and corporate compliance approval are available
+
+- [x] Add protected manual native-platform lead creation with explicit manual provenance while webhooks are paused
+- [x] Add a private manual lead-entry form to the Ad platform leads dashboard inbox
+- [x] Add regression coverage and publish the manual platform-lead entry workflow

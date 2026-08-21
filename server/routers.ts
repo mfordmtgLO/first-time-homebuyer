@@ -26,6 +26,7 @@ import {
   updatePropertyPageBuyerEmailTemplate,
   deletePropertyPageBuyerEmailTemplate,
   createDirectoryOutreachEmailTemplate,
+  createPlatformLeadIfAbsent,
   deleteDirectoryOutreachEmailTemplate,
   createDirectoryFilterPreset,
   deleteDirectoryFilterPreset,
@@ -2136,6 +2137,46 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
         return listPlatformLeads(ctx.user.id, input?.status);
+      }),
+    createManual: protectedProcedure
+      .input(z.object({
+        provider: z.enum(["meta", "google"]),
+        fullName: z.string().trim().min(1, "A lead name is required.").max(240),
+        email: z.string().trim().email("Enter a valid email address.").max(320).optional().or(z.literal("")),
+        phone: z.string().trim().max(40).optional(),
+        externalFormId: z.string().trim().max(80).optional(),
+        externalCampaignId: z.string().trim().max(80).optional(),
+        notes: z.string().trim().max(1000).optional(),
+      }).superRefine((value, context) => {
+        if (!value.email?.trim() && !value.phone?.trim()) {
+          context.addIssue({ code: z.ZodIssueCode.custom, path: ["email"], message: "Enter an email address or phone number." });
+        }
+      }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const names = input.fullName.split(/\s+/);
+        const result = await createPlatformLeadIfAbsent({
+          ownerUserId: ctx.user.id,
+          provider: input.provider,
+          externalLeadId: `manual-${nanoid(16)}`,
+          ingestionMethod: "manual",
+          status: "new",
+          firstName: names[0] ?? "",
+          lastName: names.slice(1).join(" "),
+          fullName: input.fullName,
+          email: input.email?.trim() ?? "",
+          phone: input.phone?.trim() ?? "",
+          consentText: input.notes?.trim() || null,
+          externalPageId: null,
+          externalFormId: input.externalFormId?.trim() || null,
+          externalCampaignId: input.externalCampaignId?.trim() || null,
+          externalAdSetId: null,
+          externalAdId: null,
+          externalCreativeId: null,
+          googleClickId: null,
+          providerSubmittedAt: null,
+        });
+        return { id: result.id, created: result.created } as const;
       }),
     setArchived: protectedProcedure
       .input(z.object({ id: z.number().int().positive(), archived: z.boolean() }))
