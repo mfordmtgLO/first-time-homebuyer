@@ -19,6 +19,7 @@ import {
   directoryOutreachEmailTemplate,
   directoryOutreachDraft,
   directoryFilterPreset,
+  platformLead,
   emailTemplateUsage,
   emailTemplateVersion,
   syncedAgentOutreachTemplate,
@@ -40,6 +41,7 @@ import {
   type InsertChatIntakeLead,
   type InsertLoanOfficer,
   type InsertLead,
+  type InsertPlatformLead,
   type InsertGeoSphereListing,
   type InsertSyncedTopAgent,
 } from "../drizzle/schema";
@@ -55,6 +57,64 @@ import { ENV } from './_core/env';
 export const EMAIL_TEMPLATE_USAGE_SCOPES = ["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach", "agent_directory", "loan_officer_directory"] as const;
 export type EmailTemplateUsageScope = (typeof EMAIL_TEMPLATE_USAGE_SCOPES)[number];
 export type EmailTemplateVersionScope = EmailTemplateUsageScope;
+
+export type PlatformLeadStatus = "test" | "new" | "archived";
+
+export type PlatformLeadInput = Omit<InsertPlatformLead, "id" | "receivedAt" | "createdAt">;
+
+/** Resolves the authenticated dashboard owner's stable private record for inbound provider leads. */
+export async function getDashboardOwnerUserId() {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const rows = await db.select({ id: users.id }).from(users).where(eq(users.openId, ENV.ownerOpenId)).limit(1);
+  const owner = rows[0];
+  if (!owner) throw new Error("The dashboard owner must sign in before native platform lead capture can be activated.");
+  return owner.id;
+}
+
+/**
+ * Writes an incoming native platform lead once. Provider retries safely return
+ * the existing record because every provider/external lead ID pair is unique.
+ */
+export async function createPlatformLeadIfAbsent(input: PlatformLeadInput) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const existing = await db
+    .select({ id: platformLead.id, status: platformLead.status })
+    .from(platformLead)
+    .where(and(eq(platformLead.provider, input.provider), eq(platformLead.externalLeadId, input.externalLeadId)))
+    .limit(1);
+  if (existing[0]) return { id: existing[0].id, status: existing[0].status, created: false } as const;
+  try {
+    const result = await db.insert(platformLead).values(input);
+    return { id: Number(result[0].insertId), status: input.status, created: true } as const;
+  } catch (error) {
+    const duplicate = await db
+      .select({ id: platformLead.id, status: platformLead.status })
+      .from(platformLead)
+      .where(and(eq(platformLead.provider, input.provider), eq(platformLead.externalLeadId, input.externalLeadId)))
+      .limit(1);
+    if (duplicate[0]) return { id: duplicate[0].id, status: duplicate[0].status, created: false } as const;
+    throw error;
+  }
+}
+
+export async function listPlatformLeads(ownerUserId: number, status?: PlatformLeadStatus) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [eq(platformLead.ownerUserId, ownerUserId)];
+  if (status) conditions.push(eq(platformLead.status, status));
+  return db.select().from(platformLead).where(and(...conditions)).orderBy(desc(platformLead.receivedAt));
+}
+
+export async function setPlatformLeadArchived(ownerUserId: number, id: number, archived: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db
+    .update(platformLead)
+    .set({ status: archived ? "archived" : "new" })
+    .where(and(eq(platformLead.id, id), eq(platformLead.ownerUserId, ownerUserId)));
+}
 
 let _db: ReturnType<typeof drizzle> | null = null;
 

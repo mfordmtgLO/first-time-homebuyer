@@ -32,8 +32,10 @@ import {
   getDirectoryOutreachLastDrafts,
   listDirectoryOutreachEmailTemplates,
   listDirectoryFilterPresets,
+  listPlatformLeads,
   recordDirectoryOutreachDrafts,
   setDirectoryOutreachEmailTemplateArchived,
+  setPlatformLeadArchived,
   updateDirectoryOutreachEmailTemplate,
   createAgent,
   createLoanOfficer,
@@ -2124,6 +2126,23 @@ export const appRouter = router({
         const key = `agent/${input.kind}-${Date.now()}.${ext}`;
         const { url } = await storagePut(key, buffer, input.mimeType);
         return { url } as const;
+      }),
+  }),
+
+  platformLeads: router({
+    /** Private native Meta and Google form leads; website funnel leads remain in their existing sections. */
+    list: protectedProcedure
+      .input(z.object({ status: z.enum(["test", "new", "archived"]).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return listPlatformLeads(ctx.user.id, input?.status);
+      }),
+    setArchived: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), archived: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        await setPlatformLeadArchived(ctx.user.id, input.id, input.archived);
+        return { archived: input.archived } as const;
       }),
   }),
 

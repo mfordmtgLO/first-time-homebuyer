@@ -8,6 +8,7 @@ import AgentSettings from "@/components/AgentSettings";
 import LoanOfficerSettings from "@/components/LoanOfficerSettings";
 import ChatIntakeLeads from "@/components/ChatIntakeLeads";
 import CampaignFunnelSummary from "@/components/CampaignFunnelSummary";
+import PlatformLeadInbox from "@/components/PlatformLeadInbox";
 import PropertyEngagementSummary from "@/components/PropertyEngagementSummary";
 import GeoSphereListings from "@/components/GeoSphereListings";
 import TextingWorkspace from "@/components/TextingWorkspace";
@@ -707,7 +708,8 @@ export default function Leads() {
         ) : (
           <>
            <CampaignFunnelSummary />
-           <PropertyEngagementSummary />
+            <PlatformLeadInbox />
+            <PropertyEngagementSummary />
            <section id="roadmap-leads" className="scroll-mt-24">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
               <div>

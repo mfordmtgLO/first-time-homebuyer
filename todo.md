@@ -597,3 +597,21 @@
 - [x] Record and display each agent and loan officer profile’s most recent directory outreach draft timestamp
 - [x] Add owner-scoped reusable directory filter presets for frequent agent and loan-officer searches
 - [x] Add regression coverage and publish the directory productivity upgrades
+
+- [ ] Verify the dashboard’s current Meta and Google UTM attribution, campaign-spend, and lead-funnel capabilities
+- [ ] Prepare current official Meta Ads and Google Ads account and campaign setup instructions
+- [ ] Provide a launch checklist for tracked campaign links and dashboard lead-funnel verification
+
+- [x] Verify Meta Lead Ads and Google lead-form webhook or API support against the current dashboard lead-ingestion model
+- [x] Compare secure native-form ingestion approaches and identify required account, access, and consent decisions
+- [x] Provide implementation and end-to-end UTM attribution testing checklists for the dashboard lead funnel
+
+- [ ] Add private platform_lead table for Meta and Google native form leads with idempotent deduplication
+- [ ] Implement secure Meta leadgen webhook receiver with X-Hub-Signature-256 validation and lead retrieval
+- [ ] Implement secure Google lead-form webhook receiver with google_key validation and is_test separation
+- [ ] Register both receivers as public Express routes and request required secrets
+- [ ] Add protected dashboard tRPC procedures and a private platform-leads view in the dashboard
+- [ ] Add regression coverage for both receivers and the platform-leads dashboard view
+- [ ] Validate and publish the webhook integration
+
+- [ ] Resume native Meta and Google lead-form webhook activation after platform credentials, form mappings, consent language, and corporate compliance approval are available

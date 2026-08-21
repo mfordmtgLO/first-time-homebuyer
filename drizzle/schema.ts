@@ -71,6 +71,49 @@ export type Lead = typeof leads.$inferSelect;
 export type InsertLead = typeof leads.$inferInsert;
 
 /**
+ * Private native-form leads received directly from Meta Lead Ads or Google Ads
+ * lead-form webhooks. These records intentionally stay separate from the
+ * website Roadmap and Mortgage Chat funnels because native platform forms do
+ * not establish the visitor's on-site UTM session or represent either website
+ * completion event.
+ */
+export const platformLead = mysqlTable(
+  "platform_lead",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerUserId: int("ownerUserId").notNull(),
+    provider: mysqlEnum("provider", ["meta", "google"]).notNull(),
+    externalLeadId: varchar("externalLeadId", { length: 255 }).notNull(),
+    status: mysqlEnum("status", ["test", "new", "archived"]).default("new").notNull(),
+    firstName: varchar("firstName", { length: 120 }).default("").notNull(),
+    lastName: varchar("lastName", { length: 120 }).default("").notNull(),
+    fullName: varchar("fullName", { length: 240 }).default("").notNull(),
+    email: varchar("email", { length: 320 }).default("").notNull(),
+    phone: varchar("phone", { length: 40 }).default("").notNull(),
+    /** Only approved opt-in values intentionally mapped from a native form. */
+    consentText: text("consentText"),
+    externalPageId: varchar("externalPageId", { length: 80 }),
+    externalFormId: varchar("externalFormId", { length: 80 }),
+    externalCampaignId: varchar("externalCampaignId", { length: 80 }),
+    externalAdSetId: varchar("externalAdSetId", { length: 80 }),
+    externalAdId: varchar("externalAdId", { length: 80 }),
+    externalCreativeId: varchar("externalCreativeId", { length: 80 }),
+    googleClickId: varchar("googleClickId", { length: 255 }),
+    providerSubmittedAt: timestamp("providerSubmittedAt"),
+    receivedAt: timestamp("receivedAt").defaultNow().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("platform_lead_provider_external_unique").on(table.provider, table.externalLeadId),
+    index("platform_lead_owner_received_idx").on(table.ownerUserId, table.receivedAt),
+    index("platform_lead_owner_status_idx").on(table.ownerUserId, table.status),
+  ]
+);
+
+export type PlatformLead = typeof platformLead.$inferSelect;
+export type InsertPlatformLead = typeof platformLead.$inferInsert;
+
+/**
  * Co-marketing real estate agent profiles, editable from the /leads dashboard.
  * Unlimited rows; each agent has a unique URL slug so the landing page can be
  * co-branded per agent at /with/:slug. The default landing page (/) shows the
