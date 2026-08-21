@@ -567,3 +567,7 @@
 - [x] Remove the redundant Mike Ford contact block from the single-property agent outreach draft body
 - [x] Retain exactly one standardized Mike Ford default email signature in the single-property agent outreach draft
 - [x] Add regression coverage and publish the single-property agent draft signature cleanup
+
+- [x] Remove the redundant Mike Ford contact block from the Saved qualified listings agent outreach draft body
+- [x] Retain exactly one standardized Mike Ford default email signature in the Saved qualified listings agent outreach draft
+- [x] Add regression coverage and publish the Saved qualified listings agent draft signature cleanup

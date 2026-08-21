@@ -15,6 +15,27 @@ export function isMikeFordSignature(profile: { name?: string | null; nmls?: stri
   return profile.name?.trim().toLowerCase() === "mike ford" || profile.nmls?.replace(/\D/g, "") === "288455";
 }
 
+/**
+ * Legacy saved templates may contain the old Mike Ford contact block. All
+ * current outreach builders append the standardized signature themselves, so
+ * strip the legacy block from their body copy before that final append.
+ */
+export function removeDuplicateMikeFordSignatureFromTemplateBody(templateBody: string, signature = MIKE_FORD_EMAIL_SIGNATURE_TEXT) {
+  const normalized = templateBody.replace(/\r\n/g, "\n");
+  const escapedSignature = signature.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const withoutCurrentSignature = normalized.replace(
+    new RegExp(`(?:^|\\n)\\s*(?:Thanks|Best|Sincerely),?\\s*\\n\\s*${escapedSignature}`, "gi"),
+    "",
+  );
+  return withoutCurrentSignature
+    .replace(
+      /(?:^|\n)\s*(?:Thanks|Best|Sincerely),?\s*\n\s*(?:Mike\s+)?Ford\s*\n\s*Loan Officer\s*\n\s*Cornerstone First Mortgage\s*\n[\s\S]*?Company NMLS #173855:\s*https:\/\/www\.nmlsconsumeraccess\.org\/EntityDetails\.aspx\/COMPANY\/173855(?=\s*$|\n)/gi,
+      "\n",
+    )
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export function buildLoanOfficerEmailSignature(profile: { name: string; email: string; phone: string; nmls: string; companyName: string; title?: string | null }) {
   if (isMikeFordSignature(profile)) return MIKE_FORD_EMAIL_SIGNATURE_TEXT;
   return `${profile.name}\n${profile.title || "Loan Officer"}${profile.nmls ? ` | NMLS #${profile.nmls}` : ""}\n${profile.companyName}\n${profile.phone}${profile.email ? ` | ${profile.email}` : ""}`;

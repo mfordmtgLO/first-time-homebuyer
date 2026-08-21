@@ -320,4 +320,19 @@ describe("GeoSphere property-list email drafts", () => {
     expect(draft.body).toContain(MIKE_FORD_EMAIL_SIGNATURE_TEXT);
     expect(draft.mailto).toContain("jamie%40example.com");
   });
+
+  it("removes a duplicated legacy Mike Ford contact block from Saved qualified listings outreach body copy", () => {
+    const draft = buildListingAgentOutreachDraft({
+      agentName: "Jamie Listing Agent",
+      agentEmail: "jamie@example.com",
+      areaLabel: "Coos Bay, OR",
+      bodyTemplate: `I would love to discuss a custom buyer-attraction campaign for these homes.\n\nThanks,\n${MIKE_FORD_EMAIL_SIGNATURE_TEXT}`,
+      listings: [LISTINGS[0]],
+    });
+
+    expect(draft.body).toContain("I would love to discuss a custom buyer-attraction campaign for these homes.");
+    expect(draft.body.match(/17850 Pilkington Rd \| Lake Oswego, OR 97035/g)).toHaveLength(1);
+    expect(draft.body.match(/NMLS #288455/g)).toHaveLength(1);
+    expect(draft.body.match(/Experience\.com Reviews/g)).toHaveLength(1);
+  });
 });

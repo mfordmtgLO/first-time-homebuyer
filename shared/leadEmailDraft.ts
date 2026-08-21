@@ -4,7 +4,7 @@
  * message before sending. Supporting PDFs are included as stable download links.
  */
 import { richEmailTemplateToText } from "./emailTemplateText";
-import { MIKE_FORD_EMAIL_SIGNATURE_TEXT } from "./mikeFordEmailSignature";
+import { MIKE_FORD_EMAIL_SIGNATURE_TEXT, removeDuplicateMikeFordSignatureFromTemplateBody } from "./mikeFordEmailSignature";
 
 export type LeadEmailBuydownScenario = {
   purchasePrice: number;
@@ -359,7 +359,9 @@ export function buildListingAgentOutreachDraft(input: ListingAgentOutreachDraftI
   const isMultiRecipient = recipientEmails.length > 1;
   const firstName = isMultiRecipient ? "there" : input.agentName.trim().split(/\s+/)[0] || "there";
   const listingLabel = input.listings.length === 1 ? "listing" : "listings";
-  const selectedTemplate = input.bodyTemplate?.trim() ? richEmailTemplateToText(input.bodyTemplate) : "";
+  const selectedTemplate = input.bodyTemplate?.trim()
+    ? removeDuplicateMikeFordSignatureFromTemplateBody(richEmailTemplateToText(input.bodyTemplate))
+    : "";
   const listingSummary = input.listings.map((listing) => {
     const price = listing.price === null ? "price not listed" : money(listing.price);
     const programOption = listing.isLmi && listing.isUsda

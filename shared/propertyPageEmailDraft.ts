@@ -1,23 +1,7 @@
 import { propertyEligibilityLabel, propertyFinancingContext, type PropertyLandingSnapshot } from "./propertyLandingPage";
-import { buildLoanOfficerEmailSignature } from "./mikeFordEmailSignature";
+import { buildLoanOfficerEmailSignature, removeDuplicateMikeFordSignatureFromTemplateBody } from "./mikeFordEmailSignature";
 
 type OfficerSignature = { name: string; email: string; phone: string; nmls: string; companyName: string };
-
-function removeDuplicateMikeFordSignature(templateBody: string, signature: string) {
-  const normalized = templateBody.replace(/\r\n/g, "\n");
-  const escapedSignature = signature.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const withoutCurrentSignature = normalized.replace(
-    new RegExp(`(?:^|\\n)\\s*(?:Thanks|Best|Sincerely),?\\s*\\n\\s*${escapedSignature}`, "gi"),
-    "",
-  );
-  return withoutCurrentSignature
-    .replace(
-      /(?:^|\n)\s*(?:Thanks|Best|Sincerely),?\s*\n\s*(?:Mike\s+)?Ford\s*\n\s*Loan Officer\s*\n\s*Cornerstone First Mortgage\s*\n[\s\S]*?Company NMLS #173855:\s*https:\/\/www\.nmlsconsumeraccess\.org\/EntityDetails\.aspx\/COMPANY\/173855(?=\s*$|\n)/gi,
-      "\n",
-    )
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
 
 export function buildPropertyPageAgentDraft(input: {
   templateBody?: string;
@@ -39,7 +23,7 @@ export function buildPropertyPageAgentDraft(input: {
     `Screening context: ${program}`,
   ].filter(Boolean).join("\n");
   const signature = buildLoanOfficerEmailSignature(input.loanOfficer);
-  const templateBody = input.templateBody ? removeDuplicateMikeFordSignature(input.templateBody, signature) : "";
+  const templateBody = input.templateBody ? removeDuplicateMikeFordSignatureFromTemplateBody(input.templateBody, signature) : "";
   const body = [
     `Hi ${firstName},`,
     "",
