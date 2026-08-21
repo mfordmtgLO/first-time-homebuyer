@@ -109,6 +109,8 @@ export type ListingAgentOutreachDraftInput = {
   listings: ListingEmailRow[];
   /** Reusable program or custom body copy. The builder always appends the listing variables and signature. */
   bodyTemplate?: string | null;
+  /** Optional dashboard override; blank values retain the contextual default. */
+  subject?: string | null;
 };
 
 const money = (value: number) =>
@@ -373,7 +375,7 @@ export function buildListingAgentOutreachDraft(input: ListingAgentOutreachDraftI
           : "No saved program flag";
     return `• ${listing.address} — ${price}\n  Saved program option: ${programOption}`;
   }).join("\n");
-  const subject = `${input.listings.length} ${listingLabel} in ${input.areaLabel}: buyer-attraction opportunity`;
+  const subject = input.subject?.trim() || `${input.listings.length} ${listingLabel} in ${input.areaLabel}: buyer-attraction opportunity`;
   const introduction = selectedTemplate || `I’m Mike Ford, a local loan officer with Cornerstone First Mortgage. I noticed ${input.listings.length === 1 ? "your listing" : "these listings"} in ${input.areaLabel} and thought ${input.listings.length === 1 ? "it" : "they"} may be worth featuring in buyer-attraction marketing that speaks to low- and no-down-payment homeownership options:`;
   const body = `Hi ${firstName},
 

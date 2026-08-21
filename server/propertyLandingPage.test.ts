@@ -53,6 +53,7 @@ describe("single-property saved snapshots", () => {
       listingAgentName: "Taylor Agent",
       listingAgentEmail: "taylor@example.com",
       loanOfficer: { name: "Mike Ford", email: "mike@example.com", phone: "541-729-0819", nmls: "288455", companyName: "Cornerstone First Mortgage" },
+      subject: "Custom property-page outreach subject",
     });
     const draft = decodeURIComponent(mailto);
     expect(draft).toContain("Hi Taylor,");
@@ -63,6 +64,7 @@ describe("single-property saved snapshots", () => {
     expect(draft).toContain("not a live listing feed");
     expect(draft).not.toContain("17850 Pilkington Rd");
     expect(draft).not.toContain("NMLS #288455");
+    expect(draft).toContain("subject=Custom property-page outreach subject");
   });
 
   it("removes a legacy Mike Ford contact block from the template body before appending the standard signature once", () => {

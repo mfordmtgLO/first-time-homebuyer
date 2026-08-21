@@ -310,6 +310,7 @@ describe("GeoSphere property-list email drafts", () => {
       agentEmail: "jamie@example.com",
       areaLabel: "Coos Bay, OR",
       bodyTemplate: "I would love to discuss a custom buyer-attraction campaign for these homes.",
+      subject: "Custom saved-listing outreach subject",
       listings: [LISTINGS[0]],
     });
     expect(draft.body).toContain("Hi Jamie,");
@@ -319,6 +320,7 @@ describe("GeoSphere property-list email drafts", () => {
     expect(draft.body).toContain("not a program approval or a guarantee");
     expect(draft.body).not.toContain(MIKE_FORD_EMAIL_SIGNATURE_TEXT);
     expect(draft.body).not.toContain("17850 Pilkington Rd");
+    expect(draft.subject).toBe("Custom saved-listing outreach subject");
     expect(draft.mailto).toContain("jamie%40example.com");
   });
 

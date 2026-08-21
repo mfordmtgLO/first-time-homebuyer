@@ -576,3 +576,8 @@
 - [x] Prevent duplicate Mike Ford signature blocks from being saved in qualified-listings agent templates
 - [x] Add regression coverage and verify both template editor content and generated agent drafts
 - [x] Publish the saved qualified-listings agent template cleanup
+
+- [x] Add a visible dashboard note that agent-email signatures are appended by the user’s mail client
+- [x] Add a one-click cleaned template-body preview to the listing-agent template manager
+- [x] Allow dashboard users to customize agent-draft subject lines before generating Saved qualified listings and single-property agent emails
+- [x] Add regression coverage and publish the agent email-drafting workflow improvements

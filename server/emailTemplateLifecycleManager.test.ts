@@ -50,4 +50,11 @@ describe("EmailTemplateLifecycleManager bulk archived lifecycle", () => {
     expect(managerSource).toContain("version history");
     expect(managerSource).toContain("Restore version");
   });
+
+  it("offers a one-click cleaned-body preview that clarifies signatures are supplied by the mail client", () => {
+    expect(managerSource).toContain("cleanupPreview");
+    expect(managerSource).toContain("Cleaned body");
+    expect(managerSource).toContain("The final email signature is appended by your mail client");
+    expect(managerSource).toContain("transformBody");
+  });
 });

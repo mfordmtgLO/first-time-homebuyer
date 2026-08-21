@@ -10,6 +10,8 @@ export function buildPropertyPageAgentDraft(input: {
   listingAgentName: string;
   listingAgentEmail: string;
   loanOfficer: OfficerSignature;
+  /** Optional dashboard override; blank values retain the contextual default. */
+  subject?: string | null;
 }) {
   const firstName = input.listingAgentName.trim().split(/\s+/)[0] || "there";
   const program = propertyEligibilityLabel(input.snapshot);
@@ -39,6 +41,6 @@ export function buildPropertyPageAgentDraft(input: {
     "",
     "If you are open to it, I would enjoy strategizing about first-time-buyer attraction for this property and helping interested buyers understand their next financing and home-search questions.",
   ].join("\n");
-  const subject = `First-time buyer attraction idea — ${input.snapshot.address}`;
+  const subject = input.subject?.trim() || `First-time buyer attraction idea — ${input.snapshot.address}`;
   return `mailto:${encodeURIComponent(input.listingAgentEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
