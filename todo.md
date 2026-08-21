@@ -563,3 +563,7 @@
 - [x] Restore the public chat launcher to icon-only while idle and Ask about buying while actively scrolling
 - [x] Verify compact-idle and scroll-expanded chat launcher behavior on homepage and single-property pages
 - [x] Add regression coverage and publish the chat launcher behavior restoration
+
+- [x] Remove the redundant Mike Ford contact block from the single-property agent outreach draft body
+- [x] Retain exactly one standardized Mike Ford default email signature in the single-property agent outreach draft
+- [x] Add regression coverage and publish the single-property agent draft signature cleanup

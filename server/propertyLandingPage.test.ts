@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildPropertyLandingSnapshot, getPropertyHeroMedia, propertyEligibilityLabel, propertyFinancingContext } from "@shared/propertyLandingPage";
 import { buildPropertyPageAgentDraft } from "@shared/propertyPageEmailDraft";
+import { MIKE_FORD_EMAIL_SIGNATURE_TEXT } from "@shared/mikeFordEmailSignature";
 
 const snapshot = buildPropertyLandingSnapshot({
   id: 41,
@@ -61,5 +62,22 @@ describe("single-property saved snapshots", () => {
     expect(draft).toContain("borrower, property, income, credit, and loan approval requirements");
     expect(draft).toContain("not a live listing feed");
     expect(draft).toContain("NMLS #288455");
+  });
+
+  it("removes a legacy Mike Ford contact block from the template body before appending the standard signature once", () => {
+    const mailto = buildPropertyPageAgentDraft({
+      templateBody: `I would welcome the chance to coordinate a first-time-buyer strategy.\n\nThanks,\n${MIKE_FORD_EMAIL_SIGNATURE_TEXT}`,
+      propertyUrl: "https://firsttimehomebuyer.manus.space/property/1024-s-5th-st-coos-bay-or-97420",
+      snapshot,
+      listingAgentName: "Taylor Agent",
+      listingAgentEmail: "taylor@example.com",
+      loanOfficer: { name: "Mike Ford", email: "mike@example.com", phone: "541-729-0819", nmls: "288455", companyName: "Cornerstone First Mortgage" },
+    });
+    const draft = decodeURIComponent(mailto);
+
+    expect(draft).toContain("I would welcome the chance to coordinate a first-time-buyer strategy.");
+    expect(draft.match(/17850 Pilkington Rd \| Lake Oswego, OR 97035/g)).toHaveLength(1);
+    expect(draft.match(/NMLS #288455/g)).toHaveLength(1);
+    expect(draft.match(/Experience\.com Reviews/g)).toHaveLength(1);
   });
 });
