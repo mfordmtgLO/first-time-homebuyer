@@ -555,3 +555,7 @@
 - [x] Ensure completed-chat navigation button labels wrap or fit clearly without truncation at mobile and desktop widths
 - [x] Add regression coverage and visually verify completed-chat navigation buttons
 - [x] Publish the completed-chat navigation readability fix
+
+- [x] Add clear keyboard-only focus indicators to completed-chat navigation cards
+- [x] Add regression coverage for completed-chat navigation focus styling
+- [x] Publish the completed-chat keyboard accessibility improvement

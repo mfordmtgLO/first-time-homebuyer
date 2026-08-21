@@ -417,7 +417,7 @@ export default function MortgageChatWidget({ compactWhenIdle = false }: { compac
                         key={option.targetId}
                         type="button"
                         variant="outline"
-                        className="h-auto min-h-12 w-full min-w-0 items-center justify-start gap-1.5 px-2.5 py-2 text-left text-xs"
+                        className="h-auto min-h-12 w-full min-w-0 items-center justify-start gap-1.5 px-2.5 py-2 text-left text-xs transition-colors hover:border-primary/45 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card"
                         onClick={() => continueToSiteSection(option.targetId)}
                       >
                         <Icon className="h-4 w-4 shrink-0 text-primary" />

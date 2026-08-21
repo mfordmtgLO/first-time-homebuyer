@@ -51,10 +51,18 @@ describe("chat completion navigation", () => {
     const componentSource = readFileSync(path.join(projectRoot, "client/src/components/MortgageChatWidget.tsx"), "utf8");
 
     expect(componentSource).toContain('className="mt-3 grid grid-cols-2 gap-2"');
-    expect(componentSource).toContain('className="h-auto min-h-12 w-full min-w-0 items-center justify-start gap-1.5 px-2.5 py-2 text-left text-xs"');
+    expect(componentSource).toContain('className="h-auto min-h-12 w-full min-w-0 items-center justify-start gap-1.5 px-2.5 py-2 text-left text-xs transition-colors hover:border-primary/45 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card"');
     expect(componentSource).toContain('className="min-w-0 flex-1 whitespace-normal break-words text-xs font-semibold leading-tight"');
     expect(componentSource).not.toContain('className="min-w-0 flex-1 truncate text-xs font-semibold"');
     expect(componentSource).not.toContain('option.targetId === "roadmap" ? "h-11');
+  });
+
+  it("gives each completed-chat navigation card a clear keyboard-visible focus state", () => {
+    const projectRoot = path.resolve(import.meta.dirname, "..");
+    const componentSource = readFileSync(path.join(projectRoot, "client/src/components/MortgageChatWidget.tsx"), "utf8");
+
+    expect(componentSource).toContain("focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card");
+    expect(componentSource).toContain("hover:border-primary/45 hover:bg-primary/5");
   });
 
   it("resets the reused completion panel to the top before presenting the finished intake message", () => {
