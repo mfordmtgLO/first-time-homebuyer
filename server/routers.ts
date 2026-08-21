@@ -27,7 +27,12 @@ import {
   deletePropertyPageBuyerEmailTemplate,
   createDirectoryOutreachEmailTemplate,
   deleteDirectoryOutreachEmailTemplate,
+  createDirectoryFilterPreset,
+  deleteDirectoryFilterPreset,
+  getDirectoryOutreachLastDrafts,
   listDirectoryOutreachEmailTemplates,
+  listDirectoryFilterPresets,
+  recordDirectoryOutreachDrafts,
   setDirectoryOutreachEmailTemplateArchived,
   updateDirectoryOutreachEmailTemplate,
   createAgent,
@@ -194,6 +199,8 @@ const directoryOutreachTemplateInputSchema = z.object({
   subjectTemplate: z.string().trim().min(4).max(300),
   bodyTemplate: z.string().trim().min(20).max(6000),
 });
+const directoryOutreachRecipientSchema = z.object({ recipientId: z.number().int().positive(), recipientName: z.string().trim().min(1).max(160) });
+const directoryFilterPresetInputSchema = z.object({ audience: directoryOutreachAudienceSchema, name: z.string().trim().min(2).max(120), searchQuery: z.string().trim().max(300), sortOrder: z.enum(["last_name", "recent"]), principalBrokerOnly: z.boolean().optional() });
 
 const oregonAgentSourceProfileSchema = z.object({
   // Top agents use their positive source IDs; derived standalone principal
@@ -649,6 +656,32 @@ export const appRouter = router({
       requireAdmin(ctx.user.role);
       await deleteDirectoryOutreachEmailTemplate({ ownerUserId: ctx.user.id, ...input });
       return { deleted: true };
+    }),
+  }),
+  directoryOutreach: router({
+    lastDrafts: protectedProcedure.input(z.object({ audience: directoryOutreachAudienceSchema })).query(async ({ ctx, input }) => {
+      requireAdmin(ctx.user.role);
+      return getDirectoryOutreachLastDrafts({ ownerUserId: ctx.user.id, audience: input.audience });
+    }),
+    recordDraftOpen: protectedProcedure.input(z.object({ audience: directoryOutreachAudienceSchema, templateId: z.number().int().positive().nullable().optional(), recipients: z.array(directoryOutreachRecipientSchema).min(1).max(100) })).mutation(async ({ ctx, input }) => {
+      requireAdmin(ctx.user.role);
+      await recordDirectoryOutreachDrafts({ ownerUserId: ctx.user.id, audience: input.audience, templateId: input.templateId ?? null, recipients: input.recipients });
+      return { recorded: input.recipients.length };
+    }),
+    filterPresets: router({
+      list: protectedProcedure.input(z.object({ audience: directoryOutreachAudienceSchema })).query(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return listDirectoryFilterPresets({ ownerUserId: ctx.user.id, audience: input.audience });
+      }),
+      create: protectedProcedure.input(directoryFilterPresetInputSchema).mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return createDirectoryFilterPreset({ ownerUserId: ctx.user.id, ...input });
+      }),
+      delete: protectedProcedure.input(z.object({ audience: directoryOutreachAudienceSchema, id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        await deleteDirectoryFilterPreset({ ownerUserId: ctx.user.id, ...input });
+        return { deleted: true };
+      }),
     }),
   }),
   site: router({

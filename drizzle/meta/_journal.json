@@ -288,6 +288,13 @@
       "when": 1787323865042,
       "tag": "0040_polite_tarot",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "5",
+      "when": 1787327723479,
+      "tag": "0041_brave_tyrannus",
+      "breakpoints": true
     }
   ]
 }

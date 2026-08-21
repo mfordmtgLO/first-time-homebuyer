@@ -715,6 +715,50 @@ export const directoryOutreachEmailTemplate = mysqlTable(
 export type DirectoryOutreachEmailTemplate = typeof directoryOutreachEmailTemplate.$inferSelect;
 export type InsertDirectoryOutreachEmailTemplate = typeof directoryOutreachEmailTemplate.$inferInsert;
 
+/** Private audit entries for individual or grouped drafts opened from the partner directories. */
+export const directoryOutreachDraft = mysqlTable(
+  "directory_outreach_draft",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerUserId: int("ownerUserId").notNull(),
+    audience: mysqlEnum("audience", ["agent", "loan_officer"]).notNull(),
+    recipientId: int("recipientId").notNull(),
+    recipientName: varchar("recipientName", { length: 160 }).notNull(),
+    templateId: int("templateId"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [
+    index("directory_outreach_draft_owner_audience_recipient_time_idx").on(table.ownerUserId, table.audience, table.recipientId, table.createdAt),
+    index("directory_outreach_draft_owner_time_idx").on(table.ownerUserId, table.createdAt),
+  ]
+);
+
+export type DirectoryOutreachDraft = typeof directoryOutreachDraft.$inferSelect;
+export type InsertDirectoryOutreachDraft = typeof directoryOutreachDraft.$inferInsert;
+
+/** Private reusable directory search and sorting presets for quick recurring partner views. */
+export const directoryFilterPreset = mysqlTable(
+  "directory_filter_preset",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerUserId: int("ownerUserId").notNull(),
+    audience: mysqlEnum("audience", ["agent", "loan_officer"]).notNull(),
+    name: varchar("name", { length: 120 }).notNull(),
+    searchQuery: varchar("searchQuery", { length: 300 }).default("").notNull(),
+    sortOrder: mysqlEnum("sortOrder", ["last_name", "recent"]).default("last_name").notNull(),
+    principalBrokerOnly: int("principalBrokerOnly").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("directory_filter_preset_owner_audience_name_unique").on(table.ownerUserId, table.audience, table.name),
+    index("directory_filter_preset_owner_audience_idx").on(table.ownerUserId, table.audience),
+  ]
+);
+
+export type DirectoryFilterPreset = typeof directoryFilterPreset.$inferSelect;
+export type InsertDirectoryFilterPreset = typeof directoryFilterPreset.$inferInsert;
+
 /** Private usage records for custom dashboard email templates. No recipient or message content is retained here. */
 export const emailTemplateUsage = mysqlTable(
   "email_template_usage",

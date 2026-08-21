@@ -17,6 +17,8 @@ import {
   propertyPageAgentEmailTemplate,
   propertyPageBuyerEmailTemplate,
   directoryOutreachEmailTemplate,
+  directoryOutreachDraft,
+  directoryFilterPreset,
   emailTemplateUsage,
   emailTemplateVersion,
   syncedAgentOutreachTemplate,
@@ -1970,6 +1972,41 @@ export async function deleteDirectoryOutreachEmailTemplate(input: { ownerUserId:
   if (!db) throw new Error("Database not available");
   const result = await db.delete(directoryOutreachEmailTemplate).where(and(eq(directoryOutreachEmailTemplate.id, input.id), eq(directoryOutreachEmailTemplate.ownerUserId, input.ownerUserId), eq(directoryOutreachEmailTemplate.audience, input.audience)));
   if (!result[0].affectedRows) throw new Error("Directory outreach template not found.");
+}
+
+export async function recordDirectoryOutreachDrafts(input: { ownerUserId: number; audience: "agent" | "loan_officer"; templateId?: number | null; recipients: Array<{ recipientId: number; recipientName: string }> }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (!input.recipients.length) return;
+  await db.insert(directoryOutreachDraft).values(input.recipients.map((recipient) => ({ ownerUserId: input.ownerUserId, audience: input.audience, templateId: input.templateId ?? null, ...recipient })));
+}
+
+export async function getDirectoryOutreachLastDrafts(input: { ownerUserId: number; audience: "agent" | "loan_officer" }) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({ recipientId: directoryOutreachDraft.recipientId, lastDraftedAt: sql<Date>`max(${directoryOutreachDraft.createdAt})` }).from(directoryOutreachDraft).where(and(eq(directoryOutreachDraft.ownerUserId, input.ownerUserId), eq(directoryOutreachDraft.audience, input.audience))).groupBy(directoryOutreachDraft.recipientId);
+  return rows.map((row) => ({ recipientId: row.recipientId, lastDraftedAt: row.lastDraftedAt }));
+}
+
+export async function listDirectoryFilterPresets(input: { ownerUserId: number; audience: "agent" | "loan_officer" }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(directoryFilterPreset).where(and(eq(directoryFilterPreset.ownerUserId, input.ownerUserId), eq(directoryFilterPreset.audience, input.audience))).orderBy(asc(directoryFilterPreset.name));
+}
+
+export async function createDirectoryFilterPreset(input: { ownerUserId: number; audience: "agent" | "loan_officer"; name: string; searchQuery: string; sortOrder: "last_name" | "recent"; principalBrokerOnly?: boolean }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(directoryFilterPreset).values({ ownerUserId: input.ownerUserId, audience: input.audience, name: input.name, searchQuery: input.searchQuery, sortOrder: input.sortOrder, principalBrokerOnly: input.principalBrokerOnly ? 1 : 0 });
+  const rows = await db.select().from(directoryFilterPreset).where(and(eq(directoryFilterPreset.id, Number(result.insertId)), eq(directoryFilterPreset.ownerUserId, input.ownerUserId))).limit(1);
+  return rows[0]!;
+}
+
+export async function deleteDirectoryFilterPreset(input: { ownerUserId: number; audience: "agent" | "loan_officer"; id: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.delete(directoryFilterPreset).where(and(eq(directoryFilterPreset.id, input.id), eq(directoryFilterPreset.ownerUserId, input.ownerUserId), eq(directoryFilterPreset.audience, input.audience)));
+  if (!result[0].affectedRows) throw new Error("Directory filter preset not found.");
 }
 
 /** Aggregates privacy-minimized Email PDF draft activity and post-draft captured leads by saved property page. */

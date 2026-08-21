@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
@@ -26,6 +27,7 @@ import {
 import { slugify } from "@shared/slug";
 import ProfileShareTools from "@/components/ProfileShareTools";
 import { DirectoryOutreachControls } from "@/components/DirectoryOutreachControls";
+import { DirectoryFilterPresetControls } from "@/components/DirectoryFilterPresetControls";
 import { toast } from "sonner";
 import { publicSiteUrl } from "@shared/publicSiteUrl";
 import {
@@ -262,6 +264,8 @@ export default function LoanOfficerSettings() {
   const [deleting, setDeleting] = useState<Officer | null>(null);
   const [directorySearch, setDirectorySearch] = useState("");
   const [directorySort, setDirectorySort] = useState<"last_name" | "recent">("last_name");
+  const [selectedOfficerIds, setSelectedOfficerIds] = useState<Set<number>>(() => new Set());
+  const officerLastDraftsQuery = trpc.directoryOutreach.lastDrafts.useQuery({ audience: "loan_officer" });
   const visibleOfficers = useMemo(() => {
     const query = directorySearch.trim().toLowerCase();
     return officers
@@ -270,6 +274,10 @@ export default function LoanOfficerSettings() {
         ? new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
         : (left.name.trim().split(/\s+/).at(-1) || left.name).localeCompare(right.name.trim().split(/\s+/).at(-1) || right.name) || left.name.localeCompare(right.name));
   }, [directorySearch, directorySort, officers]);
+  const officerLastDraftById = useMemo(() => new Map((officerLastDraftsQuery.data ?? []).map((draft) => [draft.recipientId, draft.lastDraftedAt])), [officerLastDraftsQuery.data]);
+  const selectedVisibleOfficers = useMemo(() => visibleOfficers.filter((officer) => selectedOfficerIds.has(officer.id)), [selectedOfficerIds, visibleOfficers]);
+  const toggleSelectedOfficer = (id: number) => setSelectedOfficerIds((current) => { const next = new Set(current); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  const toggleAllVisibleOfficers = () => setSelectedOfficerIds((current) => { const next = new Set(current); const allSelected = visibleOfficers.length > 0 && visibleOfficers.every((officer) => next.has(officer.id)); if (allSelected) visibleOfficers.forEach((officer) => next.delete(officer.id)); else visibleOfficers.forEach((officer) => next.add(officer.id)); return next; });
 
   const feature = trpc.loanOfficer.setFeatured.useMutation({
     onSuccess: () => { utils.loanOfficer.list.invalidate(); utils.loanOfficer.getFeatured.invalidate(); toast.success("Default chat loan officer updated."); },
@@ -294,21 +302,23 @@ export default function LoanOfficerSettings() {
         <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true); }}><Plus className="mr-1.5 h-4 w-4" /> Add LO</Button>
       </div>
       {officersQuery.isLoading || agentsQuery.isLoading ? <div className="flex items-center justify-center py-12 text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading loan officers…</div> : officers.length === 0 ? <div className="py-12 text-center text-sm text-muted-foreground">No loan officers have been added yet.</div> : <>
-        <div className="flex flex-col gap-3 border-b border-border bg-muted/20 px-6 py-3 lg:flex-row lg:items-center lg:justify-between"><div className="relative min-w-0 flex-1 lg:max-w-md"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={directorySearch} onChange={(event) => setDirectorySearch(event.target.value)} className="h-9 pl-9 text-sm" placeholder="Search loan officers by name, company, NMLS, or email" /></div><div className="flex flex-wrap items-center gap-2"><label className="text-xs font-semibold text-muted-foreground">Order <select value={directorySort} onChange={(event) => setDirectorySort(event.target.value as "last_name" | "recent")} className="ml-1 h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"><option value="last_name">A–Z by last name</option><option value="recent">Most recent</option></select></label><span className="rounded-full border border-border bg-background px-2 py-1 text-[11px] font-bold text-muted-foreground">{visibleOfficers.length} shown</span></div></div>
+        <div className="flex flex-col gap-3 border-b border-border bg-muted/20 px-6 py-3 lg:flex-row lg:items-center lg:justify-between"><div className="relative min-w-0 flex-1 lg:max-w-md"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={directorySearch} onChange={(event) => setDirectorySearch(event.target.value)} className="h-9 pl-9 text-sm" placeholder="Search loan officers by name, company, NMLS, or email" /></div><div className="flex flex-wrap items-center gap-2"><label className="text-xs font-semibold text-muted-foreground">Order <select value={directorySort} onChange={(event) => setDirectorySort(event.target.value as "last_name" | "recent")} className="ml-1 h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"><option value="last_name">A–Z by last name</option><option value="recent">Most recent</option></select></label><DirectoryFilterPresetControls audience="loan_officer" filters={{ searchQuery: directorySearch, sortOrder: directorySort, principalBrokerOnly: false }} onApply={(filters) => { setDirectorySearch(filters.searchQuery); setDirectorySort(filters.sortOrder); }} /><span className="rounded-full border border-border bg-background px-2 py-1 text-[11px] font-bold text-muted-foreground">{visibleOfficers.length} shown</span></div></div>
+        <div className="flex flex-wrap items-center gap-3 border-b border-border bg-emerald-500/[0.035] px-6 py-2.5"><label className="flex items-center gap-2 text-xs font-semibold text-foreground"><Checkbox checked={visibleOfficers.length > 0 && visibleOfficers.every((officer) => selectedOfficerIds.has(officer.id))} onCheckedChange={toggleAllVisibleOfficers} />Select visible</label><span className="text-xs text-muted-foreground">{selectedVisibleOfficers.length} selected</span>{selectedVisibleOfficers.length ? <DirectoryOutreachControls audience="loan_officer" recipients={selectedVisibleOfficers.map((officer) => ({ id: officer.id, name: officer.name, email: officer.email, companyName: officer.companyName, title: officer.title }))} /> : null}</div>
         <div className="max-h-[38rem] overflow-y-auto overscroll-contain [scrollbar-gutter:stable]"><ul className="divide-y divide-border/60">
           {visibleOfficers.map((officer) => {
             const partner = officer.agentId ? agentById.get(officer.agentId) : undefined;
             const url = partner ? pairUrl(officer, partner) : null;
             const standaloneUrl = partner ? null : loanOfficerUrl(officer);
-            return <li key={officer.id} className="flex flex-wrap items-center gap-4 px-6 py-4">
+            return <li key={officer.id} className="flex flex-wrap items-center gap-4 px-6 py-4"><Checkbox checked={selectedOfficerIds.has(officer.id)} onCheckedChange={() => toggleSelectedOfficer(officer.id)} aria-label={`Select ${officer.name} for group outreach`} />
               {officer.headshotUrl ? <img src={officer.headshotUrl} alt={`${officer.name} headshot`} className="h-11 w-11 rounded-full border border-border object-cover" /> : <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10"><BadgeCheck className="h-5 w-5 text-primary" /></div>}
               <div className="min-w-[220px] flex-1">
                 <div className="flex flex-wrap items-center gap-2"><span className="font-semibold text-foreground">{officer.name}</span>{officer.featured === 1 && <span className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/20 px-2 py-0.5 text-[11px] font-semibold text-foreground"><Star className="h-3 w-3 fill-current" /> Default chat contact</span>}{officer.visible !== 1 && <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">Inactive</span>}</div>
                 <p className="mt-0.5 text-sm text-muted-foreground">{officer.title} · NMLS #{officer.nmls || "—"} · {officer.phone} · {officer.email}</p>
                 {partner ? <p className="mt-1 flex items-center gap-1.5 text-xs text-primary"><Users className="h-3.5 w-3.5" /> Partnered with {partner.name}{partner.companyName ? ` · ${partner.companyName}` : ""} <span className="text-muted-foreground">· /with/{officer.slug}/{partner.slug}</span></p> : standaloneUrl ? <p className="mt-1 break-all text-xs text-muted-foreground">LO profile only · <a href={standaloneUrl} target="_blank" rel="noreferrer" className="font-medium text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary">{standaloneUrl}</a></p> : null}
+                <p className="mt-1 text-xs text-muted-foreground">{officerLastDraftById.get(officer.id) ? `Last outreach draft: ${new Date(officerLastDraftById.get(officer.id)!).toLocaleString()}` : "No directory outreach draft opened yet"}</p>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                <DirectoryOutreachControls audience="loan_officer" recipient={{ name: officer.name, email: officer.email, companyName: officer.companyName, title: officer.title }} compact />
+                <DirectoryOutreachControls audience="loan_officer" recipients={[{ id: officer.id, name: officer.name, email: officer.email, companyName: officer.companyName, title: officer.title }]} compact />
                 {url && <Button variant="outline" size="sm" onClick={() => copyPairLink(officer, partner!)}><Copy className="mr-1.5 h-3.5 w-3.5" /> Copy link</Button>}
                 {standaloneUrl && <ProfileShareTools url={standaloneUrl} label={`${officer.name} loan officer profile`} />}
                 <Button variant="outline" size="sm" onClick={() => feature.mutate({ id: officer.featured === 1 ? null : officer.id })}><Star className={`mr-1.5 h-3.5 w-3.5 ${officer.featured === 1 ? "fill-current" : ""}`} />{officer.featured === 1 ? "Unfeature" : "Make default"}</Button>

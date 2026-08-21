@@ -10,9 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { EmailTemplateLifecycleManager } from "@/components/EmailTemplateLifecycleManager";
 import { UniversalEmailTemplateEditor } from "@/components/UniversalEmailTemplateEditor";
 import { DirectoryOutreachControls } from "@/components/DirectoryOutreachControls";
+import { DirectoryFilterPresetControls } from "@/components/DirectoryFilterPresetControls";
 import {
   Dialog,
   DialogContent,
@@ -953,6 +955,8 @@ export default function AgentSettings() {
   const [directorySearch, setDirectorySearch] = useState("");
   const [directorySort, setDirectorySort] = useState<"last_name" | "recent">("last_name");
   const [principalBrokerOnly, setPrincipalBrokerOnly] = useState(false);
+  const [selectedAgentIds, setSelectedAgentIds] = useState<Set<number>>(() => new Set());
+  const agentLastDraftsQuery = trpc.directoryOutreach.lastDrafts.useQuery({ audience: "agent" });
   const [lastRankMovements, setLastRankMovements] = useState<RankMovementSummary[]>([]);
   const officeRankSummary = useMemo(() => summarizeOfficeRankMovements(lastRankMovements), [lastRankMovements]);
   const syncedProfileById = useMemo(() => new Map(syncedProfiles.map((profile) => [profile.id, profile])), [syncedProfiles]);
@@ -965,6 +969,10 @@ export default function AgentSettings() {
         ? new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
         : (left.name.trim().split(/\s+/).at(-1) || left.name).localeCompare(right.name.trim().split(/\s+/).at(-1) || right.name) || left.name.localeCompare(right.name));
   }, [agents, directorySearch, directorySort, principalBrokerOnly, syncedProfileById]);
+  const agentLastDraftById = useMemo(() => new Map((agentLastDraftsQuery.data ?? []).map((draft) => [draft.recipientId, draft.lastDraftedAt])), [agentLastDraftsQuery.data]);
+  const selectedVisibleAgents = useMemo(() => visibleDirectoryAgents.filter((agent) => selectedAgentIds.has(agent.id)), [selectedAgentIds, visibleDirectoryAgents]);
+  const toggleSelectedAgent = (id: number) => setSelectedAgentIds((current) => { const next = new Set(current); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  const toggleAllVisibleAgents = () => setSelectedAgentIds((current) => { const next = new Set(current); const allSelected = visibleDirectoryAgents.length > 0 && visibleDirectoryAgents.every((agent) => next.has(agent.id)); if (allSelected) visibleDirectoryAgents.forEach((agent) => next.delete(agent.id)); else visibleDirectoryAgents.forEach((agent) => next.add(agent.id)); return next; });
 
   const utils = trpc.useUtils();
   const refreshAgents = () => {
@@ -1180,14 +1188,15 @@ export default function AgentSettings() {
       ) : <>
         <div className="flex flex-col gap-3 border-b border-border bg-muted/20 px-6 py-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative min-w-0 flex-1 lg:max-w-md"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={directorySearch} onChange={(event) => setDirectorySearch(event.target.value)} className="h-9 pl-9 text-sm" placeholder="Search agents by name, brokerage, or email" /></div>
-          <div className="flex flex-wrap items-center gap-2"><Button type="button" size="sm" variant={principalBrokerOnly ? "default" : "outline"} onClick={() => setPrincipalBrokerOnly((current) => !current)} aria-pressed={principalBrokerOnly}>PB only</Button><label className="text-xs font-semibold text-muted-foreground">Order <select value={directorySort} onChange={(event) => setDirectorySort(event.target.value as "last_name" | "recent")} className="ml-1 h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"><option value="last_name">A–Z by last name</option><option value="recent">Most recent</option></select></label><span className="rounded-full border border-border bg-background px-2 py-1 text-[11px] font-bold text-muted-foreground">{visibleDirectoryAgents.length} shown</span></div>
+          <div className="flex flex-wrap items-center gap-2"><Button type="button" size="sm" variant={principalBrokerOnly ? "default" : "outline"} onClick={() => setPrincipalBrokerOnly((current) => !current)} aria-pressed={principalBrokerOnly}>PB only</Button><label className="text-xs font-semibold text-muted-foreground">Order <select value={directorySort} onChange={(event) => setDirectorySort(event.target.value as "last_name" | "recent")} className="ml-1 h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"><option value="last_name">A–Z by last name</option><option value="recent">Most recent</option></select></label><DirectoryFilterPresetControls audience="agent" filters={{ searchQuery: directorySearch, sortOrder: directorySort, principalBrokerOnly }} onApply={(filters) => { setDirectorySearch(filters.searchQuery); setDirectorySort(filters.sortOrder); setPrincipalBrokerOnly(filters.principalBrokerOnly); }} /><span className="rounded-full border border-border bg-background px-2 py-1 text-[11px] font-bold text-muted-foreground">{visibleDirectoryAgents.length} shown</span></div>
         </div>
+        <div className="flex flex-wrap items-center gap-3 border-b border-border bg-emerald-500/[0.035] px-6 py-2.5"><label className="flex items-center gap-2 text-xs font-semibold text-foreground"><Checkbox checked={visibleDirectoryAgents.length > 0 && visibleDirectoryAgents.every((agent) => selectedAgentIds.has(agent.id))} onCheckedChange={toggleAllVisibleAgents} />Select visible</label><span className="text-xs text-muted-foreground">{selectedVisibleAgents.length} selected</span>{selectedVisibleAgents.length ? <DirectoryOutreachControls audience="agent" recipients={selectedVisibleAgents.map((agent) => ({ id: agent.id, name: agent.name, email: agent.email, companyName: agent.companyName, title: "Co-branded agent" }))} /> : null}</div>
         <div className="max-h-[38rem] overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
         <ul className="divide-y divide-border/60">
           {visibleDirectoryAgents.map((agent) => {
             const pairedOfficer = pairedOfficerByAgent.get(agent.id);
             const shareUrl = agentUrl(agent.slug, pairedOfficer?.slug);
-            return <li key={agent.id} className="px-6 py-4 flex flex-wrap items-center gap-4">
+            return <li key={agent.id} className="px-6 py-4 flex flex-wrap items-center gap-4"><Checkbox checked={selectedAgentIds.has(agent.id)} onCheckedChange={() => toggleSelectedAgent(agent.id)} aria-label={`Select ${agent.name} for group outreach`} />
               {agent.headshotUrl ? (
                 <img
                   src={agent.headshotUrl}
@@ -1231,6 +1240,7 @@ export default function AgentSettings() {
                   </span>
                   {!pairedOfficer && <span className="text-xs font-medium text-amber-700">Pair a loan officer to create a full co-branded link.</span>}
                 </div>
+                <p className="mt-1 text-xs text-muted-foreground">{agentLastDraftById.get(agent.id) ? `Last outreach draft: ${new Date(agentLastDraftById.get(agent.id)!).toLocaleString()}` : "No directory outreach draft opened yet"}</p>
                 {(() => {
                   const stats = statsByAgent.get(agent.id);
                   const linkLeads = stats?.linkLeads ?? 0;
@@ -1272,7 +1282,7 @@ export default function AgentSettings() {
                 })()}
               </div>
               <div className="flex items-center gap-1.5 flex-wrap">
-                <DirectoryOutreachControls audience="agent" recipient={{ name: agent.name, email: agent.email, companyName: agent.companyName, title: "Co-branded agent" }} compact />
+                <DirectoryOutreachControls audience="agent" recipients={[{ id: agent.id, name: agent.name, email: agent.email, companyName: agent.companyName, title: "Co-branded agent" }]} compact />
                 <ProfileShareTools url={shareUrl} label={`${agent.name} co-branded page`} />
                 <Button variant="outline" size="sm" onClick={() => openShareDraft(agent, pairedOfficer?.slug)} title="Open an email draft with this agent's QR-and-URL sharing message">
                   <MailCheck className="h-3.5 w-3.5 mr-1.5" /> Share QR + URL

@@ -14,9 +14,9 @@ import { buildDirectoryOutreachDraft, getDirectoryOutreachDefaultTemplate, type 
 const ADD_TEMPLATE = "__add_directory_outreach_template__";
 const DEFAULT_TEMPLATE = "__default_directory_outreach_template__";
 
-type Recipient = { name: string; email: string; companyName?: string | null; title?: string | null };
+type Recipient = { id: number; name: string; email: string; companyName?: string | null; title?: string | null };
 
-export function DirectoryOutreachControls({ audience, recipient, compact = false }: { audience: DirectoryOutreachAudience; recipient: Recipient; compact?: boolean }) {
+export function DirectoryOutreachControls({ audience, recipients, compact = false }: { audience: DirectoryOutreachAudience; recipients: Recipient[]; compact?: boolean }) {
   const utils = trpc.useUtils();
   const activeTemplatesQuery = trpc.directoryOutreachTemplates.list.useQuery({ audience });
   const allTemplatesQuery = trpc.directoryOutreachTemplates.list.useQuery({ audience, includeArchived: true });
@@ -41,6 +41,7 @@ export function DirectoryOutreachControls({ audience, recipient, compact = false
   const setArchived = trpc.directoryOutreachTemplates.setArchived.useMutation({ onSuccess: (_result, variables) => { invalidate(); if (variables.archived && templateValue === String(variables.id)) setTemplateValue(DEFAULT_TEMPLATE); toast.success(variables.archived ? "Email template archived." : "Email template restored."); }, onError: (error) => toast.error(error.message || "Could not update the email template.") });
   const deleteTemplate = trpc.directoryOutreachTemplates.delete.useMutation({ onSuccess: (_result, variables) => { invalidate(); if (templateValue === String(variables.id)) setTemplateValue(DEFAULT_TEMPLATE); toast.success("Email template permanently deleted."); }, onError: (error) => toast.error(error.message || "Could not delete the email template.") });
   const recordOpen = trpc.templateUsage.recordDraftOpen.useMutation({ onSuccess: () => void utils.templateUsage.listCounts.invalidate({ templateScope: scope }) });
+  const recordDirectoryDraft = trpc.directoryOutreach.recordDraftOpen.useMutation({ onSuccess: () => void utils.directoryOutreach.lastDrafts.invalidate({ audience }) });
   const pending = createTemplate.isPending || updateTemplate.isPending || setArchived.isPending || deleteTemplate.isPending;
 
   const startNewTemplate = () => { setEditingId(null); setName(""); setSubjectTemplate(defaults.subjectTemplate); setBodyTemplate(defaults.bodyTemplate); setEditorOpen(true); };
@@ -52,11 +53,15 @@ export function DirectoryOutreachControls({ audience, recipient, compact = false
   };
   const chooseTemplate = (value: string) => { if (value === ADD_TEMPLATE) { startNewTemplate(); return; } setTemplateValue(value); };
   const openDraft = () => {
-    if (!recipient.email.trim()) { toast.error(`${recipient.name} does not have an email address on file.`); return; }
-    const draft = buildDirectoryOutreachDraft({ audience, recipient, template: selectedTemplate });
+    const validRecipients = recipients.filter((recipient) => recipient.email.trim());
+    if (!validRecipients.length) { toast.error(`No selected ${label} has an email address on file.`); return; }
+    const representative = validRecipients.length === 1 ? validRecipients[0]! : { id: 0, name: "there", email: "", companyName: "your team", title: audience === "agent" ? "co-branded partners" : "loan officers" };
+    const draft = buildDirectoryOutreachDraft({ audience, recipient: representative, template: selectedTemplate });
     if (selectedTemplate) recordOpen.mutate({ templateScope: scope, templateId: selectedTemplate.id });
-    window.location.href = draft.mailto;
-    toast.success(`Draft opened for ${recipient.name}. Your mail client adds the complete signature once.`);
+    recordDirectoryDraft.mutate({ audience, templateId: selectedTemplate?.id ?? null, recipients: validRecipients.map((recipient) => ({ recipientId: recipient.id, recipientName: recipient.name })) });
+    const mailto = validRecipients.length === 1 ? draft.mailto : `mailto:?bcc=${encodeURIComponent(validRecipients.map((recipient) => recipient.email).join(","))}&subject=${encodeURIComponent(draft.subject)}&body=${encodeURIComponent(draft.body)}`;
+    window.location.href = mailto;
+    toast.success(validRecipients.length === 1 ? `Draft opened for ${validRecipients[0]!.name}. Your mail client adds the complete signature once.` : `BCC draft opened for ${validRecipients.length} ${label}s. Your mail client adds the complete signature once.`);
   };
 
   return <>
@@ -66,8 +71,8 @@ export function DirectoryOutreachControls({ audience, recipient, compact = false
         <SelectContent><SelectItem value={ADD_TEMPLATE}><span className="font-semibold text-primary">Add template</span></SelectItem><SelectItem value={DEFAULT_TEMPLATE}>Default outreach</SelectItem>{templates.map((template) => <SelectItem key={template.id} value={String(template.id)}>Saved · {template.name}</SelectItem>)}</SelectContent>
       </Select>
       <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => setManagerOpen(true)}>Manage</Button>
-      <Button type="button" size="sm" className="h-8 text-xs" onClick={openDraft}><Mail className="mr-1.5 h-3.5 w-3.5" />Draft email</Button>
-      {!compact ? <p className="basis-full text-[10px] leading-relaxed text-emerald-950">Choose <strong>Add template</strong> first to create reusable rich email copy. Drafts open in your email client, which appends the complete Mike Ford signature once.</p> : null}
+      <Button type="button" size="sm" className="h-8 text-xs" onClick={openDraft} disabled={!recipients.length}><Mail className="mr-1.5 h-3.5 w-3.5" />{recipients.length > 1 ? `Draft to ${recipients.length}` : "Draft email"}</Button>
+      {!compact ? <p className="basis-full text-[10px] leading-relaxed text-emerald-950">Choose <strong>Add template</strong> first to create reusable rich email copy. When more than one profile is selected, recipients are added as BCC. Drafts open in your email client, which appends the complete Mike Ford signature once.</p> : null}
     </div>
 
     <Dialog open={editorOpen} onOpenChange={setEditorOpen}>

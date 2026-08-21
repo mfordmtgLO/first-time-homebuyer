@@ -592,3 +592,8 @@
 - [x] Add a PB-only filter for Co-branded agents
 - [x] Add template-backed draft-email actions for Co-branded agents and Loan officers, with Add template first and full lifecycle management
 - [x] Add regression coverage and publish the scalable agent and loan-officer directory enhancements
+
+- [x] Add bulk-selection checkboxes and grouped email-draft generation for Co-branded agents and Loan officers
+- [x] Record and display each agent and loan officer profile’s most recent directory outreach draft timestamp
+- [x] Add owner-scoped reusable directory filter presets for frequent agent and loan-officer searches
+- [x] Add regression coverage and publish the directory productivity upgrades
