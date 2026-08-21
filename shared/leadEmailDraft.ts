@@ -386,10 +386,7 @@ The saved program option for each property is listed above. I would be glad to d
 
 This is not a program approval or a guarantee of property or borrower eligibility. We would verify all program, borrower, property, occupancy, and availability requirements before making any representations.
 
-Would you be open to a brief conversation about buyer-attraction marketing opportunities for ${input.listings.length === 1 ? "this home" : "these homes"}?
-
-Best,
-${MIKE_FORD_EMAIL_SIGNATURE_TEXT}`;
+Would you be open to a brief conversation about buyer-attraction marketing opportunities for ${input.listings.length === 1 ? "this home" : "these homes"}?`;
   return {
     subject,
     body,

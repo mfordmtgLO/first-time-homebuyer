@@ -571,3 +571,8 @@
 - [x] Remove the redundant Mike Ford contact block from the Saved qualified listings agent outreach draft body
 - [x] Retain exactly one standardized Mike Ford default email signature in the Saved qualified listings agent outreach draft
 - [x] Add regression coverage and publish the Saved qualified listings agent draft signature cleanup
+
+- [x] Remove the legacy Mike Ford signature block from saved qualified-listings agent templates themselves
+- [x] Prevent duplicate Mike Ford signature blocks from being saved in qualified-listings agent templates
+- [x] Add regression coverage and verify both template editor content and generated agent drafts
+- [x] Publish the saved qualified-listings agent template cleanup

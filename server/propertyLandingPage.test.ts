@@ -45,7 +45,7 @@ describe("single-property saved snapshots", () => {
     expect(getPropertyHeroMedia({ photoUrls: [], latitude: null, longitude: null })).toEqual({ kind: "unavailable" });
   });
 
-  it("adds the saved property URL, screening context, snapshot limitation, and signature to every agent draft", () => {
+  it("adds the saved property URL, screening context, and snapshot limitation without duplicating the mail client signature", () => {
     const mailto = buildPropertyPageAgentDraft({
       templateBody: "I would welcome the chance to coordinate a first-time-buyer strategy.",
       propertyUrl: "https://firsttimehomebuyer.manus.space/property/1024-s-5th-st-coos-bay-or-97420",
@@ -61,7 +61,8 @@ describe("single-property saved snapshots", () => {
     expect(draft).toContain("potential low- or no-down-payment first-time-buyer pathways");
     expect(draft).toContain("borrower, property, income, credit, and loan approval requirements");
     expect(draft).toContain("not a live listing feed");
-    expect(draft).toContain("NMLS #288455");
+    expect(draft).not.toContain("17850 Pilkington Rd");
+    expect(draft).not.toContain("NMLS #288455");
   });
 
   it("removes a legacy Mike Ford contact block from the template body before appending the standard signature once", () => {
@@ -76,8 +77,8 @@ describe("single-property saved snapshots", () => {
     const draft = decodeURIComponent(mailto);
 
     expect(draft).toContain("I would welcome the chance to coordinate a first-time-buyer strategy.");
-    expect(draft.match(/17850 Pilkington Rd \| Lake Oswego, OR 97035/g)).toHaveLength(1);
-    expect(draft.match(/NMLS #288455/g)).toHaveLength(1);
-    expect(draft.match(/Experience\.com Reviews/g)).toHaveLength(1);
+    expect(draft).not.toContain("17850 Pilkington Rd");
+    expect(draft).not.toContain("NMLS #288455");
+    expect(draft).not.toContain("Experience.com Reviews");
   });
 });

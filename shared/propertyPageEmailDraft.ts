@@ -38,8 +38,6 @@ export function buildPropertyPageAgentDraft(input: {
     "The property information above is based on a saved snapshot and is not a live listing feed. Before sharing current availability, price, or program fit with a buyer, please help us confirm the latest property details.",
     "",
     "If you are open to it, I would enjoy strategizing about first-time-buyer attraction for this property and helping interested buyers understand their next financing and home-search questions.",
-    "",
-    `Thanks,\n${signature}`,
   ].join("\n");
   const subject = `First-time buyer attraction idea — ${input.snapshot.address}`;
   return `mailto:${encodeURIComponent(input.listingAgentEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
