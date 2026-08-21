@@ -47,6 +47,8 @@ describe("native platform lead receiver and manual-entry safeguards", () => {
     expect(inboxSource).toContain("Manual entry");
     expect(inboxSource).toContain("will not be counted as a website Roadmap or chat submission");
     expect(inboxSource).toContain("Do not assume SMS consent");
+    expect(inboxSource).toContain("Lead ID");
+    expect(inboxSource).toContain("Lead ID: {lead.externalFormId");
   });
 
   it("offers Facebook, Google Ads, and Organic source selection plus searchable assignment management", () => {
@@ -54,7 +56,7 @@ describe("native platform lead receiver and manual-entry safeguards", () => {
     expect(inboxSource).toContain('<SelectItem value="facebook">Facebook</SelectItem>');
     expect(inboxSource).toContain('<SelectItem value="google_ads">Google Ads</SelectItem>');
     expect(inboxSource).toContain('<SelectItem value="organic">Organic</SelectItem>');
-    expect(inboxSource).toContain("Search name, email, phone, form, campaign, or lead ID");
+    expect(inboxSource).toContain("Search name, email, phone, Lead ID, campaign, or record ID");
     expect(inboxSource).toContain("All assignments");
     expect(inboxSource).toContain("Loan officer assignment");
     expect(inboxSource).toContain("Co-branded agent assignment");

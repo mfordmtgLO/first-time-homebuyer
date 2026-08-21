@@ -627,3 +627,6 @@
 
 - [x] Normalize the manual platform-lead phone input by removing a leading U.S. country code and displaying (503) 729-5556 formatting
 - [x] Add regression coverage and publish the manual platform-lead phone formatting refinement
+
+- [x] Relabel the manual platform-lead identifier field and inbox subtext as Lead ID
+- [x] Add regression coverage and publish the manual Lead ID label refinement
