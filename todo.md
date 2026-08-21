@@ -640,3 +640,8 @@
 - [x] Add configurable New, Contacted, and Qualified-style progress statuses for platform leads
 - [x] Add CSV export for selected platform leads in active and archived inbox views
 - [x] Add regression coverage and publish the platform lead history, status, and export enhancements
+
+- [x] Add direct inline progress-status editing on platform-lead rows
+- [x] Add platform-lead dashboard filters for progress status and assigned co-branded agent
+- [x] Add an owner-only AI summary action for timestamped platform-lead interaction history
+- [x] Add regression coverage and publish the inline status, filtering, and AI summary enhancements

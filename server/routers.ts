@@ -2258,6 +2258,23 @@ export const appRouter = router({
     notes: router({
       list: protectedProcedure.input(z.object({ platformLeadId: z.number().int().positive() })).query(async ({ ctx, input }) => { requireAdmin(ctx.user.role); return listPlatformLeadNotes(ctx.user.id, input.platformLeadId); }),
       add: protectedProcedure.input(z.object({ platformLeadId: z.number().int().positive(), body: z.string().trim().min(1).max(1000) })).mutation(async ({ ctx, input }) => { requireAdmin(ctx.user.role); const id = await createPlatformLeadNote({ ownerUserId: ctx.user.id, platformLeadId: input.platformLeadId, body: input.body.trim() }); return { id } as const; }),
+      summarize: protectedProcedure.input(z.object({ platformLeadId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const notes = await listPlatformLeadNotes(ctx.user.id, input.platformLeadId);
+        if (notes.length === 0) return { summary: "No interaction notes have been recorded for this lead yet." } as const;
+        const transcript = notes.slice().reverse().map((note) => `[${note.createdAt.toISOString()}] ${note.body}`).join("\n");
+        const response = await invokeLLM({
+          model: "gpt-5-mini",
+          maxTokens: 350,
+          messages: [
+            { role: "system", content: "Summarize private mortgage-lead interaction notes. State only what the notes support. Do not infer qualifications, credit, consent, or outcomes. Use brief chronological bullets covering outreach, stated interest, follow-up commitments, and unresolved items. If any category is absent, omit it." },
+            { role: "user", content: `Private interaction history:\n${transcript}` },
+          ],
+        });
+        const content = response.choices[0]?.message.content;
+        const summary = typeof content === "string" ? content.trim() : "";
+        return { summary: summary || "The interaction history could not be summarized. Review the timestamped notes directly." } as const;
+      }),
     }),
     setProgressStatus: protectedProcedure
       .input(z.object({ id: z.number().int().positive(), progressStatus: z.string().min(1).max(80) }))

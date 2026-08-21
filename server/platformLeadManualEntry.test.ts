@@ -90,4 +90,18 @@ describe("native platform lead receiver and manual-entry safeguards", () => {
     expect(inboxSource).toContain("Export selected CSV");
     expect(inboxSource).toContain("platform-leads-");
   });
+
+  it("supports direct status badge updates, progress and agent filters, and private AI interaction summaries", () => {
+    expect(inboxSource).toContain("Set progress for");
+    expect(inboxSource).toContain("Filter platform leads by progress status");
+    expect(inboxSource).toContain("Filter platform leads by assigned agent");
+    expect(inboxSource).toContain("All progress");
+    expect(inboxSource).toContain("All agents");
+    expect(inboxSource).toContain("AI interaction summary");
+    expect(inboxSource).toContain("Private AI overview");
+    expect(inboxSource).toContain("not stored as an interaction note");
+    expect(routerSource).toContain("summarize: protectedProcedure");
+    expect(routerSource).toContain('model: "gpt-5-mini"');
+    expect(routerSource).toContain("State only what the notes support.");
+  });
 });
