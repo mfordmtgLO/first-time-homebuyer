@@ -663,5 +663,5 @@
 
 - [x] Add a date-range filter for Mortgage chat intake conversations
 - [ ] Add owner-reviewed AI extraction of lead information from a chat intake into a manual-entry draft
-- [ ] Add reusable quick-reply templates to the Mortgage chat intake section
+- [ ] Add reusable consent-gated text-message quick-reply templates to the Mortgage chat intake section
 - [ ] Add regression coverage and publish the enhanced Mortgage chat intake workflow

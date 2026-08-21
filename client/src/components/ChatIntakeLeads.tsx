@@ -87,6 +87,12 @@ const money = (value: number | null) =>
 
 const formatDateTime = (value: Date | null) => (value ? new Date(value).toLocaleString() : "—");
 
+const CHAT_QUICK_REPLIES = [
+  { value: "follow_up", label: "Follow-up check-in", body: "Hi {{first_name}}, this is Mike Ford. Thank you for sharing your homebuying goals. What questions can I help with as you consider next steps?" },
+  { value: "roadmap", label: "Roadmap follow-up", body: "Hi {{first_name}}, this is Mike Ford. I wanted to follow up on your first-time homebuyer Roadmap request. I am here if you would like to talk through your next steps." },
+  { value: "listing_search", label: "Potential homes follow-up", body: "Hi {{first_name}}, this is Mike Ford. I can help coordinate a potential homes list based on the area and goals you shared. What city or county should we focus on?" },
+] as const;
+
 function UsdaBadge({ lead }: { lead: ChatLead }) {
   if (!qualifiesForUsdaDashboardBadge(lead)) return null;
   return <Badge title="USDA screening indicator based on the configured city and income criteria; program and property eligibility require verification." variant="outline" className="border-emerald-600/30 bg-emerald-600/10 text-emerald-700">USDA</Badge>;
@@ -214,6 +220,18 @@ export default function ChatIntakeLeads() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to load this chat conversation for the email draft.");
     }
+  };
+  const openQuickReplyDraft = (lead: ChatLead, templateValue: string) => {
+    if (lead.smsConsent !== 1 || !hasUsableRoadmapPhone(lead.phone)) {
+      toast.error("A usable phone number and recorded text consent are required before opening a text draft.");
+      return;
+    }
+    const template = CHAT_QUICK_REPLIES.find((candidate) => candidate.value === templateValue);
+    if (!template) return;
+    const firstName = lead.fullName?.trim().split(/\s+/)[0] || "there";
+    const phone = String(lead.phone).replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");
+    window.location.href = `sms:${phone}?body=${encodeURIComponent(template.body.replace("{{first_name}}", firstName))}`;
+    toast.success("Opened a text-message draft. Review it before sending.");
   };
   const loanOfficerOptions = useMemo(() => getLoanOfficerFilterOptions(displayLeads), [displayLeads]);
   const agentOptions = useMemo(() => getCoBrandAgentFilterOptions(displayLeads, loanOfficerFilter), [displayLeads, loanOfficerFilter]);
