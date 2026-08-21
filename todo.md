@@ -662,6 +662,6 @@
 - [x] Add regression coverage and publish the Mortgage chat intakes layout repair
 
 - [x] Add a date-range filter for Mortgage chat intake conversations
-- [ ] Add owner-reviewed AI extraction of lead information from a chat intake into a manual-entry draft
+- [ ] Add owner-reviewed exact-response extraction from a chat intake that prefills an Organic manual platform-lead entry with verbatim organized chat answers and preserves available Loan Officer and Co-branded Agent assignments
 - [ ] Add reusable consent-gated text-message quick-reply templates to the Mortgage chat intake section
 - [ ] Add regression coverage and publish the enhanced Mortgage chat intake workflow
