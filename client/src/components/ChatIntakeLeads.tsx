@@ -147,6 +147,8 @@ export default function ChatIntakeLeads() {
   const [campaignFilter, setCampaignFilter] = useState("all");
   const [propertySourceFilter, setPropertySourceFilter] = useState<"all" | "single-property">("all");
   const [propertyAddressFilter, setPropertyAddressFilter] = useState("all");
+  const [startedAfter, setStartedAfter] = useState("");
+  const [startedBefore, setStartedBefore] = useState("");
   const [selected, setSelected] = useState<ChatLead | null>(null);
   const [resendCandidate, setResendCandidate] = useState<ChatLead | null>(null);
   const [notesLead, setNotesLead] = useState<ChatLead | null>(null);
@@ -224,8 +226,11 @@ export default function ChatIntakeLeads() {
     const agentMatches = agentFilter === "all" || matchesSelectedCoBrandPair(lead, loanOfficerFilter, agentFilter);
     const propertySourceMatches = propertySourceFilter === "all" || Boolean(lead.propertyPageAddress);
     const propertyAddressMatches = propertyAddressFilter === "all" || lead.propertyPageAddress === propertyAddressFilter;
-    return (status === "all" || lead.status === status) && officerMatches && agentMatches && propertySourceMatches && propertyAddressMatches && (campaignFilter === "all" || campaign === campaignFilter) && haystack.includes(search.toLowerCase());
-  }), [displayLeads, search, status, loanOfficerFilter, agentFilter, campaignFilter, propertySourceFilter, propertyAddressFilter]);
+    const createdAt = new Date(lead.createdAt);
+    const startMatches = !startedAfter || createdAt >= new Date(`${startedAfter}T00:00:00`);
+    const endMatches = !startedBefore || createdAt <= new Date(`${startedBefore}T23:59:59.999`);
+    return (status === "all" || lead.status === status) && officerMatches && agentMatches && propertySourceMatches && propertyAddressMatches && startMatches && endMatches && (campaignFilter === "all" || campaign === campaignFilter) && haystack.includes(search.toLowerCase());
+  }), [displayLeads, search, status, loanOfficerFilter, agentFilter, campaignFilter, propertySourceFilter, propertyAddressFilter, startedAfter, startedBefore]);
   const clearFilters = () => {
     setSearch("");
     setStatus("all");
@@ -234,6 +239,8 @@ export default function ChatIntakeLeads() {
     setCampaignFilter("all");
     setPropertySourceFilter("all");
     setPropertyAddressFilter("all");
+    setStartedAfter("");
+    setStartedBefore("");
   };
   const exportCsv = () => {
     const rows = [["Status", "UTM source", "UTM medium", "UTM campaign", "UTM content", "UTM term", "Landing path", "Referrer host", "Buyer-agent requested", "Buyer-agent requested at", "Co-branded source", "Loan officer", "Loan officer URL slug", "Agent", "Agent URL slug", "Recipient email status", "Resend count", "Last resent", "Name", "Email", "Phone", "Purpose", "Property type", "Property value", "Credit range", "Annual income", "Down payment", "Loan amount", "Low/no-down-payment home search", "Search area type", "Target area", "Started", "Completed"], ...filtered.map((lead) => [lead.status, lead.utmSource ?? "", lead.utmMedium ?? "", lead.utmCampaign ?? "", lead.utmContent ?? "", lead.utmTerm ?? "", lead.landingPath ?? "", lead.referrerHost ?? "", lead.buyerAgentRequest === 1 ? "Yes" : "No", lead.buyerAgentRequestedAt ? new Date(lead.buyerAgentRequestedAt).toISOString() : "", lead.isCoBranded ? "Yes" : "No", lead.loanOfficerName ?? "", lead.loanOfficerSlug ?? "", lead.agentName ?? "", lead.agentSlug ?? "", lead.recipientEmailStatus, lead.resendCount, lead.lastResentAt ? new Date(lead.lastResentAt).toISOString() : "", lead.fullName ?? "", lead.email ?? "", lead.phone ?? "", lead.loanPurpose ?? "", lead.propertyType ?? "", lead.propertyValue ?? "", lead.creditRange ?? "", lead.annualIncome ?? "", lead.downPayment ?? "", lead.loanAmount ?? "", lead.lowDownPaymentHomeSearch === 1 ? "Yes" : lead.lowDownPaymentHomeSearch === 0 ? "No" : "", lead.searchAreaType ?? "", lead.targetArea ?? "", new Date(lead.createdAt).toISOString(), lead.completedAt ? new Date(lead.completedAt).toISOString() : ""])];
@@ -268,7 +275,8 @@ export default function ChatIntakeLeads() {
           <Select value={campaignFilter} onValueChange={setCampaignFilter}><SelectTrigger className="w-full"><SelectValue placeholder="All campaigns" /></SelectTrigger><SelectContent><SelectItem value="all">All campaigns</SelectItem>{campaignOptions.map((campaign) => <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>)}</SelectContent></Select>
           <Select value={propertySourceFilter} onValueChange={(value) => setPropertySourceFilter(value as typeof propertySourceFilter)}><SelectTrigger className="w-full"><SelectValue placeholder="All lead sources" /></SelectTrigger><SelectContent><SelectItem value="all">All lead sources</SelectItem><SelectItem value="single-property">Single-property website</SelectItem></SelectContent></Select>
           <Select value={propertyAddressFilter} onValueChange={(value) => { setPropertyAddressFilter(value); if (value !== "all") setPropertySourceFilter("single-property"); }} disabled={propertyAddressOptions.length === 0}><SelectTrigger className="w-full"><SelectValue placeholder="All property addresses" /></SelectTrigger><SelectContent><SelectItem value="all">All property addresses</SelectItem>{propertyAddressOptions.map((address) => <SelectItem key={address} value={address}>{address}</SelectItem>)}</SelectContent></Select>
-          <div className="flex min-w-0 items-center gap-2 xl:col-span-2"><Select value={activityRange} onValueChange={(value) => setActivityRange(value as PropertyActivityRange)}><SelectTrigger className="w-full"><SelectValue placeholder="Activity period" /></SelectTrigger><SelectContent>{PROPERTY_ACTIVITY_RANGES.map((range) => <SelectItem key={range} value={range}>{PROPERTY_ACTIVITY_RANGE_LABELS[range]}</SelectItem>)}</SelectContent></Select>{(search || status !== "all" || loanOfficerFilter !== "all" || agentFilter !== "all" || campaignFilter !== "all" || propertySourceFilter !== "all" || propertyAddressFilter !== "all") && <Button variant="ghost" size="sm" className="shrink-0" onClick={clearFilters}>Clear</Button>}</div>
+          <div className="flex min-w-0 items-center gap-2 xl:col-span-2"><Select value={activityRange} onValueChange={(value) => setActivityRange(value as PropertyActivityRange)}><SelectTrigger className="w-full"><SelectValue placeholder="Activity period" /></SelectTrigger><SelectContent>{PROPERTY_ACTIVITY_RANGES.map((range) => <SelectItem key={range} value={range}>{PROPERTY_ACTIVITY_RANGE_LABELS[range]}</SelectItem>)}</SelectContent></Select>{(search || status !== "all" || loanOfficerFilter !== "all" || agentFilter !== "all" || campaignFilter !== "all" || propertySourceFilter !== "all" || propertyAddressFilter !== "all" || startedAfter || startedBefore) && <Button variant="ghost" size="sm" className="shrink-0" onClick={clearFilters}>Clear</Button>}</div>
+          <div className="flex min-w-0 items-center gap-2 sm:col-span-2 lg:col-span-3 xl:col-span-4"><Input aria-label="Chat intake start date" type="date" value={startedAfter} onChange={(event) => setStartedAfter(event.target.value)} /><span className="shrink-0 text-xs text-muted-foreground">to</span><Input aria-label="Chat intake end date" type="date" value={startedBefore} onChange={(event) => setStartedBefore(event.target.value)} /></div>
         </div>
         <p className="text-xs text-muted-foreground">Showing {filtered.length} of {displayLeads.length} chat intake{displayLeads.length === 1 ? "" : "s"}. CSV export follows these filters.</p>
       </div>

@@ -660,3 +660,8 @@
 - [x] Repair Mortgage chat intake filters so controls do not overlap at desktop or responsive widths
 - [x] Compact saved planning snapshots in the Mortgage chat intakes table with accessible expanded detail
 - [x] Add regression coverage and publish the Mortgage chat intakes layout repair
+
+- [x] Add a date-range filter for Mortgage chat intake conversations
+- [ ] Add owner-reviewed AI extraction of lead information from a chat intake into a manual-entry draft
+- [ ] Add reusable quick-reply templates to the Mortgage chat intake section
+- [ ] Add regression coverage and publish the enhanced Mortgage chat intake workflow
