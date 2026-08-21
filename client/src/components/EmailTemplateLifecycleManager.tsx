@@ -15,7 +15,7 @@ export type ManagedEmailTemplate = {
   isBuiltIn?: number;
 };
 
-type TemplateUsageScope = "listing_agent" | "property_list" | "property_page_agent" | "property_page_buyer" | "oregon_outreach";
+type TemplateUsageScope = "listing_agent" | "property_list" | "property_page_agent" | "property_page_buyer" | "oregon_outreach" | "agent_directory" | "loan_officer_directory";
 export type PortableEmailTemplate = Pick<ManagedEmailTemplate, "name" | "bodyTemplate" | "subjectTemplate">;
 
 type Props = {

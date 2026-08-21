@@ -586,3 +586,9 @@
 - [x] Open a selected property card or address into a complete single-property detail workspace with all current controls
 - [x] Add regression coverage and verify the compact property workspace on desktop and mobile
 - [x] Publish the compact single-property dashboard workspace redesign
+
+- [x] Add independently scrollable Co-branded agents and Loan officers directory sections for future growth
+- [x] Add search plus A–Z last-name and most-recent sorting to both directories
+- [x] Add a PB-only filter for Co-branded agents
+- [x] Add template-backed draft-email actions for Co-branded agents and Loan officers, with Add template first and full lifecycle management
+- [x] Add regression coverage and publish the scalable agent and loan-officer directory enhancements

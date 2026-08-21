@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { slugify } from "@shared/slug";
 import ProfileShareTools from "@/components/ProfileShareTools";
+import { DirectoryOutreachControls } from "@/components/DirectoryOutreachControls";
 import { toast } from "sonner";
 import { publicSiteUrl } from "@shared/publicSiteUrl";
 import {
@@ -36,6 +37,7 @@ import {
   Loader2,
   Pencil,
   Plus,
+  Search,
   ShieldCheck,
   Star,
   Trash2,
@@ -62,9 +64,10 @@ type Officer = {
   agentId: number | null;
   visible: number;
   featured: number;
+  createdAt: Date;
 };
 
-type FormState = Omit<Officer, "id" | "featured" | "visible" | "bio"> & { bio: string; visible: boolean };
+type FormState = Omit<Officer, "id" | "featured" | "visible" | "bio" | "createdAt"> & { bio: string; visible: boolean };
 type TextFieldKey = "name" | "title" | "email" | "phone" | "nmls" | "companyName" | "website" | "calendlyUrl";
 
 const EMPTY: FormState = {
@@ -257,6 +260,16 @@ export default function LoanOfficerSettings() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Officer | null>(null);
   const [deleting, setDeleting] = useState<Officer | null>(null);
+  const [directorySearch, setDirectorySearch] = useState("");
+  const [directorySort, setDirectorySort] = useState<"last_name" | "recent">("last_name");
+  const visibleOfficers = useMemo(() => {
+    const query = directorySearch.trim().toLowerCase();
+    return officers
+      .filter((officer) => !query || [officer.name, officer.companyName, officer.email, officer.nmls].some((value) => value.toLowerCase().includes(query)))
+      .sort((left, right) => directorySort === "recent"
+        ? new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+        : (left.name.trim().split(/\s+/).at(-1) || left.name).localeCompare(right.name.trim().split(/\s+/).at(-1) || right.name) || left.name.localeCompare(right.name));
+  }, [directorySearch, directorySort, officers]);
 
   const feature = trpc.loanOfficer.setFeatured.useMutation({
     onSuccess: () => { utils.loanOfficer.list.invalidate(); utils.loanOfficer.getFeatured.invalidate(); toast.success("Default chat loan officer updated."); },
@@ -280,9 +293,10 @@ export default function LoanOfficerSettings() {
         <div><h2 className="flex items-center gap-2.5 font-display text-xl font-semibold text-foreground"><ShieldCheck className="h-5 w-5 text-primary" /> Loan officers</h2><p className="mt-1 text-sm text-muted-foreground">Add unlimited LO profiles, pair any saved agent, or share a standalone loan-officer profile page.</p></div>
         <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true); }}><Plus className="mr-1.5 h-4 w-4" /> Add LO</Button>
       </div>
-      {officersQuery.isLoading || agentsQuery.isLoading ? <div className="flex items-center justify-center py-12 text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading loan officers…</div> : officers.length === 0 ? <div className="py-12 text-center text-sm text-muted-foreground">No loan officers have been added yet.</div> : (
-        <ul className="divide-y divide-border/60">
-          {officers.map((officer) => {
+      {officersQuery.isLoading || agentsQuery.isLoading ? <div className="flex items-center justify-center py-12 text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading loan officers…</div> : officers.length === 0 ? <div className="py-12 text-center text-sm text-muted-foreground">No loan officers have been added yet.</div> : <>
+        <div className="flex flex-col gap-3 border-b border-border bg-muted/20 px-6 py-3 lg:flex-row lg:items-center lg:justify-between"><div className="relative min-w-0 flex-1 lg:max-w-md"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={directorySearch} onChange={(event) => setDirectorySearch(event.target.value)} className="h-9 pl-9 text-sm" placeholder="Search loan officers by name, company, NMLS, or email" /></div><div className="flex flex-wrap items-center gap-2"><label className="text-xs font-semibold text-muted-foreground">Order <select value={directorySort} onChange={(event) => setDirectorySort(event.target.value as "last_name" | "recent")} className="ml-1 h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"><option value="last_name">A–Z by last name</option><option value="recent">Most recent</option></select></label><span className="rounded-full border border-border bg-background px-2 py-1 text-[11px] font-bold text-muted-foreground">{visibleOfficers.length} shown</span></div></div>
+        <div className="max-h-[38rem] overflow-y-auto overscroll-contain [scrollbar-gutter:stable]"><ul className="divide-y divide-border/60">
+          {visibleOfficers.map((officer) => {
             const partner = officer.agentId ? agentById.get(officer.agentId) : undefined;
             const url = partner ? pairUrl(officer, partner) : null;
             const standaloneUrl = partner ? null : loanOfficerUrl(officer);
@@ -294,6 +308,7 @@ export default function LoanOfficerSettings() {
                 {partner ? <p className="mt-1 flex items-center gap-1.5 text-xs text-primary"><Users className="h-3.5 w-3.5" /> Partnered with {partner.name}{partner.companyName ? ` · ${partner.companyName}` : ""} <span className="text-muted-foreground">· /with/{officer.slug}/{partner.slug}</span></p> : standaloneUrl ? <p className="mt-1 break-all text-xs text-muted-foreground">LO profile only · <a href={standaloneUrl} target="_blank" rel="noreferrer" className="font-medium text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary">{standaloneUrl}</a></p> : null}
               </div>
               <div className="flex flex-wrap gap-1.5">
+                <DirectoryOutreachControls audience="loan_officer" recipient={{ name: officer.name, email: officer.email, companyName: officer.companyName, title: officer.title }} compact />
                 {url && <Button variant="outline" size="sm" onClick={() => copyPairLink(officer, partner!)}><Copy className="mr-1.5 h-3.5 w-3.5" /> Copy link</Button>}
                 {standaloneUrl && <ProfileShareTools url={standaloneUrl} label={`${officer.name} loan officer profile`} />}
                 <Button variant="outline" size="sm" onClick={() => feature.mutate({ id: officer.featured === 1 ? null : officer.id })}><Star className={`mr-1.5 h-3.5 w-3.5 ${officer.featured === 1 ? "fill-current" : ""}`} />{officer.featured === 1 ? "Unfeature" : "Make default"}</Button>
@@ -302,8 +317,9 @@ export default function LoanOfficerSettings() {
               </div>
             </li>;
           })}
-        </ul>
-      )}
+        </ul></div>
+        {visibleOfficers.length === 0 ? <p className="px-6 py-8 text-center text-sm text-muted-foreground">No loan officer matches the current search and sort selection.</p> : null}
+      </>}
       <OfficerDialog open={dialogOpen} onOpenChange={setDialogOpen} editing={editing} agents={agents} />
       <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Remove {deleting?.name}?</AlertDialogTitle><AlertDialogDescription>Existing captured leads and chat intakes remain saved, but this officer will no longer be the assigned contact for future pair links.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => deleting && remove.mutate({ id: deleting.id })}>{remove.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Remove LO</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
     </section>

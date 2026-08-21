@@ -692,12 +692,35 @@ export const propertyPageBuyerEmailTemplate = mysqlTable(
 export type PropertyPageBuyerEmailTemplate = typeof propertyPageBuyerEmailTemplate.$inferSelect;
 export type InsertPropertyPageBuyerEmailTemplate = typeof propertyPageBuyerEmailTemplate.$inferInsert;
 
+/** Private reusable outreach templates for existing co-branded agents and loan officers. */
+export const directoryOutreachEmailTemplate = mysqlTable(
+  "directory_outreach_email_template",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerUserId: int("ownerUserId").notNull(),
+    audience: mysqlEnum("audience", ["agent", "loan_officer"]).notNull(),
+    name: varchar("name", { length: 160 }).notNull(),
+    subjectTemplate: varchar("subjectTemplate", { length: 300 }).notNull(),
+    bodyTemplate: text("bodyTemplate").notNull(),
+    archivedAt: timestamp("archivedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("directory_outreach_email_template_owner_audience_name_unique").on(table.ownerUserId, table.audience, table.name),
+    index("directory_outreach_email_template_owner_audience_idx").on(table.ownerUserId, table.audience),
+  ]
+);
+
+export type DirectoryOutreachEmailTemplate = typeof directoryOutreachEmailTemplate.$inferSelect;
+export type InsertDirectoryOutreachEmailTemplate = typeof directoryOutreachEmailTemplate.$inferInsert;
+
 /** Private usage records for custom dashboard email templates. No recipient or message content is retained here. */
 export const emailTemplateUsage = mysqlTable(
   "email_template_usage",
   {
     id: int("id").autoincrement().primaryKey(),
-    templateScope: mysqlEnum("templateScope", ["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach"]).notNull(),
+    templateScope: mysqlEnum("templateScope", ["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach", "agent_directory", "loan_officer_directory"]).notNull(),
     templateId: int("templateId").notNull(),
     ownerUserId: int("ownerUserId"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -717,7 +740,7 @@ export const emailTemplateVersion = mysqlTable(
   "email_template_version",
   {
     id: int("id").autoincrement().primaryKey(),
-    templateScope: mysqlEnum("templateScope", ["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach"]).notNull(),
+    templateScope: mysqlEnum("templateScope", ["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach", "agent_directory", "loan_officer_directory"]).notNull(),
     templateId: int("templateId").notNull(),
     ownerUserId: int("ownerUserId").notNull(),
     versionNumber: int("versionNumber").notNull(),

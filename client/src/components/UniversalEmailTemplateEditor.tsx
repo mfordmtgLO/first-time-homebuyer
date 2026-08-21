@@ -4,7 +4,7 @@ import mammoth from "mammoth";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-export type EmailTemplateWorkflow = "listing_agent" | "property_list" | "property_page_agent" | "property_page_buyer" | "oregon_outreach";
+export type EmailTemplateWorkflow = "listing_agent" | "property_list" | "property_page_agent" | "property_page_buyer" | "oregon_outreach" | "agent_directory" | "loan_officer_directory";
 type MergeField = { token: string; label: string };
 const MERGE_FIELDS: Record<EmailTemplateWorkflow, MergeField[]> = {
   listing_agent: [],
@@ -12,6 +12,8 @@ const MERGE_FIELDS: Record<EmailTemplateWorkflow, MergeField[]> = {
   property_page_agent: [],
   property_page_buyer: [{ token: "{{client_name}}", label: "Client name" }, { token: "{{property_address}}", label: "Property address" }, { token: "{{property_url}}", label: "Property link" }, { token: "{{loan_officer_signature}}", label: "Loan officer signature" }, { token: "{{agent_signature}}", label: "Agent signature" }],
   oregon_outreach: [{ token: "{{recipient_name}}", label: "Recipient first name" }, { token: "{{brokerage}}", label: "Brokerage" }, { token: "{{recipient_type}}", label: "Recipient type" }, { token: "{{recipient_count}}", label: "Recipient count" }],
+  agent_directory: [{ token: "{{recipient_first_name}}", label: "Recipient first name" }, { token: "{{recipient_name}}", label: "Recipient full name" }, { token: "{{company_name}}", label: "Company name" }, { token: "{{recipient_role}}", label: "Recipient role" }],
+  loan_officer_directory: [{ token: "{{recipient_first_name}}", label: "Recipient first name" }, { token: "{{recipient_name}}", label: "Recipient full name" }, { token: "{{company_name}}", label: "Company name" }, { token: "{{recipient_role}}", label: "Recipient role" }],
 };
 export function getEmailTemplateMergeFields(workflow: EmailTemplateWorkflow) { return MERGE_FIELDS[workflow]; }
 type Props = { id: string; value: string; onChange: (value: string) => void; workflow: EmailTemplateWorkflow; placeholder?: string; maxLength?: number; className?: string };

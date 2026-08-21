@@ -25,6 +25,11 @@ import {
   createPropertyPageBuyerEmailTemplate,
   updatePropertyPageBuyerEmailTemplate,
   deletePropertyPageBuyerEmailTemplate,
+  createDirectoryOutreachEmailTemplate,
+  deleteDirectoryOutreachEmailTemplate,
+  listDirectoryOutreachEmailTemplates,
+  setDirectoryOutreachEmailTemplateArchived,
+  updateDirectoryOutreachEmailTemplate,
   createAgent,
   createLoanOfficer,
   createLoAgentSpendPairing,
@@ -180,6 +185,14 @@ const agentProfileInputSchema = z.object({
   companyLogoUrl: z.string().trim().max(500).default(""),
   syncedTopAgentId: z.number().int().positive().nullable().default(null),
   visible: z.boolean().default(true),
+});
+
+const directoryOutreachAudienceSchema = z.enum(["agent", "loan_officer"]);
+const directoryOutreachTemplateInputSchema = z.object({
+  audience: directoryOutreachAudienceSchema,
+  name: z.string().trim().min(2).max(160),
+  subjectTemplate: z.string().trim().min(4).max(300),
+  bodyTemplate: z.string().trim().min(20).max(6000),
 });
 
 const oregonAgentSourceProfileSchema = z.object({
@@ -568,25 +581,25 @@ export const appRouter = router({
   system: systemRouter,
   templateUsage: router({
     listCounts: protectedProcedure.input(z.object({
-      templateScope: z.enum(["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach"]),
+      templateScope: z.enum(["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach", "agent_directory", "loan_officer_directory"]),
     })).query(async ({ ctx, input }) => {
       requireAdmin(ctx.user.role);
-      const ownerUserId = input.templateScope === "property_page_buyer" || input.templateScope === "oregon_outreach" ? ctx.user.id : null;
+      const ownerUserId = input.templateScope === "property_page_buyer" || input.templateScope === "oregon_outreach" || input.templateScope === "agent_directory" || input.templateScope === "loan_officer_directory" ? ctx.user.id : null;
       return getEmailTemplateUsageCounts({ templateScope: input.templateScope, ownerUserId });
     }),
     recordDraftOpen: protectedProcedure.input(z.object({
-      templateScope: z.enum(["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach"]),
+      templateScope: z.enum(["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach", "agent_directory", "loan_officer_directory"]),
       templateId: z.number().int().positive(),
     })).mutation(async ({ ctx, input }) => {
       requireAdmin(ctx.user.role);
-      const ownerUserId = input.templateScope === "property_page_buyer" || input.templateScope === "oregon_outreach" ? ctx.user.id : null;
+      const ownerUserId = input.templateScope === "property_page_buyer" || input.templateScope === "oregon_outreach" || input.templateScope === "agent_directory" || input.templateScope === "loan_officer_directory" ? ctx.user.id : null;
       await recordEmailTemplateUsage({ ...input, ownerUserId });
       return { recorded: true };
     }),
   }),
   templateVersions: router({
     list: protectedProcedure.input(z.object({
-      templateScope: z.enum(["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach"]),
+      templateScope: z.enum(["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach", "agent_directory", "loan_officer_directory"]),
       templateId: z.number().int().positive(),
     })).query(async ({ ctx, input }) => {
       requireAdmin(ctx.user.role);
@@ -603,9 +616,39 @@ export const appRouter = router({
         case "property_page_agent": await updatePropertyPageAgentEmailTemplate({ id: version.templateId, name: version.name, bodyTemplate: version.bodyTemplate }); break;
         case "property_page_buyer": await updatePropertyPageBuyerEmailTemplate({ ownerUserId: ctx.user.id, id: version.templateId, name: version.name, subjectTemplate, bodyTemplate: version.bodyTemplate }); break;
         case "oregon_outreach": await updateSyncedAgentOutreachTemplate({ ownerUserId: ctx.user.id, id: version.templateId, name: version.name, subjectTemplate, bodyTemplate: version.bodyTemplate }); break;
+        case "agent_directory": await updateDirectoryOutreachEmailTemplate({ ownerUserId: ctx.user.id, audience: "agent", id: version.templateId, name: version.name, subjectTemplate, bodyTemplate: version.bodyTemplate }); break;
+        case "loan_officer_directory": await updateDirectoryOutreachEmailTemplate({ ownerUserId: ctx.user.id, audience: "loan_officer", id: version.templateId, name: version.name, subjectTemplate, bodyTemplate: version.bodyTemplate }); break;
       }
       await recordEmailTemplateVersion({ templateScope: version.templateScope, templateId: version.templateId, ownerUserId: ctx.user.id, name: version.name, subjectTemplate: version.subjectTemplate, bodyTemplate: version.bodyTemplate });
       return { restored: true };
+    }),
+  }),
+  directoryOutreachTemplates: router({
+    list: protectedProcedure.input(z.object({ audience: directoryOutreachAudienceSchema, includeArchived: z.boolean().optional() })).query(async ({ ctx, input }) => {
+      requireAdmin(ctx.user.role);
+      return listDirectoryOutreachEmailTemplates({ ownerUserId: ctx.user.id, audience: input.audience, includeArchived: input.includeArchived });
+    }),
+    create: protectedProcedure.input(directoryOutreachTemplateInputSchema).mutation(async ({ ctx, input }) => {
+      requireAdmin(ctx.user.role);
+      const template = await createDirectoryOutreachEmailTemplate({ ownerUserId: ctx.user.id, ...input });
+      await recordEmailTemplateVersion({ templateScope: input.audience === "agent" ? "agent_directory" : "loan_officer_directory", templateId: template.id, ownerUserId: ctx.user.id, name: template.name, subjectTemplate: template.subjectTemplate, bodyTemplate: template.bodyTemplate });
+      return template;
+    }),
+    update: protectedProcedure.input(directoryOutreachTemplateInputSchema.extend({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      requireAdmin(ctx.user.role);
+      const template = await updateDirectoryOutreachEmailTemplate({ ownerUserId: ctx.user.id, ...input });
+      await recordEmailTemplateVersion({ templateScope: input.audience === "agent" ? "agent_directory" : "loan_officer_directory", templateId: template.id, ownerUserId: ctx.user.id, name: template.name, subjectTemplate: template.subjectTemplate, bodyTemplate: template.bodyTemplate });
+      return template;
+    }),
+    setArchived: protectedProcedure.input(z.object({ audience: directoryOutreachAudienceSchema, id: z.number().int().positive(), archived: z.boolean() })).mutation(async ({ ctx, input }) => {
+      requireAdmin(ctx.user.role);
+      await setDirectoryOutreachEmailTemplateArchived({ ownerUserId: ctx.user.id, ...input });
+      return { archived: input.archived };
+    }),
+    delete: protectedProcedure.input(z.object({ audience: directoryOutreachAudienceSchema, id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      requireAdmin(ctx.user.role);
+      await deleteDirectoryOutreachEmailTemplate({ ownerUserId: ctx.user.id, ...input });
+      return { deleted: true };
     }),
   }),
   site: router({

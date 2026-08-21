@@ -16,6 +16,7 @@ import {
   propertyEmailTemplate,
   propertyPageAgentEmailTemplate,
   propertyPageBuyerEmailTemplate,
+  directoryOutreachEmailTemplate,
   emailTemplateUsage,
   emailTemplateVersion,
   syncedAgentOutreachTemplate,
@@ -49,7 +50,7 @@ import {
 } from "../shared/programContributionLimits";
 import { ENV } from './_core/env';
 
-export const EMAIL_TEMPLATE_USAGE_SCOPES = ["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach"] as const;
+export const EMAIL_TEMPLATE_USAGE_SCOPES = ["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach", "agent_directory", "loan_officer_directory"] as const;
 export type EmailTemplateUsageScope = (typeof EMAIL_TEMPLATE_USAGE_SCOPES)[number];
 export type EmailTemplateVersionScope = EmailTemplateUsageScope;
 
@@ -1931,6 +1932,44 @@ export async function deletePropertyPageBuyerEmailTemplate(input: { ownerUserId:
   if (!db) throw new Error("Database not available");
   const result = await db.delete(propertyPageBuyerEmailTemplate).where(and(eq(propertyPageBuyerEmailTemplate.id, input.id), eq(propertyPageBuyerEmailTemplate.ownerUserId, input.ownerUserId)));
   if (!result[0].affectedRows) throw new Error("Buyer email template not found.");
+}
+
+/** Private reusable outreach templates for existing co-branded agents and loan officers. */
+export async function listDirectoryOutreachEmailTemplates(input: { ownerUserId: number; audience: "agent" | "loan_officer"; includeArchived?: boolean }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(directoryOutreachEmailTemplate).where(and(eq(directoryOutreachEmailTemplate.ownerUserId, input.ownerUserId), eq(directoryOutreachEmailTemplate.audience, input.audience), input.includeArchived ? undefined : isNull(directoryOutreachEmailTemplate.archivedAt))).orderBy(asc(directoryOutreachEmailTemplate.name));
+}
+
+export async function createDirectoryOutreachEmailTemplate(input: { ownerUserId: number; audience: "agent" | "loan_officer"; name: string; subjectTemplate: string; bodyTemplate: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(directoryOutreachEmailTemplate).values(input);
+  const rows = await db.select().from(directoryOutreachEmailTemplate).where(and(eq(directoryOutreachEmailTemplate.id, Number(result.insertId)), eq(directoryOutreachEmailTemplate.ownerUserId, input.ownerUserId))).limit(1);
+  return rows[0]!;
+}
+
+export async function updateDirectoryOutreachEmailTemplate(input: { ownerUserId: number; audience: "agent" | "loan_officer"; id: number; name: string; subjectTemplate: string; bodyTemplate: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.update(directoryOutreachEmailTemplate).set({ name: input.name, subjectTemplate: input.subjectTemplate, bodyTemplate: input.bodyTemplate, updatedAt: new Date() }).where(and(eq(directoryOutreachEmailTemplate.id, input.id), eq(directoryOutreachEmailTemplate.ownerUserId, input.ownerUserId), eq(directoryOutreachEmailTemplate.audience, input.audience)));
+  if (!result[0].affectedRows) throw new Error("Directory outreach template not found.");
+  const rows = await db.select().from(directoryOutreachEmailTemplate).where(and(eq(directoryOutreachEmailTemplate.id, input.id), eq(directoryOutreachEmailTemplate.ownerUserId, input.ownerUserId))).limit(1);
+  return rows[0]!;
+}
+
+export async function setDirectoryOutreachEmailTemplateArchived(input: { ownerUserId: number; audience: "agent" | "loan_officer"; id: number; archived: boolean }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.update(directoryOutreachEmailTemplate).set({ archivedAt: input.archived ? new Date() : null, updatedAt: new Date() }).where(and(eq(directoryOutreachEmailTemplate.id, input.id), eq(directoryOutreachEmailTemplate.ownerUserId, input.ownerUserId), eq(directoryOutreachEmailTemplate.audience, input.audience)));
+  if (!result[0].affectedRows) throw new Error("Directory outreach template not found.");
+}
+
+export async function deleteDirectoryOutreachEmailTemplate(input: { ownerUserId: number; audience: "agent" | "loan_officer"; id: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.delete(directoryOutreachEmailTemplate).where(and(eq(directoryOutreachEmailTemplate.id, input.id), eq(directoryOutreachEmailTemplate.ownerUserId, input.ownerUserId), eq(directoryOutreachEmailTemplate.audience, input.audience)));
+  if (!result[0].affectedRows) throw new Error("Directory outreach template not found.");
 }
 
 /** Aggregates privacy-minimized Email PDF draft activity and post-draft captured leads by saved property page. */

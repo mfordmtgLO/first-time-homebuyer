@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { EmailTemplateLifecycleManager } from "@/components/EmailTemplateLifecycleManager";
 import { UniversalEmailTemplateEditor } from "@/components/UniversalEmailTemplateEditor";
+import { DirectoryOutreachControls } from "@/components/DirectoryOutreachControls";
 import {
   Dialog,
   DialogContent,
@@ -78,6 +79,7 @@ type AgentRow = {
   syncedTopAgentId: number | null;
   visible: number;
   featured: number;
+  createdAt: Date;
 };
 
 type FormState = {
@@ -163,8 +165,8 @@ function syncedRankLabel(profile: SyncedTopAgentRow) {
   return profile.sourceRank && total ? `${prefix}${profile.sourceRank}/${total}` : profile.sourceRank ? `${prefix}${profile.sourceRank}` : "Unranked";
 }
 
-function isPrincipalBroker(profile: SyncedTopAgentRow) {
-  return syncedSourceDetail(profile).recordType === "principal_broker";
+function isPrincipalBroker(profile: SyncedTopAgentRow | undefined) {
+  return Boolean(profile && syncedSourceDetail(profile).recordType === "principal_broker");
 }
 
 const MAX_FILE_BYTES = 4 * 1024 * 1024;
@@ -948,8 +950,21 @@ export default function AgentSettings() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<AgentRow | null>(null);
   const [deleting, setDeleting] = useState<AgentRow | null>(null);
+  const [directorySearch, setDirectorySearch] = useState("");
+  const [directorySort, setDirectorySort] = useState<"last_name" | "recent">("last_name");
+  const [principalBrokerOnly, setPrincipalBrokerOnly] = useState(false);
   const [lastRankMovements, setLastRankMovements] = useState<RankMovementSummary[]>([]);
   const officeRankSummary = useMemo(() => summarizeOfficeRankMovements(lastRankMovements), [lastRankMovements]);
+  const syncedProfileById = useMemo(() => new Map(syncedProfiles.map((profile) => [profile.id, profile])), [syncedProfiles]);
+  const visibleDirectoryAgents = useMemo(() => {
+    const query = directorySearch.trim().toLowerCase();
+    return agents
+      .filter((agent) => !query || [agent.name, agent.companyName, agent.email].some((value) => value.toLowerCase().includes(query)))
+      .filter((agent) => !principalBrokerOnly || (agent.syncedTopAgentId !== null && isPrincipalBroker(syncedProfileById.get(agent.syncedTopAgentId))))
+      .sort((left, right) => directorySort === "recent"
+        ? new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+        : (left.name.trim().split(/\s+/).at(-1) || left.name).localeCompare(right.name.trim().split(/\s+/).at(-1) || right.name) || left.name.localeCompare(right.name));
+  }, [agents, directorySearch, directorySort, principalBrokerOnly, syncedProfileById]);
 
   const utils = trpc.useUtils();
   const refreshAgents = () => {
@@ -1162,9 +1177,14 @@ export default function AgentSettings() {
             routing leads to them.
           </p>
         </div>
-      ) : (
+      ) : <>
+        <div className="flex flex-col gap-3 border-b border-border bg-muted/20 px-6 py-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="relative min-w-0 flex-1 lg:max-w-md"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={directorySearch} onChange={(event) => setDirectorySearch(event.target.value)} className="h-9 pl-9 text-sm" placeholder="Search agents by name, brokerage, or email" /></div>
+          <div className="flex flex-wrap items-center gap-2"><Button type="button" size="sm" variant={principalBrokerOnly ? "default" : "outline"} onClick={() => setPrincipalBrokerOnly((current) => !current)} aria-pressed={principalBrokerOnly}>PB only</Button><label className="text-xs font-semibold text-muted-foreground">Order <select value={directorySort} onChange={(event) => setDirectorySort(event.target.value as "last_name" | "recent")} className="ml-1 h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"><option value="last_name">A–Z by last name</option><option value="recent">Most recent</option></select></label><span className="rounded-full border border-border bg-background px-2 py-1 text-[11px] font-bold text-muted-foreground">{visibleDirectoryAgents.length} shown</span></div>
+        </div>
+        <div className="max-h-[38rem] overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
         <ul className="divide-y divide-border/60">
-          {agents.map((agent) => {
+          {visibleDirectoryAgents.map((agent) => {
             const pairedOfficer = pairedOfficerByAgent.get(agent.id);
             const shareUrl = agentUrl(agent.slug, pairedOfficer?.slug);
             return <li key={agent.id} className="px-6 py-4 flex flex-wrap items-center gap-4">
@@ -1202,6 +1222,7 @@ export default function AgentSettings() {
                       <RefreshCw className="h-3 w-3" aria-hidden="true" /> Source update ready
                     </span>
                   )}
+                  {agent.syncedTopAgentId !== null && isPrincipalBroker(syncedProfileById.get(agent.syncedTopAgentId)) && <span className="inline-flex rounded-sm bg-[#0b2d5c] px-1.5 py-0.5 text-[10px] font-bold text-white">PB</span>}
                 </div>
                 <div className="mt-0.5 text-sm text-muted-foreground flex items-center gap-1.5 flex-wrap">
                   {agent.companyName && <span>{agent.companyName} ·</span>}
@@ -1251,6 +1272,7 @@ export default function AgentSettings() {
                 })()}
               </div>
               <div className="flex items-center gap-1.5 flex-wrap">
+                <DirectoryOutreachControls audience="agent" recipient={{ name: agent.name, email: agent.email, companyName: agent.companyName, title: "Co-branded agent" }} compact />
                 <ProfileShareTools url={shareUrl} label={`${agent.name} co-branded page`} />
                 <Button variant="outline" size="sm" onClick={() => openShareDraft(agent, pairedOfficer?.slug)} title="Open an email draft with this agent's QR-and-URL sharing message">
                   <MailCheck className="h-3.5 w-3.5 mr-1.5" /> Share QR + URL
@@ -1295,7 +1317,9 @@ export default function AgentSettings() {
             </li>;
           })}
         </ul>
-      )}
+        </div>
+        {visibleDirectoryAgents.length === 0 ? <p className="px-6 py-8 text-center text-sm text-muted-foreground">No co-branded agent matches the current search and filters.</p> : null}
+      </>}
 
       <AgentFormDialog open={dialogOpen} onOpenChange={setDialogOpen} editing={editing} syncedProfiles={syncedProfiles} />
 
