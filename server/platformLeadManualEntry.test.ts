@@ -121,4 +121,14 @@ describe("native platform lead receiver and manual-entry safeguards", () => {
     expect(routerSource).toContain("outreachTemplates: router");
     expect(routerSource).toContain('audience: z.enum(["lead", "agent"])');
   });
+
+  it("provides private lead and assigned-agent template-backed drafts without app-inserted signatures", () => {
+    const controlsSource = readFileSync(resolve(process.cwd(), "client/src/components/PlatformLeadOutreachControls.tsx"), "utf8");
+    expect(controlsSource).toContain("Add template");
+    expect(controlsSource).toContain("Manage {label} email templates");
+    expect(controlsSource).toContain("mail client appends the complete Mike Ford signature once");
+    expect(controlsSource).toContain("platformLeads.outreachTemplates");
+    expect(inboxSource).toContain("PlatformLeadOutreachControls audience=\"lead\"");
+    expect(inboxSource).toContain("PlatformLeadOutreachControls audience=\"agent\"");
+  });
 });

@@ -650,5 +650,5 @@
 - [x] Extend AI interaction summaries with an evidence-based next-best-action and follow-up suggestion
 - [x] Add a Kanban-style status pipeline with accessible drag-and-drop progress updates
 - [x] Add per-lead follow-up reminders for phone, text, email, listing list, agent connection, and Roadmap actions
-- [ ] Add template-backed platform-lead and platform-agent draft-email workflows with LO-only or LO-plus-agent branding and full template lifecycle management
-- [ ] Add regression coverage and publish the expanded platform-lead workspace
+- [x] Add template-backed platform-lead and platform-agent draft-email workflows with LO-only or LO-plus-agent branding and full template lifecycle management
+- [x] Add regression coverage and publish the expanded platform-lead workspace
