@@ -624,3 +624,6 @@
 - [x] Add enhanced private platform-lead inbox search and source filtering
 - [x] Add protected loan-officer and co-branded-agent assignment controls for platform leads
 - [x] Add regression coverage and publish the enhanced platform lead-management workflow
+
+- [x] Normalize the manual platform-lead phone input by removing a leading U.S. country code and displaying (503) 729-5556 formatting
+- [x] Add regression coverage and publish the manual platform-lead phone formatting refinement
