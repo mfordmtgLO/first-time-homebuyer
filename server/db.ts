@@ -116,6 +116,49 @@ export async function setPlatformLeadArchived(ownerUserId: number, id: number, a
     .where(and(eq(platformLead.id, id), eq(platformLead.ownerUserId, ownerUserId)));
 }
 
+export async function setPlatformLeadsArchived(ownerUserId: number, ids: number[], archived: boolean) {
+  if (ids.length === 0) return;
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db
+    .update(platformLead)
+    .set({ status: archived ? "archived" : "new" })
+    .where(and(eq(platformLead.ownerUserId, ownerUserId), inArray(platformLead.id, ids)));
+}
+
+export async function updatePlatformLeadDetails(input: {
+  ownerUserId: number;
+  id: number;
+  fullName: string;
+  email: string;
+  phone: string;
+  leadSource: "facebook" | "google_ads" | "organic";
+  notes: string | null;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const names = input.fullName.trim().split(/\s+/);
+  await db
+    .update(platformLead)
+    .set({
+      fullName: input.fullName.trim(),
+      firstName: names[0] ?? "",
+      lastName: names.slice(1).join(" "),
+      email: input.email.trim(),
+      phone: input.phone.trim(),
+      leadSource: input.leadSource,
+      consentText: input.notes,
+    })
+    .where(and(eq(platformLead.id, input.id), eq(platformLead.ownerUserId, input.ownerUserId)));
+}
+
+export async function deletePlatformLeads(ownerUserId: number, ids: number[]) {
+  if (ids.length === 0) return;
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.delete(platformLead).where(and(eq(platformLead.ownerUserId, ownerUserId), inArray(platformLead.id, ids)));
+}
+
 export async function updatePlatformLeadAssignments(input: { ownerUserId: number; id: number; assignedLoanOfficerId: number | null; assignedAgentId: number | null }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");

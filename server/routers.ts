@@ -37,7 +37,10 @@ import {
   recordDirectoryOutreachDrafts,
   setDirectoryOutreachEmailTemplateArchived,
   setPlatformLeadArchived,
+  setPlatformLeadsArchived,
+  updatePlatformLeadDetails,
   updatePlatformLeadAssignments,
+  deletePlatformLeads,
   updateDirectoryOutreachEmailTemplate,
   createAgent,
   createLoanOfficer,
@@ -2195,12 +2198,52 @@ export const appRouter = router({
         await updatePlatformLeadAssignments({ ownerUserId: ctx.user.id, ...input });
         return { success: true } as const;
       }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        fullName: z.string().trim().min(1, "A lead name is required.").max(240),
+        email: z.string().trim().email("Enter a valid email address.").max(320).optional().or(z.literal("")),
+        phone: z.string().trim().max(40).optional(),
+        leadSource: z.enum(["facebook", "google_ads", "organic"]),
+        notes: z.string().trim().max(1000).optional(),
+      }).superRefine((value, context) => {
+        if (!value.email?.trim() && !value.phone?.trim()) {
+          context.addIssue({ code: z.ZodIssueCode.custom, path: ["email"], message: "Enter an email address or phone number." });
+        }
+      }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        await updatePlatformLeadDetails({
+          ownerUserId: ctx.user.id,
+          id: input.id,
+          fullName: input.fullName,
+          email: input.email?.trim() ?? "",
+          phone: input.phone?.trim() ?? "",
+          leadSource: input.leadSource,
+          notes: input.notes?.trim() || null,
+        });
+        return { success: true } as const;
+      }),
     setArchived: protectedProcedure
       .input(z.object({ id: z.number().int().positive(), archived: z.boolean() }))
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
         await setPlatformLeadArchived(ctx.user.id, input.id, input.archived);
         return { archived: input.archived } as const;
+      }),
+    setArchivedBulk: protectedProcedure
+      .input(z.object({ ids: z.array(z.number().int().positive()).min(1).max(500), archived: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        await setPlatformLeadsArchived(ctx.user.id, input.ids, input.archived);
+        return { affected: input.ids.length, archived: input.archived } as const;
+      }),
+    permanentDelete: protectedProcedure
+      .input(z.object({ ids: z.array(z.number().int().positive()).min(1).max(500) }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        await deletePlatformLeads(ctx.user.id, input.ids);
+        return { affected: input.ids.length } as const;
       }),
   }),
 

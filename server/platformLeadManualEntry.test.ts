@@ -56,11 +56,24 @@ describe("native platform lead receiver and manual-entry safeguards", () => {
     expect(inboxSource).toContain('<SelectItem value="facebook">Facebook</SelectItem>');
     expect(inboxSource).toContain('<SelectItem value="google_ads">Google Ads</SelectItem>');
     expect(inboxSource).toContain('<SelectItem value="organic">Organic</SelectItem>');
-    expect(inboxSource).toContain("Search name, email, phone, Lead ID, campaign, or record ID");
+    expect(inboxSource).toContain("Search name, email, phone, source, Lead ID, or campaign");
     expect(inboxSource).toContain("All assignments");
     expect(inboxSource).toContain("Loan officer assignment");
     expect(inboxSource).toContain("Co-branded agent assignment");
     expect(inboxSource).toContain("platformLeads.updateAssignments");
     expect(routerSource).toContain("updateAssignments: protectedProcedure");
+  });
+
+  it("keeps archived leads searchable and supports editable, selected lifecycle actions", () => {
+    expect(routerSource).toContain("update: protectedProcedure");
+    expect(routerSource).toContain("setArchivedBulk: protectedProcedure");
+    expect(routerSource).toContain("permanentDelete: protectedProcedure");
+    expect(routerSource).toContain("deletePlatformLeads");
+    expect(inboxSource).toContain("Edit platform lead");
+    expect(inboxSource).toContain("Archived leads");
+    expect(inboxSource).toContain("Select all visible");
+    expect(inboxSource).toContain("Restore {selectedArchivedIds.length}");
+    expect(inboxSource).toContain("Permanently delete selected leads?");
+    expect(inboxSource).toContain("This action cannot be undone.");
   });
 });

@@ -630,3 +630,8 @@
 
 - [x] Relabel the manual platform-lead identifier field and inbox subtext as Lead ID
 - [x] Add regression coverage and publish the manual Lead ID label refinement
+
+- [x] Add protected edit, restore, and permanently delete operations for platform leads
+- [x] Keep archived platform leads searchable by name, contact, source, and Lead ID
+- [x] Add individual and select-all checkboxes plus bulk restore and permanent delete actions in the platform lead inbox
+- [x] Add regression coverage and publish the platform lead lifecycle management upgrade
