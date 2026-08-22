@@ -44,4 +44,20 @@ describe("LO + agent pairing spend summary", () => {
     expect(componentSource).toContain("xl:max-h-[24rem]");
     expect(componentSource).toContain("sticky bottom-0 bg-muted/95");
   });
+
+  it("provides private spend-history discovery controls without expanding the compact ledger", () => {
+    const projectRoot = path.resolve(import.meta.dirname, "..");
+    const componentSource = readFileSync(path.join(projectRoot, "client/src/components/PairingSpendTracker.tsx"), "utf8");
+
+    expect(componentSource).toContain("historySearch");
+    expect(componentSource).toContain("historyStartDate");
+    expect(componentSource).toContain("historyEndDate");
+    expect(componentSource).toContain("historySort");
+    expect(componentSource).toContain("Newest date");
+    expect(componentSource).toContain("Highest amount");
+    expect(componentSource).toContain("Search Spend Tracker history");
+    expect(componentSource).toContain("Campaign / expense detail:");
+    expect(componentSource).toContain("Hover an entry to view its stored campaign or expense detail.");
+    expect(componentSource).toContain("Column totals (all recorded)");
+  });
 });
