@@ -15,6 +15,7 @@ import TextingWorkspace from "@/components/TextingWorkspace";
 import PairingSpendTracker from "@/components/PairingSpendTracker";
 import PropertyPageSourceSummary from "@/components/PropertyPageSourceSummary";
 import { DashboardWorkdaySidebar } from "@/components/DashboardWorkdaySidebar";
+import { TeamMemberWorkspacePanel, TeamWorkspaceActivation, TeamWorkspaceManagement } from "@/components/TeamWorkspaceManagement";
 import {
   buildLeadWelcomeDraft,
   type LeadEmailAgent,
@@ -485,6 +486,7 @@ export default function Leads() {
   useEffect(() => { localStorage.setItem("dashboard-theme", dashboardDarkMode ? "dark" : "light"); }, [dashboardDarkMode]);
   const { user, loading, isAuthenticated, logout } = useAuth();
   const isAdmin = user?.role === "admin";
+  const isTeamMember = user?.role === "team_member";
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | LeadStatus>("all");
   const [loanOfficerFilter, setLoanOfficerFilter] = useState("all");
@@ -657,7 +659,7 @@ export default function Leads() {
             <img src={LOGO} alt="Cornerstone First Mortgage logo" className="h-8 w-auto object-contain" />
           </Link>
           <div className="flex items-center gap-3">
-            {isAuthenticated && isAdmin && <Button variant="outline" size="sm" onClick={() => setDashboardDarkMode((current) => !current)} aria-label={dashboardDarkMode ? "Use light dashboard theme" : "Use dark dashboard theme"}>{dashboardDarkMode ? <Sun className="h-4 w-4 mr-1.5" /> : <Moon className="h-4 w-4 mr-1.5" />}{dashboardDarkMode ? "Light" : "Dark"}</Button>}
+            {isAuthenticated && (isAdmin || isTeamMember) && <Button variant="outline" size="sm" onClick={() => setDashboardDarkMode((current) => !current)} aria-label={dashboardDarkMode ? "Use light dashboard theme" : "Use dark dashboard theme"}>{dashboardDarkMode ? <Sun className="h-4 w-4 mr-1.5" /> : <Moon className="h-4 w-4 mr-1.5" />}{dashboardDarkMode ? "Light" : "Dark"}</Button>}
             {isAuthenticated && (
               <span className="hidden sm:block text-sm text-muted-foreground">
                 {user?.name || user?.email}
@@ -697,20 +699,12 @@ export default function Leads() {
               Sign in to continue
             </Button>
           </div>
-        ) : !isAdmin ? (
+        ) : !isAdmin && !isTeamMember ? (
           <div className="max-w-md mx-auto text-center py-24">
-            <ShieldAlert className="h-10 w-10 mx-auto text-destructive" />
-            <h1 className="mt-4 font-display font-semibold text-2xl text-foreground">
-              Access restricted
-            </h1>
-            <p className="mt-2 text-muted-foreground">
-              This dashboard is only available to the site owner. If that's you, make sure you're
-              signed in with the owner account.
-            </p>
-            <Link href="/">
-              <Button variant="outline" className="mt-6">Back to the site</Button>
-            </Link>
+            <TeamWorkspaceActivation />
           </div>
+        ) : isTeamMember ? (
+          <TeamMemberWorkspacePanel />
         ) : (
           <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
            <DashboardWorkdaySidebar records={leads.slice(0, 10).map((lead) => ({ label: `Roadmap lead #${lead.id}`, status: lead.status, meta: `${lead.source} · ${new Date(lead.createdAt).toLocaleDateString()}` }))} />
@@ -1002,7 +996,7 @@ export default function Leads() {
             )}
 
             <div id="co-marketing-agents" className="scroll-mt-24"><AgentSettings /></div>
-            <div id="loan-officers" className="scroll-mt-24"><LoanOfficerSettings /></div>
+            <div id="loan-officers" className="scroll-mt-24"><LoanOfficerSettings /><TeamWorkspaceManagement /></div>
             <div id="texting-workspace" className="scroll-mt-24"><TextingWorkspace /></div>
             <div id="chat-intakes" className="scroll-mt-24"><ChatIntakeLeads /></div>
             <div id="saved-qualifying-listings" className="scroll-mt-24"><GeoSphereListings /></div>

@@ -16,7 +16,7 @@ export const users = mysqlTable("users", {
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  role: mysqlEnum("role", ["user", "admin", "team_member"]).default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -361,6 +361,62 @@ export const loanOfficer = mysqlTable("loan_officer", {
 
 export type LoanOfficer = typeof loanOfficer.$inferSelect;
 export type InsertLoanOfficer = typeof loanOfficer.$inferInsert;
+
+/**
+ * Owner-controlled connection between a saved loan-officer profile and an
+ * authenticated dashboard user. Invited users must sign in with the matching
+ * email and activate their own access; application passwords are never stored.
+ */
+export const teamLoanOfficerWorkspace = mysqlTable(
+  "team_loan_officer_workspace",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    adminUserId: int("adminUserId").notNull(),
+    loanOfficerId: int("loanOfficerId").notNull(),
+    memberUserId: int("memberUserId"),
+    invitedEmail: varchar("invitedEmail", { length: 320 }).notNull(),
+    status: mysqlEnum("status", ["pending", "active", "suspended"]).default("pending").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("team_workspace_admin_officer_unique").on(table.adminUserId, table.loanOfficerId),
+    uniqueIndex("team_workspace_member_user_unique").on(table.memberUserId),
+    index("team_workspace_admin_status_idx").on(table.adminUserId, table.status),
+    index("team_workspace_invited_email_idx").on(table.invitedEmail),
+  ]
+);
+
+export type TeamLoanOfficerWorkspace = typeof teamLoanOfficerWorkspace.$inferSelect;
+export type InsertTeamLoanOfficerWorkspace = typeof teamLoanOfficerWorkspace.$inferInsert;
+
+/**
+ * Administrator-curated reusable copy for downstream team workspaces. A row is
+ * private until Mike explicitly marks it read-only for the active team.
+ */
+export const teamTemplateLibrary = mysqlTable(
+  "team_template_library",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    adminUserId: int("adminUserId").notNull(),
+    channel: mysqlEnum("channel", ["email", "text"]).notNull(),
+    name: varchar("name", { length: 160 }).notNull(),
+    subjectTemplate: varchar("subjectTemplate", { length: 300 }),
+    bodyTemplate: text("bodyTemplate").notNull(),
+    availability: mysqlEnum("availability", ["private", "team_read_only"]).default("private").notNull(),
+    sourceTemplateScope: varchar("sourceTemplateScope", { length: 80 }),
+    sourceTemplateId: int("sourceTemplateId"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("team_template_admin_name_unique").on(table.adminUserId, table.channel, table.name),
+    index("team_template_admin_availability_idx").on(table.adminUserId, table.availability),
+  ]
+);
+
+export type TeamTemplateLibrary = typeof teamTemplateLibrary.$inferSelect;
+export type InsertTeamTemplateLibrary = typeof teamTemplateLibrary.$inferInsert;
 
 /**
  * A resumable mortgage-intake session. It intentionally records an incomplete

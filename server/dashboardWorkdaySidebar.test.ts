@@ -51,4 +51,19 @@ describe("dashboard workday workflow", () => {
     expect(sidebar).toContain("Term interest");
     expect(sidebar).toContain("Internal planning estimate only");
   });
+
+  it("keeps team workspace activation, administrator assignment, and template sharing in private dashboard components", () => {
+    const teamWorkspace = fs.readFileSync(path.join(root, "client/src/components/TeamWorkspaceManagement.tsx"), "utf8");
+    expect(teamWorkspace).toContain("Assign dashboard workspace");
+    expect(teamWorkspace).toContain("Activate my workspace");
+    expect(teamWorkspace).toContain("Controlled team template library");
+    expect(teamWorkspace).toContain("Team read-only");
+    expect(teamWorkspace).toContain("no dashboard password is created or stored");
+    expect(teamWorkspace).toContain("Your assigned Roadmap lead queue");
+    expect(teamWorkspace).toContain("Only Roadmap leads attributed to your active loan-officer profile are shown.");
+    expect(teamWorkspace).toContain("Your assigned Mortgage Chat queue");
+    expect(teamWorkspace).toContain("Only chat intakes tied to your active loan-officer profile are shown.");
+    expect(teamWorkspace).toContain("Administrator shadow review");
+    expect(teamWorkspace).toContain("Review data");
+  });
 });

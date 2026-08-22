@@ -32,6 +32,8 @@ import {
   loAgentSpendPairing,
   mortgagePaymentQuote,
   workflowAiReviewHistory,
+  teamLoanOfficerWorkspace,
+  teamTemplateLibrary,
   leads,
   loanOfficer,
   syncedTopAgent,
@@ -439,6 +441,133 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.select().from(users).where(eq(users.email, email.trim().toLowerCase())).limit(1);
+  return result[0];
+}
+
+export async function setUserDashboardRole(userId: number, role: "user" | "team_member") {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(users).set({ role }).where(eq(users.id, userId));
+}
+
+// ---------------------------------------------------------------------------
+// Owner-controlled team loan-officer workspaces
+
+export async function listTeamLoanOfficerWorkspaces(adminUserId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .select({
+      ...getTableColumns(teamLoanOfficerWorkspace),
+      loanOfficerName: loanOfficer.name,
+      loanOfficerEmail: loanOfficer.email,
+      loanOfficerSlug: loanOfficer.slug,
+      memberName: users.name,
+      memberEmail: users.email,
+    })
+    .from(teamLoanOfficerWorkspace)
+    .innerJoin(loanOfficer, eq(teamLoanOfficerWorkspace.loanOfficerId, loanOfficer.id))
+    .leftJoin(users, eq(teamLoanOfficerWorkspace.memberUserId, users.id))
+    .where(eq(teamLoanOfficerWorkspace.adminUserId, adminUserId))
+    .orderBy(asc(loanOfficer.name));
+}
+
+export async function createTeamLoanOfficerWorkspace(input: { adminUserId: number; loanOfficerId: number; invitedEmail: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const invitedEmail = input.invitedEmail.trim().toLowerCase();
+  const existingUser = await getUserByEmail(invitedEmail);
+  const result = await db.insert(teamLoanOfficerWorkspace).values({
+    adminUserId: input.adminUserId,
+    loanOfficerId: input.loanOfficerId,
+    invitedEmail,
+    memberUserId: existingUser?.id ?? null,
+    status: "pending",
+  });
+  return Number(result[0].insertId);
+}
+
+export async function activateTeamLoanOfficerWorkspace(input: { memberUserId: number; memberEmail: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const email = input.memberEmail.trim().toLowerCase();
+  const rows = await db.select().from(teamLoanOfficerWorkspace).where(eq(teamLoanOfficerWorkspace.invitedEmail, email)).orderBy(desc(teamLoanOfficerWorkspace.updatedAt)).limit(1);
+  const workspace = rows[0];
+  if (!workspace) throw new Error("No team dashboard invitation matches this signed-in email.");
+  if (workspace.status === "suspended") throw new Error("This team dashboard access has been suspended by the administrator.");
+  await db.update(teamLoanOfficerWorkspace).set({ memberUserId: input.memberUserId, status: "active" }).where(eq(teamLoanOfficerWorkspace.id, workspace.id));
+  await setUserDashboardRole(input.memberUserId, "team_member");
+  return workspace.id;
+}
+
+export async function updateTeamLoanOfficerWorkspaceStatus(input: { adminUserId: number; id: number; status: "pending" | "active" | "suspended" }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db.select().from(teamLoanOfficerWorkspace).where(and(eq(teamLoanOfficerWorkspace.id, input.id), eq(teamLoanOfficerWorkspace.adminUserId, input.adminUserId))).limit(1);
+  const workspace = rows[0];
+  if (!workspace) throw new Error("Team workspace was not found.");
+  await db.update(teamLoanOfficerWorkspace).set({ status: input.status }).where(eq(teamLoanOfficerWorkspace.id, workspace.id));
+  if (workspace.memberUserId) await setUserDashboardRole(workspace.memberUserId, input.status === "active" ? "team_member" : "user");
+  return { ...workspace, status: input.status };
+}
+
+export async function getTeamLoanOfficerWorkspaceForMember(memberUserId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db
+    .select({ ...getTableColumns(teamLoanOfficerWorkspace), loanOfficerName: loanOfficer.name, loanOfficerSlug: loanOfficer.slug })
+    .from(teamLoanOfficerWorkspace)
+    .innerJoin(loanOfficer, eq(teamLoanOfficerWorkspace.loanOfficerId, loanOfficer.id))
+    .where(and(eq(teamLoanOfficerWorkspace.memberUserId, memberUserId), eq(teamLoanOfficerWorkspace.status, "active")))
+    .limit(1);
+  return rows[0];
+}
+
+export async function getTeamLoanOfficerWorkspaceForAdminMember(input: { adminUserId: number; memberUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db
+    .select({ ...getTableColumns(teamLoanOfficerWorkspace), loanOfficerName: loanOfficer.name, loanOfficerSlug: loanOfficer.slug, member: users })
+    .from(teamLoanOfficerWorkspace)
+    .innerJoin(loanOfficer, eq(teamLoanOfficerWorkspace.loanOfficerId, loanOfficer.id))
+    .innerJoin(users, eq(teamLoanOfficerWorkspace.memberUserId, users.id))
+    .where(and(eq(teamLoanOfficerWorkspace.adminUserId, input.adminUserId), eq(teamLoanOfficerWorkspace.memberUserId, input.memberUserId), eq(teamLoanOfficerWorkspace.status, "active")))
+    .limit(1);
+  return rows[0];
+}
+
+// ---------------------------------------------------------------------------
+// Administrator-controlled team template library
+
+export async function listTeamTemplateLibrary(input: { adminUserId: number; includePrivate: boolean }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(teamTemplateLibrary).where(input.includePrivate ? eq(teamTemplateLibrary.adminUserId, input.adminUserId) : and(eq(teamTemplateLibrary.adminUserId, input.adminUserId), eq(teamTemplateLibrary.availability, "team_read_only"))).orderBy(asc(teamTemplateLibrary.channel), asc(teamTemplateLibrary.name));
+}
+
+export async function createTeamTemplateLibraryEntry(input: { adminUserId: number; channel: "email" | "text"; name: string; subjectTemplate?: string | null; bodyTemplate: string; availability: "private" | "team_read_only"; sourceTemplateScope?: string | null; sourceTemplateId?: number | null }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(teamTemplateLibrary).values(input);
+  return Number(result[0].insertId);
+}
+
+export async function updateTeamTemplateLibraryEntry(input: { adminUserId: number; id: number; name: string; subjectTemplate?: string | null; bodyTemplate: string; availability: "private" | "team_read_only" }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(teamTemplateLibrary).set({ name: input.name, subjectTemplate: input.subjectTemplate ?? null, bodyTemplate: input.bodyTemplate, availability: input.availability }).where(and(eq(teamTemplateLibrary.id, input.id), eq(teamTemplateLibrary.adminUserId, input.adminUserId)));
+}
+
+export async function deleteTeamTemplateLibraryEntry(input: { adminUserId: number; id: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(teamTemplateLibrary).where(and(eq(teamTemplateLibrary.id, input.id), eq(teamTemplateLibrary.adminUserId, input.adminUserId)));
+}
+
 export async function insertLead(lead: InsertLead) {
   const db = await getDb();
   if (!db) {
@@ -447,7 +576,7 @@ export async function insertLead(lead: InsertLead) {
   return db.insert(leads).values(lead);
 }
 
-export async function listLeads(options: { activitySince?: Date | null } = {}) {
+export async function listLeads(options: { activitySince?: Date | null; loanOfficerId?: number } = {}) {
   const db = await getDb();
   if (!db) {
     throw new Error("Database not available");
@@ -473,26 +602,28 @@ export async function listLeads(options: { activitySince?: Date | null } = {}) {
     .leftJoin(loanOfficer, eq(leads.loanOfficerId, loanOfficer.id))
     .leftJoin(agentProfile, eq(leads.agentId, agentProfile.id))
     .leftJoin(propertyLandingPage, eq(leads.propertyPageId, propertyLandingPage.id))
+    .where(options.loanOfficerId ? eq(leads.loanOfficerId, options.loanOfficerId) : undefined)
     .orderBy(leads.createdAt);
 }
 
 export async function updateLeadStatus(
   id: number,
-  status: "new" | "contacted" | "booked"
+  status: "new" | "contacted" | "booked",
+  loanOfficerId?: number
 ) {
   const db = await getDb();
   if (!db) {
     throw new Error("Database not available");
   }
-  return db.update(leads).set({ status }).where(eq(leads.id, id));
+  return db.update(leads).set({ status }).where(loanOfficerId ? and(eq(leads.id, id), eq(leads.loanOfficerId, loanOfficerId)) : eq(leads.id, id));
 }
 
-export async function updateLeadNotes(id: number, notes: string) {
+export async function updateLeadNotes(id: number, notes: string, loanOfficerId?: number) {
   const db = await getDb();
   if (!db) {
     throw new Error("Database not available");
   }
-  return db.update(leads).set({ notes }).where(eq(leads.id, id));
+  return db.update(leads).set({ notes }).where(loanOfficerId ? and(eq(leads.id, id), eq(leads.loanOfficerId, loanOfficerId)) : eq(leads.id, id));
 }
 
 /** Assign (or clear) the co-marketing agent on a lead. */
@@ -1057,7 +1188,7 @@ export async function addChatTranscript(
   return db.insert(chatTranscript).values({ chatLeadId, role, content });
 }
 
-export async function listChatIntakeLeads(options: { activitySince?: Date | null } = {}) {
+export async function listChatIntakeLeads(options: { activitySince?: Date | null; loanOfficerId?: number } = {}) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const activityWindow = options.activitySince
@@ -1081,6 +1212,7 @@ export async function listChatIntakeLeads(options: { activitySince?: Date | null
     .leftJoin(loanOfficer, eq(chatIntakeLead.loanOfficerId, loanOfficer.id))
     .leftJoin(agentProfile, eq(chatIntakeLead.agentId, agentProfile.id))
     .leftJoin(propertyLandingPage, eq(chatIntakeLead.propertyPageId, propertyLandingPage.id))
+    .where(options.loanOfficerId ? eq(chatIntakeLead.loanOfficerId, options.loanOfficerId) : undefined)
     .orderBy(desc(chatIntakeLead.updatedAt));
 
   return rows.map(({ lead, loanOfficerName, loanOfficerSlug, agentName, agentSlug, propertyPageAddress, propertyPageSlug, propertyPageListingSnapshot, propertyPageActivityCount, propertyPageLatestActivityType, propertyPageLatestActivityAt }) => ({

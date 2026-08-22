@@ -62,8 +62,11 @@ import {
   updateLoAgentSpendEntry,
   createMortgagePaymentQuote,
   createWorkflowAiReviewHistory,
+  createTeamLoanOfficerWorkspace,
+  createTeamTemplateLibraryEntry,
   createCampaignSpendEntry,
   deleteMortgagePaymentQuote,
+  deleteTeamTemplateLibraryEntry,
   deleteCampaignSpendEntry,
   deleteLoAgentSpendEntry,
   deleteLoAgentSpendPairing,
@@ -86,6 +89,8 @@ import {
   getPropertyLandingPageBySlug,
   getPropertyEngagementSetting,
   getProgramContributionLimits,
+  getTeamLoanOfficerWorkspaceForMember,
+  getTeamLoanOfficerWorkspaceForAdminMember,
   getSyncedTopAgent,
   createSyncedAgentOutreachTemplate,
   updateSyncedAgentOutreachTemplate,
@@ -134,6 +139,8 @@ import {
   listLeads,
   listLoAgentSpendTrackers,
   listMortgagePaymentQuotes,
+  listTeamLoanOfficerWorkspaces,
+  listTeamTemplateLibrary,
   listWorkflowAiReviewHistory,
   listSyncedTopAgents,
   listSyncedAgentOutreachTemplates,
@@ -156,6 +163,9 @@ import {
   updateLeadNotes,
   updateLoanOfficer,
   updateWorkflowAiReviewOutcome,
+  updateTeamLoanOfficerWorkspaceStatus,
+  updateTeamTemplateLibraryEntry,
+  activateTeamLoanOfficerWorkspace,
   updatePropertyLandingPageAiSummary,
   updatePropertyLandingPageExternalListingUrl,
   updatePropertyLandingPageMetadata,
@@ -323,6 +333,15 @@ function requireAdmin(role: string | undefined) {
   if (role !== "admin") {
     throw new TRPCError({ code: "FORBIDDEN", message: ADMIN_ONLY_MESSAGE });
   }
+}
+
+/** Resolves a team member's single active loan-officer workspace; admins remain unrestricted. */
+async function resolveDashboardWorkspace(user: { id: number; role: string; email: string | null }) {
+  if (user.role === "admin") return null;
+  if (user.role !== "team_member") throw new TRPCError({ code: "FORBIDDEN", message: "This dashboard workspace has not been activated." });
+  const workspace = await getTeamLoanOfficerWorkspaceForMember(user.id);
+  if (!workspace) throw new TRPCError({ code: "FORBIDDEN", message: "Your team workspace is not active. Ask the administrator to review your assignment." });
+  return workspace;
 }
 
 /**
@@ -880,13 +899,8 @@ export const appRouter = router({
         return { success: true } as const;
       }),
     list: protectedProcedure.input(z.object({ activityRange: z.enum(PROPERTY_ACTIVITY_RANGES).optional() }).optional()).query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Only the site owner can view leads.",
-        });
-      }
-      return listLeads({ activitySince: getPropertyActivitySince(input?.activityRange ?? "all") });
+      const workspace = await resolveDashboardWorkspace(ctx.user);
+      return listLeads({ activitySince: getPropertyActivitySince(input?.activityRange ?? "all"), loanOfficerId: workspace?.loanOfficerId });
     }),
     updateStatus: protectedProcedure
       .input(
@@ -896,13 +910,13 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        if (ctx.user.role !== "admin") {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "Only the site owner can update leads.",
-          });
+        const workspace = await resolveDashboardWorkspace(ctx.user);
+        if (workspace) {
+          const lead = await getLeadById(input.id);
+          if (!lead || lead.loanOfficerId !== workspace.loanOfficerId) throw new TRPCError({ code: "NOT_FOUND", message: "Lead not found in your assigned workspace." });
         }
-        await updateLeadStatus(input.id, input.status);
+        if (workspace) await updateLeadStatus(input.id, input.status, workspace.loanOfficerId);
+        else await updateLeadStatus(input.id, input.status);
         return { success: true } as const;
       }),
     updateNotes: protectedProcedure
@@ -913,13 +927,13 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        if (ctx.user.role !== "admin") {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "Only the site owner can update leads.",
-          });
+        const workspace = await resolveDashboardWorkspace(ctx.user);
+        if (workspace) {
+          const lead = await getLeadById(input.id);
+          if (!lead || lead.loanOfficerId !== workspace.loanOfficerId) throw new TRPCError({ code: "NOT_FOUND", message: "Lead not found in your assigned workspace." });
         }
-        await updateLeadNotes(input.id, input.notes);
+        if (workspace) await updateLeadNotes(input.id, input.notes, workspace.loanOfficerId);
+        else await updateLeadNotes(input.id, input.notes);
         return { success: true } as const;
       }),
     /** Admin-only: assign (or clear) a saved agent on a lead. */
@@ -1231,23 +1245,27 @@ export const appRouter = router({
       }),
     /** Admin-only list used by the dashboard's chat-intake review panel. */
     list: protectedProcedure.input(z.object({ activityRange: z.enum(PROPERTY_ACTIVITY_RANGES).optional() }).optional()).query(async ({ ctx, input }) => {
-      requireAdmin(ctx.user.role);
-      return listChatIntakeLeads({ activitySince: getPropertyActivitySince(input?.activityRange ?? "all") });
+      const workspace = await resolveDashboardWorkspace(ctx.user);
+      return listChatIntakeLeads({ activitySince: getPropertyActivitySince(input?.activityRange ?? "all"), loanOfficerId: workspace?.loanOfficerId });
     }),
     /** Admin-only transcript view for a single chat intake. */
     transcript: protectedProcedure
       .input(z.object({ chatLeadId: z.number().int().positive() }))
       .query(async ({ ctx, input }) => {
-        requireAdmin(ctx.user.role);
+        const workspace = await resolveDashboardWorkspace(ctx.user);
+        if (workspace) {
+          const lead = await getChatLeadById(input.chatLeadId);
+          if (!lead || lead.loanOfficerId !== workspace.loanOfficerId) throw new TRPCError({ code: "NOT_FOUND", message: "Mortgage intake not found in your assigned workspace." });
+        }
         return getChatTranscriptByLeadId(input.chatLeadId);
       }),
     /** Admin-only private follow-up notes for a chat intake. */
     updateNotes: protectedProcedure
       .input(z.object({ chatLeadId: z.number().int().positive(), notes: z.string().max(5000) }))
       .mutation(async ({ ctx, input }) => {
-        requireAdmin(ctx.user.role);
+        const workspace = await resolveDashboardWorkspace(ctx.user);
         const lead = await getChatLeadById(input.chatLeadId);
-        if (!lead) throw new TRPCError({ code: "NOT_FOUND", message: "Mortgage intake not found." });
+        if (!lead || (workspace && lead.loanOfficerId !== workspace.loanOfficerId)) throw new TRPCError({ code: "NOT_FOUND", message: "Mortgage intake not found." });
         await updateChatLead(input.chatLeadId, { notes: input.notes });
         return { success: true as const };
       }),
@@ -2199,7 +2217,7 @@ export const appRouter = router({
     list: protectedProcedure
       .input(z.object({ status: z.enum(["test", "new", "archived"]).optional() }).optional())
       .query(async ({ ctx, input }) => {
-        requireAdmin(ctx.user.role);
+        await resolveDashboardWorkspace(ctx.user);
         return listPlatformLeads(ctx.user.id, input?.status);
       }),
     createManual: protectedProcedure
@@ -2219,8 +2237,12 @@ export const appRouter = router({
         }
       }))
       .mutation(async ({ ctx, input }) => {
-        requireAdmin(ctx.user.role);
-        if (input.assignedLoanOfficerId && !(await getLoanOfficerById(input.assignedLoanOfficerId))) {
+        const workspace = await resolveDashboardWorkspace(ctx.user);
+        const assignedLoanOfficerId = workspace?.loanOfficerId ?? input.assignedLoanOfficerId ?? null;
+        if (workspace && input.assignedLoanOfficerId && input.assignedLoanOfficerId !== workspace.loanOfficerId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Team members can assign platform leads only to their active loan-officer profile." });
+        }
+        if (assignedLoanOfficerId && !(await getLoanOfficerById(assignedLoanOfficerId))) {
           throw new TRPCError({ code: "NOT_FOUND", message: "The selected loan officer is no longer available." });
         }
         if (input.assignedAgentId && !(await getAgentById(input.assignedAgentId))) {
@@ -2247,7 +2269,7 @@ export const appRouter = router({
           externalAdId: null,
           externalCreativeId: null,
           googleClickId: null,
-          assignedLoanOfficerId: input.assignedLoanOfficerId ?? null,
+          assignedLoanOfficerId,
           assignedAgentId: input.assignedAgentId ?? null,
           providerSubmittedAt: null,
         });
@@ -2525,6 +2547,100 @@ export const appRouter = router({
         requireAdmin(ctx.user.role);
         return updateWorkflowAiReviewOutcome({ ...input, ownerUserId: ctx.user.id });
       }),
+  }),
+
+  teamWorkspace: router({
+    /** Mike Ford can view every assigned loan-officer workspace and its activation state. */
+    list: protectedProcedure.query(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      return listTeamLoanOfficerWorkspaces(ctx.user.id);
+    }),
+    /** An invited loan officer activates access only after signing in with the assigned email. */
+    activateMyWorkspace: protectedProcedure.mutation(async ({ ctx }) => {
+      if (!ctx.user.email) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Your signed-in account needs an email address to activate a team workspace." });
+      const id = await activateTeamLoanOfficerWorkspace({ memberUserId: ctx.user.id, memberEmail: ctx.user.email });
+      return { id, success: true } as const;
+    }),
+    mine: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "team_member") return null;
+      return getTeamLoanOfficerWorkspaceForMember(ctx.user.id);
+    }),
+    createInvite: protectedProcedure
+      .input(z.object({ loanOfficerId: z.number().int().positive(), invitedEmail: z.string().trim().toLowerCase().email() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        if (!(await getLoanOfficerById(input.loanOfficerId))) throw new TRPCError({ code: "NOT_FOUND", message: "Select a saved loan-officer profile before assigning dashboard access." });
+        try {
+          const id = await createTeamLoanOfficerWorkspace({ adminUserId: ctx.user.id, ...input });
+          return { id } as const;
+        } catch (error) {
+          if ((error as { code?: string }).code === "ER_DUP_ENTRY") throw new TRPCError({ code: "CONFLICT", message: "That loan-officer profile already has a team workspace assignment." });
+          throw error;
+        }
+      }),
+    setStatus: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), status: z.enum(["pending", "active", "suspended"]) }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return updateTeamLoanOfficerWorkspaceStatus({ adminUserId: ctx.user.id, ...input });
+      }),
+    shadow: protectedProcedure
+      .input(z.object({ memberUserId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const workspace = await getTeamLoanOfficerWorkspaceForAdminMember({ adminUserId: ctx.user.id, memberUserId: input.memberUserId });
+        if (!workspace) throw new TRPCError({ code: "NOT_FOUND", message: "That active team workspace was not found." });
+        return workspace;
+      }),
+    shadowSnapshot: protectedProcedure
+      .input(z.object({ memberUserId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const workspace = await getTeamLoanOfficerWorkspaceForAdminMember({ adminUserId: ctx.user.id, memberUserId: input.memberUserId });
+        if (!workspace) throw new TRPCError({ code: "NOT_FOUND", message: "That active team workspace was not found." });
+        const [roadmapLeads, chatIntakes, platformLeads, quotes, spendEntries] = await Promise.all([
+          listLeads({ loanOfficerId: workspace.loanOfficerId }),
+          listChatIntakeLeads({ loanOfficerId: workspace.loanOfficerId }),
+          listPlatformLeads(input.memberUserId),
+          listMortgagePaymentQuotes(input.memberUserId),
+          listCampaignSpendEntries(input.memberUserId),
+        ]);
+        return { workspace, roadmapLeads, chatIntakes, platformLeads, quotes, spendEntries };
+      }),
+  }),
+
+  teamTemplates: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role === "admin") return listTeamTemplateLibrary({ adminUserId: ctx.user.id, includePrivate: true });
+      if (ctx.user.role !== "team_member") throw new TRPCError({ code: "FORBIDDEN", message: "Team template access has not been assigned to this account." });
+      const workspace = await getTeamLoanOfficerWorkspaceForMember(ctx.user.id);
+      if (!workspace) throw new TRPCError({ code: "FORBIDDEN", message: "Your team workspace is not active." });
+      return listTeamTemplateLibrary({ adminUserId: workspace.adminUserId, includePrivate: false });
+    }),
+    create: protectedProcedure
+      .input(z.object({ channel: z.enum(["email", "text"]), name: z.string().trim().min(1).max(160), subjectTemplate: z.string().trim().max(300).nullable().optional(), bodyTemplate: z.string().trim().min(1).max(6000), availability: z.enum(["private", "team_read_only"]), sourceTemplateScope: z.string().trim().max(80).nullable().optional(), sourceTemplateId: z.number().int().positive().nullable().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        try {
+          const id = await createTeamTemplateLibraryEntry({ adminUserId: ctx.user.id, ...input });
+          return { id } as const;
+        } catch (error) {
+          if ((error as { code?: string }).code === "ER_DUP_ENTRY") throw new TRPCError({ code: "CONFLICT", message: "A team library item already uses that name and channel." });
+          throw error;
+        }
+      }),
+    update: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), name: z.string().trim().min(1).max(160), subjectTemplate: z.string().trim().max(300).nullable().optional(), bodyTemplate: z.string().trim().min(1).max(6000), availability: z.enum(["private", "team_read_only"]) }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        await updateTeamTemplateLibraryEntry({ adminUserId: ctx.user.id, ...input });
+        return { success: true } as const;
+      }),
+    delete: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      requireAdmin(ctx.user.role);
+      await deleteTeamTemplateLibraryEntry({ adminUserId: ctx.user.id, id: input.id });
+      return { success: true } as const;
+    }),
   }),
 
   agentSync: router({

@@ -43,7 +43,7 @@ describe("Mortgage chat intake quick replies and reviewable extraction", () => {
     expect(inboxSource).toContain("Co-branded agent assignment");
     expect(routerSource).toContain("assignedLoanOfficerId: z.number().int().positive().nullable().optional()");
     expect(routerSource).toContain("assignedAgentId: z.number().int().positive().nullable().optional()");
-    expect(routerSource).toContain("assignedLoanOfficerId: input.assignedLoanOfficerId ?? null");
+    expect(routerSource).toContain("const assignedLoanOfficerId = workspace?.loanOfficerId ?? input.assignedLoanOfficerId ?? null");
     expect(routerSource).toContain("assignedAgentId: input.assignedAgentId ?? null");
   });
 });
