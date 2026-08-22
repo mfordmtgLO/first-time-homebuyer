@@ -3,8 +3,9 @@ import { Bold, Eye, FileUp, Italic, Link2, Underline } from "lucide-react";
 import mammoth from "mammoth";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { EmailTemplateAiAssistant, type EmailTemplateAiWorkflow } from "@/components/EmailTemplateAiAssistant";
 
-export type EmailTemplateWorkflow = "listing_agent" | "property_list" | "property_page_agent" | "property_page_buyer" | "oregon_outreach" | "agent_directory" | "loan_officer_directory";
+export type EmailTemplateWorkflow = Exclude<EmailTemplateAiWorkflow, "platform_lead" | "platform_agent">;
 type MergeField = { token: string; label: string };
 const MERGE_FIELDS: Record<EmailTemplateWorkflow, MergeField[]> = {
   listing_agent: [],
@@ -16,7 +17,7 @@ const MERGE_FIELDS: Record<EmailTemplateWorkflow, MergeField[]> = {
   loan_officer_directory: [{ token: "{{recipient_first_name}}", label: "Recipient first name" }, { token: "{{recipient_name}}", label: "Recipient full name" }, { token: "{{company_name}}", label: "Company name" }, { token: "{{recipient_role}}", label: "Recipient role" }],
 };
 export function getEmailTemplateMergeFields(workflow: EmailTemplateWorkflow) { return MERGE_FIELDS[workflow]; }
-type Props = { id: string; value: string; onChange: (value: string) => void; workflow: EmailTemplateWorkflow; placeholder?: string; maxLength?: number; className?: string };
+type Props = { id: string; value: string; onChange: (value: string) => void; workflow: EmailTemplateWorkflow; subjectValue?: string; onSubjectChange?: (value: string) => void; placeholder?: string; maxLength?: number; className?: string };
 
 export function sanitizeEmailTemplateHtml(html: string) {
   const doc = new DOMParser().parseFromString(html, "text/html");
@@ -37,7 +38,7 @@ export function htmlToEmailText(value: string) {
   return (doc.body.textContent ?? "").replace(/\n{3,}/g, "\n\n").trim();
 }
 
-export function UniversalEmailTemplateEditor({ id, value, onChange, workflow, placeholder, maxLength = 8000, className = "" }: Props) {
+export function UniversalEmailTemplateEditor({ id, value, onChange, workflow, subjectValue, onSubjectChange, placeholder, maxLength = 8000, className = "" }: Props) {
   const editorRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
@@ -70,7 +71,8 @@ export function UniversalEmailTemplateEditor({ id, value, onChange, workflow, pl
       <Button type="button" size="sm" variant="ghost" disabled={importing} onClick={() => fileRef.current?.click()}><FileUp className="mr-1.5 h-3.5 w-3.5" />{importing ? "Importing…" : "Import Word"}</Button>
       <Button type="button" size="sm" variant="ghost" onClick={() => setShowPreview((current) => !current)}><Eye className="mr-1.5 h-3.5 w-3.5" />{showPreview ? "Hide preview" : "HTML preview"}</Button>
     </div>
-    <div id={id} ref={editorRef} contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-placeholder={placeholder} onBlur={commit} onInput={commit} className="min-h-44 px-3 py-2 text-sm leading-6 outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground" dangerouslySetInnerHTML={{ __html: sanitizeEmailTemplateHtml(value) }} />
+    <div className="p-2"><EmailTemplateAiAssistant workflow={workflow} currentSubject={subjectValue} currentBody={value} onApply={(draft) => { const html = sanitizeEmailTemplateHtml(draft.body.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replace(/\n/g, "<br>")); if (editorRef.current) editorRef.current.innerHTML = html; onChange(html); onSubjectChange?.(draft.subject); }} /></div>
+    <div id={id} ref={editorRef} contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-placeholder={placeholder} onBlur={commit} onInput={commit} className="min-h-44 border-t border-border px-3 py-2 text-sm leading-6 outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground" dangerouslySetInnerHTML={{ __html: sanitizeEmailTemplateHtml(value) }} />
     {showPreview ? <section aria-label="HTML email preview" className="border-t border-border bg-muted/20 p-3"><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Email preview</p><div className="prose prose-sm max-w-none break-words text-foreground prose-a:text-primary" dangerouslySetInnerHTML={{ __html: sanitizeEmailTemplateHtml(value) }} /></section> : null}
     <p className="border-t border-border px-3 py-1.5 text-right text-xs text-muted-foreground">{htmlToEmailText(value).length}/{maxLength} characters · Word imports accept .docx</p>
   </div>;

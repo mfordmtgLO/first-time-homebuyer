@@ -2343,6 +2343,56 @@ export const appRouter = router({
       }),
   }),
 
+  emailTemplateAi: router({
+    generate: protectedProcedure
+      .input(z.object({
+        workflow: z.enum(["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach", "agent_directory", "loan_officer_directory", "platform_lead", "platform_agent"]),
+        goal: z.string().trim().min(4).max(800),
+        currentSubject: z.string().max(300).optional(),
+        currentBody: z.string().max(8000).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const allowedTokens: Record<typeof input.workflow, string[]> = {
+          listing_agent: [], property_list: [], property_page_agent: [],
+          property_page_buyer: ["{{client_name}}", "{{property_address}}", "{{property_url}}", "{{loan_officer_signature}}", "{{agent_signature}}"],
+          oregon_outreach: ["{{recipient_name}}", "{{brokerage}}", "{{recipient_type}}", "{{recipient_count}}"],
+          agent_directory: ["{{recipient_first_name}}", "{{recipient_name}}", "{{company_name}}", "{{recipient_role}}"],
+          loan_officer_directory: ["{{recipient_first_name}}", "{{recipient_name}}", "{{company_name}}", "{{recipient_role}}"],
+          platform_lead: ["{{lead_name}}", "{{lead_first_name}}", "{{agent_name}}", "{{agent_first_name}}", "{{loan_officer_name}}", "{{team_context}}"],
+          platform_agent: ["{{lead_name}}", "{{lead_first_name}}", "{{agent_name}}", "{{agent_first_name}}", "{{loan_officer_name}}", "{{team_context}}"],
+        };
+        const response = await invokeLLM({
+          model: "gpt-5-mini",
+          maxTokens: 900,
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "email_template_draft",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: { subject: { type: "string" }, body: { type: "string" } },
+                required: ["subject", "body"],
+                additionalProperties: false,
+              },
+            },
+          },
+          messages: [
+            { role: "system", content: `You draft reusable mortgage-industry email templates for an internal owner. Return plain text only through the JSON schema. Write a concise, warm, professional subject and body for workflow ${input.workflow}. The owner must review and edit the proposal before it can be saved. Do not include a sign-off, any loan officer signature, rates, APR, payment quotes, approval or eligibility claims, legal advice, unverified property facts, urgency pressure, or fabricated testimonials. Do not claim consent, acceptance, or an outcome. Use only these merge tokens when useful: ${allowedTokens[input.workflow].join(", ") || "none"}. Never invent any other token.` },
+            { role: "user", content: `Email goal: ${input.goal}\n\nCurrent subject (optional reference): ${input.currentSubject || "None"}\n\nCurrent body (optional reference): ${input.currentBody || "None"}` },
+          ],
+        });
+        const content = response.choices[0]?.message.content;
+        let draft: { subject?: unknown; body?: unknown };
+        try { draft = JSON.parse(typeof content === "string" ? content : "{}"); } catch { throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned an unreadable template draft. Please try again." }); }
+        const subject = typeof draft.subject === "string" ? draft.subject.trim().slice(0, 300) : "";
+        const body = typeof draft.body === "string" ? draft.body.trim().slice(0, 8000) : "";
+        if (!subject || !body) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI could not prepare a complete email draft. Please try again." });
+        return { subject, body } as const;
+      }),
+  }),
+
   agentSync: router({
     /** Admin-only, owner-scoped copy of the authorized state source records. */
     list: protectedProcedure

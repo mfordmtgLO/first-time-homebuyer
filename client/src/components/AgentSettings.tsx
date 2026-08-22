@@ -893,7 +893,7 @@ function OregonOutreachWorkspace({ syncedProfiles }: { syncedProfiles: SyncedTop
             </div>
             <div>
               <Label htmlFor="oregon-template-body">Email body</Label>
-              <UniversalEmailTemplateEditor id="oregon-template-body" className="mt-1.5" value={templateBody} onChange={setTemplateBody} workflow="oregon_outreach" maxLength={8000} placeholder="Write your Oregon outreach email body. Mike Ford’s complete signature is added automatically when the draft opens." />
+              <UniversalEmailTemplateEditor id="oregon-template-body" className="mt-1.5" value={templateBody} onChange={setTemplateBody} workflow="oregon_outreach" subjectValue={templateSubject} onSubjectChange={setTemplateSubject} maxLength={8000} placeholder="Write your Oregon outreach email body. Mike Ford’s complete signature is added automatically when the draft opens." />
               <p className="mt-1.5 text-xs text-muted-foreground">Optional merge tokens: <code>{"{{recipient_name}}"}</code>, <code>{"{{brokerage}}"}</code>, <code>{"{{recipient_type}}"}</code>, and <code>{"{{recipient_count}}"}</code>. For a BCC draft, recipient-specific tokens use neutral wording.</p>
             </div>
           </div>

@@ -680,3 +680,7 @@
 - [x] Add regression coverage and publish the completion transition framework; keep emailed PDF delivery inactive
 
 - [ ] ON HOLD — Activate direct Mortgage Chat PDF email delivery only after approved Resend API key and sender-domain permissions are supplied
+
+- [x] Add a reusable owner-only AI email-assistance panel to every shared dashboard create/edit template editor, using user-supplied goal keywords to generate editable subject and body drafts
+- [x] Add the same owner-only AI email-assistance panel to Ad platform lead and agent template creation/editing
+- [x] Add workflow-aware AI safeguards, regression coverage, and publish the user-controlled email-drafting workflow
