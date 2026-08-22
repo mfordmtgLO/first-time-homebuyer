@@ -10,6 +10,9 @@
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
+    "test:local": "vitest run --exclude server/oregonAgentSyncConnection.test.ts",
+    "validate:fast": "pnpm check && pnpm test:local",
+    "verify:release": "pnpm check && pnpm test",
     "db:push": "drizzle-kit generate && drizzle-kit migrate"
   },
   "dependencies": {
