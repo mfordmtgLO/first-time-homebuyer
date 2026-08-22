@@ -967,7 +967,7 @@ export const loAgentSpendEntry = mysqlTable(
     id: int("id").autoincrement().primaryKey(),
     pairingId: int("pairingId").notNull(),
     spentOn: timestamp("spentOn").notNull(),
-    category: mysqlEnum("category", ["ad_spend", "event", "print", "digital", "other"]).notNull(),
+    category: mysqlEnum("category", ["ad_spend", "facebook_ads", "google_ads", "event", "print", "digital", "other"]).notNull(),
     description: varchar("description", { length: 300 }).notNull(),
     loanOfficerCents: int("loanOfficerCents").default(0).notNull(),
     agentCents: int("agentCents").default(0).notNull(),

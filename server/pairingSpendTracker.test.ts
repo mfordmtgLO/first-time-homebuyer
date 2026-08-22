@@ -67,4 +67,20 @@ describe("LO + agent pairing spend summary", () => {
     expect(componentSource).toContain("Load more (");
     expect(componentSource).toContain("historyVisibleCount");
   });
+
+  it("supports private entry corrections and source-specific ad spend filtering", () => {
+    const projectRoot = path.resolve(import.meta.dirname, "..");
+    const componentSource = readFileSync(path.join(projectRoot, "client/src/components/PairingSpendTracker.tsx"), "utf8");
+    const routerSource = readFileSync(path.join(projectRoot, "server/routers.ts"), "utf8");
+
+    expect(componentSource).toContain('facebook_ads: "Facebook Ads"');
+    expect(componentSource).toContain('google_ads: "Google Ads"');
+    expect(componentSource).toContain("historyCategory");
+    expect(componentSource).toContain("Filter Spend Tracker history by source");
+    expect(componentSource).toContain("Edit an existing entry");
+    expect(componentSource).toContain("Save correction");
+    expect(componentSource).toContain("Cancel edit");
+    expect(routerSource).toContain("updateEntry: protectedProcedure");
+    expect(routerSource).toContain("updateLoAgentSpendEntry");
+  });
 });

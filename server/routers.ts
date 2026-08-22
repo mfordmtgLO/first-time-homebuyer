@@ -59,6 +59,7 @@ import {
   createLoanOfficer,
   createLoAgentSpendPairing,
   addLoAgentSpendEntry,
+  updateLoAgentSpendEntry,
   createCampaignSpendEntry,
   deleteCampaignSpendEntry,
   deleteLoAgentSpendEntry,
@@ -1860,7 +1861,7 @@ export const appRouter = router({
       .input(z.object({
         pairingId: z.number().int().positive(),
         spentOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a valid date."),
-        category: z.enum(["ad_spend", "event", "print", "digital", "other"]),
+        category: z.enum(["ad_spend", "facebook_ads", "google_ads", "event", "print", "digital", "other"]),
         description: z.string().trim().min(1, "Enter a description.").max(300),
         loanOfficerCents: z.number().int().min(0).max(100_000_000),
         agentCents: z.number().int().min(0).max(100_000_000),
@@ -1878,6 +1879,15 @@ export const appRouter = router({
         const pairing = await getLoAgentSpendPairingForOwner(input.pairingId, ctx.user.id);
         if (!pairing) throw new TRPCError({ code: "NOT_FOUND", message: "Pairing tracker not found." });
         await deleteLoAgentSpendEntry(input);
+        return { success: true } as const;
+      }),
+    updateEntry: protectedProcedure
+      .input(z.object({ pairingId: z.number().int().positive(), entryId: z.number().int().positive(), spentOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), category: z.enum(["ad_spend", "facebook_ads", "google_ads", "event", "print", "digital", "other"]), description: z.string().trim().min(1).max(300), loanOfficerCents: z.number().int().min(0).max(100_000_000), agentCents: z.number().int().min(0).max(100_000_000) }).refine((value) => value.loanOfficerCents + value.agentCents > 0, { message: "Enter a contribution from at least one side." }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const pairing = await getLoAgentSpendPairingForOwner(input.pairingId, ctx.user.id);
+        if (!pairing) throw new TRPCError({ code: "NOT_FOUND", message: "Pairing tracker not found." });
+        await updateLoAgentSpendEntry({ ...input, spentOn: new Date(`${input.spentOn}T12:00:00.000Z`) });
         return { success: true } as const;
       }),
     deletePairing: protectedProcedure

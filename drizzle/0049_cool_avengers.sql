@@ -1,0 +1,1 @@
+ALTER TABLE `lo_agent_spend_entry` MODIFY COLUMN `category` enum('ad_spend','facebook_ads','google_ads','event','print','digital','other') NOT NULL;

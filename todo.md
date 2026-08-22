@@ -730,3 +730,8 @@
 - [x] Add filtered Spend Tracker history CSV export beside the discovery controls
 - [x] Add incremental Load More controls for large private spend histories
 - [x] Add regression coverage and publish the scalable Spend Tracker history enhancements
+
+- [x] Add protected edit and delete controls for individual private Spend Tracker history entries
+- [x] Add Facebook and Google Ads spend source tags alongside existing spend categories
+- [x] Add a source/category filter to the private Spend Tracker history
+- [x] Add regression coverage and publish the spend-entry correction and source-filter enhancements

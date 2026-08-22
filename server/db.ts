@@ -1549,7 +1549,7 @@ export async function createLoAgentSpendPairing(input: { ownerUserId: number; lo
 export async function addLoAgentSpendEntry(input: {
   pairingId: number;
   spentOn: Date;
-  category: "ad_spend" | "event" | "print" | "digital" | "other";
+  category: "ad_spend" | "facebook_ads" | "google_ads" | "event" | "print" | "digital" | "other";
   description: string;
   loanOfficerCents: number;
   agentCents: number;
@@ -1567,6 +1567,21 @@ export async function deleteLoAgentSpendEntry(input: { pairingId: number; entryI
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(loAgentSpendEntry).where(and(eq(loAgentSpendEntry.id, input.entryId), eq(loAgentSpendEntry.pairingId, input.pairingId)));
+  await db.update(loAgentSpendPairing).set({ updatedAt: new Date() }).where(eq(loAgentSpendPairing.id, input.pairingId));
+}
+
+export async function updateLoAgentSpendEntry(input: {
+  pairingId: number;
+  entryId: number;
+  spentOn: Date;
+  category: "ad_spend" | "facebook_ads" | "google_ads" | "event" | "print" | "digital" | "other";
+  description: string;
+  loanOfficerCents: number;
+  agentCents: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(loAgentSpendEntry).set({ spentOn: input.spentOn, category: input.category, description: input.description, loanOfficerCents: input.loanOfficerCents, agentCents: input.agentCents }).where(and(eq(loAgentSpendEntry.id, input.entryId), eq(loAgentSpendEntry.pairingId, input.pairingId)));
   await db.update(loAgentSpendPairing).set({ updatedAt: new Date() }).where(eq(loAgentSpendPairing.id, input.pairingId));
 }
 
