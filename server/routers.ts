@@ -2161,6 +2161,8 @@ export const appRouter = router({
         externalFormId: z.string().trim().max(80).optional(),
         externalCampaignId: z.string().trim().max(80).optional(),
         notes: z.string().trim().max(1000).optional(),
+        assignedLoanOfficerId: z.number().int().positive().nullable().optional(),
+        assignedAgentId: z.number().int().positive().nullable().optional(),
       }).superRefine((value, context) => {
         if (!value.email?.trim() && !value.phone?.trim()) {
           context.addIssue({ code: z.ZodIssueCode.custom, path: ["email"], message: "Enter an email address or phone number." });
@@ -2168,6 +2170,12 @@ export const appRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
+        if (input.assignedLoanOfficerId && !(await getLoanOfficerById(input.assignedLoanOfficerId))) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "The selected loan officer is no longer available." });
+        }
+        if (input.assignedAgentId && !(await getAgentById(input.assignedAgentId))) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "The selected co-branded agent is no longer available." });
+        }
         const names = input.fullName.split(/\s+/);
         const result = await createPlatformLeadIfAbsent({
           ownerUserId: ctx.user.id,
@@ -2189,8 +2197,8 @@ export const appRouter = router({
           externalAdId: null,
           externalCreativeId: null,
           googleClickId: null,
-          assignedLoanOfficerId: null,
-          assignedAgentId: null,
+          assignedLoanOfficerId: input.assignedLoanOfficerId ?? null,
+          assignedAgentId: input.assignedAgentId ?? null,
           providerSubmittedAt: null,
         });
         if (result.created && input.notes?.trim()) {

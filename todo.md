@@ -662,6 +662,10 @@
 - [x] Add regression coverage and publish the Mortgage chat intakes layout repair
 
 - [x] Add a date-range filter for Mortgage chat intake conversations
-- [ ] Add owner-reviewed exact-response extraction from a chat intake that prefills an Organic manual platform-lead entry with verbatim organized chat answers and preserves available Loan Officer and Co-branded Agent assignments
-- [ ] Add reusable consent-gated text-message quick-reply templates to the Mortgage chat intake section
-- [ ] Add regression coverage and publish the enhanced Mortgage chat intake workflow
+- [x] Add owner-reviewed exact-response extraction from a chat intake that prefills an Organic manual platform-lead entry with question-and-answer-only vertically paired verbatim responses, quick-button choices, slider values, No response provided placeholders, available Loan Officer and Co-branded Agent assignments, and blank follow-up scheduling
+- [x] Add reusable consent-gated text-message quick-reply templates to the Mortgage chat intake section, with a known-LO Paired group labeled LO: First Last + Agent: First Last and an always-available Agents group before Connect with agent when none is assigned
+- [x] Add regression coverage and publish the enhanced Mortgage chat intake workflow
+
+- [ ] Add the contextual Paired and Agents assignment dropdown convention to the Ad platform leads inbox using each lead’s currently assigned loan officer
+
+- [x] Complete the reviewed exact-response Organic prefill and grouped consent-gated text quick-reply controls

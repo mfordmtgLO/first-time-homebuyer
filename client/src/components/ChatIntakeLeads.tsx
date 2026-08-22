@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -91,7 +91,28 @@ const CHAT_QUICK_REPLIES = [
   { value: "follow_up", label: "Follow-up check-in", body: "Hi {{first_name}}, this is Mike Ford. Thank you for sharing your homebuying goals. What questions can I help with as you consider next steps?" },
   { value: "roadmap", label: "Roadmap follow-up", body: "Hi {{first_name}}, this is Mike Ford. I wanted to follow up on your first-time homebuyer Roadmap request. I am here if you would like to talk through your next steps." },
   { value: "listing_search", label: "Potential homes follow-up", body: "Hi {{first_name}}, this is Mike Ford. I can help coordinate a potential homes list based on the area and goals you shared. What city or county should we focus on?" },
+  { value: "connect_agent", label: "Connect with agent", body: "Hi {{first_name}}, this is Mike Ford. I’d like to connect you with {{agent_name}} so you can discuss homes and next steps together." },
 ] as const;
+
+function verbatimChatAnswers(lead: ChatLead) {
+  const answer = (value: string | number | null, format?: (value: number) => string) => value === null || value === "" ? "No response provided" : typeof value === "number" ? format ? format(value) : String(value) : value;
+  return [
+    ["What is your loan purpose?", answer(lead.loanPurpose)],
+    ["What type of property are you considering?", answer(lead.propertyType)],
+    ["What purchase price are you considering?", answer(lead.propertyValue, (value) => `$${value.toLocaleString()}`)],
+    ["What is your estimated credit range?", answer(lead.creditRange)],
+    ["What is your estimated annual household income?", answer(lead.annualIncome, (value) => `$${value.toLocaleString()}`)],
+    ["How much do you plan to put down?", answer(lead.downPayment, (value) => `$${value.toLocaleString()}`)],
+    ["What loan amount are you considering?", answer(lead.loanAmount, (value) => `$${value.toLocaleString()}`)],
+    ["Would you like potential low- or no-down-payment homes?", lead.lowDownPaymentHomeSearch === null ? "No response provided" : lead.lowDownPaymentHomeSearch === 1 ? "Yes" : "No"],
+    ["What kind of search area would you like?", answer(lead.searchAreaType)],
+    ["Which city, county, or area should we focus on?", answer(lead.targetArea)],
+    ["What is your name?", answer(lead.fullName)],
+    ["What is your email address?", answer(lead.email)],
+    ["What is your phone number?", answer(lead.phone)],
+    ["Did you provide consent for text messages?", lead.smsConsent === 1 ? "Yes" : "No"],
+  ].map(([question, response]) => `${question}\n${response}`).join("\n\n");
+}
 
 function UsdaBadge({ lead }: { lead: ChatLead }) {
   if (!qualifiesForUsdaDashboardBadge(lead)) return null;
@@ -142,9 +163,13 @@ export default function ChatIntakeLeads() {
   const [activityRange, setActivityRange] = useState<PropertyActivityRange>("all");
   const query = trpc.chat.list.useQuery({ activityRange });
   const agentsQuery = trpc.agent.list.useQuery();
+  const officersQuery = trpc.loanOfficer.list.useQuery();
+  const pairingsQuery = trpc.pairingSpendTracker.list.useQuery();
   const utils = trpc.useUtils();
   const leads = (query.data ?? []) as ChatLead[];
   const agents = ((agentsQuery.data ?? []) as AgentOption[]).filter((agent) => agent.visible === 1);
+  const officers = officersQuery.data ?? [];
+  const pairings = pairingsQuery.data ?? [];
   const displayLeads = leads;
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | "incomplete" | "qualified">("all");
@@ -159,6 +184,7 @@ export default function ChatIntakeLeads() {
   const [resendCandidate, setResendCandidate] = useState<ChatLead | null>(null);
   const [notesLead, setNotesLead] = useState<ChatLead | null>(null);
   const [notesDraft, setNotesDraft] = useState("");
+  const [agentConnectionLead, setAgentConnectionLead] = useState<ChatLead | null>(null);
   const resend = trpc.chat.resend.useMutation({
     onSuccess: async (result) => {
       await utils.chat.list.invalidate();
@@ -221,16 +247,21 @@ export default function ChatIntakeLeads() {
       toast.error(error instanceof Error ? error.message : "Unable to load this chat conversation for the email draft.");
     }
   };
-  const openQuickReplyDraft = (lead: ChatLead, templateValue: string) => {
+  const openQuickReplyDraft = (lead: ChatLead, templateValue: string, agentName?: string | null) => {
     if (lead.smsConsent !== 1 || !hasUsableRoadmapPhone(lead.phone)) {
       toast.error("A usable phone number and recorded text consent are required before opening a text draft.");
       return;
     }
     const template = CHAT_QUICK_REPLIES.find((candidate) => candidate.value === templateValue);
     if (!template) return;
+    if (template.value === "connect_agent" && !agentName) {
+      setAgentConnectionLead(lead);
+      return;
+    }
     const firstName = lead.fullName?.trim().split(/\s+/)[0] || "there";
     const phone = String(lead.phone).replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");
-    window.location.href = `sms:${phone}?body=${encodeURIComponent(template.body.replace("{{first_name}}", firstName))}`;
+    const body = template.body.replace("{{first_name}}", firstName).replace("{{agent_name}}", agentName || "a local co-branded agent");
+    window.location.href = `sms:${phone}?body=${encodeURIComponent(body)}`;
     toast.success("Opened a text-message draft. Review it before sending.");
   };
   const loanOfficerOptions = useMemo(() => getLoanOfficerFilterOptions(displayLeads), [displayLeads]);
@@ -275,6 +306,18 @@ export default function ChatIntakeLeads() {
       {lead.recipientEmailStatus === "sent" ? "Email sent" : lead.recipientEmailStatus === "manual_follow_up" ? "Follow up" : "Pending"}
     </Badge>
   );
+  const extractToManualLead = (lead: ChatLead) => {
+    window.dispatchEvent(new CustomEvent("platform-lead-manual-prefill", { detail: {
+      fullName: lead.fullName,
+      email: lead.email,
+      phone: lead.phone,
+      notes: verbatimChatAnswers(lead),
+      loanOfficerName: lead.loanOfficerName,
+      agentId: lead.isCoBranded ? lead.agentId : null,
+    } }));
+    document.getElementById("platform-leads")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    toast.success("Opened an Organic lead prefill for your review. No record has been created yet.");
+  };
   return (
     <section className="mt-10 rounded-lg border border-border bg-card shadow-sm">
       <div className="flex flex-col justify-between gap-3 border-b border-border px-6 py-5 sm:flex-row sm:items-center">
@@ -307,7 +350,7 @@ export default function ChatIntakeLeads() {
           <table className="min-w-[1500px] w-full text-sm">
             <thead><tr className="sticky top-0 z-10 border-b border-border bg-muted/95 text-left text-muted-foreground backdrop-blur-sm"><th className="px-5 py-3 font-semibold">Lead</th><th className="px-5 py-3 font-semibold">Campaign</th><th className="px-5 py-3 font-semibold">Co-brand source</th><th className="px-5 py-3 font-semibold">Status</th><th className="px-5 py-3 font-semibold">Recipients</th><th className="px-5 py-3 font-semibold">Resends</th><th className="px-5 py-3 font-semibold">Purpose</th><th className="min-w-[14rem] px-5 py-3 font-semibold">Planning snapshot</th><th className="px-5 py-3 font-semibold">Updated</th><th className="px-5 py-3 text-right font-semibold">Actions</th></tr></thead>
             <tbody>{filtered.map((lead) => <tr key={lead.id} className="border-b border-border/60 last:border-0">
-              <td className="px-5 py-3.5"><div className="flex flex-wrap items-center gap-2"><div className="font-medium text-foreground">{lead.fullName || "Anonymous visitor"}</div><UsdaBadge lead={lead} /></div><div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"><span>{lead.email || "No email"}</span><span>{lead.phone || "No phone"}</span>{hasUsableRoadmapPhone(lead.phone) && <Badge variant="outline" className="border-emerald-600/25 bg-emerald-600/5 text-emerald-700"><Smartphone className="mr-1 h-3 w-3" /> Phone ready</Badge>}{lead.smsConsent === 1 && hasUsableRoadmapPhone(lead.phone) && <Badge variant="outline" className="border-violet-600/25 bg-violet-600/5 text-violet-700"><MessageSquareText className="mr-1 h-3 w-3" /> Text ready</Badge>}</div><div className="mt-2 flex flex-wrap gap-1.5"><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" disabled={!lead.email} title={lead.email ? "Open a welcome email draft" : "This intake needs an email address first"} onClick={() => openEmailDraft(lead)}><Mail className="mr-1 h-3 w-3" /> Email draft</Button><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" onClick={() => { setNotesLead(lead); setNotesDraft(lead.notes ?? ""); }}><NotebookPen className="mr-1 h-3 w-3" /> {lead.notes?.trim() ? "Notes" : "Add note"}</Button><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" disabled={!lead.agentId || sendToAgent.isPending} title={lead.agentId ? "Email this intake to the assigned agent" : "Assign an agent first"} onClick={() => sendToAgent.mutate({ chatLeadId: lead.id })}>{sendToAgent.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-3 w-3" />} Send to agent</Button></div></td>
+              <td className="px-5 py-3.5"><div className="flex flex-wrap items-center gap-2"><div className="font-medium text-foreground">{lead.fullName || "Anonymous visitor"}</div><UsdaBadge lead={lead} /></div><div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"><span>{lead.email || "No email"}</span><span>{lead.phone || "No phone"}</span>{hasUsableRoadmapPhone(lead.phone) && <Badge variant="outline" className="border-emerald-600/25 bg-emerald-600/5 text-emerald-700"><Smartphone className="mr-1 h-3 w-3" /> Phone ready</Badge>}{lead.smsConsent === 1 && hasUsableRoadmapPhone(lead.phone) && <Badge variant="outline" className="border-violet-600/25 bg-violet-600/5 text-violet-700"><MessageSquareText className="mr-1 h-3 w-3" /> Text ready</Badge>}</div><div className="mt-2 flex flex-wrap gap-1.5"><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" disabled={!lead.email} title={lead.email ? "Open a welcome email draft" : "This intake needs an email address first"} onClick={() => openEmailDraft(lead)}><Mail className="mr-1 h-3 w-3" /> Email draft</Button><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" onClick={() => extractToManualLead(lead)}><FileText className="mr-1 h-3 w-3" /> Extract lead info</Button><Select onValueChange={(value) => openQuickReplyDraft(lead, value, lead.agentName)} disabled={lead.smsConsent !== 1 || !hasUsableRoadmapPhone(lead.phone)}><SelectTrigger className="h-7 w-[150px] text-[11px]" title={lead.smsConsent === 1 && hasUsableRoadmapPhone(lead.phone) ? "Open a reviewed text-message draft" : "Recorded text consent and a usable phone number are required"}><SelectValue placeholder="Text quick reply" /></SelectTrigger><SelectContent>{CHAT_QUICK_REPLIES.map((template) => <SelectItem key={template.value} value={template.value}>{template.label}</SelectItem>)}</SelectContent></Select><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" onClick={() => { setNotesLead(lead); setNotesDraft(lead.notes ?? ""); }}><NotebookPen className="mr-1 h-3 w-3" /> {lead.notes?.trim() ? "Notes" : "Add note"}</Button><Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" disabled={!lead.agentId || sendToAgent.isPending} title={lead.agentId ? "Email this intake to the assigned agent" : "Assign an agent first"} onClick={() => sendToAgent.mutate({ chatLeadId: lead.id })}>{sendToAgent.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-3 w-3" />} Send to agent</Button></div></td>
               <td className="px-5 py-3.5 text-xs text-muted-foreground">{[lead.utmSource, lead.utmMedium, lead.utmCampaign].filter(Boolean).join(" · ") || "Direct / untagged"}</td>
               <td className="px-5 py-3.5">{lead.propertyPageAddress ? <PropertyPageSourceSummary propertyLandingPageId={lead.propertyPageId} address={lead.propertyPageAddress} propertyPageSlug={lead.propertyPageSlug} listingSnapshot={lead.propertyPageListingSnapshot} activityCount={lead.propertyPageActivityCount} latestActivityType={lead.propertyPageLatestActivityType} latestActivityAt={lead.propertyPageLatestActivityAt} activityRange={activityRange} loanOfficerName={lead.loanOfficerName} agentName={lead.agentName} /> : lead.isCoBranded ? <div className="min-w-44"><Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Co-branded</Badge><div className="mt-1.5 text-xs font-medium text-foreground">LO: {lead.loanOfficerName || "—"}</div><div className="text-xs text-muted-foreground">Agent: {lead.agentName || "—"}</div></div> : <Badge variant="outline" className="text-muted-foreground">Direct site</Badge>}</td>
               <td className="px-5 py-3.5"><Badge variant="outline" className={lead.status === "qualified" ? "border-emerald-600/30 bg-emerald-600/10 text-emerald-700" : "border-accent/40 bg-accent/15 text-accent-foreground"}>{lead.status === "qualified" ? "Qualified" : "Incomplete"}</Badge></td>
@@ -322,6 +365,9 @@ export default function ChatIntakeLeads() {
         </div>
       )}
       <TranscriptDialog lead={selected} onOpenChange={(open) => !open && setSelected(null)} />
+      <Dialog open={agentConnectionLead !== null} onOpenChange={(open) => !open && setAgentConnectionLead(null)}>
+        <DialogContent className="sm:max-w-lg"><DialogHeader><DialogTitle>Choose a co-branded agent</DialogTitle><DialogDescription>Select an existing Paired agent when available, or choose another saved co-branded agent. The selection is saved before the reviewed text draft opens.</DialogDescription></DialogHeader>{agentConnectionLead ? (() => { const loanOfficer = agentConnectionLead.loanOfficerName ? officers.find((officer) => officer.name === agentConnectionLead.loanOfficerName) : null; const pairedIds = new Set(loanOfficer ? pairings.filter((pairing) => pairing.loanOfficerId === loanOfficer.id).map((pairing) => pairing.agentId) : []); const paired = loanOfficer ? agents.filter((agent) => pairedIds.has(agent.id)) : []; const remaining = agents.filter((agent) => !pairedIds.has(agent.id)); return <Select onValueChange={(value) => { const agent = agents.find((candidate) => candidate.id === Number(value)); if (!agent) return; assignAgent.mutate({ chatLeadId: agentConnectionLead.id, agentId: agent.id }, { onSuccess: () => { void utils.chat.list.invalidate(); const selectedLead = agentConnectionLead; setAgentConnectionLead(null); openQuickReplyDraft(selectedLead, "connect_agent", agent.name); } }); }} disabled={assignAgent.isPending}><SelectTrigger><SelectValue placeholder="Select an agent" /></SelectTrigger><SelectContent>{paired.length > 0 ? <SelectGroup><SelectLabel>Paired</SelectLabel>{paired.map((agent) => <SelectItem key={agent.id} value={String(agent.id)}>LO: {agentConnectionLead.loanOfficerName} + Agent: {agent.name}</SelectItem>)}</SelectGroup> : null}<SelectGroup><SelectLabel>Agents</SelectLabel>{remaining.map((agent) => <SelectItem key={agent.id} value={String(agent.id)}>{agent.name}</SelectItem>)}</SelectGroup></SelectContent></Select>; })() : null}</DialogContent>
+      </Dialog>
       <Dialog open={notesLead !== null} onOpenChange={(open) => !open && setNotesLead(null)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
