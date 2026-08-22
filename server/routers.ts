@@ -2567,6 +2567,13 @@ export const appRouter = router({
       if (ctx.user.role !== "team_member") return null;
       return getTeamLoanOfficerWorkspaceForMember(ctx.user.id);
     }),
+    partnerProfile: protectedProcedure.query(async ({ ctx }) => {
+      const workspace = await resolveDashboardWorkspace(ctx.user);
+      if (!workspace) throw new TRPCError({ code: "FORBIDDEN", message: "No active team workspace is assigned to this account." });
+      const officer = await getLoanOfficerById(workspace.loanOfficerId);
+      if (!officer?.agentId) return { officer, agent: null };
+      return { officer, agent: await getAgentById(officer.agentId) };
+    }),
     createInvite: protectedProcedure
       .input(z.object({ loanOfficerId: z.number().int().positive(), invitedEmail: z.string().trim().toLowerCase().email() }))
       .mutation(async ({ ctx, input }) => {

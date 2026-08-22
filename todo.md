@@ -771,6 +771,6 @@
 - [x] Audit the current authentication, authorization, and ownership model for secure multi-loan-officer dashboard access
 - [x] Add an owner-controlled team loan-officer account and secure workspace-assignment framework
 - [x] Add private downstream loan-officer workspaces with Mike Ford administrator shadow-view and management controls
-- [ ] Scope new downstream team data for co-branded agents, leads, property pages, campaigns, and saved tools
-- [ ] Add management safeguards, regression coverage, migration, responsive verification, and publish the team-dashboard foundation
+- [x] Scope new downstream team data for co-branded agents, leads, property pages, campaigns, and saved tools
+- [x] Add management safeguards, regression coverage, migration, responsive verification, and publish the team-dashboard foundation
 - [x] Add Mike Ford administrator controls for read-only sharing or withholding of saved email and text templates from downstream loan-officer workspaces

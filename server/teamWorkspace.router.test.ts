@@ -111,6 +111,10 @@ describe("team loan-officer workspaces", () => {
     expect(listPropertyPagesMock).toHaveBeenCalledWith(12);
   });
 
+  it("retrieves a co-branded partner only through the active assigned loan-officer profile", async () => {
+    await expect(appRouter.createCaller(context("team_member")).teamWorkspace.partnerProfile()).resolves.toMatchObject({ officer: { id: 12 } });
+  });
+
   it("keeps the private spend tracker owned by the active team member account", async () => {
     await appRouter.createCaller(context("team_member")).pairingSpendTracker.list();
     expect(listSpendTrackersMock).toHaveBeenCalledWith(18);
