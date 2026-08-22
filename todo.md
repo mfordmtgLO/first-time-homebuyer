@@ -780,5 +780,5 @@
 - [x] Add downstream email/text template submission with Mike Ford review, approval, rejection, and controlled availability
 - [x] Add migration, regression coverage, responsive verification, and publish the team performance, activity-feed, and template-approval enhancements
 
-- [ ] Document the current platform-managed team loan-officer invitation and workspace-activation steps for Mike Ford
-- [ ] Assess a separate identity-provider-based temporary-password and first-login reset flow without storing credentials in the dashboard
+- [x] Document the current platform-managed team loan-officer invitation and workspace-activation steps for Mike Ford
+- [x] Assess a separate identity-provider-based temporary-password and first-login reset flow without storing credentials in the dashboard
