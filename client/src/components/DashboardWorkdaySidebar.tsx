@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { estimateMortgagePlanning } from "@shared/mortgageEstimator";
+import { estimateMonthlyHousingCost } from "@shared/mortgageEstimator";
 import { Calculator, Loader2, PanelLeftClose, PanelLeftOpen, Sparkles, ChevronDown, ChevronRight, Workflow, Target, Users, MapPinned, MessageSquareText, ReceiptText, Megaphone, BookOpenCheck } from "lucide-react";
 
 type WorkflowRecord = { label: string; status: string; meta: string };
@@ -37,8 +37,10 @@ function DashboardPaymentEstimator() {
   const [price, setPrice] = useState("425000");
   const [downPaymentPercent, setDownPaymentPercent] = useState("3");
   const [annualRate, setAnnualRate] = useState("6.5");
+  const [annualPropertyTax, setAnnualPropertyTax] = useState("0");
+  const [annualHomeInsurance, setAnnualHomeInsurance] = useState("0");
   const [termYears, setTermYears] = useState<15 | 30>(30);
-  const estimate = useMemo(() => estimateMortgagePlanning({ purchasePrice: numberFromInput(price, 0), downPaymentPercent: numberFromInput(downPaymentPercent, 0), annualRate: numberFromInput(annualRate, 0), termYears }), [annualRate, downPaymentPercent, price, termYears]);
+  const estimate = useMemo(() => estimateMonthlyHousingCost({ purchasePrice: numberFromInput(price, 0), downPaymentPercent: numberFromInput(downPaymentPercent, 0), annualRate: numberFromInput(annualRate, 0), annualPropertyTax: numberFromInput(annualPropertyTax, 0), annualHomeInsurance: numberFromInput(annualHomeInsurance, 0), termYears }), [annualHomeInsurance, annualPropertyTax, annualRate, downPaymentPercent, price, termYears]);
 
   return <section className="m-2 overflow-hidden rounded-xl border border-primary/20 bg-primary/[0.035]" aria-label="Internal payment estimator">
     <button type="button" className="flex w-full items-center gap-2 px-3 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
@@ -50,9 +52,11 @@ function DashboardPaymentEstimator() {
         <label className="grid gap-1 text-[11px] font-medium text-muted-foreground">Down %<Input aria-label="Internal estimate down payment percentage" className="h-8 text-xs" inputMode="decimal" value={downPaymentPercent} onChange={(event) => setDownPaymentPercent(event.target.value)} /></label>
         <label className="grid gap-1 text-[11px] font-medium text-muted-foreground">Rate %<Input aria-label="Internal estimate annual rate" className="h-8 text-xs" inputMode="decimal" value={annualRate} onChange={(event) => setAnnualRate(event.target.value)} /></label>
         <div className="grid gap-1 text-[11px] font-medium text-muted-foreground"><span>Term</span><div className="flex rounded-md border border-input p-0.5"><Button type="button" size="sm" variant={termYears === 30 ? "default" : "ghost"} className="h-6 flex-1 px-1 text-[11px]" onClick={() => setTermYears(30)} aria-pressed={termYears === 30}>30 yr</Button><Button type="button" size="sm" variant={termYears === 15 ? "default" : "ghost"} className="h-6 flex-1 px-1 text-[11px]" onClick={() => setTermYears(15)} aria-pressed={termYears === 15}>15 yr</Button></div></div>
+        <label className="grid gap-1 text-[11px] font-medium text-muted-foreground">Property tax / yr<Input aria-label="Internal estimate annual property tax" className="h-8 text-xs" inputMode="decimal" value={annualPropertyTax} onChange={(event) => setAnnualPropertyTax(event.target.value)} /></label>
+        <label className="grid gap-1 text-[11px] font-medium text-muted-foreground">Home insurance / yr<Input aria-label="Internal estimate annual home insurance" className="h-8 text-xs" inputMode="decimal" value={annualHomeInsurance} onChange={(event) => setAnnualHomeInsurance(event.target.value)} /></label>
       </div>
-      <div className="mt-3 rounded-lg border border-border bg-card p-2.5"><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Monthly principal &amp; interest</p><p className="mt-0.5 text-2xl font-semibold tabular-nums text-foreground">{formatCurrency(estimate.monthlyPayment)}</p><div className="mt-2 grid grid-cols-2 gap-2 text-[11px]"><p className="text-muted-foreground">Loan amount<span className="mt-0.5 block font-semibold tabular-nums text-foreground">{formatCurrency(estimate.loanAmount)}</span></p><p className="text-muted-foreground">Term interest<span className="mt-0.5 block font-semibold tabular-nums text-foreground">{formatCurrency(estimate.totalInterest)}</span></p></div></div>
-      <p className="mt-2 text-[10px] leading-4 text-muted-foreground">Internal planning estimate only. Confirm pricing, fees, insurance, taxes, and final loan terms before communicating a quote.</p>
+      <div className="mt-3 rounded-lg border border-border bg-card p-2.5"><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Estimated total monthly payment</p><p className="mt-0.5 text-2xl font-semibold tabular-nums text-foreground">{formatCurrency(estimate.estimatedTotalMonthlyPayment)}</p><div className="mt-2 grid grid-cols-3 gap-2 text-[10px]"><p className="text-muted-foreground">P&amp;I<span className="mt-0.5 block font-semibold tabular-nums text-foreground">{formatCurrency(estimate.monthlyPayment)}</span></p><p className="text-muted-foreground">Tax / mo<span className="mt-0.5 block font-semibold tabular-nums text-foreground">{formatCurrency(estimate.monthlyPropertyTax)}</span></p><p className="text-muted-foreground">Insurance / mo<span className="mt-0.5 block font-semibold tabular-nums text-foreground">{formatCurrency(estimate.monthlyHomeInsurance)}</span></p></div><div className="mt-2 grid grid-cols-2 gap-2 border-t border-border pt-2 text-[11px]"><p className="text-muted-foreground">Loan amount<span className="mt-0.5 block font-semibold tabular-nums text-foreground">{formatCurrency(estimate.loanAmount)}</span></p><p className="text-muted-foreground">Term interest<span className="mt-0.5 block font-semibold tabular-nums text-foreground">{formatCurrency(estimate.totalInterest)}</span></p></div></div>
+      <p className="mt-2 text-[10px] leading-4 text-muted-foreground">Internal planning estimate only. The total includes P&amp;I plus the annual property tax and homeowners insurance amounts you enter; confirm pricing, fees, mortgage insurance, HOA dues, and final loan terms before communicating a quote.</p>
     </div>}
   </section>;
 }

@@ -35,6 +35,9 @@ describe("dashboard workday workflow", () => {
     expect(sidebar).toContain("DashboardPaymentEstimator");
     expect(sidebar).toContain("Quick payment estimate");
     expect(sidebar).toContain("Internal estimate home price");
+    expect(sidebar).toContain("Property tax / yr");
+    expect(sidebar).toContain("Home insurance / yr");
+    expect(sidebar).toContain("Estimated total monthly payment");
     expect(sidebar).toContain("Term interest");
     expect(sidebar).toContain("Internal planning estimate only");
   });

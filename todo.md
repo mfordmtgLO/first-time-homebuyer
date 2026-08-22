@@ -753,3 +753,7 @@
 - [x] Remove the Payment Estimate section and navigation item from the public website
 - [x] Add a compact private monthly-payment and interest estimator to the dashboard workday sidebar
 - [x] Add regression coverage, responsive verification, and publish the private-only calculator correction
+
+- [x] Add property-tax and homeowners-insurance inputs to the private dashboard payment estimator
+- [x] Show a clearly labeled total estimated monthly payment that includes P&I, property tax, and homeowners insurance
+- [x] Add focused coverage, responsive verification, and publish the all-in sidebar payment estimator enhancement

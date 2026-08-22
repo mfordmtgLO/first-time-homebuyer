@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { estimateMortgagePlanning } from "@shared/mortgageEstimator";
+import { estimateMonthlyHousingCost, estimateMortgagePlanning } from "@shared/mortgageEstimator";
 
 describe("mortgage planning estimator", () => {
   it("calculates transparent principal-and-interest planning values from a price, down payment, rate, and term", () => {
@@ -22,14 +22,25 @@ describe("mortgage planning estimator", () => {
     expect(estimate.totalInterest).toBe(0);
   });
 
+  it("adds annual property tax and homeowners insurance as monthly costs without changing the mortgage math", () => {
+    const estimate = estimateMonthlyHousingCost({ purchasePrice: 400000, downPaymentPercent: 20, annualRate: 6, termYears: 30, annualPropertyTax: 4800, annualHomeInsurance: 1800 });
+
+    expect(estimate.monthlyPropertyTax).toBe(400);
+    expect(estimate.monthlyHomeInsurance).toBe(150);
+    expect(estimate.estimatedTotalMonthlyPayment).toBeCloseTo(2468.56, 2);
+  });
+
   it("keeps the display inside the private dashboard sidebar with an internal-use estimate notice", () => {
     const projectRoot = path.resolve(import.meta.dirname, "..");
     const componentSource = readFileSync(path.join(projectRoot, "client/src/components/DashboardWorkdaySidebar.tsx"), "utf8");
 
     expect(componentSource).toContain("DashboardPaymentEstimator");
     expect(componentSource).toContain("Quick payment estimate");
-    expect(componentSource).toContain("Monthly principal &amp; interest");
+    expect(componentSource).toContain("Estimated total monthly payment");
+    expect(componentSource).toContain("Internal estimate annual property tax");
+    expect(componentSource).toContain("Internal estimate annual home insurance");
+    expect(componentSource).toContain("Estimated total monthly payment");
     expect(componentSource).toContain("Internal planning estimate only");
-    expect(componentSource).toContain("Confirm pricing, fees, insurance, taxes, and final loan terms");
+    expect(componentSource).toContain("confirm pricing, fees, mortgage insurance, HOA dues, and final loan terms");
   });
 });
