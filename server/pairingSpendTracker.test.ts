@@ -59,5 +59,12 @@ describe("LO + agent pairing spend summary", () => {
     expect(componentSource).toContain("Campaign / expense detail:");
     expect(componentSource).toContain("Hover an entry to view its stored campaign or expense detail.");
     expect(componentSource).toContain("Column totals (all recorded)");
+    expect(componentSource).toContain("Filtered spend summary");
+    expect(componentSource).toContain("Export CSV");
+    expect(componentSource).toContain("exportFilteredSpendHistory");
+    expect(componentSource).toContain("Highest LO paid");
+    expect(componentSource).toContain("Highest agent paid");
+    expect(componentSource).toContain("Load more (");
+    expect(componentSource).toContain("historyVisibleCount");
   });
 });

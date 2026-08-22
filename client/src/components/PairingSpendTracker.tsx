@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { calculatePairingSpendSummary, isMoneySplitAttentionRequired } from "@shared/pairingSpendTracker";
-import { AlertTriangle, BarChart3, CalendarDays, CircleDollarSign, HandCoins, Plus, ShieldAlert, Trash2, UsersRound } from "lucide-react";
+import { AlertTriangle, BarChart3, CalendarDays, CircleDollarSign, Download, HandCoins, Plus, ShieldAlert, Trash2, UsersRound } from "lucide-react";
 import { toast } from "sonner";
 
 type Officer = { id: number; name: string; visible: number };
@@ -23,6 +23,7 @@ const CATEGORY_LABELS: Record<SpendCategory, string> = {
 
 const money = (cents: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 const today = () => new Date().toISOString().slice(0, 10);
+const csvCell = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
 
 function toCents(value: string) {
   const parsed = Number(value.replace(/[$,\s]/g, ""));
@@ -50,11 +51,15 @@ export default function PairingSpendTracker() {
   const [historySearch, setHistorySearch] = useState("");
   const [historyStartDate, setHistoryStartDate] = useState("");
   const [historyEndDate, setHistoryEndDate] = useState("");
-  const [historySort, setHistorySort] = useState<"date_desc" | "date_asc" | "amount_desc" | "amount_asc">("date_desc");
+  const [historySort, setHistorySort] = useState<"date_desc" | "date_asc" | "amount_desc" | "amount_asc" | "loan_officer_desc" | "agent_desc" | "category_asc" | "description_asc">("date_desc");
+  const [historyVisibleCount, setHistoryVisibleCount] = useState(20);
 
   useEffect(() => {
     if (selectedTrackerId === NONE && trackers[0]) setSelectedTrackerId(String(trackers[0].id));
   }, [trackers, selectedTrackerId]);
+  useEffect(() => {
+    setHistoryVisibleCount(20);
+  }, [historyEndDate, historySearch, historySort, historyStartDate, selectedTrackerId]);
 
   const selectedTracker = trackers.find((tracker) => String(tracker.id) === selectedTrackerId) ?? null;
   const summary = calculatePairingSpendSummary(selectedTracker?.entries ?? []);
@@ -72,9 +77,27 @@ export default function PairingSpendTracker() {
         const rightTotal = right.loanOfficerCents + right.agentCents;
         if (historySort === "amount_desc") return rightTotal - leftTotal || String(right.spentOn).localeCompare(String(left.spentOn));
         if (historySort === "amount_asc") return leftTotal - rightTotal || String(left.spentOn).localeCompare(String(right.spentOn));
+        if (historySort === "loan_officer_desc") return right.loanOfficerCents - left.loanOfficerCents || rightTotal - leftTotal;
+        if (historySort === "agent_desc") return right.agentCents - left.agentCents || rightTotal - leftTotal;
+        if (historySort === "category_asc") return CATEGORY_LABELS[left.category as SpendCategory].localeCompare(CATEGORY_LABELS[right.category as SpendCategory]) || String(right.spentOn).localeCompare(String(left.spentOn));
+        if (historySort === "description_asc") return left.description.localeCompare(right.description) || String(right.spentOn).localeCompare(String(left.spentOn));
         return historySort === "date_asc" ? String(left.spentOn).localeCompare(String(right.spentOn)) : String(right.spentOn).localeCompare(String(left.spentOn));
       });
   }, [historyEndDate, historySearch, historySort, historyStartDate, selectedTracker?.entries]);
+  const filteredHistorySummary = calculatePairingSpendSummary(visibleSpendEntries);
+  const displayedSpendEntries = visibleSpendEntries.slice(0, historyVisibleCount);
+  const hasMoreSpendEntries = displayedSpendEntries.length < visibleSpendEntries.length;
+  const exportFilteredSpendHistory = () => {
+    if (!visibleSpendEntries.length) return toast.error("There are no filtered spend rows to export.");
+    const rows = [["Date", "Category", "Campaign / expense", "Loan officer paid", "Agent paid", "Total"], ...visibleSpendEntries.map((entry) => [String(entry.spentOn).slice(0, 10), CATEGORY_LABELS[entry.category as SpendCategory], entry.description, (entry.loanOfficerCents / 100).toFixed(2), (entry.agentCents / 100).toFixed(2), ((entry.loanOfficerCents + entry.agentCents) / 100).toFixed(2)])];
+    const url = URL.createObjectURL(new Blob([rows.map((row) => row.map(csvCell).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `spend-tracker-filtered-${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${visibleSpendEntries.length} filtered spend row${visibleSpendEntries.length === 1 ? "" : "s"}.`);
+  };
 
   const refresh = async () => {
     await utils.pairingSpendTracker.list.invalidate();
@@ -172,6 +195,7 @@ export default function PairingSpendTracker() {
             <div className="mt-6 border-t border-border pt-5"><div className="flex items-center gap-2 font-semibold"><BarChart3 className="h-4 w-4 text-primary" /> Add internal spend row</div><div className="mt-3 grid gap-3 lg:grid-cols-6"><label className="grid gap-1 text-xs font-medium"><span>Date</span><Input type="date" value={spentOn} onChange={(event) => setSpentOn(event.target.value)} /></label><label className="grid gap-1 text-xs font-medium"><span>Category</span><Select value={category} onValueChange={(value) => setCategory(value as SpendCategory)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{(Object.keys(CATEGORY_LABELS) as SpendCategory[]).map((value) => <SelectItem key={value} value={value}>{CATEGORY_LABELS[value]}</SelectItem>)}</SelectContent></Select></label><label className="grid gap-1 text-xs font-medium lg:col-span-2"><span>Description</span><Input value={description} onChange={(event) => setDescription(event.target.value)} maxLength={300} placeholder="e.g., Meta campaign invoice" /></label><label className="grid gap-1 text-xs font-medium"><span>LO paid</span><Input inputMode="decimal" value={loanOfficerAmount} onChange={(event) => setLoanOfficerAmount(event.target.value)} placeholder="$0.00" /></label><label className="grid gap-1 text-xs font-medium"><span>Agent paid</span><Input inputMode="decimal" value={agentAmount} onChange={(event) => setAgentAmount(event.target.value)} placeholder="$0.00" /></label></div><Button className="mt-3" disabled={addEntry.isPending} onClick={submitEntry}><Plus className="mr-1.5 h-4 w-4" />Add spend row</Button></div>
 
             <div className="mt-6 rounded-lg border border-border"><div className="flex flex-col gap-2 border-b border-border bg-muted/20 p-3 lg:flex-row lg:items-end"><label className="grid flex-1 gap-1 text-xs font-medium"><span>Search history</span><Input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="Search campaign, expense, category, or date" aria-label="Search Spend Tracker history" /></label><label className="grid gap-1 text-xs font-medium"><span>From</span><Input type="date" value={historyStartDate} onChange={(event) => setHistoryStartDate(event.target.value)} aria-label="Spend history start date" /></label><label className="grid gap-1 text-xs font-medium"><span>To</span><Input type="date" value={historyEndDate} onChange={(event) => setHistoryEndDate(event.target.value)} aria-label="Spend history end date" /></label><label className="grid gap-1 text-xs font-medium"><span>Order</span><Select value={historySort} onValueChange={(value) => setHistorySort(value as typeof historySort)}><SelectTrigger aria-label="Order Spend Tracker history"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="date_desc">Newest date</SelectItem><SelectItem value="date_asc">Oldest date</SelectItem><SelectItem value="amount_desc">Highest amount</SelectItem><SelectItem value="amount_asc">Lowest amount</SelectItem></SelectContent></Select></label><Button type="button" variant="ghost" size="sm" onClick={() => { setHistorySearch(""); setHistoryStartDate(""); setHistoryEndDate(""); setHistorySort("date_desc"); }}>Clear filters</Button></div><div className="flex items-center justify-between border-b border-border/60 px-3 py-2 text-xs text-muted-foreground"><span>{visibleSpendEntries.length} matching {visibleSpendEntries.length === 1 ? "entry" : "entries"}</span><span>Hover an entry to view its stored campaign or expense detail.</span></div><div className="max-h-[20rem] overflow-y-scroll overscroll-contain [scrollbar-gutter:stable] xl:max-h-[24rem]" aria-label="Spend row history"><table className="w-full min-w-[720px] text-sm"><thead className="sticky top-0 z-10"><tr className="border-b border-border bg-muted/95 text-left text-xs text-muted-foreground backdrop-blur-sm"><th className="px-3 py-3 font-semibold">Date</th><th className="px-3 py-3 font-semibold">Category</th><th className="px-3 py-3 font-semibold">Description</th><th className="px-3 py-3 text-right font-semibold">LO paid</th><th className="px-3 py-3 text-right font-semibold">Agent paid</th><th className="px-3 py-3 text-right font-semibold">Total</th><th className="px-3 py-3" /></tr></thead><tbody>{visibleSpendEntries.length === 0 ? <tr><td colSpan={7} className="px-3 py-10 text-center text-muted-foreground">No spend rows match the current history filters.</td></tr> : visibleSpendEntries.map((entry) => <tr key={entry.id} title={`Campaign / expense detail: ${entry.description}`} className="group border-b border-border/60 transition-colors hover:bg-primary/[0.04] last:border-0"><td className="px-3 py-3 whitespace-nowrap"><CalendarDays className="mr-1 inline h-3.5 w-3.5 text-muted-foreground" />{new Date(entry.spentOn).toLocaleDateString()}</td><td className="px-3 py-3"><span className="rounded-full bg-muted px-2 py-1 text-xs font-medium">{CATEGORY_LABELS[entry.category as SpendCategory]}</span></td><td className="px-3 py-3 font-medium"><span>{entry.description}</span><span className="ml-2 text-[11px] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">Campaign / expense detail</span></td><td className="px-3 py-3 text-right tabular-nums">{money(entry.loanOfficerCents)}</td><td className="px-3 py-3 text-right tabular-nums">{money(entry.agentCents)}</td><td className="px-3 py-3 text-right font-semibold tabular-nums">{money(entry.loanOfficerCents + entry.agentCents)}</td><td className="px-3 py-3 text-right"><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive" aria-label={`Delete ${entry.description}`} onClick={() => deleteEntry.mutate({ pairingId: selectedTracker.id, entryId: entry.id })}><Trash2 className="h-4 w-4" /></Button></td></tr>)}</tbody><tfoot><tr className="sticky bottom-0 bg-muted/95 text-sm font-semibold backdrop-blur-sm"><td colSpan={3} className="px-3 py-3">Column totals (all recorded)</td><td className="px-3 py-3 text-right tabular-nums">{money(summary.loanOfficerCents)}</td><td className="px-3 py-3 text-right tabular-nums">{money(summary.agentCents)}</td><td className="px-3 py-3 text-right tabular-nums">{money(summary.totalCents)}</td><td /></tr></tfoot></table></div></div>
+            <div className="mt-3 flex flex-col gap-3 rounded-lg border border-border bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Filtered spend summary</p><p className="mt-1 text-lg font-semibold">{money(filteredHistorySummary.totalCents)}</p><p className="text-xs text-muted-foreground">{visibleSpendEntries.length} matching private spend rows · LO {money(filteredHistorySummary.loanOfficerCents)} · Agent {money(filteredHistorySummary.agentCents)}</p></div><div className="flex flex-wrap gap-2"><Select value={historySort} onValueChange={(value) => setHistorySort(value as typeof historySort)}><SelectTrigger className="w-[170px]" aria-label="More Spend Tracker sorting options"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="loan_officer_desc">Highest LO paid</SelectItem><SelectItem value="agent_desc">Highest agent paid</SelectItem><SelectItem value="category_asc">Category A–Z</SelectItem><SelectItem value="description_asc">Description A–Z</SelectItem></SelectContent></Select><Button type="button" variant="outline" size="sm" onClick={exportFilteredSpendHistory}><Download className="mr-1.5 h-4 w-4" />Export CSV</Button>{hasMoreSpendEntries ? <Button type="button" variant="outline" size="sm" onClick={() => setHistoryVisibleCount((count) => count + 20)}>Load more ({Math.min(20, visibleSpendEntries.length - historyVisibleCount)})</Button> : null}</div></div>
           </>}
         </div>
       </div>

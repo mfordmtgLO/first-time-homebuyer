@@ -725,3 +725,8 @@
 - [x] Add private Spend Tracker history sorting by date and total amount
 - [x] Add entry-level hover guidance that shows stored campaign or expense description details
 - [x] Add regression coverage and publish the Spend Tracker history discovery enhancements
+
+- [x] Add additional private Spend Tracker sort options and a filtered-range spend summary widget
+- [x] Add filtered Spend Tracker history CSV export beside the discovery controls
+- [x] Add incremental Load More controls for large private spend histories
+- [x] Add regression coverage and publish the scalable Spend Tracker history enhancements
