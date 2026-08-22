@@ -674,3 +674,9 @@
 - [x] Add a downloadable completed-intake PDF summary directly to the public chat completion view
 - [x] Add contextual Paired and Agents groups to the Ad platform inbox agent-assignment controls using the lead’s assigned loan officer
 - [x] Add regression coverage and publish the chat-experience, completion-PDF, and platform-inbox pairing enhancements
+
+- [x] Add a smooth, reduced-motion-safe transition from the final Mortgage Chat response to the completed-summary view
+- [ ] Add deliberate borrower and co-borrower email delivery for the generated completed-intake PDF summary
+- [x] Add regression coverage and publish the completion transition framework; keep emailed PDF delivery inactive
+
+- [ ] ON HOLD — Activate direct Mortgage Chat PDF email delivery only after approved Resend API key and sender-domain permissions are supplied

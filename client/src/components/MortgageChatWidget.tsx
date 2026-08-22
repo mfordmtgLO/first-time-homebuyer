@@ -46,6 +46,10 @@ function stripChatFormatting(value: string) {
   return value.replace(/\*\*/g, "").replace(/\s+/g, " ").trim();
 }
 
+// Direct email delivery is intentionally inactive until an approved Resend API
+// key and verified sender domain are configured. Do not replace this with a
+// mailto link: delivering an attachment must remain an explicit, server-side,
+// recipient-confirmed action.
 function downloadMortgageIntakeSummary(messages: Message[], officer: Officer | null, completionMessage: string) {
   const document = new jsPDF({ unit: "pt", format: "letter" });
   const pageWidth = document.internal.pageSize.getWidth();
@@ -113,6 +117,7 @@ export default function MortgageChatWidget({ compactWhenIdle = false }: { compac
   const [officer, setOfficer] = useState<Officer | null>(null);
   const [agent, setAgent] = useState<Agent>(null);
   const [complete, setComplete] = useState(false);
+  const [isCompletingTransition, setIsCompletingTransition] = useState(false);
   const [completionMessage, setCompletionMessage] = useState("");
   const [buyerAgentEligible, setBuyerAgentEligible] = useState(false);
   const [buyerAgentRequested, setBuyerAgentRequested] = useState(false);
@@ -124,6 +129,7 @@ export default function MortgageChatWidget({ compactWhenIdle = false }: { compac
   const guidedControlsRef = useRef<HTMLDivElement>(null);
   const completionContentRef = useRef<HTMLDivElement>(null);
   const launcherCollapseTimerRef = useRef<number | null>(null);
+  const completionTransitionTimerRef = useRef<number | null>(null);
 
   const start = trpc.chat.start.useMutation({
     onSuccess: (data) => {
@@ -153,12 +159,20 @@ export default function MortgageChatWidget({ compactWhenIdle = false }: { compac
     onSuccess: (data) => {
       setMessages((current) => [...current, { role: "assistant", content: data.message }]);
       setCurrentStep(data.currentStep);
-      setComplete(data.completed);
       if (data.completed) {
         setCompletionMessage(data.message);
         setBuyerAgentEligible(data.buyerAgentEligible === true);
+        setIsCompletingTransition(true);
+        if (completionTransitionTimerRef.current) window.clearTimeout(completionTransitionTimerRef.current);
+        completionTransitionTimerRef.current = window.setTimeout(() => {
+          setComplete(true);
+          setIsCompletingTransition(false);
+          completionTransitionTimerRef.current = null;
+        }, 360);
         emitFunnelConversion("chat_intake_complete");
         if (data.homesListRequested) emitFunnelConversion("homes_list_request");
+      } else {
+        setComplete(false);
       }
     },
     onError: (error) => {
@@ -202,6 +216,10 @@ export default function MortgageChatWidget({ compactWhenIdle = false }: { compac
     };
     window.addEventListener("open-mortgage-chat", openMortgageChat);
     return () => window.removeEventListener("open-mortgage-chat", openMortgageChat);
+  }, []);
+
+  useEffect(() => () => {
+    if (completionTransitionTimerRef.current) window.clearTimeout(completionTransitionTimerRef.current);
   }, []);
 
   useEffect(() => {
@@ -301,6 +319,7 @@ export default function MortgageChatWidget({ compactWhenIdle = false }: { compac
     setOfficer(null);
     setAgent(null);
     setComplete(false);
+    setIsCompletingTransition(false);
     setCompletionMessage("");
     setGuidedAmount(0);
     setBuyerAgentEligible(false);
@@ -470,7 +489,7 @@ export default function MortgageChatWidget({ compactWhenIdle = false }: { compac
           )}
 
           {complete ? (
-            <div ref={completionContentRef} className="relative flex min-h-0 flex-1 flex-col items-center overflow-y-auto overscroll-contain p-5 pb-14 text-center sm:justify-start sm:px-7 sm:pb-7 sm:pt-8">
+            <div ref={completionContentRef} className="relative flex min-h-0 flex-1 flex-col items-center overflow-y-auto overscroll-contain p-5 pb-14 text-center motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-300 sm:justify-start sm:px-7 sm:pb-7 sm:pt-8">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600/10 text-emerald-700">
                 <CheckCircle2 className="h-7 w-7" />
               </div>
@@ -536,6 +555,15 @@ export default function MortgageChatWidget({ compactWhenIdle = false }: { compac
                   <ChevronDown className="h-4 w-4" aria-hidden="true" />
                 </button>
               )}
+            </div>
+          ) : isCompletingTransition ? (
+            <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-7 text-center motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200" role="status" aria-live="polite">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary motion-safe:animate-pulse motion-reduce:animate-none">
+                <CheckCircle2 className="h-7 w-7" />
+              </div>
+              <h2 className="mt-4 font-display text-2xl font-semibold text-foreground">Putting together your summary</h2>
+              <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">Your responses are saved. Your downloadable intake summary is almost ready.</p>
+              <div className="mt-5 h-1.5 w-44 overflow-hidden rounded-full bg-primary/15"><div className="h-full w-2/3 rounded-full bg-primary motion-safe:animate-[summarySweep_0.72s_var(--ease-out-snappy)_infinite] motion-reduce:animate-none" /></div>
             </div>
           ) : (
             <div className="flex min-h-0 flex-1 flex-col">

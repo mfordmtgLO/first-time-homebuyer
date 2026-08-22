@@ -92,4 +92,15 @@ describe("chat completion navigation", () => {
     expect(componentSource).toContain("Download my intake summary (PDF)");
     expect(componentSource).toContain("not a loan approval, commitment, or quote");
   });
+
+  it("uses a reduced-motion-safe final-answer transition before showing the completed PDF summary view", () => {
+    const projectRoot = path.resolve(import.meta.dirname, "..");
+    const componentSource = readFileSync(path.join(projectRoot, "client/src/components/MortgageChatWidget.tsx"), "utf8");
+
+    expect(componentSource).toContain("isCompletingTransition");
+    expect(componentSource).toContain("Putting together your summary");
+    expect(componentSource).toContain("Your responses are saved. Your downloadable intake summary is almost ready.");
+    expect(componentSource).toContain("motion-reduce:animate-none");
+    expect(componentSource).toContain("completionTransitionTimerRef");
+  });
 });

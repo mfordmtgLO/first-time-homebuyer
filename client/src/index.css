@@ -6,6 +6,12 @@
   30% { transform: translateY(-3px) scale(1); opacity: 1; }
 }
 
+@keyframes summarySweep {
+  0% { transform: translateX(-100%); opacity: 0.35; }
+  70% { transform: translateX(56%); opacity: 1; }
+  100% { transform: translateX(84%); opacity: 0.35; }
+}
+
 /*
  * GOLDEN HOUR PORCH — Warm Editorial Realism
  * Palette: deep evergreen anchor, honey-amber signature accent, warm cream paper bg.
