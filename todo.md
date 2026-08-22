@@ -749,3 +749,7 @@
 - [x] Add a persistent dark-mode toggle to the private dashboard navigation
 - [x] Add a public monthly-payment and interest estimator with clear assumptions and disclosures
 - [x] Add focused regression coverage and publish the dashboard chart, theme, and mortgage estimator enhancements
+
+- [x] Remove the Payment Estimate section and navigation item from the public website
+- [x] Add a compact private monthly-payment and interest estimator to the dashboard workday sidebar
+- [x] Add regression coverage, responsive verification, and publish the private-only calculator correction

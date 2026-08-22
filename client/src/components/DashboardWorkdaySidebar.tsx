@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Loader2, PanelLeftClose, PanelLeftOpen, Sparkles, ChevronDown, ChevronRight, Workflow, Target, Users, MapPinned, MessageSquareText, ReceiptText, Megaphone, BookOpenCheck } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { estimateMortgagePlanning } from "@shared/mortgageEstimator";
+import { Calculator, Loader2, PanelLeftClose, PanelLeftOpen, Sparkles, ChevronDown, ChevronRight, Workflow, Target, Users, MapPinned, MessageSquareText, ReceiptText, Megaphone, BookOpenCheck } from "lucide-react";
 
 type WorkflowRecord = { label: string; status: string; meta: string };
 
@@ -23,6 +25,37 @@ const SECTIONS: WorkflowSection[] = [
   { id: "texting-workspace", label: "Texting workspace", icon: MessageSquareText, recommendation: "Use only recorded consent, review the draft before sending, and log the outcome in the relevant lead record." },
   { id: "pairing-spend-tracker", label: "Spend tracker", icon: ReceiptText, recommendation: "Review shared spend, source tags, and the 40–60% allocation screen before changing campaign budgets." },
 ];
+
+const formatCurrency = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
+const numberFromInput = (value: string, fallback: number) => {
+  const parsed = Number(value.replace(/[$,%\s,]/g, ""));
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+function DashboardPaymentEstimator() {
+  const [open, setOpen] = useState(true);
+  const [price, setPrice] = useState("425000");
+  const [downPaymentPercent, setDownPaymentPercent] = useState("3");
+  const [annualRate, setAnnualRate] = useState("6.5");
+  const [termYears, setTermYears] = useState<15 | 30>(30);
+  const estimate = useMemo(() => estimateMortgagePlanning({ purchasePrice: numberFromInput(price, 0), downPaymentPercent: numberFromInput(downPaymentPercent, 0), annualRate: numberFromInput(annualRate, 0), termYears }), [annualRate, downPaymentPercent, price, termYears]);
+
+  return <section className="m-2 overflow-hidden rounded-xl border border-primary/20 bg-primary/[0.035]" aria-label="Internal payment estimator">
+    <button type="button" className="flex w-full items-center gap-2 px-3 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
+      <Calculator className="h-4 w-4 text-primary" /><span className="min-w-0 flex-1 text-sm font-semibold text-foreground">Quick payment estimate</span>{open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+    </button>
+    {open && <div className="border-t border-primary/15 px-3 pb-3 pt-2.5">
+      <div className="grid grid-cols-2 gap-2">
+        <label className="grid gap-1 text-[11px] font-medium text-muted-foreground">Price<Input aria-label="Internal estimate home price" className="h-8 text-xs" inputMode="decimal" value={price} onChange={(event) => setPrice(event.target.value)} /></label>
+        <label className="grid gap-1 text-[11px] font-medium text-muted-foreground">Down %<Input aria-label="Internal estimate down payment percentage" className="h-8 text-xs" inputMode="decimal" value={downPaymentPercent} onChange={(event) => setDownPaymentPercent(event.target.value)} /></label>
+        <label className="grid gap-1 text-[11px] font-medium text-muted-foreground">Rate %<Input aria-label="Internal estimate annual rate" className="h-8 text-xs" inputMode="decimal" value={annualRate} onChange={(event) => setAnnualRate(event.target.value)} /></label>
+        <div className="grid gap-1 text-[11px] font-medium text-muted-foreground"><span>Term</span><div className="flex rounded-md border border-input p-0.5"><Button type="button" size="sm" variant={termYears === 30 ? "default" : "ghost"} className="h-6 flex-1 px-1 text-[11px]" onClick={() => setTermYears(30)} aria-pressed={termYears === 30}>30 yr</Button><Button type="button" size="sm" variant={termYears === 15 ? "default" : "ghost"} className="h-6 flex-1 px-1 text-[11px]" onClick={() => setTermYears(15)} aria-pressed={termYears === 15}>15 yr</Button></div></div>
+      </div>
+      <div className="mt-3 rounded-lg border border-border bg-card p-2.5"><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Monthly principal &amp; interest</p><p className="mt-0.5 text-2xl font-semibold tabular-nums text-foreground">{formatCurrency(estimate.monthlyPayment)}</p><div className="mt-2 grid grid-cols-2 gap-2 text-[11px]"><p className="text-muted-foreground">Loan amount<span className="mt-0.5 block font-semibold tabular-nums text-foreground">{formatCurrency(estimate.loanAmount)}</span></p><p className="text-muted-foreground">Term interest<span className="mt-0.5 block font-semibold tabular-nums text-foreground">{formatCurrency(estimate.totalInterest)}</span></p></div></div>
+      <p className="mt-2 text-[10px] leading-4 text-muted-foreground">Internal planning estimate only. Confirm pricing, fees, insurance, taxes, and final loan terms before communicating a quote.</p>
+    </div>}
+  </section>;
+}
 
 export function DashboardWorkdaySidebar({ records }: { records: WorkflowRecord[] }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -54,6 +87,8 @@ export function DashboardWorkdaySidebar({ records }: { records: WorkflowRecord[]
             <li><span className="font-semibold text-foreground">4.</span> Review funnel results and shared spend before close.</li>
           </ol>
         </div>
+
+        <DashboardPaymentEstimator />
 
         <div className="p-2">
           {SECTIONS.map((section) => {

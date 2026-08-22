@@ -22,12 +22,14 @@ describe("mortgage planning estimator", () => {
     expect(estimate.totalInterest).toBe(0);
   });
 
-  it("keeps the public display explicit that it is a planning estimate rather than a loan quote", () => {
+  it("keeps the display inside the private dashboard sidebar with an internal-use estimate notice", () => {
     const projectRoot = path.resolve(import.meta.dirname, "..");
-    const componentSource = readFileSync(path.join(projectRoot, "client/src/components/landing/MortgageEstimator.tsx"), "utf8");
+    const componentSource = readFileSync(path.join(projectRoot, "client/src/components/DashboardWorkdaySidebar.tsx"), "utf8");
 
-    expect(componentSource).toContain("Principal and interest only");
-    expect(componentSource).toContain("not a loan estimate, payment quote, rate lock, or commitment to lend");
-    expect(componentSource).toContain("excludes taxes, insurance, HOA dues, mortgage insurance, lender fees, points, and APR");
+    expect(componentSource).toContain("DashboardPaymentEstimator");
+    expect(componentSource).toContain("Quick payment estimate");
+    expect(componentSource).toContain("Monthly principal &amp; interest");
+    expect(componentSource).toContain("Internal planning estimate only");
+    expect(componentSource).toContain("Confirm pricing, fees, insurance, taxes, and final loan terms");
   });
 });

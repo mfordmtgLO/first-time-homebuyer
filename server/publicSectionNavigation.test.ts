@@ -9,7 +9,6 @@ describe("publicSectionNavigationItems", () => {
       "top",
       "cost-of-waiting",
       "programs",
-      "mortgage-estimator",
       "buydown",
       "roadmap",
       "how-it-works",
@@ -31,7 +30,6 @@ describe("publicSectionNavigationItems", () => {
   it("selects the destination closest above the fixed-header offset, independent of menu order", () => {
     const positions = {
       "cost-of-waiting": -900,
-      "mortgage-estimator": 120,
       buydown: 160,
       programs: -280,
       roadmap: 900,
@@ -53,11 +51,13 @@ describe("publicSectionNavigationItems", () => {
     expect(roadmapSource).not.toContain('id="roadmap"');
   });
 
-  it("mounts the mortgage estimator at its page-level public destination", () => {
+  it("does not expose a payment-estimate calculator on the public page", () => {
     const projectRoot = path.resolve(import.meta.dirname, "..");
     const homeSource = readFileSync(path.join(projectRoot, "client/src/pages/Home.tsx"), "utf8");
+    const navSource = readFileSync(path.join(projectRoot, "client/src/components/landing/PublicSectionNav.tsx"), "utf8");
 
-    expect(homeSource).toContain('id="mortgage-estimator"');
-    expect(homeSource).toContain("<MortgageEstimator />");
+    expect(homeSource).not.toContain("MortgageEstimator");
+    expect(homeSource).not.toContain('id="mortgage-estimator"');
+    expect(navSource).not.toContain("Payment Estimate");
   });
 });

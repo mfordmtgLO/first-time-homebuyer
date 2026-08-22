@@ -6,7 +6,6 @@ import PublicSectionNav from "@/components/landing/PublicSectionNav";
 import Hero from "@/components/landing/Hero";
 import MythBuster from "@/components/landing/MythBuster";
 import Programs from "@/components/landing/Programs";
-import MortgageEstimator from "@/components/landing/MortgageEstimator";
 import Buydown from "@/components/landing/Buydown";
 import LeadMagnet from "@/components/landing/LeadMagnet";
 import HowItWorks from "@/components/landing/HowItWorks";
@@ -34,7 +33,6 @@ export default function Home({
             <div className="scroll-mt-36 md:scroll-mt-40"><Hero /></div>
             <div id="cost-of-waiting" className="scroll-mt-36 md:scroll-mt-40"><MythBuster /></div>
             <div id="programs" className="scroll-mt-36 md:scroll-mt-40"><Programs /></div>
-            <div id="mortgage-estimator" className="scroll-mt-36 md:scroll-mt-40"><MortgageEstimator /></div>
             <div id="buydown" className="scroll-mt-36 md:scroll-mt-40"><Buydown /></div>
             <div id="roadmap" className="scroll-mt-36 md:scroll-mt-40"><LeadMagnet /></div>
             <div id="how-it-works" className="scroll-mt-36 md:scroll-mt-40"><HowItWorks /></div>

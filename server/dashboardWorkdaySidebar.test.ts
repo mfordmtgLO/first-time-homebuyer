@@ -30,4 +30,12 @@ describe("dashboard workday workflow", () => {
     expect(router).toContain("Never instruct the user to send an automated message");
     expect(sidebar).toContain("Internal workflow guidance only");
   });
+
+  it("includes a compact payment and interest estimator only within the private dashboard sidebar", () => {
+    expect(sidebar).toContain("DashboardPaymentEstimator");
+    expect(sidebar).toContain("Quick payment estimate");
+    expect(sidebar).toContain("Internal estimate home price");
+    expect(sidebar).toContain("Term interest");
+    expect(sidebar).toContain("Internal planning estimate only");
+  });
 });
