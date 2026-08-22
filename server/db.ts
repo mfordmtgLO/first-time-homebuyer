@@ -31,6 +31,7 @@ import {
   loAgentSpendEntry,
   loAgentSpendPairing,
   mortgagePaymentQuote,
+  workflowAiReviewHistory,
   leads,
   loanOfficer,
   syncedTopAgent,
@@ -1626,6 +1627,46 @@ export async function deleteMortgagePaymentQuote(input: { id: number; ownerUserI
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(mortgagePaymentQuote).where(and(eq(mortgagePaymentQuote.id, input.id), eq(mortgagePaymentQuote.ownerUserId, input.ownerUserId)));
+}
+
+// ---------------------------------------------------------------------------
+// Private AI workflow-review history and owner feedback
+
+export async function createWorkflowAiReviewHistory(input: {
+  ownerUserId: number;
+  section: string;
+  headline: string;
+  recordsSnapshot: string;
+  actionsSnapshot: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(workflowAiReviewHistory).values(input);
+  const rows = await db.select().from(workflowAiReviewHistory).where(eq(workflowAiReviewHistory.id, Number(result.insertId))).limit(1);
+  if (!rows[0]) throw new Error("Couldn't save workflow review history.");
+  return rows[0];
+}
+
+export async function listWorkflowAiReviewHistory(input: { ownerUserId: number; section?: string; limit: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const where = input.section ? and(eq(workflowAiReviewHistory.ownerUserId, input.ownerUserId), eq(workflowAiReviewHistory.section, input.section)) : eq(workflowAiReviewHistory.ownerUserId, input.ownerUserId);
+  return db.select().from(workflowAiReviewHistory).where(where).orderBy(desc(workflowAiReviewHistory.createdAt), desc(workflowAiReviewHistory.id)).limit(input.limit);
+}
+
+export async function updateWorkflowAiReviewOutcome(input: {
+  id: number;
+  ownerUserId: number;
+  status: "open" | "completed" | "deferred";
+  feedback?: "useful" | "needs_tuning" | "not_useful" | null;
+  ownerNote?: string | null;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(workflowAiReviewHistory).set({ status: input.status, feedback: input.feedback ?? null, ownerNote: input.ownerNote ?? null }).where(and(eq(workflowAiReviewHistory.id, input.id), eq(workflowAiReviewHistory.ownerUserId, input.ownerUserId)));
+  const rows = await db.select().from(workflowAiReviewHistory).where(and(eq(workflowAiReviewHistory.id, input.id), eq(workflowAiReviewHistory.ownerUserId, input.ownerUserId))).limit(1);
+  if (!rows[0]) throw new Error("Workflow review history was not found.");
+  return rows[0];
 }
 
 // ---------------------------------------------------------------------------

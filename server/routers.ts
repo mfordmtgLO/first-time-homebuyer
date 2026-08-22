@@ -61,6 +61,7 @@ import {
   addLoAgentSpendEntry,
   updateLoAgentSpendEntry,
   createMortgagePaymentQuote,
+  createWorkflowAiReviewHistory,
   createCampaignSpendEntry,
   deleteMortgagePaymentQuote,
   deleteCampaignSpendEntry,
@@ -133,6 +134,7 @@ import {
   listLeads,
   listLoAgentSpendTrackers,
   listMortgagePaymentQuotes,
+  listWorkflowAiReviewHistory,
   listSyncedTopAgents,
   listSyncedAgentOutreachTemplates,
   listSyncedTopAgentRankHistory,
@@ -153,6 +155,7 @@ import {
   updateLeadStatus,
   updateLeadNotes,
   updateLoanOfficer,
+  updateWorkflowAiReviewOutcome,
   updatePropertyLandingPageAiSummary,
   updatePropertyLandingPageExternalListingUrl,
   updatePropertyLandingPageMetadata,
@@ -2500,13 +2503,27 @@ export const appRouter = router({
         const content = response.choices[0]?.message.content;
         let parsed: { headline?: unknown; actions?: unknown } = {};
         try { parsed = JSON.parse(typeof content === "string" ? content : "{}"); } catch { /* safe fallback below */ }
-        return {
+        const review = {
           headline: typeof parsed.headline === "string" ? parsed.headline.slice(0, 220) : "Review the current section queue and complete the next documented action.",
           actions: Array.isArray(parsed.actions) ? parsed.actions.slice(0, 5).map((action: unknown) => {
             const candidate = action as { title?: unknown; detail?: unknown };
             return { title: typeof candidate.title === "string" ? candidate.title.slice(0, 100) : "Review the record", detail: typeof candidate.detail === "string" ? candidate.detail.slice(0, 360) : "Use the section tools to verify and document the next action." };
           }) : [],
         };
+        const saved = await createWorkflowAiReviewHistory({ ownerUserId: ctx.user.id, section: input.section, headline: review.headline, recordsSnapshot: JSON.stringify(input.records), actionsSnapshot: JSON.stringify(review.actions) });
+        return { ...review, historyId: saved.id };
+      }),
+    listHistory: protectedProcedure
+      .input(z.object({ section: z.enum(["campaign-funnel", "platform-leads", "roadmap-leads", "co-marketing-agents", "loan-officers", "texting-workspace", "chat-intakes", "saved-qualifying-listings", "pairing-spend-tracker"]).optional(), limit: z.number().int().min(1).max(20).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return listWorkflowAiReviewHistory({ ownerUserId: ctx.user.id, section: input?.section, limit: input?.limit ?? 8 });
+      }),
+    updateOutcome: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), status: z.enum(["open", "completed", "deferred"]), feedback: z.enum(["useful", "needs_tuning", "not_useful"]).nullable().optional(), ownerNote: z.string().trim().max(800).nullable().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return updateWorkflowAiReviewOutcome({ ...input, ownerUserId: ctx.user.id });
       }),
   }),
 

@@ -29,6 +29,10 @@ describe("dashboard workday workflow", () => {
     expect(router).toContain("Do not give lending, legal, fair-housing, advertising-compliance");
     expect(router).toContain("Never instruct the user to send an automated message");
     expect(sidebar).toContain("Internal workflow guidance only");
+    expect(sidebar).toContain("AI review history &amp; owner feedback");
+    expect(sidebar).toContain("Feedback records your outcome; it does not automatically train or send anything.");
+    expect(router).toContain("listHistory: protectedProcedure");
+    expect(router).toContain("updateOutcome: protectedProcedure");
   });
 
   it("includes a compact payment and interest estimator only within the private dashboard sidebar", () => {
@@ -42,6 +46,8 @@ describe("dashboard workday workflow", () => {
     expect(sidebar).toContain("Estimated total monthly payment");
     expect(sidebar).toContain("Save Quote");
     expect(sidebar).toContain("Saved scenario comparison");
+    expect(sidebar).toContain("downloadSavedQuoteReport");
+    expect(sidebar).toContain("saved-mortgage-payment-scenarios.pdf");
     expect(sidebar).toContain("Term interest");
     expect(sidebar).toContain("Internal planning estimate only");
   });

@@ -1004,6 +1004,28 @@ export const mortgagePaymentQuote = mysqlTable(
 export type MortgagePaymentQuote = typeof mortgagePaymentQuote.$inferSelect;
 export type InsertMortgagePaymentQuote = typeof mortgagePaymentQuote.$inferInsert;
 
+/** Owner-private snapshots of AI workflow reviews and the owner's manually recorded outcomes. */
+export const workflowAiReviewHistory = mysqlTable(
+  "workflow_ai_review_history",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerUserId: int("ownerUserId").notNull(),
+    section: varchar("section", { length: 80 }).notNull(),
+    headline: varchar("headline", { length: 220 }).notNull(),
+    recordsSnapshot: text("recordsSnapshot").notNull(),
+    actionsSnapshot: text("actionsSnapshot").notNull(),
+    status: mysqlEnum("status", ["open", "completed", "deferred"]).default("open").notNull(),
+    feedback: mysqlEnum("feedback", ["useful", "needs_tuning", "not_useful"]),
+    ownerNote: varchar("ownerNote", { length: 800 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [index("workflow_ai_review_history_owner_created_idx").on(table.ownerUserId, table.createdAt), index("workflow_ai_review_history_owner_section_idx").on(table.ownerUserId, table.section)]
+);
+
+export type WorkflowAiReviewHistory = typeof workflowAiReviewHistory.$inferSelect;
+export type InsertWorkflowAiReviewHistory = typeof workflowAiReviewHistory.$inferInsert;
+
 /** Private paid-campaign costs used only for dashboard cost-per-tagged-lead reporting. */
 export const campaignSpendEntry = mysqlTable(
   "campaign_spend_entry",

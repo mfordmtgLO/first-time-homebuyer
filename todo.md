@@ -762,3 +762,8 @@
 - [x] Add protected saved mortgage-payment quote persistence with a Save Quote action
 - [x] Add a compact dashboard comparison view for saved mortgage-payment scenarios
 - [x] Add migration, regression coverage, responsive verification, and publish the saved-quote sidebar calculator enhancement
+
+- [x] Add owner-private AI review recommendation history with review context and generated-action snapshots
+- [x] Add owner-controlled recommendation outcome feedback and completion tracking without automatic outreach or lending decisions
+- [x] Add a private PDF export for saved mortgage-payment quote comparisons
+- [x] Add migration, focused coverage, responsive verification, and publish the recommendation-feedback and PDF-export enhancements
