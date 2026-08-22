@@ -2031,7 +2031,7 @@ export async function createPropertyLandingPage(input: {
   return created[0]!;
 }
 
-export async function listPropertyLandingPages() {
+export async function listPropertyLandingPages(loanOfficerId?: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return db
@@ -2045,6 +2045,7 @@ export async function listPropertyLandingPages() {
     .from(propertyLandingPage)
     .leftJoin(loanOfficer, eq(propertyLandingPage.loanOfficerId, loanOfficer.id))
     .leftJoin(agentProfile, eq(propertyLandingPage.agentId, agentProfile.id))
+    .where(loanOfficerId ? eq(propertyLandingPage.loanOfficerId, loanOfficerId) : undefined)
     .orderBy(desc(propertyLandingPage.updatedAt));
 }
 

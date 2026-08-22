@@ -65,5 +65,7 @@ describe("dashboard workday workflow", () => {
     expect(teamWorkspace).toContain("Only chat intakes tied to your active loan-officer profile are shown.");
     expect(teamWorkspace).toContain("Administrator shadow review");
     expect(teamWorkspace).toContain("Review data");
+    expect(teamWorkspace).toContain("Recent lead and chat records");
+    expect(teamWorkspace).toContain("Recent saved work");
   });
 });

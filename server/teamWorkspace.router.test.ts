@@ -16,6 +16,8 @@ vi.mock("./db", async (importOriginal) => {
     listPlatformLeads: vi.fn(async () => [{ id: 301 }]),
     listMortgagePaymentQuotes: vi.fn(async () => [{ id: 401 }]),
     listCampaignSpendEntries: vi.fn(async () => [{ id: 501 }]),
+    listPropertyLandingPages: vi.fn(async () => []),
+    listLoAgentSpendTrackers: vi.fn(async () => []),
     createPlatformLeadIfAbsent: vi.fn(async () => ({ id: 91, created: true })),
     listTeamTemplateLibrary: vi.fn(async () => []),
     createTeamTemplateLibraryEntry: vi.fn(async () => 88),
@@ -25,13 +27,17 @@ vi.mock("./db", async (importOriginal) => {
 });
 
 import { appRouter } from "./routers";
-import { activateTeamLoanOfficerWorkspace, createPlatformLeadIfAbsent, createTeamLoanOfficerWorkspace, listPlatformLeads, listTeamTemplateLibrary, updateTeamLoanOfficerWorkspaceStatus } from "./db";
+import { activateTeamLoanOfficerWorkspace, createPlatformLeadIfAbsent, createTeamLoanOfficerWorkspace, listCampaignSpendEntries, listLoAgentSpendTrackers, listMortgagePaymentQuotes, listPlatformLeads, listPropertyLandingPages, listTeamTemplateLibrary, updateTeamLoanOfficerWorkspaceStatus } from "./db";
 import type { TrpcContext } from "./_core/context";
 
 const activateMock = vi.mocked(activateTeamLoanOfficerWorkspace);
 const createPlatformLeadMock = vi.mocked(createPlatformLeadIfAbsent);
 const createWorkspaceMock = vi.mocked(createTeamLoanOfficerWorkspace);
+const listCampaignSpendMock = vi.mocked(listCampaignSpendEntries);
+const listSpendTrackersMock = vi.mocked(listLoAgentSpendTrackers);
+const listMortgageQuoteMock = vi.mocked(listMortgagePaymentQuotes);
 const listPlatformLeadsMock = vi.mocked(listPlatformLeads);
+const listPropertyPagesMock = vi.mocked(listPropertyLandingPages);
 const listTemplatesMock = vi.mocked(listTeamTemplateLibrary);
 const updateStatusMock = vi.mocked(updateTeamLoanOfficerWorkspaceStatus);
 
@@ -90,5 +96,23 @@ describe("team loan-officer workspaces", () => {
     expect(listPlatformLeadsMock).toHaveBeenCalledWith(18, undefined);
     await member.platformLeads.createManual({ leadSource: "organic", fullName: "Jordan Buyer", email: "jordan@example.com" });
     expect(createPlatformLeadMock).toHaveBeenCalledWith(expect.objectContaining({ ownerUserId: 18, assignedLoanOfficerId: 12 }));
+  });
+
+  it("keeps saved quotes and campaign spend owned by the active team member account", async () => {
+    const member = appRouter.createCaller(context("team_member"));
+    await member.mortgageQuotes.list();
+    await member.campaignSpend.list();
+    expect(listMortgageQuoteMock).toHaveBeenCalledWith(18);
+    expect(listCampaignSpendMock).toHaveBeenCalledWith(18);
+  });
+
+  it("filters team member property-page inventory to the assigned loan-officer profile", async () => {
+    await appRouter.createCaller(context("team_member")).propertyPages.list();
+    expect(listPropertyPagesMock).toHaveBeenCalledWith(12);
+  });
+
+  it("keeps the private spend tracker owned by the active team member account", async () => {
+    await appRouter.createCaller(context("team_member")).pairingSpendTracker.list();
+    expect(listSpendTrackersMock).toHaveBeenCalledWith(18);
   });
 });

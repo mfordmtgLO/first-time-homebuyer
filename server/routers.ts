@@ -1570,8 +1570,8 @@ export const appRouter = router({
       }),
     /** Dashboard inventory of public property pages and their current co-brand assignment. */
     list: protectedProcedure.query(async ({ ctx }) => {
-      requireAdmin(ctx.user.role);
-      return listPropertyLandingPages();
+      const workspace = await resolveDashboardWorkspace(ctx.user);
+      return listPropertyLandingPages(workspace?.loanOfficerId);
     }),
     /** Private owner-managed internal seller-contribution screens. */
     programContributionLimits: protectedProcedure.query(async ({ ctx }) => {
@@ -1649,7 +1649,8 @@ export const appRouter = router({
         maxSellerContribution: z.number().finite().min(0).max(1_000_000).multipleOf(0.01).nullable().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        requireAdmin(ctx.user.role);
+        const workspace = await resolveDashboardWorkspace(ctx.user);
+        if (workspace && input.loanOfficerId !== workspace.loanOfficerId) throw new TRPCError({ code: "FORBIDDEN", message: "Team members can create property pages only for their assigned loan-officer profile." });
         const [officer, agent] = await Promise.all([getLoanOfficerById(input.loanOfficerId), getAgentById(input.agentId)]);
         if (!officer || officer.visible !== 1 || !agent || agent.visible !== 1) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Choose an available loan officer and co-branded agent." });
@@ -1869,13 +1870,14 @@ export const appRouter = router({
   pairingSpendTracker: router({
     /** Private owner-only dashboard data; never exposed to public pages or agent accounts. */
     list: protectedProcedure.query(async ({ ctx }) => {
-      requireAdmin(ctx.user.role);
+      await resolveDashboardWorkspace(ctx.user);
       return listLoAgentSpendTrackers(ctx.user.id);
     }),
     createPairing: protectedProcedure
       .input(z.object({ loanOfficerId: z.number().int().positive(), agentId: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
-        requireAdmin(ctx.user.role);
+        const workspace = await resolveDashboardWorkspace(ctx.user);
+        if (workspace && input.loanOfficerId !== workspace.loanOfficerId) throw new TRPCError({ code: "FORBIDDEN", message: "Team members can create spend trackers only for their assigned loan-officer profile." });
         const [officer, agent] = await Promise.all([getLoanOfficerById(input.loanOfficerId), getAgentById(input.agentId)]);
         if (!officer) throw new TRPCError({ code: "NOT_FOUND", message: "Loan officer not found." });
         if (!agent) throw new TRPCError({ code: "NOT_FOUND", message: "Agent not found." });
@@ -1891,7 +1893,7 @@ export const appRouter = router({
         agentCents: z.number().int().min(0).max(100_000_000),
       }).refine((value) => value.loanOfficerCents + value.agentCents > 0, { message: "Enter a contribution from at least one side." }))
       .mutation(async ({ ctx, input }) => {
-        requireAdmin(ctx.user.role);
+        await resolveDashboardWorkspace(ctx.user);
         const pairing = await getLoAgentSpendPairingForOwner(input.pairingId, ctx.user.id);
         if (!pairing) throw new TRPCError({ code: "NOT_FOUND", message: "Pairing tracker not found." });
         return addLoAgentSpendEntry({ ...input, spentOn: new Date(`${input.spentOn}T12:00:00.000Z`) });
@@ -1899,7 +1901,7 @@ export const appRouter = router({
     deleteEntry: protectedProcedure
       .input(z.object({ pairingId: z.number().int().positive(), entryId: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
-        requireAdmin(ctx.user.role);
+        await resolveDashboardWorkspace(ctx.user);
         const pairing = await getLoAgentSpendPairingForOwner(input.pairingId, ctx.user.id);
         if (!pairing) throw new TRPCError({ code: "NOT_FOUND", message: "Pairing tracker not found." });
         await deleteLoAgentSpendEntry(input);
@@ -1908,7 +1910,7 @@ export const appRouter = router({
     updateEntry: protectedProcedure
       .input(z.object({ pairingId: z.number().int().positive(), entryId: z.number().int().positive(), spentOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), category: z.enum(["ad_spend", "facebook_ads", "google_ads", "event", "print", "digital", "other"]), description: z.string().trim().min(1).max(300), loanOfficerCents: z.number().int().min(0).max(100_000_000), agentCents: z.number().int().min(0).max(100_000_000) }).refine((value) => value.loanOfficerCents + value.agentCents > 0, { message: "Enter a contribution from at least one side." }))
       .mutation(async ({ ctx, input }) => {
-        requireAdmin(ctx.user.role);
+        await resolveDashboardWorkspace(ctx.user);
         const pairing = await getLoAgentSpendPairingForOwner(input.pairingId, ctx.user.id);
         if (!pairing) throw new TRPCError({ code: "NOT_FOUND", message: "Pairing tracker not found." });
         await updateLoAgentSpendEntry({ ...input, spentOn: new Date(`${input.spentOn}T12:00:00.000Z`) });
@@ -1917,7 +1919,7 @@ export const appRouter = router({
     deletePairing: protectedProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
-        requireAdmin(ctx.user.role);
+        await resolveDashboardWorkspace(ctx.user);
         const pairing = await getLoAgentSpendPairingForOwner(input.id, ctx.user.id);
         if (!pairing) throw new TRPCError({ code: "NOT_FOUND", message: "Pairing tracker not found." });
         await deleteLoAgentSpendPairing({ id: input.id, ownerUserId: ctx.user.id });
@@ -1928,7 +1930,7 @@ export const appRouter = router({
   mortgageQuotes: router({
     /** Private owner-only saved payment scenarios; never exposed to public pages or agent accounts. */
     list: protectedProcedure.query(async ({ ctx }) => {
-      requireAdmin(ctx.user.role);
+      await resolveDashboardWorkspace(ctx.user);
       return listMortgagePaymentQuotes(ctx.user.id);
     }),
     create: protectedProcedure
@@ -1944,13 +1946,13 @@ export const appRouter = router({
         monthlyMortgageInsuranceCents: z.number().int().min(0).max(10_000_000),
       }))
       .mutation(async ({ ctx, input }) => {
-        requireAdmin(ctx.user.role);
+        await resolveDashboardWorkspace(ctx.user);
         return createMortgagePaymentQuote({ ownerUserId: ctx.user.id, ...input });
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
-        requireAdmin(ctx.user.role);
+        await resolveDashboardWorkspace(ctx.user);
         await deleteMortgagePaymentQuote({ id: input.id, ownerUserId: ctx.user.id });
         return { success: true } as const;
       }),
@@ -1959,7 +1961,7 @@ export const appRouter = router({
   campaignSpend: router({
     /** Private administrator-only paid-campaign entries; never exposed to public property or landing pages. */
     list: protectedProcedure.query(async ({ ctx }) => {
-      requireAdmin(ctx.user.role);
+      await resolveDashboardWorkspace(ctx.user);
       return listCampaignSpendEntries(ctx.user.id);
     }),
     add: protectedProcedure
@@ -1972,7 +1974,7 @@ export const appRouter = router({
         notes: z.string().trim().max(300).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        requireAdmin(ctx.user.role);
+        await resolveDashboardWorkspace(ctx.user);
         return createCampaignSpendEntry({
           ...input,
           ownerUserId: ctx.user.id,
@@ -1983,7 +1985,7 @@ export const appRouter = router({
     delete: protectedProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
-        requireAdmin(ctx.user.role);
+        await resolveDashboardWorkspace(ctx.user);
         await deleteCampaignSpendEntry({ id: input.id, ownerUserId: ctx.user.id });
         return { success: true } as const;
       }),
