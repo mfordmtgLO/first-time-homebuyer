@@ -60,7 +60,9 @@ import {
   createLoAgentSpendPairing,
   addLoAgentSpendEntry,
   updateLoAgentSpendEntry,
+  createMortgagePaymentQuote,
   createCampaignSpendEntry,
+  deleteMortgagePaymentQuote,
   deleteCampaignSpendEntry,
   deleteLoAgentSpendEntry,
   deleteLoAgentSpendPairing,
@@ -130,6 +132,7 @@ import {
   listLoanOfficers,
   listLeads,
   listLoAgentSpendTrackers,
+  listMortgagePaymentQuotes,
   listSyncedTopAgents,
   listSyncedAgentOutreachTemplates,
   listSyncedTopAgentRankHistory,
@@ -1897,6 +1900,37 @@ export const appRouter = router({
         const pairing = await getLoAgentSpendPairingForOwner(input.id, ctx.user.id);
         if (!pairing) throw new TRPCError({ code: "NOT_FOUND", message: "Pairing tracker not found." });
         await deleteLoAgentSpendPairing({ id: input.id, ownerUserId: ctx.user.id });
+        return { success: true } as const;
+      }),
+  }),
+
+  mortgageQuotes: router({
+    /** Private owner-only saved payment scenarios; never exposed to public pages or agent accounts. */
+    list: protectedProcedure.query(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      return listMortgagePaymentQuotes(ctx.user.id);
+    }),
+    create: protectedProcedure
+      .input(z.object({
+        name: z.string().trim().min(1, "Enter a quote name.").max(120),
+        purchasePriceCents: z.number().int().min(0).max(1_000_000_000),
+        downPaymentPercentBasisPoints: z.number().int().min(0).max(10_000),
+        annualRateBasisPoints: z.number().int().min(0).max(10_000),
+        termYears: z.union([z.literal(15), z.literal(30)]),
+        annualPropertyTaxCents: z.number().int().min(0).max(100_000_000),
+        annualHomeInsuranceCents: z.number().int().min(0).max(100_000_000),
+        monthlyHoaDuesCents: z.number().int().min(0).max(10_000_000),
+        monthlyMortgageInsuranceCents: z.number().int().min(0).max(10_000_000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return createMortgagePaymentQuote({ ownerUserId: ctx.user.id, ...input });
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        await deleteMortgagePaymentQuote({ id: input.id, ownerUserId: ctx.user.id });
         return { success: true } as const;
       }),
   }),

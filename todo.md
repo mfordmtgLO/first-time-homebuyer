@@ -757,3 +757,8 @@
 - [x] Add property-tax and homeowners-insurance inputs to the private dashboard payment estimator
 - [x] Show a clearly labeled total estimated monthly payment that includes P&I, property tax, and homeowners insurance
 - [x] Add focused coverage, responsive verification, and publish the all-in sidebar payment estimator enhancement
+
+- [x] Add monthly HOA-dues and mortgage-insurance inputs to the private dashboard payment estimator
+- [x] Add protected saved mortgage-payment quote persistence with a Save Quote action
+- [x] Add a compact dashboard comparison view for saved mortgage-payment scenarios
+- [x] Add migration, regression coverage, responsive verification, and publish the saved-quote sidebar calculator enhancement

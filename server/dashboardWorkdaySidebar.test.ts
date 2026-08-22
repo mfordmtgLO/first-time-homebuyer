@@ -37,7 +37,11 @@ describe("dashboard workday workflow", () => {
     expect(sidebar).toContain("Internal estimate home price");
     expect(sidebar).toContain("Property tax / yr");
     expect(sidebar).toContain("Home insurance / yr");
+    expect(sidebar).toContain("HOA dues / mo");
+    expect(sidebar).toContain("Mortgage insurance / mo");
     expect(sidebar).toContain("Estimated total monthly payment");
+    expect(sidebar).toContain("Save Quote");
+    expect(sidebar).toContain("Saved scenario comparison");
     expect(sidebar).toContain("Term interest");
     expect(sidebar).toContain("Internal planning estimate only");
   });

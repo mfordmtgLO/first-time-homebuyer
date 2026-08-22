@@ -10,6 +10,8 @@ export type MortgageEstimateInputs = {
 export type MonthlyHousingEstimateInputs = MortgageEstimateInputs & {
   annualPropertyTax: number;
   annualHomeInsurance: number;
+  monthlyHoaDues?: number;
+  monthlyMortgageInsurance?: number;
 };
 
 export function estimateMortgagePlanning(inputs: MortgageEstimateInputs) {
@@ -27,10 +29,14 @@ export function estimateMonthlyHousingCost(inputs: MonthlyHousingEstimateInputs)
   const mortgage = estimateMortgagePlanning(inputs);
   const monthlyPropertyTax = Math.max(inputs.annualPropertyTax, 0) / 12;
   const monthlyHomeInsurance = Math.max(inputs.annualHomeInsurance, 0) / 12;
+  const monthlyHoaDues = Math.max(inputs.monthlyHoaDues ?? 0, 0);
+  const monthlyMortgageInsurance = Math.max(inputs.monthlyMortgageInsurance ?? 0, 0);
   return {
     ...mortgage,
     monthlyPropertyTax,
     monthlyHomeInsurance,
-    estimatedTotalMonthlyPayment: mortgage.monthlyPayment + monthlyPropertyTax + monthlyHomeInsurance,
+    monthlyHoaDues,
+    monthlyMortgageInsurance,
+    estimatedTotalMonthlyPayment: mortgage.monthlyPayment + monthlyPropertyTax + monthlyHomeInsurance + monthlyHoaDues + monthlyMortgageInsurance,
   };
 }

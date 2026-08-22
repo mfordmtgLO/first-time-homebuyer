@@ -30,6 +30,7 @@ import {
   campaignSpendEntry,
   loAgentSpendEntry,
   loAgentSpendPairing,
+  mortgagePaymentQuote,
   leads,
   loanOfficer,
   syncedTopAgent,
@@ -1590,6 +1591,41 @@ export async function deleteLoAgentSpendPairing(input: { id: number; ownerUserId
   if (!db) throw new Error("Database not available");
   await db.delete(loAgentSpendEntry).where(eq(loAgentSpendEntry.pairingId, input.id));
   await db.delete(loAgentSpendPairing).where(and(eq(loAgentSpendPairing.id, input.id), eq(loAgentSpendPairing.ownerUserId, input.ownerUserId)));
+}
+
+// ---------------------------------------------------------------------------
+// Private saved mortgage payment quotes
+
+export async function listMortgagePaymentQuotes(ownerUserId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(mortgagePaymentQuote).where(eq(mortgagePaymentQuote.ownerUserId, ownerUserId)).orderBy(desc(mortgagePaymentQuote.createdAt), desc(mortgagePaymentQuote.id));
+}
+
+export async function createMortgagePaymentQuote(input: {
+  ownerUserId: number;
+  name: string;
+  purchasePriceCents: number;
+  downPaymentPercentBasisPoints: number;
+  annualRateBasisPoints: number;
+  termYears: number;
+  annualPropertyTaxCents: number;
+  annualHomeInsuranceCents: number;
+  monthlyHoaDuesCents: number;
+  monthlyMortgageInsuranceCents: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(mortgagePaymentQuote).values(input);
+  const rows = await db.select().from(mortgagePaymentQuote).where(eq(mortgagePaymentQuote.id, Number(result.insertId))).limit(1);
+  if (!rows[0]) throw new Error("Couldn't save mortgage payment quote.");
+  return rows[0];
+}
+
+export async function deleteMortgagePaymentQuote(input: { id: number; ownerUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(mortgagePaymentQuote).where(and(eq(mortgagePaymentQuote.id, input.id), eq(mortgagePaymentQuote.ownerUserId, input.ownerUserId)));
 }
 
 // ---------------------------------------------------------------------------

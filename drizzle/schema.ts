@@ -981,6 +981,29 @@ export const loAgentSpendEntry = mysqlTable(
 export type LoAgentSpendEntry = typeof loAgentSpendEntry.$inferSelect;
 export type InsertLoAgentSpendEntry = typeof loAgentSpendEntry.$inferInsert;
 
+/** Owner-private saved payment scenarios for internal mortgage-payment comparison. All dollar amounts are stored as cents. */
+export const mortgagePaymentQuote = mysqlTable(
+  "mortgage_payment_quote",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerUserId: int("ownerUserId").notNull(),
+    name: varchar("name", { length: 120 }).notNull(),
+    purchasePriceCents: int("purchasePriceCents").notNull(),
+    downPaymentPercentBasisPoints: int("downPaymentPercentBasisPoints").notNull(),
+    annualRateBasisPoints: int("annualRateBasisPoints").notNull(),
+    termYears: int("termYears").notNull(),
+    annualPropertyTaxCents: int("annualPropertyTaxCents").default(0).notNull(),
+    annualHomeInsuranceCents: int("annualHomeInsuranceCents").default(0).notNull(),
+    monthlyHoaDuesCents: int("monthlyHoaDuesCents").default(0).notNull(),
+    monthlyMortgageInsuranceCents: int("monthlyMortgageInsuranceCents").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [index("mortgage_payment_quote_owner_created_idx").on(table.ownerUserId, table.createdAt)]
+);
+
+export type MortgagePaymentQuote = typeof mortgagePaymentQuote.$inferSelect;
+export type InsertMortgagePaymentQuote = typeof mortgagePaymentQuote.$inferInsert;
+
 /** Private paid-campaign costs used only for dashboard cost-per-tagged-lead reporting. */
 export const campaignSpendEntry = mysqlTable(
   "campaign_spend_entry",
