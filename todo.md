@@ -774,3 +774,11 @@
 - [x] Scope new downstream team data for co-branded agents, leads, property pages, campaigns, and saved tools
 - [x] Add management safeguards, regression coverage, migration, responsive verification, and publish the team-dashboard foundation
 - [x] Add Mike Ford administrator controls for read-only sharing or withholding of saved email and text templates from downstream loan-officer workspaces
+
+- [x] Add an admin-only performance comparison chart for downstream loan-officer lead conversion rates
+- [x] Add an administrator notification feed for downstream lead and saved-quote activity
+- [x] Add downstream email/text template submission with Mike Ford review, approval, rejection, and controlled availability
+- [x] Add migration, regression coverage, responsive verification, and publish the team performance, activity-feed, and template-approval enhancements
+
+- [ ] Document the current platform-managed team loan-officer invitation and workspace-activation steps for Mike Ford
+- [ ] Assess a separate identity-provider-based temporary-password and first-login reset flow without storing credentials in the dashboard

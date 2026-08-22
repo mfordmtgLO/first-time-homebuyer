@@ -67,5 +67,10 @@ describe("dashboard workday workflow", () => {
     expect(teamWorkspace).toContain("Review data");
     expect(teamWorkspace).toContain("Recent lead and chat records");
     expect(teamWorkspace).toContain("Recent saved work");
+    expect(teamWorkspace).toContain("Lead conversion by loan officer");
+    expect(teamWorkspace).toContain("Team activity feed");
+    expect(teamWorkspace).toContain("Pending team template submissions");
+    expect(teamWorkspace).toContain("refetchInterval: 20_000");
+    expect(fs.readFileSync(path.join(root, "client/src/components/TeamTemplateSubmissionPanel.tsx"), "utf8")).toContain("Submit a template for approval");
   });
 });

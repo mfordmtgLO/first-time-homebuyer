@@ -34,6 +34,7 @@ import {
   workflowAiReviewHistory,
   teamLoanOfficerWorkspace,
   teamTemplateLibrary,
+  teamTemplateSubmission,
   leads,
   loanOfficer,
   syncedTopAgent,
@@ -566,6 +567,86 @@ export async function deleteTeamTemplateLibraryEntry(input: { adminUserId: numbe
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(teamTemplateLibrary).where(and(eq(teamTemplateLibrary.id, input.id), eq(teamTemplateLibrary.adminUserId, input.adminUserId)));
+}
+
+export async function createTeamTemplateSubmission(input: { adminUserId: number; memberUserId: number; loanOfficerId: number; channel: "email" | "text"; name: string; subjectTemplate?: string | null; bodyTemplate: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(teamTemplateSubmission).values(input);
+  return Number(result[0].insertId);
+}
+
+export async function listTeamTemplateSubmissionsForAdmin(input: { adminUserId: number; status?: "pending" | "approved" | "rejected" }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const conditions = [eq(teamTemplateSubmission.adminUserId, input.adminUserId)];
+  if (input.status) conditions.push(eq(teamTemplateSubmission.status, input.status));
+  return db
+    .select({ ...getTableColumns(teamTemplateSubmission), loanOfficerName: loanOfficer.name, memberName: users.name, memberEmail: users.email })
+    .from(teamTemplateSubmission)
+    .innerJoin(loanOfficer, eq(teamTemplateSubmission.loanOfficerId, loanOfficer.id))
+    .innerJoin(users, eq(teamTemplateSubmission.memberUserId, users.id))
+    .where(and(...conditions))
+    .orderBy(desc(teamTemplateSubmission.createdAt));
+}
+
+export async function listTeamTemplateSubmissionsForMember(memberUserId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(teamTemplateSubmission).where(eq(teamTemplateSubmission.memberUserId, memberUserId)).orderBy(desc(teamTemplateSubmission.createdAt));
+}
+
+export async function reviewTeamTemplateSubmission(input: { adminUserId: number; id: number; status: "approved" | "rejected"; reviewerNote?: string | null; approvedLibraryTemplateId?: number | null }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db.select().from(teamTemplateSubmission).where(and(eq(teamTemplateSubmission.id, input.id), eq(teamTemplateSubmission.adminUserId, input.adminUserId))).limit(1);
+  const submission = rows[0];
+  if (!submission) throw new Error("Template submission was not found.");
+  if (submission.status !== "pending") throw new Error("Only pending template submissions can be reviewed.");
+  await db.update(teamTemplateSubmission).set({ status: input.status, reviewerNote: input.reviewerNote ?? null, reviewedAt: new Date(), approvedLibraryTemplateId: input.approvedLibraryTemplateId ?? null }).where(eq(teamTemplateSubmission.id, input.id));
+  return submission;
+}
+
+export async function getAdminTeamPerformance(adminUserId: number) {
+  const activeWorkspaces = (await listTeamLoanOfficerWorkspaces(adminUserId)).filter((workspace) => workspace.status === "active" && workspace.memberUserId !== null);
+  return Promise.all(activeWorkspaces.map(async (workspace) => {
+    const [roadmapLeads, chatIntakes, platformLeads, quotes] = await Promise.all([
+      listLeads({ loanOfficerId: workspace.loanOfficerId }),
+      listChatIntakeLeads({ loanOfficerId: workspace.loanOfficerId }),
+      listPlatformLeads(workspace.memberUserId!),
+      listMortgagePaymentQuotes(workspace.memberUserId!),
+    ]);
+    const capturedLeadCount = roadmapLeads.length + chatIntakes.filter((chat) => chat.status === "qualified").length + platformLeads.length;
+    const convertedLeadCount = roadmapLeads.filter((lead) => lead.status === "booked").length + platformLeads.filter((lead) => lead.progressStatus === "qualified").length;
+    return {
+      memberUserId: workspace.memberUserId!,
+      loanOfficerId: workspace.loanOfficerId,
+      loanOfficerName: workspace.loanOfficerName,
+      capturedLeadCount,
+      convertedLeadCount,
+      conversionRateBps: capturedLeadCount ? Math.round((convertedLeadCount / capturedLeadCount) * 10_000) : 0,
+      savedQuoteCount: quotes.length,
+    };
+  }));
+}
+
+export async function getAdminTeamActivityFeed(input: { adminUserId: number; limit: number }) {
+  const activeWorkspaces = (await listTeamLoanOfficerWorkspaces(input.adminUserId)).filter((workspace) => workspace.status === "active" && workspace.memberUserId !== null);
+  const eventGroups = await Promise.all(activeWorkspaces.map(async (workspace) => {
+    const [roadmapLeads, chatIntakes, platformLeads, quotes] = await Promise.all([
+      listLeads({ loanOfficerId: workspace.loanOfficerId }),
+      listChatIntakeLeads({ loanOfficerId: workspace.loanOfficerId }),
+      listPlatformLeads(workspace.memberUserId!),
+      listMortgagePaymentQuotes(workspace.memberUserId!),
+    ]);
+    return [
+      ...roadmapLeads.map((lead) => ({ id: `roadmap-${lead.id}`, type: "roadmap_lead" as const, loanOfficerName: workspace.loanOfficerName, label: lead.firstName || "New Roadmap lead", occurredAt: lead.createdAt })),
+      ...chatIntakes.filter((chat) => chat.status === "qualified").map((chat) => ({ id: `chat-${chat.id}`, type: "chat_intake" as const, loanOfficerName: workspace.loanOfficerName, label: chat.fullName || "Qualified Mortgage Chat intake", occurredAt: chat.updatedAt })),
+      ...platformLeads.map((lead) => ({ id: `platform-${lead.id}`, type: "platform_lead" as const, loanOfficerName: workspace.loanOfficerName, label: lead.fullName || "New platform lead", occurredAt: lead.receivedAt })),
+      ...quotes.map((quote) => ({ id: `quote-${quote.id}`, type: "saved_quote" as const, loanOfficerName: workspace.loanOfficerName, label: quote.name, occurredAt: quote.createdAt })),
+    ];
+  }));
+  return eventGroups.flat().sort((left, right) => right.occurredAt.getTime() - left.occurredAt.getTime()).slice(0, input.limit);
 }
 
 export async function insertLead(lead: InsertLead) {

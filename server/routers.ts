@@ -64,6 +64,7 @@ import {
   createWorkflowAiReviewHistory,
   createTeamLoanOfficerWorkspace,
   createTeamTemplateLibraryEntry,
+  createTeamTemplateSubmission,
   createCampaignSpendEntry,
   deleteMortgagePaymentQuote,
   deleteTeamTemplateLibraryEntry,
@@ -97,6 +98,8 @@ import {
   setSyncedAgentOutreachTemplateArchived,
   deleteSyncedAgentOutreachTemplate,
   getLoAgentSpendPairingForOwner,
+  getAdminTeamActivityFeed,
+  getAdminTeamPerformance,
   listCampaignSpendEntries,
   listGeoSphereListings,
   listGeoSphereSavedPulls,
@@ -141,6 +144,8 @@ import {
   listMortgagePaymentQuotes,
   listTeamLoanOfficerWorkspaces,
   listTeamTemplateLibrary,
+  listTeamTemplateSubmissionsForAdmin,
+  listTeamTemplateSubmissionsForMember,
   listWorkflowAiReviewHistory,
   listSyncedTopAgents,
   listSyncedAgentOutreachTemplates,
@@ -165,6 +170,7 @@ import {
   updateWorkflowAiReviewOutcome,
   updateTeamLoanOfficerWorkspaceStatus,
   updateTeamTemplateLibraryEntry,
+  reviewTeamTemplateSubmission,
   activateTeamLoanOfficerWorkspace,
   updatePropertyLandingPageAiSummary,
   updatePropertyLandingPageExternalListingUrl,
@@ -2616,6 +2622,16 @@ export const appRouter = router({
         ]);
         return { workspace, roadmapLeads, chatIntakes, platformLeads, quotes, spendEntries };
       }),
+    performance: protectedProcedure.query(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      return getAdminTeamPerformance(ctx.user.id);
+    }),
+    activityFeed: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(100).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return getAdminTeamActivityFeed({ adminUserId: ctx.user.id, limit: input?.limit ?? 24 });
+      }),
   }),
 
   teamTemplates: router({
@@ -2650,6 +2666,41 @@ export const appRouter = router({
       await deleteTeamTemplateLibraryEntry({ adminUserId: ctx.user.id, id: input.id });
       return { success: true } as const;
     }),
+    submissions: protectedProcedure
+      .input(z.object({ status: z.enum(["pending", "approved", "rejected"]).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role === "admin") return listTeamTemplateSubmissionsForAdmin({ adminUserId: ctx.user.id, status: input?.status });
+        const workspace = await resolveDashboardWorkspace(ctx.user);
+        if (!workspace) throw new TRPCError({ code: "FORBIDDEN", message: "Your team workspace is not active." });
+        return listTeamTemplateSubmissionsForMember(ctx.user.id);
+      }),
+    submit: protectedProcedure
+      .input(z.object({ channel: z.enum(["email", "text"]), name: z.string().trim().min(1).max(160), subjectTemplate: z.string().trim().max(300).nullable().optional(), bodyTemplate: z.string().trim().min(1).max(6000) }))
+      .mutation(async ({ ctx, input }) => {
+        const workspace = await resolveDashboardWorkspace(ctx.user);
+        if (!workspace) throw new TRPCError({ code: "FORBIDDEN", message: "Your team workspace is not active." });
+        const id = await createTeamTemplateSubmission({ adminUserId: workspace.adminUserId, memberUserId: ctx.user.id, loanOfficerId: workspace.loanOfficerId, ...input });
+        return { id } as const;
+      }),
+    reviewSubmission: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), decision: z.enum(["approved", "rejected"]), reviewerNote: z.string().trim().max(1200).nullable().optional(), availability: z.enum(["private", "team_read_only"]).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const submissions = await listTeamTemplateSubmissionsForAdmin({ adminUserId: ctx.user.id });
+        const submission = submissions.find((item) => item.id === input.id);
+        if (!submission) throw new TRPCError({ code: "NOT_FOUND", message: "Template submission was not found." });
+        let approvedLibraryTemplateId: number | null = null;
+        if (input.decision === "approved") {
+          try {
+            approvedLibraryTemplateId = await createTeamTemplateLibraryEntry({ adminUserId: ctx.user.id, channel: submission.channel, name: submission.name, subjectTemplate: submission.subjectTemplate, bodyTemplate: submission.bodyTemplate, availability: input.availability ?? "team_read_only", sourceTemplateScope: "team_submission", sourceTemplateId: submission.id });
+          } catch (error) {
+            if ((error as { code?: string }).code === "ER_DUP_ENTRY") throw new TRPCError({ code: "CONFLICT", message: "A team library item already uses this name and channel. Rename or reject this submission." });
+            throw error;
+          }
+        }
+        await reviewTeamTemplateSubmission({ adminUserId: ctx.user.id, id: input.id, status: input.decision, reviewerNote: input.reviewerNote, approvedLibraryTemplateId });
+        return { success: true, approvedLibraryTemplateId } as const;
+      }),
   }),
 
   agentSync: router({

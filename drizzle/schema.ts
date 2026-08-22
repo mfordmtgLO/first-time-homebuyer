@@ -419,6 +419,39 @@ export type TeamTemplateLibrary = typeof teamTemplateLibrary.$inferSelect;
 export type InsertTeamTemplateLibrary = typeof teamTemplateLibrary.$inferInsert;
 
 /**
+ * A downstream loan officer's proposed email or text template. A proposal is
+ * never added to the shared library until the controlling administrator makes
+ * an explicit approval decision.
+ */
+export const teamTemplateSubmission = mysqlTable(
+  "team_template_submission",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    adminUserId: int("adminUserId").notNull(),
+    memberUserId: int("memberUserId").notNull(),
+    loanOfficerId: int("loanOfficerId").notNull(),
+    channel: mysqlEnum("channel", ["email", "text"]).notNull(),
+    name: varchar("name", { length: 160 }).notNull(),
+    subjectTemplate: varchar("subjectTemplate", { length: 300 }),
+    bodyTemplate: text("bodyTemplate").notNull(),
+    status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+    reviewerNote: text("reviewerNote"),
+    reviewedAt: timestamp("reviewedAt"),
+    approvedLibraryTemplateId: int("approvedLibraryTemplateId"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    index("team_template_submission_admin_status_idx").on(table.adminUserId, table.status, table.createdAt),
+    index("team_template_submission_member_idx").on(table.memberUserId, table.createdAt),
+    index("team_template_submission_officer_idx").on(table.loanOfficerId, table.createdAt),
+  ]
+);
+
+export type TeamTemplateSubmission = typeof teamTemplateSubmission.$inferSelect;
+export type InsertTeamTemplateSubmission = typeof teamTemplateSubmission.$inferInsert;
+
+/**
  * A resumable mortgage-intake session. It intentionally records an incomplete
  * status as soon as a visitor starts the conversation, then becomes qualified
  * only after the requested contact and financial planning fields are supplied.

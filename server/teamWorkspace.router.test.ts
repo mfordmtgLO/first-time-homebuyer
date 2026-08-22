@@ -23,16 +23,26 @@ vi.mock("./db", async (importOriginal) => {
     createTeamTemplateLibraryEntry: vi.fn(async () => 88),
     updateTeamTemplateLibraryEntry: vi.fn(async () => undefined),
     deleteTeamTemplateLibraryEntry: vi.fn(async () => undefined),
+    createTeamTemplateSubmission: vi.fn(async () => 901),
+    listTeamTemplateSubmissionsForAdmin: vi.fn(async () => [{ id: 901, adminUserId: 9, memberUserId: 18, loanOfficerId: 12, channel: "email", name: "Follow-up", subjectTemplate: "Hello", bodyTemplate: "Draft body", status: "pending", createdAt: new Date() }]),
+    listTeamTemplateSubmissionsForMember: vi.fn(async () => []),
+    reviewTeamTemplateSubmission: vi.fn(async () => ({ id: 901 })),
+    getAdminTeamPerformance: vi.fn(async () => []),
+    getAdminTeamActivityFeed: vi.fn(async () => []),
   };
 });
 
 import { appRouter } from "./routers";
-import { activateTeamLoanOfficerWorkspace, createPlatformLeadIfAbsent, createTeamLoanOfficerWorkspace, listCampaignSpendEntries, listLoAgentSpendTrackers, listMortgagePaymentQuotes, listPlatformLeads, listPropertyLandingPages, listTeamTemplateLibrary, updateTeamLoanOfficerWorkspaceStatus } from "./db";
+import { activateTeamLoanOfficerWorkspace, createPlatformLeadIfAbsent, createTeamLoanOfficerWorkspace, createTeamTemplateSubmission, getAdminTeamActivityFeed, getAdminTeamPerformance, listCampaignSpendEntries, listLoAgentSpendTrackers, listMortgagePaymentQuotes, listPlatformLeads, listPropertyLandingPages, listTeamTemplateLibrary, reviewTeamTemplateSubmission, updateTeamLoanOfficerWorkspaceStatus } from "./db";
 import type { TrpcContext } from "./_core/context";
 
 const activateMock = vi.mocked(activateTeamLoanOfficerWorkspace);
 const createPlatformLeadMock = vi.mocked(createPlatformLeadIfAbsent);
 const createWorkspaceMock = vi.mocked(createTeamLoanOfficerWorkspace);
+const createTemplateSubmissionMock = vi.mocked(createTeamTemplateSubmission);
+const reviewTemplateSubmissionMock = vi.mocked(reviewTeamTemplateSubmission);
+const performanceMock = vi.mocked(getAdminTeamPerformance);
+const activityFeedMock = vi.mocked(getAdminTeamActivityFeed);
 const listCampaignSpendMock = vi.mocked(listCampaignSpendEntries);
 const listSpendTrackersMock = vi.mocked(listLoAgentSpendTrackers);
 const listMortgageQuoteMock = vi.mocked(listMortgagePaymentQuotes);
@@ -118,5 +128,24 @@ describe("team loan-officer workspaces", () => {
   it("keeps the private spend tracker owned by the active team member account", async () => {
     await appRouter.createCaller(context("team_member")).pairingSpendTracker.list();
     expect(listSpendTrackersMock).toHaveBeenCalledWith(18);
+  });
+
+  it("keeps team performance and activity updates admin-only", async () => {
+    const admin = appRouter.createCaller(context("admin"));
+    await admin.teamWorkspace.performance();
+    await admin.teamWorkspace.activityFeed({ limit: 12 });
+    expect(performanceMock).toHaveBeenCalledWith(9);
+    expect(activityFeedMock).toHaveBeenCalledWith({ adminUserId: 9, limit: 12 });
+    await expect(appRouter.createCaller(context("team_member")).teamWorkspace.performance()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("requires Mike Ford approval before a downstream template draft enters the controlled library", async () => {
+    const member = appRouter.createCaller(context("team_member"));
+    await expect(member.teamTemplates.submit({ channel: "email", name: "Follow-up", subjectTemplate: "Hello", bodyTemplate: "Draft body" })).resolves.toEqual({ id: 901 });
+    expect(createTemplateSubmissionMock).toHaveBeenCalledWith(expect.objectContaining({ adminUserId: 9, memberUserId: 18, loanOfficerId: 12, name: "Follow-up" }));
+    const admin = appRouter.createCaller(context("admin"));
+    await admin.teamTemplates.reviewSubmission({ id: 901, decision: "approved", availability: "team_read_only" });
+    expect(reviewTemplateSubmissionMock).toHaveBeenCalledWith(expect.objectContaining({ adminUserId: 9, id: 901, status: "approved", approvedLibraryTemplateId: 88 }));
+    await expect(member.teamTemplates.reviewSubmission({ id: 901, decision: "approved" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });
