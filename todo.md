@@ -698,3 +698,8 @@
 - [x] Add copy-to-clipboard control and a reduced-motion-safe application transition to the AI proposal preview
 - [x] Add AI draft character and word metrics with a user-selected maximum-word input enforced during generation
 - [x] Add regression coverage and publish the AI proposal feedback and length-control enhancements
+
+- [x] Highlight approved dynamic placeholders in proposed AI email drafts
+- [x] Add an author-controlled Undo action after applying an AI proposal
+- [x] Add concise explanatory tone guidance to the AI assistance controls
+- [x] Add regression coverage and publish the AI draft-review refinements

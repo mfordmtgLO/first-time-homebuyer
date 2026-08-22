@@ -103,4 +103,20 @@ describe("owner-controlled AI email template assistance", () => {
     expect(assistantSource).toContain("isApplying");
     expect(assistantSource).toContain("prefers-reduced-motion: reduce");
   });
+
+  it("visually identifies dynamic placeholders and explains the selected AI tone", () => {
+    expect(assistantSource).toContain("highlightedDraft");
+    expect(assistantSource).toContain("Highlighted gold fields are dynamic placeholders");
+    expect(assistantSource).toContain("bg-amber-200/80");
+    expect(assistantSource).toContain("TONE_HELP");
+    expect(assistantSource).toContain("Professional: formal, clear, and polite.");
+    expect(assistantSource).toContain("Urgent / action-oriented: clear next steps without pressure");
+  });
+
+  it("keeps the immediately prior editable template available for a single author-controlled undo", () => {
+    expect(assistantSource).toContain("setUndoDraft({ subject: currentSubject, body: currentBody })");
+    expect(assistantSource).toContain("undoLastAiApplication");
+    expect(assistantSource).toContain("Undo AI apply");
+    expect(assistantSource).toContain("Restored the template from before the AI proposal was applied.");
+  });
 });
