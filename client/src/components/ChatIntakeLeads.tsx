@@ -24,6 +24,7 @@ import { PUBLIC_SITE_ORIGIN } from "@shared/publicSiteUrl";
 import { hasUsableRoadmapPhone } from "@shared/roadmapPhone";
 import { qualifiesForUsdaDashboardBadge } from "@shared/usdaEligibility";
 import { PROPERTY_ACTIVITY_RANGES, PROPERTY_ACTIVITY_RANGE_LABELS, type PropertyActivityRange } from "@shared/propertyActivity";
+import { promptForStep, type IntakeValues } from "@shared/chatIntake";
 import PropertyPageSourceSummary from "@/components/PropertyPageSourceSummary";
 
 type ChatLead = {
@@ -96,21 +97,37 @@ const CHAT_QUICK_REPLIES = [
 
 function verbatimChatAnswers(lead: ChatLead) {
   const answer = (value: string | number | null, format?: (value: number) => string) => value === null || value === "" ? "No response provided" : typeof value === "number" ? format ? format(value) : String(value) : value;
+  const values: IntakeValues = {
+    loanPurpose: lead.loanPurpose,
+    propertyType: lead.propertyType,
+    propertyValue: lead.propertyValue,
+    creditRange: lead.creditRange as IntakeValues["creditRange"],
+    annualIncome: lead.annualIncome,
+    downPayment: lead.downPayment,
+    loanAmount: lead.loanAmount,
+    lowDownPaymentHomeSearch: lead.lowDownPaymentHomeSearch,
+    searchAreaType: lead.searchAreaType as IntakeValues["searchAreaType"],
+    targetArea: lead.targetArea,
+    fullName: lead.fullName,
+    email: lead.email,
+    phone: lead.phone,
+    smsConsent: lead.smsConsent,
+  };
   return [
-    ["What is your loan purpose?", answer(lead.loanPurpose)],
-    ["What type of property are you considering?", answer(lead.propertyType)],
-    ["What purchase price are you considering?", answer(lead.propertyValue, (value) => `$${value.toLocaleString()}`)],
-    ["What is your estimated credit range?", answer(lead.creditRange)],
-    ["What is your estimated annual household income?", answer(lead.annualIncome, (value) => `$${value.toLocaleString()}`)],
-    ["How much do you plan to put down?", answer(lead.downPayment, (value) => `$${value.toLocaleString()}`)],
-    ["What loan amount are you considering?", answer(lead.loanAmount, (value) => `$${value.toLocaleString()}`)],
-    ["Would you like potential low- or no-down-payment homes?", lead.lowDownPaymentHomeSearch === null ? "No response provided" : lead.lowDownPaymentHomeSearch === 1 ? "Yes" : "No"],
-    ["What kind of search area would you like?", answer(lead.searchAreaType)],
-    ["Which city, county, or area should we focus on?", answer(lead.targetArea)],
-    ["What is your name?", answer(lead.fullName)],
-    ["What is your email address?", answer(lead.email)],
-    ["What is your phone number?", answer(lead.phone)],
-    ["Did you provide consent for text messages?", lead.smsConsent === 1 ? "Yes" : "No"],
+    [promptForStep("loan_purpose", values), answer(lead.loanPurpose)],
+    [promptForStep("property_type", values), answer(lead.propertyType)],
+    [promptForStep("property_value", values), answer(lead.propertyValue, (value) => `$${value.toLocaleString()}`)],
+    [promptForStep("credit_range", values), answer(lead.creditRange)],
+    [promptForStep("annual_income", values), answer(lead.annualIncome, (value) => `$${value.toLocaleString()}`)],
+    [promptForStep("down_payment", values), answer(lead.downPayment, (value) => `$${value.toLocaleString()}`)],
+    [lead.loanPurpose === "refinance" ? promptForStep("loan_amount", values) : "What is the calculated loan amount after your stated down payment?", answer(lead.loanAmount, (value) => `$${value.toLocaleString()}`)],
+    [promptForStep("home_search_interest", values), lead.lowDownPaymentHomeSearch === null ? "No response provided" : lead.lowDownPaymentHomeSearch === 1 ? "Yes" : "No"],
+    [promptForStep("search_area_type", values), answer(lead.searchAreaType)],
+    [promptForStep("target_area", values), answer(lead.targetArea)],
+    [promptForStep("full_name", values), answer(lead.fullName)],
+    [promptForStep("email", values), answer(lead.email)],
+    [promptForStep("phone", values), answer(lead.phone)],
+    [promptForStep("sms_consent", values), lead.smsConsent === 1 ? "Yes" : "No"],
   ].map(([question, response]) => `${question}\n${response}`).join("\n\n");
 }
 

@@ -29,8 +29,9 @@ describe("Mortgage chat intake quick replies and reviewable extraction", () => {
   it("builds vertical exact question-and-answer notes with explicit unanswered values", () => {
     expect(chatIntakeSource).toContain("function verbatimChatAnswers");
     expect(chatIntakeSource).toContain('"No response provided"');
-    expect(chatIntakeSource).toContain('"Would you like potential low- or no-down-payment homes?"');
-    expect(chatIntakeSource).toContain('"Did you provide consent for text messages?"');
+    expect(chatIntakeSource).toContain('promptForStep("home_search_interest", values)');
+    expect(chatIntakeSource).toContain('promptForStep("sms_consent", values)');
+    expect(chatIntakeSource).toContain('promptForStep("property_type", values)');
     expect(chatIntakeSource).toContain('notes: verbatimChatAnswers(lead)');
     expect(chatIntakeSource).toContain('new CustomEvent("platform-lead-manual-prefill"');
   });
