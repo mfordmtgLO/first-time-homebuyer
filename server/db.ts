@@ -23,6 +23,7 @@ import {
   platformLeadNote,
   platformLeadProgressStatus,
   platformLeadOutreachTemplate,
+  emailTemplateAiPrompt,
   emailTemplateUsage,
   emailTemplateVersion,
   syncedAgentOutreachTemplate,
@@ -262,6 +263,27 @@ export async function deletePlatformLeadOutreachTemplates(input: { ownerUserId: 
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   await db.delete(platformLeadOutreachTemplate).where(and(eq(platformLeadOutreachTemplate.ownerUserId, input.ownerUserId), eq(platformLeadOutreachTemplate.audience, input.audience), inArray(platformLeadOutreachTemplate.id, input.ids)));
+}
+
+/** Private saved prompts for the owner's AI-assisted template drafting workflow. */
+export async function listEmailTemplateAiPrompts(ownerUserId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return db.select().from(emailTemplateAiPrompt).where(eq(emailTemplateAiPrompt.ownerUserId, ownerUserId)).orderBy(asc(emailTemplateAiPrompt.name));
+}
+
+export async function createEmailTemplateAiPrompt(input: { ownerUserId: number; name: string; prompt: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const [result] = await db.insert(emailTemplateAiPrompt).values(input);
+  const rows = await db.select().from(emailTemplateAiPrompt).where(and(eq(emailTemplateAiPrompt.id, Number(result.insertId)), eq(emailTemplateAiPrompt.ownerUserId, input.ownerUserId))).limit(1);
+  return rows[0]!;
+}
+
+export async function deleteEmailTemplateAiPrompt(input: { ownerUserId: number; id: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.delete(emailTemplateAiPrompt).where(and(eq(emailTemplateAiPrompt.id, input.id), eq(emailTemplateAiPrompt.ownerUserId, input.ownerUserId)));
 }
 
 let _db: ReturnType<typeof drizzle> | null = null;

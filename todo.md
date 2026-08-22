@@ -684,3 +684,8 @@
 - [x] Add a reusable owner-only AI email-assistance panel to every shared dashboard create/edit template editor, using user-supplied goal keywords to generate editable subject and body drafts
 - [x] Add the same owner-only AI email-assistance panel to Ad platform lead and agent template creation/editing
 - [x] Add workflow-aware AI safeguards, regression coverage, and publish the user-controlled email-drafting workflow
+
+- [x] Add clear in-progress spinner and generating status feedback to the AI email-assistance panel
+- [x] Add owner-controlled Regenerate and Refine actions to rewrite an editable AI email draft
+- [x] Add reusable private AI prompt quick-select options for faster template drafting
+- [x] Add migration, regression coverage, and publish the AI drafting feedback and prompt-library enhancements

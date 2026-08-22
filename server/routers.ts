@@ -49,6 +49,9 @@ import {
   updatePlatformLeadAssignments,
   deletePlatformLeads,
   savePlatformLeadOutreachTemplate,
+  listEmailTemplateAiPrompts,
+  createEmailTemplateAiPrompt,
+  deleteEmailTemplateAiPrompt,
   setPlatformLeadOutreachTemplateArchived,
   deletePlatformLeadOutreachTemplates,
   updateDirectoryOutreachEmailTemplate,
@@ -2344,6 +2347,26 @@ export const appRouter = router({
   }),
 
   emailTemplateAi: router({
+    prompts: router({
+      list: protectedProcedure.query(async ({ ctx }) => {
+        requireAdmin(ctx.user.role);
+        return listEmailTemplateAiPrompts(ctx.user.id);
+      }),
+      create: protectedProcedure.input(z.object({ name: z.string().trim().min(2).max(120), prompt: z.string().trim().min(4).max(800) })).mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        try {
+          return await createEmailTemplateAiPrompt({ ownerUserId: ctx.user.id, ...input });
+        } catch (error) {
+          if ((error as { code?: string }).code === "ER_DUP_ENTRY") throw new TRPCError({ code: "CONFLICT", message: "A saved prompt with that name already exists." });
+          throw error;
+        }
+      }),
+      delete: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        await deleteEmailTemplateAiPrompt({ ownerUserId: ctx.user.id, id: input.id });
+        return { success: true } as const;
+      }),
+    }),
     generate: protectedProcedure
       .input(z.object({
         workflow: z.enum(["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach", "agent_directory", "loan_officer_directory", "platform_lead", "platform_agent"]),

@@ -188,6 +188,26 @@ export const platformLeadOutreachTemplate = mysqlTable(
 export type PlatformLeadOutreachTemplate = typeof platformLeadOutreachTemplate.$inferSelect;
 export type InsertPlatformLeadOutreachTemplate = typeof platformLeadOutreachTemplate.$inferInsert;
 
+/** Private, owner-scoped reusable instructions for AI-assisted email template drafting. */
+export const emailTemplateAiPrompt = mysqlTable(
+  "email_template_ai_prompt",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerUserId: int("ownerUserId").notNull(),
+    name: varchar("name", { length: 120 }).notNull(),
+    prompt: varchar("prompt", { length: 800 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("email_template_ai_prompt_owner_name_unique").on(table.ownerUserId, table.name),
+    index("email_template_ai_prompt_owner_name_idx").on(table.ownerUserId, table.name),
+  ]
+);
+
+export type EmailTemplateAiPrompt = typeof emailTemplateAiPrompt.$inferSelect;
+export type InsertEmailTemplateAiPrompt = typeof emailTemplateAiPrompt.$inferInsert;
+
 /**
  * Co-marketing real estate agent profiles, editable from the /leads dashboard.
  * Unlimited rows; each agent has a unique URL slug so the landing page can be
