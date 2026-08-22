@@ -36,7 +36,7 @@ describe("owner-controlled AI email template assistance", () => {
   it("requires a user-supplied goal and applies only editable draft fields, never saving or sending automatically", () => {
     expect(assistantSource).toContain("Describe the goal, audience, and tone");
     expect(assistantSource).toContain("AI will not save, send, add a signature");
-    expect(assistantSource).toContain("onApply(draft)");
+    expect(assistantSource).toContain("setProposedDraft(draft)");
     expect(assistantSource).toContain("Draft with AI");
   });
 
@@ -66,5 +66,25 @@ describe("owner-controlled AI email template assistance", () => {
     expect(assistantSource).toContain("Choose a saved prompt");
     expect(assistantSource).toContain("Save prompt");
     expect(assistantSource).toContain("Remove saved AI prompt");
+  });
+
+  it("constrains tone and requested personalization tokens through the owner-only generation contract", () => {
+    expect(routerSource).toContain('tone: z.enum(["professional", "friendly", "urgent", "warm", "concise"])');
+    expect(routerSource).toContain("personalizationTokens");
+    expect(routerSource).toContain("requestedTokens");
+    expect(routerSource).toContain("Urgent” means clear and time-sensitive, never pressure");
+    expect(routerSource).toContain("Include each requested supported personalization token exactly as written");
+  });
+
+  it("requires an explicit side-by-side review and apply decision before replacing template content", () => {
+    expect(assistantSource).toContain("Draft tone");
+    expect(assistantSource).toContain("Include personalization");
+    expect(assistantSource).toContain("Compare before applying");
+    expect(assistantSource).toContain("Original template");
+    expect(assistantSource).toContain("Proposed AI draft");
+    expect(assistantSource).toContain("Apply proposal");
+    expect(assistantSource).toContain("Discard proposal");
+    expect(assistantSource).toContain("setProposedDraft(draft)");
+    expect(assistantSource).toContain("onApply(proposedDraft)");
   });
 });

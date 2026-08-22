@@ -689,3 +689,8 @@
 - [x] Add owner-controlled Regenerate and Refine actions to rewrite an editable AI email draft
 - [x] Add reusable private AI prompt quick-select options for faster template drafting
 - [x] Add migration, regression coverage, and publish the AI drafting feedback and prompt-library enhancements
+
+- [x] Add selectable tone control to owner-only AI email assistance
+- [x] Add workflow-safe personalization placeholder insertion to AI-generated email templates
+- [x] Add side-by-side original-versus-proposed AI draft preview with explicit apply control
+- [x] Add regression coverage and publish the AI tone, personalization, and comparison enhancements

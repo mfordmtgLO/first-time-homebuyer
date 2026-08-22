@@ -2371,6 +2371,8 @@ export const appRouter = router({
       .input(z.object({
         workflow: z.enum(["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach", "agent_directory", "loan_officer_directory", "platform_lead", "platform_agent"]),
         goal: z.string().trim().min(4).max(800),
+        tone: z.enum(["professional", "friendly", "urgent", "warm", "concise"]).default("professional"),
+        personalizationTokens: z.array(z.string().max(100)).max(8).optional(),
         currentSubject: z.string().max(300).optional(),
         currentBody: z.string().max(8000).optional(),
       }))
@@ -2385,6 +2387,7 @@ export const appRouter = router({
           platform_lead: ["{{lead_name}}", "{{lead_first_name}}", "{{agent_name}}", "{{agent_first_name}}", "{{loan_officer_name}}", "{{team_context}}"],
           platform_agent: ["{{lead_name}}", "{{lead_first_name}}", "{{agent_name}}", "{{agent_first_name}}", "{{loan_officer_name}}", "{{team_context}}"],
         };
+        const requestedTokens = (input.personalizationTokens ?? []).filter((token) => allowedTokens[input.workflow].includes(token));
         const response = await invokeLLM({
           model: "gpt-5-mini",
           maxTokens: 900,
@@ -2402,8 +2405,8 @@ export const appRouter = router({
             },
           },
           messages: [
-            { role: "system", content: `You draft reusable mortgage-industry email templates for an internal owner. Return plain text only through the JSON schema. Write a concise, warm, professional subject and body for workflow ${input.workflow}. The owner must review and edit the proposal before it can be saved. Do not include a sign-off, any loan officer signature, rates, APR, payment quotes, approval or eligibility claims, legal advice, unverified property facts, urgency pressure, or fabricated testimonials. Do not claim consent, acceptance, or an outcome. Use only these merge tokens when useful: ${allowedTokens[input.workflow].join(", ") || "none"}. Never invent any other token.` },
-            { role: "user", content: `Email goal: ${input.goal}\n\nCurrent subject (optional reference): ${input.currentSubject || "None"}\n\nCurrent body (optional reference): ${input.currentBody || "None"}` },
+            { role: "system", content: `You draft reusable mortgage-industry email templates for an internal owner. Return plain text only through the JSON schema. Write a concise subject and body for workflow ${input.workflow} in a ${input.tone} tone. “Urgent” means clear and time-sensitive, never pressure, fear, false scarcity, or a misleading deadline. The owner must review and edit the proposal before it can be saved. Do not include a sign-off, any loan officer signature, rates, APR, payment quotes, approval or eligibility claims, legal advice, unverified property facts, urgency pressure, or fabricated testimonials. Do not claim consent, acceptance, or an outcome. Use only these merge tokens when useful: ${allowedTokens[input.workflow].join(", ") || "none"}. ${requestedTokens.length ? `Include each requested supported personalization token exactly as written in the body: ${requestedTokens.join(", ")}.` : ""} Never invent any other token.` },
+            { role: "user", content: `Email goal: ${input.goal}\n\nSelected tone: ${input.tone}\n\nCurrent subject (optional reference): ${input.currentSubject || "None"}\n\nCurrent body (optional reference): ${input.currentBody || "None"}` },
           ],
         });
         const content = response.choices[0]?.message.content;
