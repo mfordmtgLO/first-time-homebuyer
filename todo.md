@@ -708,3 +708,8 @@
 - [x] Add rapid AI refinement actions for shorter and more persuasive proposed drafts
 - [x] Add independent vertical scrolling to co-branded agent and loan-officer directory result panels
 - [x] Add regression coverage and publish the AI history, refinement, and compact directory enhancements
+
+- [x] Add a clear local AI session-history control
+- [x] Add hover guidance to rapid AI refinement actions
+- [x] Keep co-branded agent and loan-officer search controls prominently available above scrollable results
+- [x] Add regression coverage and publish the AI history-clearing and directory-search refinements

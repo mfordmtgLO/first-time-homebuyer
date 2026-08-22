@@ -131,15 +131,26 @@ describe("owner-controlled AI email template assistance", () => {
     expect(assistantSource).toContain("Restored this session draft for review");
   });
 
+  it("allows an author to deliberately clear local browser-session proposal history", () => {
+    expect(assistantSource).toContain("clearSessionHistory");
+    expect(assistantSource).toContain("Clear history");
+    expect(assistantSource).toContain("sessionStorage.removeItem(historyStorageKey(workflow))");
+    expect(assistantSource).toContain("Local AI session history cleared.");
+  });
+
   it("provides rapid shorter and more-persuasive refinements without bypassing generation safeguards", () => {
     expect(assistantSource).toContain("refineProposedDraft");
     expect(assistantSource).toContain("Make it shorter");
     expect(assistantSource).toContain("Make it more persuasive");
     expect(assistantSource).toContain("without pressure, scarcity, rates, payment quotes, or approval claims");
+    expect(assistantSource).toContain("Shortens the body while preserving the key next step");
+    expect(assistantSource).toContain("Strengthens benefits and the helpful call to action");
   });
 
   it("keeps co-branded agent and loan-officer results independently scrollable with stable scrollbar space", () => {
     expect(agentSettingsSource).toContain("max-h-[34rem] overflow-y-scroll overscroll-contain [scrollbar-gutter:stable]");
     expect(loanOfficerSettingsSource).toContain("max-h-[34rem] overflow-y-scroll overscroll-contain [scrollbar-gutter:stable]");
+    expect(agentSettingsSource).toContain("Search agents by name, brokerage, or email");
+    expect(loanOfficerSettingsSource).toContain("Search loan officers by name, company, NMLS, or email");
   });
 });
