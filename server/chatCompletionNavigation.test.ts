@@ -80,4 +80,16 @@ describe("chat completion navigation", () => {
     expect(componentSource).toContain("sm:justify-start sm:px-7 sm:pb-7 sm:pt-8");
     expect(componentSource).not.toContain("sm:justify-center sm:p-7");
   });
+
+  it("shows an accessible intake progress indicator and provides an immediate completion PDF download", () => {
+    const projectRoot = path.resolve(import.meta.dirname, "..");
+    const componentSource = readFileSync(path.join(projectRoot, "client/src/components/MortgageChatWidget.tsx"), "utf8");
+
+    expect(componentSource).toContain('import { Progress } from "@/components/ui/progress"');
+    expect(componentSource).toContain("Homebuying intake progress");
+    expect(componentSource).toContain("Mortgage intake progress: step ${progressStep} of ${activeFlowSteps.length}");
+    expect(componentSource).toContain("downloadMortgageIntakeSummary");
+    expect(componentSource).toContain("Download my intake summary (PDF)");
+    expect(componentSource).toContain("not a loan approval, commitment, or quote");
+  });
 });

@@ -345,11 +345,11 @@ export function AIChatBox({
                   <div className="size-8 shrink-0 mt-1 rounded-full bg-primary/10 flex items-center justify-center">
                     <Sparkles className="size-4 text-primary" />
                   </div>
-                  <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-lg bg-muted px-4 py-2.5 text-xs font-medium text-muted-foreground">
+                  <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-lg border border-primary/10 bg-muted px-4 py-2.5 text-xs font-medium text-muted-foreground">
                     <span aria-hidden="true" className="flex items-center gap-1">
-                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary [animation-delay:-0.2s]" />
-                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary [animation-delay:-0.1s]" />
-                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary motion-safe:animate-[chatTypingDot_1.05s_ease-in-out_infinite] motion-reduce:animate-none [animation-delay:-0.28s]" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary motion-safe:animate-[chatTypingDot_1.05s_ease-in-out_infinite] motion-reduce:animate-none [animation-delay:-0.14s]" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary motion-safe:animate-[chatTypingDot_1.05s_ease-in-out_infinite] motion-reduce:animate-none" />
                     </span>
                     <span>{typingLabel}</span>
                   </div>

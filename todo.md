@@ -666,6 +666,11 @@
 - [x] Add reusable consent-gated text-message quick-reply templates to the Mortgage chat intake section, with a known-LO Paired group labeled LO: First Last + Agent: First Last and an always-available Agents group before Connect with agent when none is assigned
 - [x] Add regression coverage and publish the enhanced Mortgage chat intake workflow
 
-- [ ] Add the contextual Paired and Agents assignment dropdown convention to the Ad platform leads inbox using each lead’s currently assigned loan officer
+- [x] Add the contextual Paired and Agents assignment dropdown convention to the Ad platform leads inbox using each lead’s currently assigned loan officer
 
 - [x] Complete the reviewed exact-response Organic prefill and grouped consent-gated text quick-reply controls
+
+- [x] Add natural, reduced-motion-safe typing animation and accessible progress feedback to the public Mortgage Chat Intake
+- [x] Add a downloadable completed-intake PDF summary directly to the public chat completion view
+- [x] Add contextual Paired and Agents groups to the Ad platform inbox agent-assignment controls using the lead’s assigned loan officer
+- [x] Add regression coverage and publish the chat-experience, completion-PDF, and platform-inbox pairing enhancements

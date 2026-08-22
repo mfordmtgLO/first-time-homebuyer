@@ -64,6 +64,16 @@ describe("native platform lead receiver and manual-entry safeguards", () => {
     expect(routerSource).toContain("updateAssignments: protectedProcedure");
   });
 
+  it("groups platform-lead agent assignments into actual Paired and remaining Agents options", () => {
+    expect(inboxSource).toContain("trpc.pairingSpendTracker.list.useQuery()");
+    expect(inboxSource).toContain("const pairedAgentGroups");
+    expect(inboxSource).toContain("SelectLabel>Paired");
+    expect(inboxSource).toContain("SelectLabel>Agents");
+    expect(inboxSource).toContain("LO: {loanOfficerName} + Agent: {agent.name}");
+    expect(inboxSource).toContain("groupedAgentOptions(manualLead.assignedLoanOfficerId)");
+    expect(inboxSource).toContain("groupedAgentOptions(lead.assignedLoanOfficerId ?? null)");
+  });
+
   it("keeps archived leads searchable and supports editable, selected lifecycle actions", () => {
     expect(routerSource).toContain("update: protectedProcedure");
     expect(routerSource).toContain("setArchivedBulk: protectedProcedure");

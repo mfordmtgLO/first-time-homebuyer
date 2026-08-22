@@ -1,6 +1,11 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@keyframes chatTypingDot {
+  0%, 60%, 100% { transform: translateY(0) scale(0.82); opacity: 0.42; }
+  30% { transform: translateY(-3px) scale(1); opacity: 1; }
+}
+
 /*
  * GOLDEN HOUR PORCH — Warm Editorial Realism
  * Palette: deep evergreen anchor, honey-amber signature accent, warm cream paper bg.

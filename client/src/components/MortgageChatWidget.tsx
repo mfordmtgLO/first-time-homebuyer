@@ -15,10 +15,12 @@ import {
 import { shouldHideMobileChatLauncher } from "@shared/chatLauncherVisibility";
 import { getMobileChatLauncherPresentation } from "@shared/chatLauncherPresentation";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
-import { ArrowRight, BookOpen, Calculator, CalendarDays, CheckCircle2, ChevronDown, Clock3, Home, MessageCircle, Minus, RotateCcw, ShieldCheck, X } from "lucide-react";
+import { ArrowRight, BookOpen, Calculator, CalendarDays, CheckCircle2, ChevronDown, Clock3, Download, Home, MessageCircle, Minus, RotateCcw, ShieldCheck, X } from "lucide-react";
 import { emitFunnelConversion, getCampaignAttribution } from "@/lib/campaignTracking";
+import { jsPDF } from "jspdf";
 
 const SESSION_STORAGE_KEY = "mortgage-intake-session";
 const MONEY_FORMATTER = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -37,6 +39,56 @@ const MONEY_SLIDER_CONFIG: Record<string, { label: string; max: number; step: nu
   annual_income: { label: "Estimated gross annual household income", max: 1_000_000, step: 10_000, defaultValue: 80_000 },
   down_payment: { label: "Available down payment", max: 500_000, step: 5_000, defaultValue: 0 },
 };
+
+const CHAT_FLOW_STEPS = ["loan_purpose", "property_type", "property_value", "credit_range", "annual_income", "financing_amount", "full_name", "email", "phone", "sms_consent", "home_search_interest", "search_area_type", "target_area"] as const;
+
+function stripChatFormatting(value: string) {
+  return value.replace(/\*\*/g, "").replace(/\s+/g, " ").trim();
+}
+
+function downloadMortgageIntakeSummary(messages: Message[], officer: Officer | null, completionMessage: string) {
+  const document = new jsPDF({ unit: "pt", format: "letter" });
+  const pageWidth = document.internal.pageSize.getWidth();
+  const pageHeight = document.internal.pageSize.getHeight();
+  const margin = 48;
+  const contentWidth = pageWidth - margin * 2;
+  let cursorY = 56;
+  const addWrapped = (text: string, fontSize: number, color: [number, number, number], gapAfter = 10) => {
+    document.setFontSize(fontSize);
+    document.setTextColor(...color);
+    const lines = document.splitTextToSize(text, contentWidth) as string[];
+    if (cursorY + lines.length * (fontSize + 4) > pageHeight - margin) {
+      document.addPage();
+      cursorY = margin;
+    }
+    document.text(lines, margin, cursorY);
+    cursorY += lines.length * (fontSize + 4) + gapAfter;
+  };
+  document.setFillColor(9, 71, 52);
+  document.rect(0, 0, pageWidth, 28, "F");
+  addWrapped("Your Mortgage Intake Summary", 21, [9, 71, 52], 6);
+  addWrapped("For your personal reference — informational intake only; not a loan approval, commitment, or quote.", 9, [89, 89, 89], 18);
+  if (officer) {
+    addWrapped(`${officer.name}${officer.title ? ` · ${officer.title}` : ""}${officer.nmls ? ` · NMLS #${officer.nmls}` : ""}`, 11, [34, 34, 34], 2);
+    addWrapped([officer.phone, officer.email].filter(Boolean).join(" · "), 9, [89, 89, 89], 16);
+  }
+  addWrapped("Your submitted responses", 13, [9, 71, 52], 10);
+  let latestQuestion = "";
+  messages.filter((message) => message.role !== "system").forEach((message) => {
+    if (message.role === "assistant") {
+      latestQuestion = stripChatFormatting(message.content);
+      return;
+    }
+    addWrapped(latestQuestion || "Your response", 10, [49, 49, 49], 3);
+    addWrapped(stripChatFormatting(message.content), 11, [0, 0, 0], 13);
+  });
+  if (completionMessage) {
+    addWrapped("Next steps", 13, [9, 71, 52], 6);
+    addWrapped(stripChatFormatting(completionMessage), 10, [49, 49, 49], 10);
+  }
+  addWrapped(`Generated ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`, 8, [115, 115, 115], 0);
+  document.save(`mortgage-intake-summary-${new Date().toISOString().slice(0, 10)}.pdf`);
+}
 
 type Officer = {
   name: string;
@@ -278,6 +330,25 @@ export default function MortgageChatWidget({ compactWhenIdle = false }: { compac
   const launcherTextSizing = compactWhenIdle
     ? launcherIsExpanded ? "max-w-40 opacity-100" : "max-w-0 opacity-0"
     : launcherIsExpanded ? "max-md:max-w-40 max-md:opacity-100" : "max-md:max-w-0 max-md:opacity-0";
+  const firstAnswer = messages.find((message) => message.role === "user")?.content.toLowerCase();
+  const isPurchaseFlow = firstAnswer === "purchase";
+  const activeFlowSteps = CHAT_FLOW_STEPS.filter((step) => {
+    if (step === "financing_amount") return true;
+    if (step === "home_search_interest" || step === "search_area_type" || step === "target_area") return isPurchaseFlow;
+    return true;
+  });
+  const normalizedCurrentStep = currentStep === "down_payment" || currentStep === "loan_amount" ? "financing_amount" : currentStep;
+  const progressIndex = normalizedCurrentStep ? activeFlowSteps.indexOf(normalizedCurrentStep as typeof activeFlowSteps[number]) : -1;
+  const progressStep = complete ? activeFlowSteps.length : Math.max(1, progressIndex + 1);
+  const progressValue = complete ? 100 : Math.round((progressStep / activeFlowSteps.length) * 100);
+  const downloadCompletionPdf = () => {
+    try {
+      downloadMortgageIntakeSummary(messages, officer, completionMessage);
+      toast.success("Your mortgage intake PDF is downloading.");
+    } catch {
+      toast.error("We couldn't prepare your intake PDF. Please try again.");
+    }
+  };
 
   useEffect(() => {
     if (isProcessing || complete || nextQuestionFocusTarget !== "guided") return;
@@ -388,6 +459,15 @@ export default function MortgageChatWidget({ compactWhenIdle = false }: { compac
               </button>
             </div>
           </header>
+          {!complete && messages.length > 0 && (
+            <div className="border-b border-border/70 bg-muted/35 px-5 py-2.5">
+              <div className="flex items-center justify-between gap-3 text-[11px] font-medium text-muted-foreground">
+                <span>Homebuying intake progress</span>
+                <span>Step {progressStep} of {activeFlowSteps.length}</span>
+              </div>
+              <Progress className="mt-1.5 h-1.5" value={progressValue} aria-label={`Mortgage intake progress: step ${progressStep} of ${activeFlowSteps.length}`} />
+            </div>
+          )}
 
           {complete ? (
             <div ref={completionContentRef} className="relative flex min-h-0 flex-1 flex-col items-center overflow-y-auto overscroll-contain p-5 pb-14 text-center sm:justify-start sm:px-7 sm:pb-7 sm:pt-8">
@@ -401,6 +481,9 @@ export default function MortgageChatWidget({ compactWhenIdle = false }: { compac
               <a href={CALENDLY_BOOKING_URL} target="_blank" rel="noopener noreferrer" className="btn-press mt-6 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:brightness-110">
                 <CalendarDays className="h-4 w-4" /> Schedule a free 15-minute call
               </a>
+              <Button type="button" variant="outline" className="mt-3 gap-2" onClick={downloadCompletionPdf}>
+                <Download className="h-4 w-4" /> Download my intake summary (PDF)
+              </Button>
               <div className="mt-5 w-full max-w-sm border-t border-border/70 pt-4 text-left">
                 <p className="text-center text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Keep exploring</p>
                 <div className="mt-3 grid grid-cols-2 gap-2">
