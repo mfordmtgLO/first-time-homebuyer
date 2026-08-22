@@ -2431,6 +2431,51 @@ export const appRouter = router({
       }),
   }),
 
+  workflowAi: router({
+    review: protectedProcedure
+      .input(z.object({
+        section: z.enum(["campaign-funnel", "platform-leads", "roadmap-leads", "co-marketing-agents", "loan-officers", "texting-workspace", "chat-intakes", "saved-qualifying-listings", "pairing-spend-tracker"]),
+        records: z.array(z.object({ label: z.string().max(160), status: z.string().max(80), meta: z.string().max(240) })).max(10),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const response = await invokeLLM({
+          model: "gpt-5-mini",
+          maxTokens: 600,
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "dashboard_workflow_review",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  headline: { type: "string" },
+                  actions: { type: "array", items: { type: "object", properties: { title: { type: "string" }, detail: { type: "string" } }, required: ["title", "detail"], additionalProperties: false } },
+                },
+                required: ["headline", "actions"],
+                additionalProperties: false,
+              },
+            },
+          },
+          messages: [
+            { role: "system", content: "You are an internal mortgage-dashboard workday assistant. Provide 2-5 short operational next actions for the named section using only the supplied private record summaries. Do not give lending, legal, fair-housing, advertising-compliance, credit, or eligibility advice. Do not invent facts, consent, interactions, deadlines, or outcomes. Never instruct the user to send an automated message. Favor reviewing, assigning, documenting, verifying, or using an existing dashboard tool. Keep all instructions compact and actionable." },
+            { role: "user", content: `Section: ${input.section}\nCurrent private record summaries (up to 10):\n${JSON.stringify(input.records)}` },
+          ],
+        });
+        const content = response.choices[0]?.message.content;
+        let parsed: { headline?: unknown; actions?: unknown } = {};
+        try { parsed = JSON.parse(typeof content === "string" ? content : "{}"); } catch { /* safe fallback below */ }
+        return {
+          headline: typeof parsed.headline === "string" ? parsed.headline.slice(0, 220) : "Review the current section queue and complete the next documented action.",
+          actions: Array.isArray(parsed.actions) ? parsed.actions.slice(0, 5).map((action: unknown) => {
+            const candidate = action as { title?: unknown; detail?: unknown };
+            return { title: typeof candidate.title === "string" ? candidate.title.slice(0, 100) : "Review the record", detail: typeof candidate.detail === "string" ? candidate.detail.slice(0, 360) : "Use the section tools to verify and document the next action." };
+          }) : [],
+        };
+      }),
+  }),
+
   agentSync: router({
     /** Admin-only, owner-scoped copy of the authorized state source records. */
     list: protectedProcedure

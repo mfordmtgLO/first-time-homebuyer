@@ -14,6 +14,7 @@ import GeoSphereListings from "@/components/GeoSphereListings";
 import TextingWorkspace from "@/components/TextingWorkspace";
 import PairingSpendTracker from "@/components/PairingSpendTracker";
 import PropertyPageSourceSummary from "@/components/PropertyPageSourceSummary";
+import { DashboardWorkdaySidebar } from "@/components/DashboardWorkdaySidebar";
 import {
   buildLeadWelcomeDraft,
   type LeadEmailAgent,
@@ -706,7 +707,9 @@ export default function Leads() {
             </Link>
           </div>
         ) : (
-          <>
+          <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+           <DashboardWorkdaySidebar records={leads.slice(0, 10).map((lead) => ({ label: `Roadmap lead #${lead.id}`, status: lead.status, meta: `${lead.source} · ${new Date(lead.createdAt).toLocaleDateString()}` }))} />
+           <div className="min-w-0">
            <CampaignFunnelSummary />
             <PlatformLeadInbox />
             <PropertyEngagementSummary />
@@ -1000,7 +1003,8 @@ export default function Leads() {
             <div id="saved-qualifying-listings" className="scroll-mt-24"><GeoSphereListings /></div>
             <div id="pairing-spend-tracker" className="scroll-mt-24"><PairingSpendTracker /></div>
           </section>
-          </>
+          </div>
+          </div>
         )}
       </main>
     </div>

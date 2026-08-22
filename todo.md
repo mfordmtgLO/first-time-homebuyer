@@ -737,3 +737,8 @@
 - [x] Add regression coverage and publish the spend-entry correction and source-filter enhancements
 
 - [x] Save a clearly labeled clean recovery baseline checkpoint for the working dashboard and public website
+
+- [x] Add a collapsible workday workflow sidebar to the private dashboard with clickable section links and an always-pinned daily workflow guide
+- [x] Add concise section-specific best-practice recommendations for lead conversion, agent partnership growth, funnel review, and co-branded property workflow actions
+- [x] Add owner-only AI daily section reviews that identify compact next actions for up to 10 current section records using existing private dashboard data
+- [x] Add regression coverage, responsive validation, and publish the dashboard workday workflow enhancements
