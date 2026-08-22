@@ -703,3 +703,8 @@
 - [x] Add an author-controlled Undo action after applying an AI proposal
 - [x] Add concise explanatory tone guidance to the AI assistance controls
 - [x] Add regression coverage and publish the AI draft-review refinements
+
+- [x] Add private AI draft session history with browse and restore controls
+- [x] Add rapid AI refinement actions for shorter and more persuasive proposed drafts
+- [x] Add independent vertical scrolling to co-branded agent and loan-officer directory result panels
+- [x] Add regression coverage and publish the AI history, refinement, and compact directory enhancements

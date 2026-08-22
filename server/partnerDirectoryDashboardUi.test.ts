@@ -10,7 +10,7 @@ const presetControlsSource = readFileSync(resolve(process.cwd(), "client/src/com
 describe("partner directory dashboard controls", () => {
   it("keeps both future-growth directories independently scrollable with searchable A–Z or recent ordering", () => {
     for (const source of [agentsSource, officersSource]) {
-      expect(source).toContain("max-h-[38rem] overflow-y-auto");
+      expect(source).toContain("max-h-[34rem] overflow-y-scroll overscroll-contain [scrollbar-gutter:stable]");
       expect(source).toContain('"last_name" | "recent"');
       expect(source).toContain("A–Z by last name");
       expect(source).toContain("Most recent");

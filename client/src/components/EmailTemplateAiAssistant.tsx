@@ -1,5 +1,5 @@
 import { Check, Clipboard, Columns2, Loader2, RotateCcw, Save, Sparkles, Trash2, Undo2, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,6 +71,21 @@ function highlightedDraft(value: string) {
 }
 
 type Draft = { subject: string; body: string };
+type DraftHistoryEntry = { id: string; createdAt: number; draft: Draft; goal: string; tone: AiTone };
+
+function historyStorageKey(workflow: EmailTemplateAiWorkflow) {
+  return `firsthome-ai-email-history:${workflow}`;
+}
+
+function readSessionHistory(workflow: EmailTemplateAiWorkflow): DraftHistoryEntry[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(window.sessionStorage.getItem(historyStorageKey(workflow)) || "[]") as unknown;
+    return Array.isArray(parsed) ? parsed.filter((entry): entry is DraftHistoryEntry => Boolean(entry && typeof entry === "object" && "id" in entry && "draft" in entry)).slice(0, 12) : [];
+  } catch {
+    return [];
+  }
+}
 
 type Props = {
   workflow: EmailTemplateAiWorkflow;
@@ -91,12 +106,14 @@ export function EmailTemplateAiAssistant({ workflow, currentSubject = "", curren
   const [maxWordCount, setMaxWordCount] = useState(250);
   const [isApplying, setIsApplying] = useState(false);
   const [undoDraft, setUndoDraft] = useState<Draft | null>(null);
+  const [draftHistory, setDraftHistory] = useState<DraftHistoryEntry[]>(() => readSessionHistory(workflow));
   const utils = trpc.useUtils();
   const promptsQuery = trpc.emailTemplateAi.prompts.list.useQuery();
   const generate = trpc.emailTemplateAi.generate.useMutation({
     onSuccess: (draft) => {
       setHasGenerated(true);
       setProposedDraft(draft);
+      setDraftHistory((history) => [{ id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, createdAt: Date.now(), draft, goal: goal.trim(), tone }, ...history].slice(0, 12));
       toast.success("AI draft ready to compare. Apply it only if you want to keep it.");
     },
     onError: (error) => toast.error(error.message || "The AI draft could not be prepared. Please try again."),
@@ -118,6 +135,9 @@ export function EmailTemplateAiAssistant({ workflow, currentSubject = "", curren
     },
     onError: (error) => toast.error(error.message || "This saved AI prompt could not be removed."),
   });
+  useEffect(() => {
+    try { window.sessionStorage.setItem(historyStorageKey(workflow), JSON.stringify(draftHistory)); } catch { /* Session history is optional and stays local. */ }
+  }, [draftHistory, workflow]);
 
   const createDraft = () => {
     if (goal.trim().length < 4) {
@@ -169,6 +189,17 @@ export function EmailTemplateAiAssistant({ workflow, currentSubject = "", curren
       toast.error("Copy is unavailable in this browser. Please select the draft text instead.");
     }
   };
+  const restoreHistoryDraft = (entry: DraftHistoryEntry) => {
+    setGoal(entry.goal);
+    setTone(entry.tone);
+    setProposedDraft(entry.draft);
+    toast.success("Restored this session draft for review. Apply it only if you want to keep it.");
+  };
+  const refineProposedDraft = (instruction: string) => {
+    if (!proposedDraft) return;
+    const refinementGoal = `${goal.trim() || "Refine the current email"}. ${instruction}`;
+    generate.mutate({ workflow, goal: refinementGoal.slice(0, 800), tone, personalizationTokens, maxWordCount, currentSubject: proposedDraft.subject.slice(0, 300), currentBody: proposedDraft.body.slice(0, 8000) });
+  };
 
   return <section className="rounded-lg border border-violet-500/25 bg-violet-500/[0.045] p-3" aria-label="AI email assistance">
     <div className="flex items-start gap-2"><div className="mt-0.5 rounded-md bg-violet-600/10 p-1.5 text-violet-700"><Sparkles className="h-4 w-4" /></div><div><p className="text-sm font-semibold text-foreground">AI assistance</p><p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">Describe the goal, audience, and tone. AI suggests a subject and draft body; you freely review and edit everything before saving.</p></div></div>
@@ -183,7 +214,9 @@ export function EmailTemplateAiAssistant({ workflow, currentSubject = "", curren
     <Textarea value={goal} onChange={(event) => setGoal(event.target.value)} className="mt-3 min-h-20 bg-background text-sm" maxLength={800} placeholder="Example: Warmly invite a first-time buyer to review low-down-payment options, reference the property link, and ask for a 15-minute call. Keep the tone clear and educational." aria-label="Describe the goal for the AI email draft" />
     <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"><Input value={promptName} onChange={(event) => setPromptName(event.target.value)} maxLength={120} className="h-9 bg-background text-xs" placeholder="Name this prompt to save it, e.g. Warm buyer follow-up" aria-label="Name saved AI prompt" /><Button type="button" size="sm" variant="outline" className="h-9" onClick={saveCurrentPrompt} disabled={savePrompt.isPending}><Save className="mr-1.5 h-3.5 w-3.5" />{savePrompt.isPending ? "Saving…" : "Save prompt"}</Button></div>
     {generate.isPending ? <div className="mt-3 flex items-center gap-2 rounded-md border border-violet-500/20 bg-background/70 px-3 py-2 text-xs text-violet-950" role="status" aria-live="polite"><Loader2 className="h-4 w-4 animate-spin text-violet-700" /><span><strong>Generating your email draft…</strong> Applying your goal and the current editable copy. This may take a moment.</span></div> : null}
+    {draftHistory.length ? <details className="mt-3 rounded-md border border-border bg-background/65 px-3 py-2"><summary className="cursor-pointer text-xs font-semibold text-foreground">Session draft history <span className="font-normal text-muted-foreground">({draftHistory.length} local proposal{draftHistory.length === 1 ? "" : "s"})</span></summary><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Available only in this browser session. Restoring opens a prior proposal for review; it does not apply or save it.</p><div className="mt-2 max-h-36 space-y-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable]">{draftHistory.map((entry) => <button key={entry.id} type="button" onClick={() => restoreHistoryDraft(entry)} className="flex w-full items-start justify-between gap-3 rounded-md border border-border/70 bg-muted/15 px-2.5 py-2 text-left transition-colors hover:bg-violet-500/[0.06]"><span className="min-w-0"><span className="block truncate text-xs font-medium text-foreground">{entry.draft.subject}</span><span className="mt-0.5 block truncate text-[11px] text-muted-foreground">{entry.tone} · {wordCount(entry.draft.body)} words · {new Date(entry.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span></span><span className="shrink-0 text-[11px] font-semibold text-violet-700">Restore</span></button>)}</div></details> : null}
     {proposedDraft ? <section className={`mt-3 rounded-md border border-violet-500/25 bg-background/70 p-3 transition-[opacity,transform] duration-200 motion-reduce:transition-none ${isApplying ? "translate-y-1 opacity-0" : "translate-y-0 opacity-100"}`} aria-label="Compare original and proposed AI draft"><div className="flex flex-wrap items-center justify-between gap-2"><div className="flex items-center gap-2"><Columns2 className="h-4 w-4 text-violet-700" /><p className="text-sm font-semibold">Compare before applying</p></div><Button type="button" size="sm" variant="ghost" className="h-8" onClick={copyProposedDraft}><Clipboard className="mr-1.5 h-3.5 w-3.5" />Copy draft</Button></div><p className="mt-1 text-xs text-muted-foreground">Highlighted gold fields are dynamic placeholders that fill from the selected workflow when a draft is used.</p><div className="mt-3 grid gap-3 md:grid-cols-2"><article className="min-w-0 rounded-md border border-border bg-muted/20 p-2.5"><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Original template</p><p className="mt-2 break-words text-sm font-medium">{currentSubject || "No subject yet"}</p><pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap font-sans text-xs leading-relaxed text-muted-foreground">{plainText(currentBody) || "No body yet"}</pre></article><article className="min-w-0 rounded-md border border-violet-500/30 bg-violet-500/[0.035] p-2.5"><p className="text-[11px] font-semibold uppercase tracking-wide text-violet-800">Proposed AI draft</p><p className="mt-2 break-words text-sm font-medium">{highlightedDraft(proposedDraft.subject)}</p><pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap font-sans text-xs leading-relaxed text-muted-foreground">{highlightedDraft(proposedDraft.body)}</pre><p className="mt-2 border-t border-violet-500/15 pt-2 text-[11px] text-muted-foreground">{wordCount(proposedDraft.body)} / {maxWordCount} words · {`${proposedDraft.subject} ${proposedDraft.body}`.length} characters</p></article></div><div className="mt-3 flex flex-wrap justify-end gap-2"><Button type="button" size="sm" variant="ghost" onClick={() => setProposedDraft(null)} disabled={isApplying}><X className="mr-1.5 h-3.5 w-3.5" />Discard proposal</Button><Button type="button" size="sm" variant="outline" onClick={createDraft} disabled={generate.isPending || isApplying}><RotateCcw className="mr-1.5 h-3.5 w-3.5" />Regenerate / refine</Button><Button type="button" size="sm" onClick={applyProposedDraft} disabled={isApplying}>{isApplying ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}{isApplying ? "Applying…" : "Apply proposal"}</Button></div></section> : null}
+    {proposedDraft ? <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-violet-500/15 bg-violet-500/[0.025] px-2.5 py-2"><span className="text-[11px] font-semibold text-muted-foreground">Quick refine</span><Button type="button" size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => refineProposedDraft("Make the body shorter while preserving the essential next step and approved placeholders.")} disabled={generate.isPending || isApplying}>Make it shorter</Button><Button type="button" size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => refineProposedDraft("Make the body more persuasive through clear benefits and a helpful call to action, without pressure, scarcity, rates, payment quotes, or approval claims.")} disabled={generate.isPending || isApplying}>Make it more persuasive</Button></div> : null}
     <div className="mt-3 flex flex-wrap items-center justify-between gap-2"><p className="text-[11px] leading-relaxed text-muted-foreground">AI will not save, send, add a signature, quote rates, or make approval claims.</p><div className="flex flex-wrap gap-2">{undoDraft ? <Button type="button" size="sm" variant="outline" onClick={undoLastAiApplication}><Undo2 className="mr-1.5 h-3.5 w-3.5" />Undo AI apply</Button> : null}<Button type="button" size="sm" variant="outline" onClick={createDraft} disabled={generate.isPending}>{generate.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1.5 h-3.5 w-3.5" />}{generate.isPending ? "Generating…" : "Draft with AI"}</Button>{hasGenerated ? <Button type="button" size="sm" variant="outline" onClick={createDraft} disabled={generate.isPending}><RotateCcw className="mr-1.5 h-3.5 w-3.5" />Regenerate / refine</Button> : null}</div></div>
   </section>;
 }

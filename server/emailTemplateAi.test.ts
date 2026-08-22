@@ -10,6 +10,8 @@ const platformSource = readFileSync(resolve(root, "client/src/components/Platfor
 const directorySource = readFileSync(resolve(root, "client/src/components/DirectoryOutreachControls.tsx"), "utf8");
 const oregonSource = readFileSync(resolve(root, "client/src/components/AgentSettings.tsx"), "utf8");
 const propertySource = readFileSync(resolve(root, "client/src/components/GeoSphereListings.tsx"), "utf8");
+const agentSettingsSource = readFileSync(resolve(root, "client/src/components/AgentSettings.tsx"), "utf8");
+const loanOfficerSettingsSource = readFileSync(resolve(root, "client/src/components/LoanOfficerSettings.tsx"), "utf8");
 const schemaSource = readFileSync(resolve(root, "drizzle/schema.ts"), "utf8");
 const dbSource = readFileSync(resolve(root, "server/db.ts"), "utf8");
 
@@ -118,5 +120,26 @@ describe("owner-controlled AI email template assistance", () => {
     expect(assistantSource).toContain("undoLastAiApplication");
     expect(assistantSource).toContain("Undo AI apply");
     expect(assistantSource).toContain("Restored the template from before the AI proposal was applied.");
+  });
+
+  it("keeps a bounded, browser-session-only proposal history that can be restored for review", () => {
+    expect(assistantSource).toContain("firsthome-ai-email-history");
+    expect(assistantSource).toContain("sessionStorage");
+    expect(assistantSource).toContain("slice(0, 12)");
+    expect(assistantSource).toContain("Session draft history");
+    expect(assistantSource).toContain("restoreHistoryDraft");
+    expect(assistantSource).toContain("Restored this session draft for review");
+  });
+
+  it("provides rapid shorter and more-persuasive refinements without bypassing generation safeguards", () => {
+    expect(assistantSource).toContain("refineProposedDraft");
+    expect(assistantSource).toContain("Make it shorter");
+    expect(assistantSource).toContain("Make it more persuasive");
+    expect(assistantSource).toContain("without pressure, scarcity, rates, payment quotes, or approval claims");
+  });
+
+  it("keeps co-branded agent and loan-officer results independently scrollable with stable scrollbar space", () => {
+    expect(agentSettingsSource).toContain("max-h-[34rem] overflow-y-scroll overscroll-contain [scrollbar-gutter:stable]");
+    expect(loanOfficerSettingsSource).toContain("max-h-[34rem] overflow-y-scroll overscroll-contain [scrollbar-gutter:stable]");
   });
 });
