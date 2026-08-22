@@ -9,6 +9,7 @@ describe("publicSectionNavigationItems", () => {
       "top",
       "cost-of-waiting",
       "programs",
+      "mortgage-estimator",
       "buydown",
       "roadmap",
       "how-it-works",
@@ -30,6 +31,7 @@ describe("publicSectionNavigationItems", () => {
   it("selects the destination closest above the fixed-header offset, independent of menu order", () => {
     const positions = {
       "cost-of-waiting": -900,
+      "mortgage-estimator": 120,
       buydown: 160,
       programs: -280,
       roadmap: 900,
@@ -49,5 +51,13 @@ describe("publicSectionNavigationItems", () => {
 
     expect(buydownSource).not.toContain('id="buydown"');
     expect(roadmapSource).not.toContain('id="roadmap"');
+  });
+
+  it("mounts the mortgage estimator at its page-level public destination", () => {
+    const projectRoot = path.resolve(import.meta.dirname, "..");
+    const homeSource = readFileSync(path.join(projectRoot, "client/src/pages/Home.tsx"), "utf8");
+
+    expect(homeSource).toContain('id="mortgage-estimator"');
+    expect(homeSource).toContain("<MortgageEstimator />");
   });
 });

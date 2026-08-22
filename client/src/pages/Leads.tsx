@@ -1,5 +1,5 @@
 /* Private leads dashboard — admin-only. Golden Hour Porch styling to match the brand. */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
@@ -55,6 +55,8 @@ import {
   Send,
   ShieldAlert,
   MessageSquareText,
+  Moon,
+  Sun,
   Users,
 } from "lucide-react";
 
@@ -479,6 +481,8 @@ function LeadAgentCell({
 }
 
 export default function Leads() {
+  const [dashboardDarkMode, setDashboardDarkMode] = useState(() => localStorage.getItem("dashboard-theme") === "dark");
+  useEffect(() => { localStorage.setItem("dashboard-theme", dashboardDarkMode ? "dark" : "light"); }, [dashboardDarkMode]);
   const { user, loading, isAuthenticated, logout } = useAuth();
   const isAdmin = user?.role === "admin";
   const [search, setSearch] = useState("");
@@ -646,13 +650,14 @@ export default function Leads() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: "oklch(0.945 0.018 85)" }}>
+    <div className={dashboardDarkMode ? "dark min-h-screen bg-background" : "min-h-screen bg-background"}>
       <header className="bg-card border-b border-border">
         <div className="container flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-2.5">
             <img src={LOGO} alt="Cornerstone First Mortgage logo" className="h-8 w-auto object-contain" />
           </Link>
           <div className="flex items-center gap-3">
+            {isAuthenticated && isAdmin && <Button variant="outline" size="sm" onClick={() => setDashboardDarkMode((current) => !current)} aria-label={dashboardDarkMode ? "Use light dashboard theme" : "Use dark dashboard theme"}>{dashboardDarkMode ? <Sun className="h-4 w-4 mr-1.5" /> : <Moon className="h-4 w-4 mr-1.5" />}{dashboardDarkMode ? "Light" : "Dark"}</Button>}
             {isAuthenticated && (
               <span className="hidden sm:block text-sm text-muted-foreground">
                 {user?.name || user?.email}

@@ -11,6 +11,7 @@ export const publicSectionNavigationItems = [
   { id: "top", label: "Top", icon: ChevronUp },
   { id: "cost-of-waiting", label: "Cost of Waiting", icon: null },
   { id: "programs", label: "Loan Programs", icon: null },
+  { id: "mortgage-estimator", label: "Payment Estimate", icon: null },
   { id: "buydown", label: "2-1 Buydown", icon: null },
   { id: "roadmap", label: "Roadmap", icon: null },
   { id: "how-it-works", label: "How It Works", icon: null },

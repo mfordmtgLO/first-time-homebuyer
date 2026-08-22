@@ -744,3 +744,8 @@
 - [x] Add regression coverage, responsive validation, and publish the dashboard workday workflow enhancements
 
 - [x] Diagnose and eliminate redundant final-review and publish loops in the dashboard completion workflow
+
+- [x] Add a private Spend Tracker pie chart showing filtered spend distribution by category
+- [x] Add a persistent dark-mode toggle to the private dashboard navigation
+- [x] Add a public monthly-payment and interest estimator with clear assumptions and disclosures
+- [x] Add focused regression coverage and publish the dashboard chart, theme, and mortgage estimator enhancements

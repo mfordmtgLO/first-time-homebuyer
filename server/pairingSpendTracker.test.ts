@@ -83,4 +83,14 @@ describe("LO + agent pairing spend summary", () => {
     expect(routerSource).toContain("updateEntry: protectedProcedure");
     expect(routerSource).toContain("updateLoAgentSpendEntry");
   });
+
+  it("shows a filtered category distribution chart beside the private spend summary", () => {
+    const projectRoot = path.resolve(import.meta.dirname, "..");
+    const componentSource = readFileSync(path.join(projectRoot, "client/src/components/PairingSpendTracker.tsx"), "utf8");
+
+    expect(componentSource).toContain("categoryDistribution");
+    expect(componentSource).toContain("Filtered category mix");
+    expect(componentSource).toContain("PieChart");
+    expect(componentSource).toContain("CATEGORY_COLORS");
+  });
 });
