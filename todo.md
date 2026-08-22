@@ -788,3 +788,5 @@
 - [x] Add administrator controls to seed approved template libraries and prepare authorized listing and Oregon-agent sync resources for a downstream workspace
 - [x] Add an explicit secure workspace handoff control that releases a prepared dashboard only after Mike Ford confirms readiness
 - [x] Add migration, access-control coverage, responsive verification, release validation, and publish the provisioning-and-handoff workflow
+
+- [x] Create a presentation summarizing Mike Ford administrator controls, downstream workspace setup, secure handoff, oversight, template governance, and future ad-account connection readiness
