@@ -792,3 +792,6 @@
 - [x] Create a presentation summarizing Mike Ford administrator controls, downstream workspace setup, secure handoff, oversight, template governance, and future ad-account connection readiness
 
 - [x] Draft exact screen-by-screen onboarding wizard wireframes and interaction specifications for Mike Ford provisioning and securely handing off a downstream loan-officer workspace
+
+- [x] Draft the official OAuth scopes, account-selection, form-mapping, token-security, and release-gate steps for downstream officer-specific Meta and Google Ads connections
+- [x] Create presentation slides based on the downstream loan-officer onboarding wizard wireframes
