@@ -87,4 +87,20 @@ describe("owner-controlled AI email template assistance", () => {
     expect(assistantSource).toContain("setProposedDraft(draft)");
     expect(assistantSource).toContain("onApply(proposedDraft)");
   });
+
+  it("enforces a bounded maximum body-word limit in the server contract", () => {
+    expect(routerSource).toContain("maxWordCount: z.number().int().min(25).max(500).default(250)");
+    expect(routerSource).toContain("The body must contain no more than ${input.maxWordCount} words.");
+    expect(routerSource).toContain("slice(0, input.maxWordCount).join(\" \")");
+  });
+
+  it("provides copy, metrics, and reduced-motion-safe smooth apply feedback in the proposal comparison", () => {
+    expect(assistantSource).toContain("Copy draft");
+    expect(assistantSource).toContain("navigator.clipboard.writeText");
+    expect(assistantSource).toContain("Max words");
+    expect(assistantSource).toContain("words ·");
+    expect(assistantSource).toContain("motion-reduce:transition-none");
+    expect(assistantSource).toContain("isApplying");
+    expect(assistantSource).toContain("prefers-reduced-motion: reduce");
+  });
 });

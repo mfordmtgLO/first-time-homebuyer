@@ -1,4 +1,4 @@
-import { Check, Columns2, Loader2, RotateCcw, Save, Sparkles, Trash2, X } from "lucide-react";
+import { Check, Clipboard, Columns2, Loader2, RotateCcw, Save, Sparkles, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -52,6 +52,10 @@ function plainText(value: string) {
   return value.replace(/<br\s*\/?\s*>/gi, "\n").replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
 }
 
+function wordCount(value: string) {
+  return plainText(value).split(/\s+/).filter(Boolean).length;
+}
+
 type Props = {
   workflow: EmailTemplateAiWorkflow;
   currentSubject?: string;
@@ -68,6 +72,8 @@ export function EmailTemplateAiAssistant({ workflow, currentSubject = "", curren
   const [tone, setTone] = useState<AiTone>("professional");
   const [personalizationTokens, setPersonalizationTokens] = useState<string[]>([]);
   const [proposedDraft, setProposedDraft] = useState<{ subject: string; body: string } | null>(null);
+  const [maxWordCount, setMaxWordCount] = useState(250);
+  const [isApplying, setIsApplying] = useState(false);
   const utils = trpc.useUtils();
   const promptsQuery = trpc.emailTemplateAi.prompts.list.useQuery();
   const generate = trpc.emailTemplateAi.generate.useMutation({
@@ -100,7 +106,7 @@ export function EmailTemplateAiAssistant({ workflow, currentSubject = "", curren
       toast.error("Describe the email goal with at least a few words first.");
       return;
     }
-    generate.mutate({ workflow, goal: goal.trim(), tone, personalizationTokens, currentSubject: currentSubject.slice(0, 300), currentBody: currentBody.slice(0, 8000) });
+    generate.mutate({ workflow, goal: goal.trim(), tone, personalizationTokens, maxWordCount, currentSubject: currentSubject.slice(0, 300), currentBody: currentBody.slice(0, 8000) });
   };
   const choosePrompt = (value: string) => {
     setSelectedPromptId(value);
@@ -120,19 +126,33 @@ export function EmailTemplateAiAssistant({ workflow, currentSubject = "", curren
   const togglePersonalization = (token: string) => setPersonalizationTokens((tokens) => tokens.includes(token) ? tokens.filter((item) => item !== token) : [...tokens, token]);
   const applyProposedDraft = () => {
     if (!proposedDraft) return;
-    onApply(proposedDraft);
-    setProposedDraft(null);
-    toast.success("AI draft applied to the editable fields. Review it before saving.");
+    setIsApplying(true);
+    const delay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 180;
+    window.setTimeout(() => {
+      onApply(proposedDraft);
+      setProposedDraft(null);
+      setIsApplying(false);
+      toast.success("AI draft applied to the editable fields. Review it before saving.");
+    }, delay);
+  };
+  const copyProposedDraft = async () => {
+    if (!proposedDraft) return;
+    try {
+      await navigator.clipboard.writeText(`Subject: ${proposedDraft.subject}\n\n${proposedDraft.body}`);
+      toast.success("Proposed AI draft copied to the clipboard.");
+    } catch {
+      toast.error("Copy is unavailable in this browser. Please select the draft text instead.");
+    }
   };
 
   return <section className="rounded-lg border border-violet-500/25 bg-violet-500/[0.045] p-3" aria-label="AI email assistance">
     <div className="flex items-start gap-2"><div className="mt-0.5 rounded-md bg-violet-600/10 p-1.5 text-violet-700"><Sparkles className="h-4 w-4" /></div><div><p className="text-sm font-semibold text-foreground">AI assistance</p><p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">Describe the goal, audience, and tone. AI suggests a subject and draft body; you freely review and edit everything before saving.</p></div></div>
     <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"><Select value={selectedPromptId} onValueChange={choosePrompt}><SelectTrigger className="h-9 bg-background text-xs"><SelectValue placeholder="Use a saved prompt" /></SelectTrigger><SelectContent><SelectItem value="__none">Choose a saved prompt</SelectItem>{(promptsQuery.data ?? []).map((prompt) => <SelectItem key={prompt.id} value={String(prompt.id)}>{prompt.name}</SelectItem>)}</SelectContent></Select><Button type="button" size="sm" variant="ghost" className="h-9 text-xs" disabled={selectedPromptId === "__none" || deletePrompt.isPending} onClick={removeSelectedPrompt}><Trash2 className="mr-1.5 h-3.5 w-3.5" />Remove</Button></div>
-    <div className="mt-3 grid gap-2 sm:grid-cols-[150px_minmax(0,1fr)]"><div className="space-y-1"><p className="text-[11px] font-medium text-muted-foreground">Draft tone</p><Select value={tone} onValueChange={(value) => setTone(value as AiTone)}><SelectTrigger className="h-9 bg-background text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="professional">Professional</SelectItem><SelectItem value="friendly">Friendly</SelectItem><SelectItem value="urgent">Urgent / action-oriented</SelectItem><SelectItem value="warm">Warm</SelectItem><SelectItem value="concise">Concise</SelectItem></SelectContent></Select></div>{PERSONALIZATION_FIELDS[workflow].length ? <div className="space-y-1"><p className="text-[11px] font-medium text-muted-foreground">Include personalization</p><div className="flex flex-wrap gap-1.5">{PERSONALIZATION_FIELDS[workflow].map((field) => <Button key={field.token} type="button" size="sm" variant={personalizationTokens.includes(field.token) ? "default" : "outline"} className="h-7 px-2 text-[11px]" aria-pressed={personalizationTokens.includes(field.token)} onClick={() => togglePersonalization(field.token)}>{field.label}</Button>)}</div></div> : <p className="self-end text-[11px] leading-relaxed text-muted-foreground">This workflow has no verified dynamic recipient or property fields.</p>}</div>
+    <div className="mt-3 grid gap-2 sm:grid-cols-[150px_minmax(0,1fr)]"><div className="space-y-1"><p className="text-[11px] font-medium text-muted-foreground">Draft tone</p><Select value={tone} onValueChange={(value) => setTone(value as AiTone)}><SelectTrigger className="h-9 bg-background text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="professional">Professional</SelectItem><SelectItem value="friendly">Friendly</SelectItem><SelectItem value="urgent">Urgent / action-oriented</SelectItem><SelectItem value="warm">Warm</SelectItem><SelectItem value="concise">Concise</SelectItem></SelectContent></Select></div><div className="grid grid-cols-[minmax(0,1fr)_90px] gap-2"><div className="space-y-1">{PERSONALIZATION_FIELDS[workflow].length ? <><p className="text-[11px] font-medium text-muted-foreground">Include personalization</p><div className="flex flex-wrap gap-1.5">{PERSONALIZATION_FIELDS[workflow].map((field) => <Button key={field.token} type="button" size="sm" variant={personalizationTokens.includes(field.token) ? "default" : "outline"} className="h-7 px-2 text-[11px]" aria-pressed={personalizationTokens.includes(field.token)} onClick={() => togglePersonalization(field.token)}>{field.label}</Button>)}</div></> : <p className="pt-5 text-[11px] leading-relaxed text-muted-foreground">This workflow has no verified dynamic recipient or property fields.</p>}</div><div className="space-y-1"><p className="text-[11px] font-medium text-muted-foreground">Max words</p><Input type="number" inputMode="numeric" min={25} max={500} value={maxWordCount} onChange={(event) => setMaxWordCount(Math.min(500, Math.max(25, Number(event.target.value) || 25)))} className="h-9 bg-background text-xs" aria-label="Maximum AI-generated email body word count" /></div></div></div>
     <Textarea value={goal} onChange={(event) => setGoal(event.target.value)} className="mt-3 min-h-20 bg-background text-sm" maxLength={800} placeholder="Example: Warmly invite a first-time buyer to review low-down-payment options, reference the property link, and ask for a 15-minute call. Keep the tone clear and educational." aria-label="Describe the goal for the AI email draft" />
     <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"><Input value={promptName} onChange={(event) => setPromptName(event.target.value)} maxLength={120} className="h-9 bg-background text-xs" placeholder="Name this prompt to save it, e.g. Warm buyer follow-up" aria-label="Name saved AI prompt" /><Button type="button" size="sm" variant="outline" className="h-9" onClick={saveCurrentPrompt} disabled={savePrompt.isPending}><Save className="mr-1.5 h-3.5 w-3.5" />{savePrompt.isPending ? "Saving…" : "Save prompt"}</Button></div>
     {generate.isPending ? <div className="mt-3 flex items-center gap-2 rounded-md border border-violet-500/20 bg-background/70 px-3 py-2 text-xs text-violet-950" role="status" aria-live="polite"><Loader2 className="h-4 w-4 animate-spin text-violet-700" /><span><strong>Generating your email draft…</strong> Applying your goal and the current editable copy. This may take a moment.</span></div> : null}
-    {proposedDraft ? <section className="mt-3 rounded-md border border-violet-500/25 bg-background/70 p-3" aria-label="Compare original and proposed AI draft"><div className="flex items-center gap-2"><Columns2 className="h-4 w-4 text-violet-700" /><p className="text-sm font-semibold">Compare before applying</p></div><p className="mt-1 text-xs text-muted-foreground">Nothing has changed in the template yet. Apply the proposal only after reviewing it.</p><div className="mt-3 grid gap-3 md:grid-cols-2"><article className="min-w-0 rounded-md border border-border bg-muted/20 p-2.5"><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Original template</p><p className="mt-2 break-words text-sm font-medium">{currentSubject || "No subject yet"}</p><pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap font-sans text-xs leading-relaxed text-muted-foreground">{plainText(currentBody) || "No body yet"}</pre></article><article className="min-w-0 rounded-md border border-violet-500/30 bg-violet-500/[0.035] p-2.5"><p className="text-[11px] font-semibold uppercase tracking-wide text-violet-800">Proposed AI draft</p><p className="mt-2 break-words text-sm font-medium">{proposedDraft.subject}</p><pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap font-sans text-xs leading-relaxed text-muted-foreground">{proposedDraft.body}</pre></article></div><div className="mt-3 flex flex-wrap justify-end gap-2"><Button type="button" size="sm" variant="ghost" onClick={() => setProposedDraft(null)}><X className="mr-1.5 h-3.5 w-3.5" />Discard proposal</Button><Button type="button" size="sm" variant="outline" onClick={createDraft} disabled={generate.isPending}><RotateCcw className="mr-1.5 h-3.5 w-3.5" />Regenerate / refine</Button><Button type="button" size="sm" onClick={applyProposedDraft}><Check className="mr-1.5 h-3.5 w-3.5" />Apply proposal</Button></div></section> : null}
+    {proposedDraft ? <section className={`mt-3 rounded-md border border-violet-500/25 bg-background/70 p-3 transition-[opacity,transform] duration-200 motion-reduce:transition-none ${isApplying ? "translate-y-1 opacity-0" : "translate-y-0 opacity-100"}`} aria-label="Compare original and proposed AI draft"><div className="flex flex-wrap items-center justify-between gap-2"><div className="flex items-center gap-2"><Columns2 className="h-4 w-4 text-violet-700" /><p className="text-sm font-semibold">Compare before applying</p></div><Button type="button" size="sm" variant="ghost" className="h-8" onClick={copyProposedDraft}><Clipboard className="mr-1.5 h-3.5 w-3.5" />Copy draft</Button></div><p className="mt-1 text-xs text-muted-foreground">Nothing has changed in the template yet. Apply the proposal only after reviewing it.</p><div className="mt-3 grid gap-3 md:grid-cols-2"><article className="min-w-0 rounded-md border border-border bg-muted/20 p-2.5"><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Original template</p><p className="mt-2 break-words text-sm font-medium">{currentSubject || "No subject yet"}</p><pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap font-sans text-xs leading-relaxed text-muted-foreground">{plainText(currentBody) || "No body yet"}</pre></article><article className="min-w-0 rounded-md border border-violet-500/30 bg-violet-500/[0.035] p-2.5"><p className="text-[11px] font-semibold uppercase tracking-wide text-violet-800">Proposed AI draft</p><p className="mt-2 break-words text-sm font-medium">{proposedDraft.subject}</p><pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap font-sans text-xs leading-relaxed text-muted-foreground">{proposedDraft.body}</pre><p className="mt-2 border-t border-violet-500/15 pt-2 text-[11px] text-muted-foreground">{wordCount(proposedDraft.body)} / {maxWordCount} words · {`${proposedDraft.subject} ${proposedDraft.body}`.length} characters</p></article></div><div className="mt-3 flex flex-wrap justify-end gap-2"><Button type="button" size="sm" variant="ghost" onClick={() => setProposedDraft(null)} disabled={isApplying}><X className="mr-1.5 h-3.5 w-3.5" />Discard proposal</Button><Button type="button" size="sm" variant="outline" onClick={createDraft} disabled={generate.isPending || isApplying}><RotateCcw className="mr-1.5 h-3.5 w-3.5" />Regenerate / refine</Button><Button type="button" size="sm" onClick={applyProposedDraft} disabled={isApplying}>{isApplying ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}{isApplying ? "Applying…" : "Apply proposal"}</Button></div></section> : null}
     <div className="mt-3 flex flex-wrap items-center justify-between gap-2"><p className="text-[11px] leading-relaxed text-muted-foreground">AI will not save, send, add a signature, quote rates, or make approval claims.</p><div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" onClick={createDraft} disabled={generate.isPending}>{generate.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1.5 h-3.5 w-3.5" />}{generate.isPending ? "Generating…" : "Draft with AI"}</Button>{hasGenerated ? <Button type="button" size="sm" variant="outline" onClick={createDraft} disabled={generate.isPending}><RotateCcw className="mr-1.5 h-3.5 w-3.5" />Regenerate / refine</Button> : null}</div></div>
   </section>;
 }

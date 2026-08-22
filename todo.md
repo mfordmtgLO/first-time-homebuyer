@@ -694,3 +694,7 @@
 - [x] Add workflow-safe personalization placeholder insertion to AI-generated email templates
 - [x] Add side-by-side original-versus-proposed AI draft preview with explicit apply control
 - [x] Add regression coverage and publish the AI tone, personalization, and comparison enhancements
+
+- [x] Add copy-to-clipboard control and a reduced-motion-safe application transition to the AI proposal preview
+- [x] Add AI draft character and word metrics with a user-selected maximum-word input enforced during generation
+- [x] Add regression coverage and publish the AI proposal feedback and length-control enhancements

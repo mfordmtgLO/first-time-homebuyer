@@ -2373,6 +2373,7 @@ export const appRouter = router({
         goal: z.string().trim().min(4).max(800),
         tone: z.enum(["professional", "friendly", "urgent", "warm", "concise"]).default("professional"),
         personalizationTokens: z.array(z.string().max(100)).max(8).optional(),
+        maxWordCount: z.number().int().min(25).max(500).default(250),
         currentSubject: z.string().max(300).optional(),
         currentBody: z.string().max(8000).optional(),
       }))
@@ -2405,15 +2406,16 @@ export const appRouter = router({
             },
           },
           messages: [
-            { role: "system", content: `You draft reusable mortgage-industry email templates for an internal owner. Return plain text only through the JSON schema. Write a concise subject and body for workflow ${input.workflow} in a ${input.tone} tone. “Urgent” means clear and time-sensitive, never pressure, fear, false scarcity, or a misleading deadline. The owner must review and edit the proposal before it can be saved. Do not include a sign-off, any loan officer signature, rates, APR, payment quotes, approval or eligibility claims, legal advice, unverified property facts, urgency pressure, or fabricated testimonials. Do not claim consent, acceptance, or an outcome. Use only these merge tokens when useful: ${allowedTokens[input.workflow].join(", ") || "none"}. ${requestedTokens.length ? `Include each requested supported personalization token exactly as written in the body: ${requestedTokens.join(", ")}.` : ""} Never invent any other token.` },
-            { role: "user", content: `Email goal: ${input.goal}\n\nSelected tone: ${input.tone}\n\nCurrent subject (optional reference): ${input.currentSubject || "None"}\n\nCurrent body (optional reference): ${input.currentBody || "None"}` },
+            { role: "system", content: `You draft reusable mortgage-industry email templates for an internal owner. Return plain text only through the JSON schema. Write a concise subject and body for workflow ${input.workflow} in a ${input.tone} tone. The body must contain no more than ${input.maxWordCount} words. “Urgent” means clear and time-sensitive, never pressure, fear, false scarcity, or a misleading deadline. The owner must review and edit the proposal before it can be saved. Do not include a sign-off, any loan officer signature, rates, APR, payment quotes, approval or eligibility claims, legal advice, unverified property facts, urgency pressure, or fabricated testimonials. Do not claim consent, acceptance, or an outcome. Use only these merge tokens when useful: ${allowedTokens[input.workflow].join(", ") || "none"}. ${requestedTokens.length ? `Include each requested supported personalization token exactly as written in the body: ${requestedTokens.join(", ")}.` : ""} Never invent any other token.` },
+            { role: "user", content: `Email goal: ${input.goal}\n\nSelected tone: ${input.tone}\n\nMaximum body length: ${input.maxWordCount} words\n\nCurrent subject (optional reference): ${input.currentSubject || "None"}\n\nCurrent body (optional reference): ${input.currentBody || "None"}` },
           ],
         });
         const content = response.choices[0]?.message.content;
         let draft: { subject?: unknown; body?: unknown };
         try { draft = JSON.parse(typeof content === "string" ? content : "{}"); } catch { throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned an unreadable template draft. Please try again." }); }
         const subject = typeof draft.subject === "string" ? draft.subject.trim().slice(0, 300) : "";
-        const body = typeof draft.body === "string" ? draft.body.trim().slice(0, 8000) : "";
+        const rawBody = typeof draft.body === "string" ? draft.body.trim().slice(0, 8000) : "";
+        const body = rawBody.split(/\s+/).filter(Boolean).slice(0, input.maxWordCount).join(" ");
         if (!subject || !body) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI could not prepare a complete email draft. Please try again." });
         return { subject, body } as const;
       }),
