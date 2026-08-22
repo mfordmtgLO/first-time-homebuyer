@@ -39,6 +39,9 @@ describe("LO + agent pairing spend summary", () => {
     expect(componentSource).toContain("xl:h-[28rem]");
     expect(componentSource).toContain("scroll for more");
     expect(componentSource).toContain("max-h-[42rem] overflow-y-auto overscroll-contain");
-    expect(componentSource).toContain("max-h-[22rem] overflow-auto overscroll-contain");
+    expect(componentSource).toContain('aria-label="Spend row history"');
+    expect(componentSource).toContain("max-h-[20rem] overflow-y-scroll overscroll-contain [scrollbar-gutter:stable]");
+    expect(componentSource).toContain("xl:max-h-[24rem]");
+    expect(componentSource).toContain("sticky bottom-0 bg-muted/95");
   });
 });

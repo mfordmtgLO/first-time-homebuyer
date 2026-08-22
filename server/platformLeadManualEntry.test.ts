@@ -64,6 +64,13 @@ describe("native platform lead receiver and manual-entry safeguards", () => {
     expect(routerSource).toContain("updateAssignments: protectedProcedure");
   });
 
+  it("keeps platform-lead filters outside a compact independently scrollable result panel", () => {
+    expect(inboxSource).toContain("max-h-[34rem] overflow-y-scroll overscroll-contain pr-1 [scrollbar-gutter:stable]");
+    expect(inboxSource).toContain('aria-label="Platform lead inbox"');
+    expect(inboxSource).toContain("Search platform leads");
+    expect(inboxSource).toContain("Select all visible ({leads.length})");
+  });
+
   it("groups platform-lead agent assignments into actual Paired and remaining Agents options", () => {
     expect(inboxSource).toContain("trpc.pairingSpendTracker.list.useQuery()");
     expect(inboxSource).toContain("const pairedAgentGroups");

@@ -23,5 +23,7 @@ describe("weekly property engagement summary presentation", () => {
     expect(widget).toContain("weeklyCalendarClickCount");
     expect(widget).toContain("Calendar-button engagement");
     expect(widget).toContain("calendarClickEngagement");
+    expect(widget).toContain("max-h-[34rem] overflow-y-scroll overscroll-contain [scrollbar-gutter:stable]");
+    expect(widget).toContain('aria-label="Weekly property engagement results"');
   });
 });

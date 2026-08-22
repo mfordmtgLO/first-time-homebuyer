@@ -713,3 +713,10 @@
 - [x] Add hover guidance to rapid AI refinement actions
 - [x] Keep co-branded agent and loan-officer search controls prominently available above scrollable results
 - [x] Add regression coverage and publish the AI history-clearing and directory-search refinements
+
+- [x] Add an independently scrollable active Ad platform leads result panel while keeping filters and bulk actions visible
+- [x] Add an independently scrollable Weekly property engagement result panel while keeping metrics and sorting controls visible
+- [x] Add regression coverage and publish the compact platform-lead and weekly-engagement lists
+
+- [x] Add an independently scrollable spend-row history to the LO+Agent Pairings Spend Tracker while retaining allocation totals and add-spend controls
+- [x] Add regression coverage and publish the compact spend tracker history
