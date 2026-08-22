@@ -63,6 +63,7 @@ import {
   createMortgagePaymentQuote,
   createWorkflowAiReviewHistory,
   createTeamLoanOfficerWorkspace,
+  prepareTeamLoanOfficerWorkspace,
   createTeamTemplateLibraryEntry,
   createTeamTemplateSubmission,
   createCampaignSpendEntry,
@@ -130,6 +131,7 @@ import {
   recordChatIntakeResendAttempt,
   recordGeoSphereListingEmailActivity,
   recordPropertyPageActivity,
+  releaseTeamLoanOfficerWorkspaceHandoff,
   refreshPropertyLandingPage,
   savePropertyEngagementThreshold,
   savePropertyEngagementPreferences,
@@ -2598,6 +2600,20 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
         return updateTeamLoanOfficerWorkspaceStatus({ adminUserId: ctx.user.id, ...input });
+      }),
+    prepare: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), prepareTemplateLibrary: z.boolean(), prepareGeoSphere: z.boolean(), prepareOregonAgents: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        await prepareTeamLoanOfficerWorkspace({ adminUserId: ctx.user.id, ...input });
+        return { success: true } as const;
+      }),
+    releaseHandoff: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), handoffNote: z.string().trim().max(1200).nullable().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        await releaseTeamLoanOfficerWorkspaceHandoff({ adminUserId: ctx.user.id, ...input });
+        return { success: true } as const;
       }),
     shadow: protectedProcedure
       .input(z.object({ memberUserId: z.number().int().positive() }))

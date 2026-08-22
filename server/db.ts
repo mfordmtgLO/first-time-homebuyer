@@ -500,6 +500,7 @@ export async function activateTeamLoanOfficerWorkspace(input: { memberUserId: nu
   const workspace = rows[0];
   if (!workspace) throw new Error("No team dashboard invitation matches this signed-in email.");
   if (workspace.status === "suspended") throw new Error("This team dashboard access has been suspended by the administrator.");
+  if (workspace.setupStatus !== "handed_off") throw new Error("Mike Ford has not released this prepared dashboard workspace for handoff yet.");
   await db.update(teamLoanOfficerWorkspace).set({ memberUserId: input.memberUserId, status: "active" }).where(eq(teamLoanOfficerWorkspace.id, workspace.id));
   await setUserDashboardRole(input.memberUserId, "team_member");
   return workspace.id;
@@ -511,9 +512,37 @@ export async function updateTeamLoanOfficerWorkspaceStatus(input: { adminUserId:
   const rows = await db.select().from(teamLoanOfficerWorkspace).where(and(eq(teamLoanOfficerWorkspace.id, input.id), eq(teamLoanOfficerWorkspace.adminUserId, input.adminUserId))).limit(1);
   const workspace = rows[0];
   if (!workspace) throw new Error("Team workspace was not found.");
+  if (input.status === "active" && workspace.setupStatus !== "handed_off") throw new Error("Prepare and release this dashboard workspace before allowing downstream access.");
   await db.update(teamLoanOfficerWorkspace).set({ status: input.status }).where(eq(teamLoanOfficerWorkspace.id, workspace.id));
   if (workspace.memberUserId) await setUserDashboardRole(workspace.memberUserId, input.status === "active" ? "team_member" : "user");
   return { ...workspace, status: input.status };
+}
+
+export async function prepareTeamLoanOfficerWorkspace(input: { adminUserId: number; id: number; prepareTemplateLibrary: boolean; prepareGeoSphere: boolean; prepareOregonAgents: boolean }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db.select().from(teamLoanOfficerWorkspace).where(and(eq(teamLoanOfficerWorkspace.id, input.id), eq(teamLoanOfficerWorkspace.adminUserId, input.adminUserId))).limit(1);
+  const workspace = rows[0];
+  if (!workspace) throw new Error("Team workspace was not found.");
+  if (workspace.status === "active") throw new Error("Suspend the active workspace before changing its pre-handoff setup.");
+  const now = new Date();
+  await db.update(teamLoanOfficerWorkspace).set({
+    setupStatus: "prepared",
+    templateLibraryPreparedAt: input.prepareTemplateLibrary ? now : workspace.templateLibraryPreparedAt,
+    geospherePreparedAt: input.prepareGeoSphere ? now : workspace.geospherePreparedAt,
+    oregonAgentPreparedAt: input.prepareOregonAgents ? now : workspace.oregonAgentPreparedAt,
+  }).where(eq(teamLoanOfficerWorkspace.id, workspace.id));
+}
+
+export async function releaseTeamLoanOfficerWorkspaceHandoff(input: { adminUserId: number; id: number; handoffNote?: string | null }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db.select().from(teamLoanOfficerWorkspace).where(and(eq(teamLoanOfficerWorkspace.id, input.id), eq(teamLoanOfficerWorkspace.adminUserId, input.adminUserId))).limit(1);
+  const workspace = rows[0];
+  if (!workspace) throw new Error("Team workspace was not found.");
+  if (workspace.status === "active") throw new Error("This workspace is already active. Suspend it before preparing a new handoff.");
+  if (workspace.setupStatus !== "prepared") throw new Error("Mark the workspace preparation complete before releasing handoff.");
+  await db.update(teamLoanOfficerWorkspace).set({ setupStatus: "handed_off", handoffReleasedAt: new Date(), handoffNote: input.handoffNote ?? null }).where(eq(teamLoanOfficerWorkspace.id, workspace.id));
 }
 
 export async function getTeamLoanOfficerWorkspaceForMember(memberUserId: number) {

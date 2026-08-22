@@ -17,6 +17,7 @@ import PropertyPageSourceSummary from "@/components/PropertyPageSourceSummary";
 import { DashboardWorkdaySidebar } from "@/components/DashboardWorkdaySidebar";
 import { TeamMemberWorkspacePanel, TeamWorkspaceActivation, TeamWorkspaceManagement } from "@/components/TeamWorkspaceManagement";
 import { TeamTemplateSubmissionPanel } from "@/components/TeamTemplateSubmissionPanel";
+import { TeamMemberProvisioningStatus } from "@/components/TeamWorkspaceProvisioning";
 import {
   buildLeadWelcomeDraft,
   type LeadEmailAgent,
@@ -705,7 +706,7 @@ export default function Leads() {
             <TeamWorkspaceActivation />
           </div>
         ) : isTeamMember ? (
-          <div className="space-y-6"><TeamMemberWorkspacePanel /><TeamTemplateSubmissionPanel /></div>
+          <div className="space-y-6"><TeamMemberProvisioningStatus /><TeamMemberWorkspacePanel /><TeamTemplateSubmissionPanel /></div>
         ) : (
           <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
            <DashboardWorkdaySidebar records={leads.slice(0, 10).map((lead) => ({ label: `Roadmap lead #${lead.id}`, status: lead.status, meta: `${lead.source} · ${new Date(lead.createdAt).toLocaleDateString()}` }))} />

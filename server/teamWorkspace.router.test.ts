@@ -29,11 +29,13 @@ vi.mock("./db", async (importOriginal) => {
     reviewTeamTemplateSubmission: vi.fn(async () => ({ id: 901 })),
     getAdminTeamPerformance: vi.fn(async () => []),
     getAdminTeamActivityFeed: vi.fn(async () => []),
+    prepareTeamLoanOfficerWorkspace: vi.fn(async () => undefined),
+    releaseTeamLoanOfficerWorkspaceHandoff: vi.fn(async () => undefined),
   };
 });
 
 import { appRouter } from "./routers";
-import { activateTeamLoanOfficerWorkspace, createPlatformLeadIfAbsent, createTeamLoanOfficerWorkspace, createTeamTemplateSubmission, getAdminTeamActivityFeed, getAdminTeamPerformance, listCampaignSpendEntries, listLoAgentSpendTrackers, listMortgagePaymentQuotes, listPlatformLeads, listPropertyLandingPages, listTeamTemplateLibrary, reviewTeamTemplateSubmission, updateTeamLoanOfficerWorkspaceStatus } from "./db";
+import { activateTeamLoanOfficerWorkspace, createPlatformLeadIfAbsent, createTeamLoanOfficerWorkspace, createTeamTemplateSubmission, getAdminTeamActivityFeed, getAdminTeamPerformance, listCampaignSpendEntries, listLoAgentSpendTrackers, listMortgagePaymentQuotes, listPlatformLeads, listPropertyLandingPages, listTeamTemplateLibrary, prepareTeamLoanOfficerWorkspace, releaseTeamLoanOfficerWorkspaceHandoff, reviewTeamTemplateSubmission, updateTeamLoanOfficerWorkspaceStatus } from "./db";
 import type { TrpcContext } from "./_core/context";
 
 const activateMock = vi.mocked(activateTeamLoanOfficerWorkspace);
@@ -43,6 +45,8 @@ const createTemplateSubmissionMock = vi.mocked(createTeamTemplateSubmission);
 const reviewTemplateSubmissionMock = vi.mocked(reviewTeamTemplateSubmission);
 const performanceMock = vi.mocked(getAdminTeamPerformance);
 const activityFeedMock = vi.mocked(getAdminTeamActivityFeed);
+const prepareWorkspaceMock = vi.mocked(prepareTeamLoanOfficerWorkspace);
+const releaseWorkspaceMock = vi.mocked(releaseTeamLoanOfficerWorkspaceHandoff);
 const listCampaignSpendMock = vi.mocked(listCampaignSpendEntries);
 const listSpendTrackersMock = vi.mocked(listLoAgentSpendTrackers);
 const listMortgageQuoteMock = vi.mocked(listMortgagePaymentQuotes);
@@ -147,5 +151,16 @@ describe("team loan-officer workspaces", () => {
     await admin.teamTemplates.reviewSubmission({ id: 901, decision: "approved", availability: "team_read_only" });
     expect(reviewTemplateSubmissionMock).toHaveBeenCalledWith(expect.objectContaining({ adminUserId: 9, id: 901, status: "approved", approvedLibraryTemplateId: 88 }));
     await expect(member.teamTemplates.reviewSubmission({ id: 901, decision: "approved" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("allows only Mike Ford to record setup readiness and release a prepared workspace for secure handoff", async () => {
+    const admin = appRouter.createCaller(context("admin"));
+    await admin.teamWorkspace.prepare({ id: 71, prepareTemplateLibrary: true, prepareGeoSphere: true, prepareOregonAgents: true });
+    expect(prepareWorkspaceMock).toHaveBeenCalledWith({ adminUserId: 9, id: 71, prepareTemplateLibrary: true, prepareGeoSphere: true, prepareOregonAgents: true });
+    await admin.teamWorkspace.releaseHandoff({ id: 71, handoffNote: "Profile and approved resources verified." });
+    expect(releaseWorkspaceMock).toHaveBeenCalledWith({ adminUserId: 9, id: 71, handoffNote: "Profile and approved resources verified." });
+    const member = appRouter.createCaller(context("team_member"));
+    await expect(member.teamWorkspace.prepare({ id: 71, prepareTemplateLibrary: true, prepareGeoSphere: true, prepareOregonAgents: true })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(member.teamWorkspace.releaseHandoff({ id: 71 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

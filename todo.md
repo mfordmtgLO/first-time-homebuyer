@@ -782,3 +782,9 @@
 
 - [x] Document the current platform-managed team loan-officer invitation and workspace-activation steps for Mike Ford
 - [x] Assess a separate identity-provider-based temporary-password and first-login reset flow without storing credentials in the dashboard
+
+- [x] Audit team ownership boundaries for GeoSphere listings, Oregon agent sync, and reusable email/text/outreach template families
+- [x] Add an admin-only downstream loan-officer provisioning checklist with controlled setup-readiness state
+- [x] Add administrator controls to seed approved template libraries and prepare authorized listing and Oregon-agent sync resources for a downstream workspace
+- [x] Add an explicit secure workspace handoff control that releases a prepared dashboard only after Mike Ford confirms readiness
+- [x] Add migration, access-control coverage, responsive verification, release validation, and publish the provisioning-and-handoff workflow
