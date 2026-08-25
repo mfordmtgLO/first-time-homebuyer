@@ -10,8 +10,8 @@ export function getHorizontalSectionNavScrollAmount(direction: "left" | "right")
 export const publicSectionNavigationItems = [
   { id: "top", label: "Top", icon: ChevronUp },
   { id: "cost-of-waiting", label: "Cost of Waiting", icon: null },
-  { id: "programs", label: "Loan Programs", icon: null },
   { id: "buydown", label: "2-1 Buydown", icon: null },
+  { id: "programs", label: "Loan Programs", icon: null },
   { id: "roadmap", label: "Roadmap", icon: null },
   { id: "how-it-works", label: "How It Works", icon: null },
   { id: "about", label: "Your Guide", icon: null },

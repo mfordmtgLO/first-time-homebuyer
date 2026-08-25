@@ -8,8 +8,8 @@ describe("publicSectionNavigationItems", () => {
     expect(publicSectionNavigationItems.map((item) => item.id)).toEqual([
       "top",
       "cost-of-waiting",
-      "programs",
       "buydown",
+      "programs",
       "roadmap",
       "how-it-works",
       "about",

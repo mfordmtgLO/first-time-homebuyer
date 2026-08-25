@@ -798,3 +798,6 @@
 
 - [x] Remove the redundant upper public-header navigation row while preserving the lower persistent section navigator with Top and Mortgage Chat
 - [x] Add regression coverage, responsive verification, and publish the streamlined public header navigation
+
+- [x] Move the 2-1 Buydown item directly after Cost of Waiting in the persistent public section navigator
+- [x] Add regression coverage, responsive verification, and publish the revised public section order
