@@ -60,4 +60,16 @@ describe("publicSectionNavigationItems", () => {
     expect(homeSource).not.toContain('id="mortgage-estimator"');
     expect(navSource).not.toContain("Payment Estimate");
   });
+
+  it("keeps section navigation in the persistent lower row rather than duplicating it in the upper header", () => {
+    const projectRoot = path.resolve(import.meta.dirname, "..");
+    const headerSource = readFileSync(path.join(projectRoot, "client/src/components/landing/Nav.tsx"), "utf8");
+    const sectionNavSource = readFileSync(path.join(projectRoot, "client/src/components/landing/PublicSectionNav.tsx"), "utf8");
+
+    expect(headerSource).not.toContain("const links =");
+    expect(headerSource).not.toContain('href="#programs"');
+    expect(headerSource).not.toContain('href="#buydown"');
+    expect(sectionNavSource).toContain('label: "Top"');
+    expect(sectionNavSource).toContain("Mortgage Chat");
+  });
 });

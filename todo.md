@@ -790,11 +790,11 @@
 - [x] Add migration, access-control coverage, responsive verification, release validation, and publish the provisioning-and-handoff workflow
 
 - [x] Create a presentation summarizing Mike Ford administrator controls, downstream workspace setup, secure handoff, oversight, template governance, and future ad-account connection readiness
-
 - [x] Draft exact screen-by-screen onboarding wizard wireframes and interaction specifications for Mike Ford provisioning and securely handing off a downstream loan-officer workspace
-
 - [x] Draft the official OAuth scopes, account-selection, form-mapping, token-security, and release-gate steps for downstream officer-specific Meta and Google Ads connections
 - [x] Create presentation slides based on the downstream loan-officer onboarding wizard wireframes
-
 - [x] Draft compliant downstream loan-officer account-handoff, activation, reminder, suspension, and setup-readiness email notification templates
 - [x] Generate complete presenter notes and delivery script for the onboarding-wizard slide deck
+
+- [x] Remove the redundant upper public-header navigation row while preserving the lower persistent section navigator with Top and Mortgage Chat
+- [x] Add regression coverage, responsive verification, and publish the streamlined public header navigation

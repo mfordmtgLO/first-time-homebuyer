@@ -5,15 +5,6 @@ import { Phone } from "lucide-react";
 
 const LOGO = "/manus-storage/cornerstone-logo-standard_72b02c9f.png";
 
-const links = [
-  { href: "#programs", label: "Loan Programs" },
-  { href: "#buydown", label: "2-1 Buydown" },
-  { href: "#roadmap", label: "Free Roadmap" },
-  { href: "#how-it-works", label: "How It Works" },
-  { href: "#about", label: "About" },
-  { href: "#faq", label: "FAQ" },
-];
-
 export default function Nav() {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
@@ -40,17 +31,6 @@ export default function Nav() {
             className="h-9 md:h-11 w-auto object-contain"
           />
         </a>
-        <nav className="hidden lg:flex items-center gap-7">
-          {links.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              className="text-sm font-medium text-foreground/75 hover:text-foreground transition-colors"
-            >
-              {l.label}
-            </a>
-          ))}
-        </nav>
         <div className="flex items-center gap-3">
           <a
             href="tel:+15417290819"
