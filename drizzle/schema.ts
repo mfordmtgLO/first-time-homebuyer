@@ -1099,6 +1099,32 @@ export const mortgagePaymentQuote = mysqlTable(
 export type MortgagePaymentQuote = typeof mortgagePaymentQuote.$inferSelect;
 export type InsertMortgagePaymentQuote = typeof mortgagePaymentQuote.$inferInsert;
 
+/**
+ * Owner-maintained record of completed backup snapshots and officially
+ * confirmed restorations. The application does not perform platform restores;
+ * this log documents events after the owner verifies them in the official portal.
+ */
+export const backupHistoryEvent = mysqlTable(
+  "backup_history_event",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerUserId: int("ownerUserId").notNull(),
+    eventType: mysqlEnum("eventType", ["backup_created", "restore_confirmed"]).notNull(),
+    label: varchar("label", { length: 180 }).notNull(),
+    packageReference: varchar("packageReference", { length: 300 }),
+    notes: text("notes"),
+    occurredAt: timestamp("occurredAt").defaultNow().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [
+    index("backup_history_event_owner_occurred_idx").on(table.ownerUserId, table.occurredAt),
+    index("backup_history_event_owner_type_idx").on(table.ownerUserId, table.eventType),
+  ]
+);
+
+export type BackupHistoryEvent = typeof backupHistoryEvent.$inferSelect;
+export type InsertBackupHistoryEvent = typeof backupHistoryEvent.$inferInsert;
+
 /** Owner-private snapshots of AI workflow reviews and the owner's manually recorded outcomes. */
 export const workflowAiReviewHistory = mysqlTable(
   "workflow_ai_review_history",

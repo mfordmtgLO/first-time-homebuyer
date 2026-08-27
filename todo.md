@@ -805,3 +805,12 @@
 - [x] Guide the owner to the official full account and task/project backup portal options
 
 - [x] Provide official step-by-step instructions for a complete export of all tasks and website project data
+
+- [x] Add a private administrator backup-readiness panel with a confirmed link to the official restore portal rather than an unsafe automatic restore action
+- [x] Add an owner-maintained backup and restoration history log for documented backup events and completed restoration events
+- [x] Add migration, access-control coverage, responsive verification, and publish the private backup-management dashboard panel
+
+- [x] Add a confirmation warning modal before opening the official restore portal from the private backup panel
+- [x] Add date-range filtering and text search to the private backup-history log
+- [x] Add loading and success feedback when an owner records a completed external restoration event
+- [x] Add focused coverage, responsive verification, and publish the private backup-management refinements

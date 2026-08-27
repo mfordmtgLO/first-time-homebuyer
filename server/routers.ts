@@ -62,6 +62,7 @@ import {
   updateLoAgentSpendEntry,
   createMortgagePaymentQuote,
   createWorkflowAiReviewHistory,
+  createBackupHistoryEvent,
   createTeamLoanOfficerWorkspace,
   prepareTeamLoanOfficerWorkspace,
   createTeamTemplateLibraryEntry,
@@ -149,6 +150,7 @@ import {
   listTeamTemplateSubmissionsForAdmin,
   listTeamTemplateSubmissionsForMember,
   listWorkflowAiReviewHistory,
+  listBackupHistoryEvents,
   listSyncedTopAgents,
   listSyncedAgentOutreachTemplates,
   listSyncedTopAgentRankHistory,
@@ -2556,6 +2558,25 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
         return updateWorkflowAiReviewOutcome({ ...input, ownerUserId: ctx.user.id });
+      }),
+  }),
+
+  backupManagement: router({
+    /** Administrator-only documented backup/restoration event history. */
+    list: protectedProcedure
+      .input(z.object({ query: z.string().trim().max(180).optional(), startDate: z.coerce.date().optional(), endDate: z.coerce.date().optional(), limit: z.number().int().min(1).max(100).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        if (input?.startDate && input.endDate && input.startDate > input.endDate) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "The start date must be on or before the end date." });
+        }
+        return listBackupHistoryEvents({ ownerUserId: ctx.user.id, query: input?.query, startDate: input?.startDate, endDate: input?.endDate, limit: input?.limit ?? 80 });
+      }),
+    recordEvent: protectedProcedure
+      .input(z.object({ eventType: z.enum(["backup_created", "restore_confirmed"]), label: z.string().trim().min(1).max(180), packageReference: z.string().trim().max(300).nullable().optional(), notes: z.string().trim().max(2000).nullable().optional(), occurredAt: z.coerce.date() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return createBackupHistoryEvent({ ...input, ownerUserId: ctx.user.id });
       }),
   }),
 

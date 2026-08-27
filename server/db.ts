@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, getTableColumns, gte, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, getTableColumns, gte, inArray, isNotNull, isNull, like, lte, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -31,6 +31,7 @@ import {
   loAgentSpendEntry,
   loAgentSpendPairing,
   mortgagePaymentQuote,
+  backupHistoryEvent,
   workflowAiReviewHistory,
   teamLoanOfficerWorkspace,
   teamTemplateLibrary,
@@ -1908,6 +1909,62 @@ export async function updateWorkflowAiReviewOutcome(input: {
   await db.update(workflowAiReviewHistory).set({ status: input.status, feedback: input.feedback ?? null, ownerNote: input.ownerNote ?? null }).where(and(eq(workflowAiReviewHistory.id, input.id), eq(workflowAiReviewHistory.ownerUserId, input.ownerUserId)));
   const rows = await db.select().from(workflowAiReviewHistory).where(and(eq(workflowAiReviewHistory.id, input.id), eq(workflowAiReviewHistory.ownerUserId, input.ownerUserId))).limit(1);
   if (!rows[0]) throw new Error("Workflow review history was not found.");
+  return rows[0];
+}
+
+// ---------------------------------------------------------------------------
+// Private administrator backup readiness and documented history
+// ---------------------------------------------------------------------------
+
+export type BackupHistoryEventType = "backup_created" | "restore_confirmed";
+
+export async function listBackupHistoryEvents(input: {
+  ownerUserId: number;
+  query?: string;
+  startDate?: Date;
+  endDate?: Date;
+  limit?: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const conditions = [eq(backupHistoryEvent.ownerUserId, input.ownerUserId)];
+  if (input.startDate) conditions.push(gte(backupHistoryEvent.occurredAt, input.startDate));
+  if (input.endDate) conditions.push(lte(backupHistoryEvent.occurredAt, input.endDate));
+  const query = input.query?.trim();
+  if (query) {
+    const pattern = `%${query.replace(/[\\%_]/g, "\\$&")}%`;
+    conditions.push(or(
+      like(backupHistoryEvent.label, pattern),
+      like(backupHistoryEvent.packageReference, pattern),
+      like(backupHistoryEvent.notes, pattern),
+    )!);
+  }
+
+  return db
+    .select()
+    .from(backupHistoryEvent)
+    .where(and(...conditions))
+    .orderBy(desc(backupHistoryEvent.occurredAt), desc(backupHistoryEvent.id))
+    .limit(input.limit ?? 100);
+}
+
+export async function createBackupHistoryEvent(input: {
+  ownerUserId: number;
+  eventType: BackupHistoryEventType;
+  label: string;
+  packageReference?: string | null;
+  notes?: string | null;
+  occurredAt: Date;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(backupHistoryEvent).values(input);
+  const rows = await db.select().from(backupHistoryEvent).where(and(
+    eq(backupHistoryEvent.id, Number(result.insertId)),
+    eq(backupHistoryEvent.ownerUserId, input.ownerUserId),
+  )).limit(1);
+  if (!rows[0]) throw new Error("Could not record backup history event.");
   return rows[0];
 }
 
