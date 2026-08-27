@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BadgeCheck, CirclePause, KeyRound, Loader2, Save, ShieldAlert } from "lucide-react";
+import { BadgeCheck, CircleAlert, CircleCheck, CirclePause, KeyRound, Loader2, PlugZap, Save, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,13 @@ const STAGE_LABELS: Record<Stage, string> = {
   compliance_pending: "Compliance approval pending",
   approved_not_connected: "Approved — not connected",
 };
+
+function getReadiness(accountReference: string, apiKeyConfigured: boolean, stage: Stage) {
+  if (!accountReference.trim()) return { label: "Inactive — Account ID missing", detail: "Add a non-secret advertising Account ID after the provider account is created.", tone: "text-muted-foreground", Icon: CircleAlert };
+  if (!apiKeyConfigured) return { label: "Inactive — secure API key missing", detail: "A protected key may be added only after the account and approval requirements are ready.", tone: "text-amber-800 dark:text-amber-200", Icon: CircleAlert };
+  if (stage === "approved_not_connected") return { label: "Ready to connect — still off", detail: "All planning fields are present, but no provider request, webhook, or import is enabled.", tone: "text-emerald-700 dark:text-emerald-300", Icon: CircleCheck };
+  return { label: "Inactive — planning in progress", detail: "Secure key is present; complete compliance and form-mapping steps before a future connection review.", tone: "text-primary", Icon: CirclePause };
+}
 
 function PlanningCard({ provider, title, detail }: { provider: Provider; title: string; detail: string }) {
   const utils = trpc.useUtils();
@@ -45,10 +52,16 @@ function PlanningCard({ provider, title, detail }: { provider: Provider; title: 
     onError: (error) => toast.error(error.message),
   });
 
+  const readiness = getReadiness(accountReference, Boolean(saved?.apiKeyConfigured), stage);
+
   return <article className="flex flex-col rounded-xl border border-border bg-background/60 p-4">
     <div className="flex items-start justify-between gap-3">
       <div><h3 className="font-bold">{title}</h3><p className="mt-1 text-sm leading-5 text-muted-foreground">{detail}</p></div>
       <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[11px] font-bold text-amber-800 dark:text-amber-200"><CirclePause className="h-3.5 w-3.5" aria-hidden="true" />On hold</span>
+    </div>
+    <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3">
+      <div className={`flex items-center gap-2 text-xs font-bold ${readiness.tone}`}><readiness.Icon className="h-4 w-4" aria-hidden="true" />{readiness.label}</div>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">{readiness.detail}</p>
     </div>
     <div className="mt-4 grid gap-3">
       <label className="grid gap-1.5 text-xs font-semibold">Setup stage<select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={stage} onChange={(event) => setStage(event.target.value as Stage)}>{(Object.keys(STAGE_LABELS) as Stage[]).map((value) => <option key={value} value={value}>{STAGE_LABELS[value]}</option>)}</select></label>
@@ -64,6 +77,11 @@ function PlanningCard({ provider, title, detail }: { provider: Provider; title: 
     <Button type="button" className="mt-4 self-start" onClick={() => save.mutate({ provider, setupStage: stage, accountReference: accountReference.trim() || null, formReference: formReference.trim() || null, internalNote: internalNote.trim() || null })} disabled={save.isPending}>
       {save.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="mr-2 h-4 w-4" aria-hidden="true" />}Save planning settings
     </Button>
+    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+      <Button type="button" variant="outline" disabled title="Available only after a future administrator-approved connection is enabled."><PlugZap className="mr-2 h-4 w-4" aria-hidden="true" />Test connection</Button>
+      <Button type="button" variant="outline" disabled title="Protected key changes are handled only through the secure project secret store."><KeyRound className="mr-2 h-4 w-4" aria-hidden="true" />Revoke secure key</Button>
+    </div>
+    <p className="mt-2 text-xs leading-5 text-muted-foreground">These controls stay unavailable while the integration is on hold. They do not make provider requests or change secure keys.</p>
   </article>;
 }
 
@@ -72,6 +90,10 @@ export default function AdvertisingIntegrationSettings() {
     <div className="flex flex-col gap-3 border-b border-border pb-4 lg:flex-row lg:items-start lg:justify-between">
       <div><div className="flex items-center gap-2 text-primary"><BadgeCheck className="h-5 w-5" aria-hidden="true" /><span className="text-xs font-bold uppercase tracking-[0.16em]">Administrator only</span></div><h2 id="advertising-integrations-heading" className="mt-2 text-xl font-bold tracking-tight">Advertising integration settings</h2><p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">Save non-secret account and form planning details as Mike Ford prepares a future, compliance-approved connection for Meta or Google paid-lead workflows.</p></div>
       <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-800 dark:text-amber-200"><ShieldAlert className="h-4 w-4" aria-hidden="true" />No credentials, webhooks, or lead imports enabled</span>
+    </div>
+    <div className="mt-4 grid gap-3 rounded-xl border border-border bg-muted/35 p-4 lg:grid-cols-[auto_minmax(0,1fr)]">
+      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary"><ShieldAlert className="h-4 w-4" aria-hidden="true" /></div>
+      <div><h3 className="font-bold">Future connection checklist</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">Create the provider account, record its non-secret Account ID, obtain required compliance approval, identify approved lead forms and mappings, then add a protected API key only when the administrator approves a future connection. Until that point, both providers remain inactive and no leads are imported.</p></div>
     </div>
     <div className="mt-4 grid gap-4 xl:grid-cols-2">{PROVIDERS.map((provider) => <PlanningCard key={provider.value} provider={provider.value} title={provider.title} detail={provider.detail} />)}</div>
   </section>;

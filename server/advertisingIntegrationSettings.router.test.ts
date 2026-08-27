@@ -53,6 +53,13 @@ describe("advertising integration planning settings", () => {
     expect(source).toContain("API key values are never stored here, in GitHub, or in dashboard data.");
     expect(source).toContain("Once saved, no editing—delete and re-enter to change the API key.");
     expect(source).toContain('type="password"');
+    expect(source).toContain("Inactive — Account ID missing");
+    expect(source).toContain("Inactive — secure API key missing");
+    expect(source).toContain("Ready to connect — still off");
+    expect(source).toContain("Future connection checklist");
+    expect(source).toContain("Test connection");
+    expect(source).toContain("Revoke secure key");
+    expect(source).toContain("disabled");
     expect(source).toContain("On hold");
   });
 

@@ -825,3 +825,8 @@
 - [x] Preserve secret-store handling and keep external advertising credentials, webhooks, and lead imports inactive
 - [x] Add safeguard coverage, responsive verification, and publish the secure advertising-settings refinement
 - [x] Ensure no API key values are stored in GitHub, application data, browser-visible code, or logs; use protected secret storage only
+
+- [x] Add clearly labeled inactive, missing-credential, and ready-to-connect status indicators for Meta and Google advertising preparation
+- [x] Add safe future-setup guidance for account creation, compliance approval, secure key entry, and form mapping without activating integrations
+- [x] Preserve the no-account, no-credential, no-webhook, no-test-request, and no-lead-import state until the administrator explicitly approves a future connection
+- [x] Add safeguards, regression coverage, responsive verification, and publish the advertising-integration readiness experience
