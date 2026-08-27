@@ -830,3 +830,8 @@
 - [x] Add safe future-setup guidance for account creation, compliance approval, secure key entry, and form mapping without activating integrations
 - [x] Preserve the no-account, no-credential, no-webhook, no-test-request, and no-lead-import state until the administrator explicitly approves a future connection
 - [x] Add safeguards, regression coverage, responsive verification, and publish the advertising-integration readiness experience
+
+- [x] Add official credential-location help beside the non-revealing Meta and Google API-key status controls
+- [x] Add a Getting Started prerequisites checklist to the administrator advertising integrations settings
+- [x] Add an administrator-controlled master visibility switch that hides or reveals the inactive advertising integrations settings module
+- [x] Add migration, safeguards, regression coverage, responsive verification, and publish the advertising-integration readiness controls

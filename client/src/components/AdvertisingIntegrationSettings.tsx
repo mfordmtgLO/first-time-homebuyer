@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { BadgeCheck, CircleAlert, CircleCheck, CirclePause, KeyRound, Loader2, PlugZap, Save, ShieldAlert } from "lucide-react";
+import { BadgeCheck, CircleAlert, CircleCheck, CircleHelp, CirclePause, ExternalLink, KeyRound, Loader2, PlugZap, Save, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Provider = "meta" | "google_ads";
 type Stage = "not_started" | "details_saved" | "compliance_pending" | "approved_not_connected";
@@ -19,6 +21,21 @@ const STAGE_LABELS: Record<Stage, string> = {
   details_saved: "Planning details saved",
   compliance_pending: "Compliance approval pending",
   approved_not_connected: "Approved — not connected",
+};
+
+const CREDENTIAL_HELP: Record<Provider, { summary: string; location: string; href: string; linkLabel: string }> = {
+  meta: {
+    summary: "Meta uses an access token for Marketing API calls; the dashboard never displays or stores that token.",
+    location: "Create or select the app in Meta for Developers, add the Marketing API, then use Graph API Explorer to select the app, choose a User Token, select the required ad permissions, and generate a token only when the approved connection is ready. Find the non-secret Ad Account ID in Meta Ads Manager.",
+    href: "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/authentication",
+    linkLabel: "Open Meta authentication guide",
+  },
+  google_ads: {
+    summary: "Google Ads API uses OAuth 2.0 plus a developer token; the dashboard never displays or stores a credential.",
+    location: "Find the non-secret Google Ads Customer ID in the Google Ads account. When approved, create OAuth credentials in Google Cloud Console under APIs & Services → Credentials and obtain the developer token in the Google Ads manager account API Center.",
+    href: "https://developers.google.com/google-ads/api/docs/oauth/overview",
+    linkLabel: "Open Google Ads OAuth guide",
+  },
 };
 
 function getReadiness(accountReference: string, apiKeyConfigured: boolean, stage: Stage) {
@@ -53,6 +70,7 @@ function PlanningCard({ provider, title, detail }: { provider: Provider; title: 
   });
 
   const readiness = getReadiness(accountReference, Boolean(saved?.apiKeyConfigured), stage);
+  const credentialHelp = CREDENTIAL_HELP[provider];
 
   return <article className="flex flex-col rounded-xl border border-border bg-background/60 p-4">
     <div className="flex items-start justify-between gap-3">
@@ -69,7 +87,9 @@ function PlanningCard({ provider, title, detail }: { provider: Provider; title: 
       <label className="grid gap-1.5 text-xs font-semibold">Approved form reference (non-secret)<Input value={formReference} maxLength={240} onChange={(event) => setFormReference(event.target.value)} placeholder="Lead form name or ID" /></label>
       <label className="grid gap-1.5 text-xs font-semibold">Internal planning notes<Textarea value={internalNote} maxLength={2000} onChange={(event) => setInternalNote(event.target.value)} className="min-h-20 resize-y" placeholder="Compliance notes, form mapping decisions, or release dependencies" /></label>
       <div className="rounded-lg border border-border bg-muted/40 p-3">
-        <div className="flex items-center gap-2 text-xs font-bold"><KeyRound className="h-4 w-4 text-primary" aria-hidden="true" />Secure API key</div>
+        <div className="flex items-center gap-2 text-xs font-bold"><KeyRound className="h-4 w-4 text-primary" aria-hidden="true" />Secure API key
+          <Tooltip><TooltipTrigger asChild><button type="button" className="rounded-sm text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Where to find ${title} credentials`}><CircleHelp className="h-4 w-4" aria-hidden="true" /></button></TooltipTrigger><TooltipContent side="top" className="max-w-96 p-3 leading-5"><p className="font-bold">Where to find {title} credentials</p><p className="mt-1">{credentialHelp.summary}</p><p className="mt-2">{credentialHelp.location}</p><a className="mt-2 inline-flex items-center gap-1 font-bold underline" href={credentialHelp.href} target="_blank" rel="noreferrer">{credentialHelp.linkLabel}<ExternalLink className="h-3 w-3" aria-hidden="true" /></a></TooltipContent></Tooltip>
+        </div>
         <Input className="mt-2 font-mono" type="password" value={saved?.apiKeyConfigured ? "••••••••••••" : ""} readOnly aria-label={`${title} secure API key status`} placeholder="Not configured in secure storage" />
         <p className="mt-2 text-xs leading-5 text-muted-foreground">API key values are never stored here, in GitHub, or in dashboard data. {saved?.apiKeyConfigured ? "A protected key is configured and remains hidden." : "Use protected project secret storage when an approved key is ready."} <strong>Once saved, no editing—delete and re-enter to change the API key.</strong></p>
       </div>
@@ -86,15 +106,32 @@ function PlanningCard({ provider, title, detail }: { provider: Provider; title: 
 }
 
 export default function AdvertisingIntegrationSettings() {
+  const utils = trpc.useUtils();
+  const { data: moduleVisibility, isLoading: isVisibilityLoading } = trpc.adIntegrationSettings.moduleVisibility.useQuery();
+  const setModuleVisibility = trpc.adIntegrationSettings.setModuleVisibility.useMutation({
+    onSuccess: async (result) => {
+      await utils.adIntegrationSettings.moduleVisibility.invalidate();
+      toast.success(result.isVisible ? "Advertising integrations settings shown. Connections remain inactive." : "Advertising integrations settings hidden. Connections remain inactive.");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const isVisible = moduleVisibility?.isVisible ?? true;
+
   return <section id="advertising-integrations" className="scroll-mt-24 rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-sm sm:p-5" aria-labelledby="advertising-integrations-heading">
     <div className="flex flex-col gap-3 border-b border-border pb-4 lg:flex-row lg:items-start lg:justify-between">
       <div><div className="flex items-center gap-2 text-primary"><BadgeCheck className="h-5 w-5" aria-hidden="true" /><span className="text-xs font-bold uppercase tracking-[0.16em]">Administrator only</span></div><h2 id="advertising-integrations-heading" className="mt-2 text-xl font-bold tracking-tight">Advertising integration settings</h2><p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">Save non-secret account and form planning details as Mike Ford prepares a future, compliance-approved connection for Meta or Google paid-lead workflows.</p></div>
       <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-800 dark:text-amber-200"><ShieldAlert className="h-4 w-4" aria-hidden="true" />No credentials, webhooks, or lead imports enabled</span>
     </div>
+    <div className="mt-4 flex items-center justify-between gap-4 rounded-xl border border-border bg-muted/35 p-4">
+      <div><p className="font-bold">Show advertising setup module</p><p className="mt-1 text-sm leading-5 text-muted-foreground">This hides or shows planning controls only. It never activates Meta or Google.</p></div>
+      <Switch checked={isVisible} disabled={isVisibilityLoading || setModuleVisibility.isPending} onCheckedChange={(checked) => setModuleVisibility.mutate({ isVisible: checked })} aria-label="Show advertising integration settings" />
+    </div>
+    {!isVisible ? <div className="mt-4 rounded-xl border border-dashed border-border bg-muted/25 p-4 text-sm text-muted-foreground">Advertising integration settings are hidden by the administrator. Use the switch above to show the inactive planning controls again.</div> : <>
     <div className="mt-4 grid gap-3 rounded-xl border border-border bg-muted/35 p-4 lg:grid-cols-[auto_minmax(0,1fr)]">
       <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary"><ShieldAlert className="h-4 w-4" aria-hidden="true" /></div>
-      <div><h3 className="font-bold">Future connection checklist</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">Create the provider account, record its non-secret Account ID, obtain required compliance approval, identify approved lead forms and mappings, then add a protected API key only when the administrator approves a future connection. Until that point, both providers remain inactive and no leads are imported.</p></div>
+      <div><h3 className="font-bold">Getting Started checklist</h3><ol className="mt-2 list-decimal space-y-1 pl-5 text-sm leading-6 text-muted-foreground"><li>Create the Meta Business/Ads or Google Ads account and identify the non-secret Account ID.</li><li>Obtain corporate compliance approval for the campaign, consent language, and lead form.</li><li>Record the approved form name or ID and its dashboard field mapping.</li><li>When connection approval is granted, add the provider credential only through protected secret storage.</li><li>Complete a future administrator connection review before any webhook, test request, or lead import is enabled.</li></ol></div>
     </div>
     <div className="mt-4 grid gap-4 xl:grid-cols-2">{PROVIDERS.map((provider) => <PlanningCard key={provider.value} provider={provider.value} title={provider.title} detail={provider.detail} />)}</div>
+    </>}
   </section>;
 }

@@ -8,15 +8,19 @@ vi.mock("./db", async (importOriginal) => {
     ...actual,
     listAdvertisingIntegrationSettings: vi.fn(async () => []),
     saveAdvertisingIntegrationSetting: vi.fn(async (input) => ({ id: 811, ...input, createdAt: new Date(), updatedAt: new Date() })),
+    getAdvertisingIntegrationModuleVisibility: vi.fn(async () => ({ isVisible: true })),
+    saveAdvertisingIntegrationModuleVisibility: vi.fn(async (input) => ({ isVisible: input.isVisible })),
   };
 });
 
 import { appRouter } from "./routers";
-import { listAdvertisingIntegrationSettings, saveAdvertisingIntegrationSetting } from "./db";
+import { getAdvertisingIntegrationModuleVisibility, listAdvertisingIntegrationSettings, saveAdvertisingIntegrationModuleVisibility, saveAdvertisingIntegrationSetting } from "./db";
 import type { TrpcContext } from "./_core/context";
 
 const listSettingsMock = vi.mocked(listAdvertisingIntegrationSettings);
 const saveSettingsMock = vi.mocked(saveAdvertisingIntegrationSetting);
+const getModuleVisibilityMock = vi.mocked(getAdvertisingIntegrationModuleVisibility);
+const saveModuleVisibilityMock = vi.mocked(saveAdvertisingIntegrationModuleVisibility);
 
 function context(role: "admin" | "team_member"): TrpcContext {
   return {
@@ -41,8 +45,14 @@ describe("advertising integration planning settings", () => {
       internalNote: "Awaiting approved consent copy.",
     });
     expect(saveSettingsMock).toHaveBeenCalledWith(expect.objectContaining({ ownerUserId: 9, provider: "meta", setupStage: "compliance_pending" }));
+    await admin.adIntegrationSettings.moduleVisibility();
+    expect(getModuleVisibilityMock).toHaveBeenCalledWith(9);
+    await admin.adIntegrationSettings.setModuleVisibility({ isVisible: false });
+    expect(saveModuleVisibilityMock).toHaveBeenCalledWith({ ownerUserId: 9, isVisible: false });
     await expect(appRouter.createCaller(context("team_member")).adIntegrationSettings.list()).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(appRouter.createCaller(context("team_member")).adIntegrationSettings.save({ provider: "google_ads", setupStage: "details_saved" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(appRouter.createCaller(context("team_member")).adIntegrationSettings.moduleVisibility()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(appRouter.createCaller(context("team_member")).adIntegrationSettings.setModuleVisibility({ isVisible: true })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("keeps key values outside the UI and retains credentials, webhooks, and lead imports as unavailable", async () => {
@@ -56,7 +66,12 @@ describe("advertising integration planning settings", () => {
     expect(source).toContain("Inactive — Account ID missing");
     expect(source).toContain("Inactive — secure API key missing");
     expect(source).toContain("Ready to connect — still off");
-    expect(source).toContain("Future connection checklist");
+    expect(source).toContain("Getting Started checklist");
+    expect(source).toContain("Where to find {title} credentials");
+    expect(source).toContain("developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/authentication");
+    expect(source).toContain("developers.google.com/google-ads/api/docs/oauth/overview");
+    expect(source).toContain("Show advertising setup module");
+    expect(source).toContain("setModuleVisibility");
     expect(source).toContain("Test connection");
     expect(source).toContain("Revoke secure key");
     expect(source).toContain("disabled");

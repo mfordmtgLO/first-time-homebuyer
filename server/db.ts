@@ -33,6 +33,7 @@ import {
   mortgagePaymentQuote,
   backupHistoryEvent,
   advertisingIntegrationSetting,
+  advertisingIntegrationModuleSetting,
   workflowAiReviewHistory,
   teamLoanOfficerWorkspace,
   teamTemplateLibrary,
@@ -2007,6 +2008,22 @@ export async function saveAdvertisingIntegrationSetting(input: {
   )).limit(1);
   if (!rows[0]) throw new Error("Could not save advertising integration planning settings.");
   return rows[0];
+}
+
+export async function getAdvertisingIntegrationModuleVisibility(ownerUserId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db.select().from(advertisingIntegrationModuleSetting).where(eq(advertisingIntegrationModuleSetting.ownerUserId, ownerUserId)).limit(1);
+  return { isVisible: rows[0]?.isVisible !== 0 };
+}
+
+export async function saveAdvertisingIntegrationModuleVisibility(input: { ownerUserId: number; isVisible: boolean }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(advertisingIntegrationModuleSetting).values({ ownerUserId: input.ownerUserId, isVisible: input.isVisible ? 1 : 0 }).onDuplicateKeyUpdate({
+    set: { isVisible: input.isVisible ? 1 : 0, updatedAt: new Date() },
+  });
+  return { isVisible: input.isVisible };
 }
 
 // ---------------------------------------------------------------------------

@@ -1149,6 +1149,21 @@ export const advertisingIntegrationSetting = mysqlTable(
 export type AdvertisingIntegrationSetting = typeof advertisingIntegrationSetting.$inferSelect;
 export type InsertAdvertisingIntegrationSetting = typeof advertisingIntegrationSetting.$inferInsert;
 
+/** Administrator-controlled dashboard visibility for the inactive ad setup module. */
+export const advertisingIntegrationModuleSetting = mysqlTable(
+  "advertising_integration_module_setting",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerUserId: int("ownerUserId").notNull(),
+    isVisible: int("isVisible").default(1).notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex("advertising_integration_module_owner_unique").on(table.ownerUserId)]
+);
+
+export type AdvertisingIntegrationModuleSetting = typeof advertisingIntegrationModuleSetting.$inferSelect;
+
 /** Owner-private snapshots of AI workflow reviews and the owner's manually recorded outcomes. */
 export const workflowAiReviewHistory = mysqlTable(
   "workflow_ai_review_history",

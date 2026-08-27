@@ -64,6 +64,7 @@ import {
   createWorkflowAiReviewHistory,
   createBackupHistoryEvent,
   saveAdvertisingIntegrationSetting,
+  saveAdvertisingIntegrationModuleVisibility,
   createTeamLoanOfficerWorkspace,
   prepareTeamLoanOfficerWorkspace,
   createTeamTemplateLibraryEntry,
@@ -153,6 +154,7 @@ import {
   listWorkflowAiReviewHistory,
   listBackupHistoryEvents,
   listAdvertisingIntegrationSettings,
+  getAdvertisingIntegrationModuleVisibility,
   listSyncedTopAgents,
   listSyncedAgentOutreachTemplates,
   listSyncedTopAgentRankHistory,
@@ -2584,6 +2586,16 @@ export const appRouter = router({
 
   adIntegrationSettings: router({
     /** Planning-only state. Native ad-platform connection and lead imports remain disabled. */
+    moduleVisibility: protectedProcedure.query(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      return getAdvertisingIntegrationModuleVisibility(ctx.user.id);
+    }),
+    setModuleVisibility: protectedProcedure
+      .input(z.object({ isVisible: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return saveAdvertisingIntegrationModuleVisibility({ ownerUserId: ctx.user.id, isVisible: input.isVisible });
+      }),
     list: protectedProcedure.query(async ({ ctx }) => {
       requireAdmin(ctx.user.role);
       const settings = await listAdvertisingIntegrationSettings(ctx.user.id);
