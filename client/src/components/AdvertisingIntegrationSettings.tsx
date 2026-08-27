@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { BadgeCheck, CircleAlert, CircleCheck, CircleHelp, CirclePause, CirclePlay, Copy, ExternalLink, KeyRound, Loader2, PlugZap, RotateCcw, Save, ShieldAlert } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { BadgeCheck, Check, CircleAlert, CircleCheck, CircleHelp, CirclePause, CirclePlay, Copy, ExternalLink, KeyRound, Loader2, PlugZap, RotateCcw, Save, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -133,6 +133,11 @@ export default function AdvertisingIntegrationSettings() {
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [resetConfirmationOpen, setResetConfirmationOpen] = useState(false);
   const [documentationQuery, setDocumentationQuery] = useState("");
+  const [copiedResourceHref, setCopiedResourceHref] = useState<string | null>(null);
+  const [showChecklistCelebration, setShowChecklistCelebration] = useState(false);
+  const checklistHydratedRef = useRef(false);
+  const previouslyCompleteRef = useRef(false);
+  const copiedLinkTimerRef = useRef<number | null>(null);
   const setModuleVisibility = trpc.adIntegrationSettings.setModuleVisibility.useMutation({
     onSuccess: async (result) => {
       await utils.adIntegrationSettings.moduleVisibility.invalidate();
@@ -151,6 +156,7 @@ export default function AdvertisingIntegrationSettings() {
   });
   const completedSteps = CHECKLIST_STEPS.filter((step) => checklist[step.key]).length;
   const checklistProgress = Math.round((completedSteps / CHECKLIST_STEPS.length) * 100);
+  const checklistComplete = completedSteps === CHECKLIST_STEPS.length;
   const remainingSteps = CHECKLIST_STEPS.filter((step) => !checklist[step.key]);
   const reminderAt = moduleVisibility?.checklistReminderAt ? new Date(moduleVisibility.checklistReminderAt) : null;
   const checklistReminderDeferred = Boolean(reminderAt && reminderAt.getTime() > Date.now());
@@ -188,11 +194,35 @@ export default function AdvertisingIntegrationSettings() {
     }
   }, [checklistReminderDue]);
 
+  useEffect(() => {
+    if (!moduleVisibility) return;
+    if (!checklistHydratedRef.current) {
+      checklistHydratedRef.current = true;
+      previouslyCompleteRef.current = checklistComplete;
+      return;
+    }
+    if (checklistComplete && !previouslyCompleteRef.current) {
+      setShowChecklistCelebration(true);
+      toast.success("Getting Started checklist complete", { description: "Preparation is recorded. Meta and Google remain inactive until a later approved connection review." });
+      const timer = window.setTimeout(() => setShowChecklistCelebration(false), 1_000);
+      previouslyCompleteRef.current = checklistComplete;
+      return () => window.clearTimeout(timer);
+    }
+    previouslyCompleteRef.current = checklistComplete;
+  }, [checklistComplete, moduleVisibility]);
+
+  useEffect(() => () => {
+    if (copiedLinkTimerRef.current !== null) window.clearTimeout(copiedLinkTimerRef.current);
+  }, []);
+
   const updateChecklist = (key: keyof ChecklistState, checked: boolean) => saveChecklist.mutate({ ...checklist, [key]: checked });
   const visibleTutorialResources = TUTORIAL_RESOURCES.filter((resource) => `${resource.provider} ${resource.title} ${resource.detail}`.toLowerCase().includes(documentationQuery.trim().toLowerCase()));
   const copyResourceLink = async (resource: (typeof TUTORIAL_RESOURCES)[number]) => {
     try {
       await navigator.clipboard.writeText(resource.href);
+      setCopiedResourceHref(resource.href);
+      if (copiedLinkTimerRef.current !== null) window.clearTimeout(copiedLinkTimerRef.current);
+      copiedLinkTimerRef.current = window.setTimeout(() => setCopiedResourceHref(null), 1_800);
       toast.success(`${resource.provider} guide link copied for team sharing.`);
     } catch {
       toast.error("Couldn't copy the link. Select the official guide link and copy it manually.");
@@ -214,6 +244,7 @@ export default function AdvertisingIntegrationSettings() {
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary"><ShieldAlert className="h-4 w-4" aria-hidden="true" /></div>
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-bold">Getting Started checklist</h3><span className="text-xs font-bold text-muted-foreground">{completedSteps} of {CHECKLIST_STEPS.length} complete</span></div>
+            {checklistComplete && <div className={`mt-3 flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm font-bold text-emerald-800 motion-reduce:transition-none dark:text-emerald-200 ${showChecklistCelebration ? "animate-[pulse_0.8s_ease-out]" : ""}`} role="status"><CircleCheck className="h-4 w-4" aria-hidden="true" />Checklist complete — setup preparation recorded.</div>}
             <div className="mt-3 flex flex-wrap justify-end gap-2">
               <Dialog open={tutorialOpen} onOpenChange={(open) => { setTutorialOpen(open); if (!open) setDocumentationQuery(""); }}>
                 <DialogTrigger asChild><Button type="button" variant="outline" size="sm"><CirclePlay className="mr-1.5 h-4 w-4" aria-hidden="true" />Watch tutorial</Button></DialogTrigger>
@@ -221,7 +252,7 @@ export default function AdvertisingIntegrationSettings() {
                   <DialogHeader><DialogTitle>Advertising integration setup walkthrough</DialogTitle><DialogDescription>This placeholder will hold an approved setup tutorial before Meta or Google connections are enabled.</DialogDescription></DialogHeader>
                   <div className="flex min-h-52 items-center justify-center rounded-xl border border-dashed border-border bg-muted/35 p-6 text-center"><div><CirclePlay className="mx-auto h-10 w-10 text-primary" aria-hidden="true" /><p className="mt-3 font-bold">Tutorial video placeholder</p><p className="mx-auto mt-1 max-w-sm text-sm leading-6 text-muted-foreground">Future walkthrough: create the provider account, collect non-secret references, obtain compliance approval, use protected credential storage, confirm form mapping, and complete the administrator review.</p></div></div>
                   <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-muted/25 p-3 text-sm leading-5 text-muted-foreground"><Checkbox checked={checklist.tutorialWatched} disabled={saveChecklist.isPending} onCheckedChange={(checked) => updateChecklist("tutorialWatched", checked === true)} aria-label="Mark tutorial as watched" /><span><strong className="text-foreground">Mark as watched</strong><br />Counts this walkthrough as completed in the Getting Started checklist. It does not approve, connect, or test any provider.</span></label>
-                  <div className="rounded-xl border border-border bg-muted/25 p-4"><p className="font-bold">Official setup references</p><p className="mt-1 text-sm leading-6 text-muted-foreground">Search the approved resources below. Use provider guides only when corporate approval and the connection review are ready.</p><Input value={documentationQuery} onChange={(event) => setDocumentationQuery(event.target.value)} className="mt-3" aria-label="Search official Meta and Google documentation" placeholder="Search Meta or Google guides" /><div className="mt-3 grid gap-2">{visibleTutorialResources.length > 0 ? visibleTutorialResources.map((resource) => <div key={resource.href} className="flex flex-col gap-2 rounded-lg border border-border bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-bold">{resource.title}</p><p className="mt-0.5 text-xs leading-5 text-muted-foreground">{resource.detail}</p></div><div className="flex shrink-0 flex-wrap gap-2"><a className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs font-bold text-primary underline underline-offset-4" href={resource.href} target="_blank" rel="noreferrer">Open <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /></a><Button type="button" variant="outline" size="sm" onClick={() => void copyResourceLink(resource)}><Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />Copy link</Button></div></div>) : <p className="rounded-lg border border-dashed border-border px-3 py-3 text-sm text-muted-foreground">No official Meta or Google guide matches that search.</p>}</div></div>
+                  <div className="rounded-xl border border-border bg-muted/25 p-4"><p className="font-bold">Official setup references</p><p className="mt-1 text-sm leading-6 text-muted-foreground">Search the approved resources below. Use provider guides only when corporate approval and the connection review are ready.</p><Input value={documentationQuery} onChange={(event) => setDocumentationQuery(event.target.value)} className="mt-3" aria-label="Search official Meta and Google documentation" placeholder="Search Meta or Google guides" /><div className="mt-3 grid gap-2">{visibleTutorialResources.length > 0 ? visibleTutorialResources.map((resource) => <div key={resource.href} className="flex flex-col gap-2 rounded-lg border border-border bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-bold">{resource.title}</p><p className="mt-0.5 text-xs leading-5 text-muted-foreground">{resource.detail}</p></div><div className="flex shrink-0 flex-wrap gap-2"><a className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs font-bold text-primary underline underline-offset-4" href={resource.href} target="_blank" rel="noreferrer">Open <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /></a><Button type="button" variant="outline" size="sm" onClick={() => void copyResourceLink(resource)}>{copiedResourceHref === resource.href ? <Check className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />}{copiedResourceHref === resource.href ? "Copied!" : "Copy link"}</Button></div></div>) : <div className="rounded-lg border border-dashed border-border px-3 py-3 text-sm text-muted-foreground" role="status"><p className="font-bold text-foreground">No results found</p><p className="mt-1">No official Meta or Google guide matches “{documentationQuery.trim()}”.</p><Button type="button" variant="link" size="sm" className="mt-1 h-auto px-0" onClick={() => setDocumentationQuery("")}>Clear search</Button></div>}</div></div>
                   <p className="text-xs leading-5 text-muted-foreground">No tutorial video is attached yet. This panel does not connect accounts or collect credentials.</p>
                   <div className="flex justify-end"><DialogClose asChild><Button type="button" variant="outline">Close tutorial</Button></DialogClose></div>
                 </DialogContent>

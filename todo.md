@@ -860,3 +860,8 @@
 - [x] Add searchable official Meta and Google documentation resources to the private tutorial modal
 - [x] Add per-resource Copy Link actions in the tutorial modal for internal team sharing
 - [x] Add regression coverage, responsive verification, and publish the tutorial resource interaction enhancements
+
+- [x] Add a clear no-results-found state when private tutorial documentation search matches no provider guide
+- [x] Add an accessible reduced-motion-safe success celebration when the advertising Getting Started checklist reaches 100% completion
+- [x] Add immediate copied confirmation after a tutorial resource Copy Link action
+- [x] Add regression coverage, responsive verification, and publish the tutorial feedback refinements

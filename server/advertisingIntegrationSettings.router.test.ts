@@ -55,7 +55,7 @@ describe("advertising integration planning settings", () => {
     expect(getModuleVisibilityMock).toHaveBeenCalledWith(9);
     await admin.adIntegrationSettings.setModuleVisibility({ isVisible: false });
     expect(saveModuleVisibilityMock).toHaveBeenCalledWith({ ownerUserId: 9, isVisible: false });
-    await admin.adIntegrationSettings.saveChecklist({ accountCreated: true, complianceApproved: false, formMappingReady: false, secureKeyApproved: false, connectionReviewReady: false });
+    await admin.adIntegrationSettings.saveChecklist({ accountCreated: true, complianceApproved: false, formMappingReady: false, secureKeyApproved: false, connectionReviewReady: false, tutorialWatched: false });
     expect(saveChecklistMock).toHaveBeenCalledWith(expect.objectContaining({ ownerUserId: 9, checklist: expect.objectContaining({ accountCreated: true }) }));
     await admin.adIntegrationSettings.remindLater();
     expect(saveChecklistReminderMock).toHaveBeenCalledWith(expect.objectContaining({ ownerUserId: 9, checklistReminderAt: expect.any(Date) }));
@@ -65,7 +65,7 @@ describe("advertising integration planning settings", () => {
     await expect(appRouter.createCaller(context("team_member")).adIntegrationSettings.save({ provider: "google_ads", setupStage: "details_saved" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(appRouter.createCaller(context("team_member")).adIntegrationSettings.moduleVisibility()).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(appRouter.createCaller(context("team_member")).adIntegrationSettings.setModuleVisibility({ isVisible: true })).rejects.toMatchObject({ code: "FORBIDDEN" });
-    await expect(appRouter.createCaller(context("team_member")).adIntegrationSettings.saveChecklist({ accountCreated: false, complianceApproved: false, formMappingReady: false, secureKeyApproved: false, connectionReviewReady: false })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(appRouter.createCaller(context("team_member")).adIntegrationSettings.saveChecklist({ accountCreated: false, complianceApproved: false, formMappingReady: false, secureKeyApproved: false, connectionReviewReady: false, tutorialWatched: false })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(appRouter.createCaller(context("team_member")).adIntegrationSettings.remindLater()).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(appRouter.createCaller(context("team_member")).adIntegrationSettings.resetChecklist()).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
@@ -102,6 +102,10 @@ describe("advertising integration planning settings", () => {
     expect(source).toContain("Mark as watched");
     expect(source).toContain("Search Meta or Google guides");
     expect(source).toContain("Copy link");
+    expect(source).toContain("No results found");
+    expect(source).toContain("Clear search");
+    expect(source).toContain("Checklist complete — setup preparation recorded.");
+    expect(source).toContain("Copied!");
     expect(source).toContain("checklistReminderDue");
     expect(source).toContain("saveChecklist");
     expect(source).toContain("motion-reduce:transition-none");
