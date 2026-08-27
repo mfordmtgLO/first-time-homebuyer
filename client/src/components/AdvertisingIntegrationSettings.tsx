@@ -260,7 +260,7 @@ export default function AdvertisingIntegrationSettings() {
               <Dialog open={resetConfirmationOpen} onOpenChange={setResetConfirmationOpen}>
                 <DialogTrigger asChild><Button type="button" variant="ghost" size="sm" disabled={resetChecklist.isPending}><RotateCcw className="mr-1.5 h-4 w-4" aria-hidden="true" />Reset checklist</Button></DialogTrigger>
                 <DialogContent className="max-w-md">
-                  <DialogHeader><DialogTitle>Reset advertising checklist?</DialogTitle><DialogDescription>This clears the five readiness checkmarks and the seven-day reminder only. Account IDs, form references, planning notes, secure-key status, and the inactive integration state will not change.</DialogDescription></DialogHeader>
+                  <DialogHeader><DialogTitle>Reset advertising checklist?</DialogTitle><DialogDescription>This clears the six readiness checkmarks and the seven-day reminder only. Account IDs, form references, planning notes, secure-key status, and the inactive integration state will not change.</DialogDescription></DialogHeader>
                   <div className="flex flex-wrap justify-end gap-2"><DialogClose asChild><Button type="button" variant="outline" disabled={resetChecklist.isPending}>Cancel</Button></DialogClose><Button type="button" onClick={() => resetChecklist.mutate()} disabled={resetChecklist.isPending}>{resetChecklist.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <RotateCcw className="mr-2 h-4 w-4" aria-hidden="true" />}Confirm reset</Button></div>
                 </DialogContent>
               </Dialog>

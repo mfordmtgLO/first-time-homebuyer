@@ -865,3 +865,6 @@
 - [x] Add an accessible reduced-motion-safe success celebration when the advertising Getting Started checklist reaches 100% completion
 - [x] Add immediate copied confirmation after a tutorial resource Copy Link action
 - [x] Add regression coverage, responsive verification, and publish the tutorial feedback refinements
+
+- [x] Review the private Meta/Google integration settings and Getting Started checklist UI/UX for polish and accessibility
+- [x] Create test scenarios and user-flow documentation for checklist progress, tutorial/reset modal interactions, and the master visibility toggle
