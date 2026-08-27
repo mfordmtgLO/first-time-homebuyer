@@ -846,3 +846,7 @@
 - [x] Add a quick-link from the administrator Ads module status badge to the advertising integration settings section
 - [x] Add scheduling-safe persistence, safeguards, regression coverage, responsive verification, and publish the readiness navigation refinements
 - [x] Implement the chosen Option A reminder: hide the checklist for seven days and show an in-dashboard reminder only when Mike next visits afterward
+
+- [x] Add an administrator-only Reset Checklist action that clears saved progress and reminder state without changing integration readiness or connection status
+- [x] Add a Watch Tutorial action that opens a clear setup-walkthrough placeholder modal in the private advertising readiness section
+- [x] Add regression coverage, responsive verification, and publish the checklist reset and tutorial controls

@@ -2070,6 +2070,22 @@ export async function saveAdvertisingIntegrationChecklistReminder(input: { owner
   return { checklistReminderAt: input.checklistReminderAt };
 }
 
+/** Clears only the private readiness checklist and deferral timestamp; it never changes provider planning or connection state. */
+export async function resetAdvertisingIntegrationChecklist(ownerUserId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const current = await db.select().from(advertisingIntegrationModuleSetting).where(eq(advertisingIntegrationModuleSetting.ownerUserId, ownerUserId)).limit(1);
+  await db.insert(advertisingIntegrationModuleSetting).values({
+    ownerUserId,
+    isVisible: current[0]?.isVisible ?? 1,
+    checklistState: null,
+    checklistReminderAt: null,
+  }).onDuplicateKeyUpdate({
+    set: { checklistState: null, checklistReminderAt: null, updatedAt: new Date() },
+  });
+  return getAdvertisingIntegrationModuleVisibility(ownerUserId);
+}
+
 // ---------------------------------------------------------------------------
 // Private campaign spend reporting
 // ---------------------------------------------------------------------------

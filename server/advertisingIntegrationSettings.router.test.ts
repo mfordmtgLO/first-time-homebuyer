@@ -12,11 +12,12 @@ vi.mock("./db", async (importOriginal) => {
     saveAdvertisingIntegrationModuleVisibility: vi.fn(async (input) => ({ isVisible: input.isVisible })),
     saveAdvertisingIntegrationChecklist: vi.fn(async (input) => ({ checklist: input.checklist })),
     saveAdvertisingIntegrationChecklistReminder: vi.fn(async () => ({ checklistReminderAt: new Date("2026-09-03T00:00:00.000Z") })),
+    resetAdvertisingIntegrationChecklist: vi.fn(async () => ({ isVisible: true, checklist: {}, checklistReminderAt: null })),
   };
 });
 
 import { appRouter } from "./routers";
-import { getAdvertisingIntegrationModuleVisibility, listAdvertisingIntegrationSettings, saveAdvertisingIntegrationChecklist, saveAdvertisingIntegrationChecklistReminder, saveAdvertisingIntegrationModuleVisibility, saveAdvertisingIntegrationSetting } from "./db";
+import { getAdvertisingIntegrationModuleVisibility, listAdvertisingIntegrationSettings, resetAdvertisingIntegrationChecklist, saveAdvertisingIntegrationChecklist, saveAdvertisingIntegrationChecklistReminder, saveAdvertisingIntegrationModuleVisibility, saveAdvertisingIntegrationSetting } from "./db";
 import type { TrpcContext } from "./_core/context";
 
 const listSettingsMock = vi.mocked(listAdvertisingIntegrationSettings);
@@ -25,6 +26,7 @@ const getModuleVisibilityMock = vi.mocked(getAdvertisingIntegrationModuleVisibil
 const saveModuleVisibilityMock = vi.mocked(saveAdvertisingIntegrationModuleVisibility);
 const saveChecklistMock = vi.mocked(saveAdvertisingIntegrationChecklist);
 const saveChecklistReminderMock = vi.mocked(saveAdvertisingIntegrationChecklistReminder);
+const resetChecklistMock = vi.mocked(resetAdvertisingIntegrationChecklist);
 
 function context(role: "admin" | "team_member"): TrpcContext {
   return {
@@ -57,12 +59,15 @@ describe("advertising integration planning settings", () => {
     expect(saveChecklistMock).toHaveBeenCalledWith(expect.objectContaining({ ownerUserId: 9, checklist: expect.objectContaining({ accountCreated: true }) }));
     await admin.adIntegrationSettings.remindLater();
     expect(saveChecklistReminderMock).toHaveBeenCalledWith(expect.objectContaining({ ownerUserId: 9, checklistReminderAt: expect.any(Date) }));
+    await admin.adIntegrationSettings.resetChecklist();
+    expect(resetChecklistMock).toHaveBeenCalledWith(9);
     await expect(appRouter.createCaller(context("team_member")).adIntegrationSettings.list()).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(appRouter.createCaller(context("team_member")).adIntegrationSettings.save({ provider: "google_ads", setupStage: "details_saved" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(appRouter.createCaller(context("team_member")).adIntegrationSettings.moduleVisibility()).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(appRouter.createCaller(context("team_member")).adIntegrationSettings.setModuleVisibility({ isVisible: true })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(appRouter.createCaller(context("team_member")).adIntegrationSettings.saveChecklist({ accountCreated: false, complianceApproved: false, formMappingReady: false, secureKeyApproved: false, connectionReviewReady: false })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(appRouter.createCaller(context("team_member")).adIntegrationSettings.remindLater()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(appRouter.createCaller(context("team_member")).adIntegrationSettings.resetChecklist()).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("keeps key values outside the UI and retains credentials, webhooks, and lead imports as unavailable", async () => {
@@ -85,6 +90,9 @@ describe("advertising integration planning settings", () => {
     expect(source).toContain("Progress value={checklistProgress}");
     expect(source).toContain("Checklist progress");
     expect(source).toContain("Remind me later");
+    expect(source).toContain("Reset checklist");
+    expect(source).toContain("Watch tutorial");
+    expect(source).toContain("Tutorial video placeholder");
     expect(source).toContain("checklistReminderDue");
     expect(source).toContain("saveChecklist");
     expect(source).toContain("motion-reduce:transition-none");

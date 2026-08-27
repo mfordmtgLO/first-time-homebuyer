@@ -67,6 +67,7 @@ import {
   saveAdvertisingIntegrationModuleVisibility,
   saveAdvertisingIntegrationChecklist,
   saveAdvertisingIntegrationChecklistReminder,
+  resetAdvertisingIntegrationChecklist,
   createTeamLoanOfficerWorkspace,
   prepareTeamLoanOfficerWorkspace,
   createTeamTemplateLibraryEntry,
@@ -2614,6 +2615,10 @@ export const appRouter = router({
       requireAdmin(ctx.user.role);
       const checklistReminderAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       return saveAdvertisingIntegrationChecklistReminder({ ownerUserId: ctx.user.id, checklistReminderAt });
+    }),
+    resetChecklist: protectedProcedure.mutation(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      return resetAdvertisingIntegrationChecklist(ctx.user.id);
     }),
     list: protectedProcedure.query(async ({ ctx }) => {
       requireAdmin(ctx.user.role);
