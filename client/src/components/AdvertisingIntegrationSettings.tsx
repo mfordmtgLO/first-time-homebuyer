@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BadgeCheck, CirclePause, Loader2, Save, ShieldAlert } from "lucide-react";
+import { BadgeCheck, CirclePause, KeyRound, Loader2, Save, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -52,9 +52,14 @@ function PlanningCard({ provider, title, detail }: { provider: Provider; title: 
     </div>
     <div className="mt-4 grid gap-3">
       <label className="grid gap-1.5 text-xs font-semibold">Setup stage<select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={stage} onChange={(event) => setStage(event.target.value as Stage)}>{(Object.keys(STAGE_LABELS) as Stage[]).map((value) => <option key={value} value={value}>{STAGE_LABELS[value]}</option>)}</select></label>
-      <label className="grid gap-1.5 text-xs font-semibold">Account reference (non-secret)<Input value={accountReference} maxLength={180} onChange={(event) => setAccountReference(event.target.value)} placeholder="Account label or ID — never a password or token" /></label>
+      <label className="grid gap-1.5 text-xs font-semibold">Account ID (non-secret)<Input value={accountReference} maxLength={180} onChange={(event) => setAccountReference(event.target.value)} placeholder="Advertising account ID or label — never a password or token" /></label>
       <label className="grid gap-1.5 text-xs font-semibold">Approved form reference (non-secret)<Input value={formReference} maxLength={240} onChange={(event) => setFormReference(event.target.value)} placeholder="Lead form name or ID" /></label>
       <label className="grid gap-1.5 text-xs font-semibold">Internal planning notes<Textarea value={internalNote} maxLength={2000} onChange={(event) => setInternalNote(event.target.value)} className="min-h-20 resize-y" placeholder="Compliance notes, form mapping decisions, or release dependencies" /></label>
+      <div className="rounded-lg border border-border bg-muted/40 p-3">
+        <div className="flex items-center gap-2 text-xs font-bold"><KeyRound className="h-4 w-4 text-primary" aria-hidden="true" />Secure API key</div>
+        <Input className="mt-2 font-mono" type="password" value={saved?.apiKeyConfigured ? "••••••••••••" : ""} readOnly aria-label={`${title} secure API key status`} placeholder="Not configured in secure storage" />
+        <p className="mt-2 text-xs leading-5 text-muted-foreground">API key values are never stored here, in GitHub, or in dashboard data. {saved?.apiKeyConfigured ? "A protected key is configured and remains hidden." : "Use protected project secret storage when an approved key is ready."} <strong>Once saved, no editing—delete and re-enter to change the API key.</strong></p>
+      </div>
     </div>
     <Button type="button" className="mt-4 self-start" onClick={() => save.mutate({ provider, setupStage: stage, accountReference: accountReference.trim() || null, formReference: formReference.trim() || null, internalNote: internalNote.trim() || null })} disabled={save.isPending}>
       {save.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="mr-2 h-4 w-4" aria-hidden="true" />}Save planning settings

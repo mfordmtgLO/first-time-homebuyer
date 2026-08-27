@@ -819,3 +819,9 @@
 - [x] Add an admin-only Meta and Google advertising integration settings page with planning and approval placeholders only
 - [x] Preserve the explicit hold on native Meta/Google webhooks, advertising credentials, and lead imports
 - [x] Add migration, safeguards, regression coverage, responsive verification, and publish the backup-download and integration-planning controls
+
+- [x] Add administrator-only Meta and Google Account ID planning fields
+- [x] Add secure API-key configured-status controls with a no-edit, delete-and-re-enter policy note
+- [x] Preserve secret-store handling and keep external advertising credentials, webhooks, and lead imports inactive
+- [x] Add safeguard coverage, responsive verification, and publish the secure advertising-settings refinement
+- [x] Ensure no API key values are stored in GitHub, application data, browser-visible code, or logs; use protected secret storage only

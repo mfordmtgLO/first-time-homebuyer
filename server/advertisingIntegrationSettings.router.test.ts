@@ -45,11 +45,14 @@ describe("advertising integration planning settings", () => {
     await expect(appRouter.createCaller(context("team_member")).adIntegrationSettings.save({ provider: "google_ads", setupStage: "details_saved" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
-  it("keeps credentials, webhooks, and lead imports explicitly unavailable in planning-only UI", async () => {
+  it("keeps key values outside the UI and retains credentials, webhooks, and lead imports as unavailable", async () => {
     const root = resolve(import.meta.dirname, "..");
     const source = await readFile(resolve(root, "client/src/components/AdvertisingIntegrationSettings.tsx"), "utf8");
     expect(source).toContain("No credentials, webhooks, or lead imports enabled");
-    expect(source).toContain("Account reference (non-secret)");
+    expect(source).toContain("Account ID (non-secret)");
+    expect(source).toContain("API key values are never stored here, in GitHub, or in dashboard data.");
+    expect(source).toContain("Once saved, no editing—delete and re-enter to change the API key.");
+    expect(source).toContain('type="password"');
     expect(source).toContain("On hold");
   });
 

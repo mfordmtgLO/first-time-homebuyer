@@ -2586,7 +2586,13 @@ export const appRouter = router({
     /** Planning-only state. Native ad-platform connection and lead imports remain disabled. */
     list: protectedProcedure.query(async ({ ctx }) => {
       requireAdmin(ctx.user.role);
-      return listAdvertisingIntegrationSettings(ctx.user.id);
+      const settings = await listAdvertisingIntegrationSettings(ctx.user.id);
+      return settings.map((setting) => ({
+        ...setting,
+        apiKeyConfigured: setting.provider === "meta"
+          ? Boolean(process.env.META_LEAD_ADS_API_KEY)
+          : Boolean(process.env.GOOGLE_ADS_API_KEY),
+      }));
     }),
     save: protectedProcedure
       .input(z.object({
