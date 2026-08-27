@@ -801,3 +801,7 @@
 
 - [x] Move the 2-1 Buydown item directly after Cost of Waiting in the persistent public section navigator
 - [x] Add regression coverage, responsive verification, and publish the revised public section order
+
+- [x] Guide the owner to the official full account and task/project backup portal options
+
+- [x] Provide official step-by-step instructions for a complete export of all tasks and website project data
