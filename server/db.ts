@@ -2014,7 +2014,7 @@ export async function getAdvertisingIntegrationModuleVisibility(ownerUserId: num
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const rows = await db.select().from(advertisingIntegrationModuleSetting).where(eq(advertisingIntegrationModuleSetting.ownerUserId, ownerUserId)).limit(1);
-  return { isVisible: rows[0]?.isVisible !== 0 };
+  return { isVisible: rows[0]?.isVisible !== 0, checklist: parseAdvertisingChecklist(rows[0]?.checklistState) };
 }
 
 export async function saveAdvertisingIntegrationModuleVisibility(input: { ownerUserId: number; isVisible: boolean }) {
@@ -2024,6 +2024,31 @@ export async function saveAdvertisingIntegrationModuleVisibility(input: { ownerU
     set: { isVisible: input.isVisible ? 1 : 0, updatedAt: new Date() },
   });
   return { isVisible: input.isVisible };
+}
+
+export const ADVERTISING_CHECKLIST_KEYS = ["accountCreated", "complianceApproved", "formMappingReady", "secureKeyApproved", "connectionReviewReady"] as const;
+export type AdvertisingChecklistKey = (typeof ADVERTISING_CHECKLIST_KEYS)[number];
+export type AdvertisingChecklist = Record<AdvertisingChecklistKey, boolean>;
+
+function parseAdvertisingChecklist(raw: string | null | undefined): AdvertisingChecklist {
+  const defaults: AdvertisingChecklist = { accountCreated: false, complianceApproved: false, formMappingReady: false, secureKeyApproved: false, connectionReviewReady: false };
+  if (!raw) return defaults;
+  try {
+    const parsed = JSON.parse(raw) as Partial<Record<AdvertisingChecklistKey, unknown>>;
+    return ADVERTISING_CHECKLIST_KEYS.reduce((result, key) => ({ ...result, [key]: parsed[key] === true }), defaults);
+  } catch {
+    return defaults;
+  }
+}
+
+export async function saveAdvertisingIntegrationChecklist(input: { ownerUserId: number; checklist: AdvertisingChecklist }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const checklist = parseAdvertisingChecklist(JSON.stringify(input.checklist));
+  await db.insert(advertisingIntegrationModuleSetting).values({ ownerUserId: input.ownerUserId, isVisible: 1, checklistState: JSON.stringify(checklist) }).onDuplicateKeyUpdate({
+    set: { checklistState: JSON.stringify(checklist), updatedAt: new Date() },
+  });
+  return { checklist };
 }
 
 // ---------------------------------------------------------------------------

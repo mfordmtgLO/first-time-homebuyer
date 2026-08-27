@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type Provider = "meta" | "google_ads";
 type Stage = "not_started" | "details_saved" | "compliance_pending" | "approved_not_connected";
@@ -37,6 +39,17 @@ const CREDENTIAL_HELP: Record<Provider, { summary: string; location: string; hre
     linkLabel: "Open Google Ads OAuth guide",
   },
 };
+
+const CHECKLIST_STEPS = [
+  { key: "accountCreated", label: "Create the provider advertising account and identify its non-secret Account ID." },
+  { key: "complianceApproved", label: "Obtain corporate compliance approval for campaign copy, consent language, and the lead form." },
+  { key: "formMappingReady", label: "Record the approved form reference and map its fields to the dashboard intake." },
+  { key: "secureKeyApproved", label: "Obtain administrator approval to enter a provider credential through protected secret storage." },
+  { key: "connectionReviewReady", label: "Complete the administrator connection review before any test request, webhook, or lead import is considered." },
+] as const;
+
+type ChecklistState = Record<(typeof CHECKLIST_STEPS)[number]["key"], boolean>;
+const EMPTY_CHECKLIST: ChecklistState = { accountCreated: false, complianceApproved: false, formMappingReady: false, secureKeyApproved: false, connectionReviewReady: false };
 
 function getReadiness(accountReference: string, apiKeyConfigured: boolean, stage: Stage) {
   if (!accountReference.trim()) return { label: "Inactive — Account ID missing", detail: "Add a non-secret advertising Account ID after the provider account is created.", tone: "text-muted-foreground", Icon: CircleAlert };
@@ -108,14 +121,39 @@ function PlanningCard({ provider, title, detail }: { provider: Provider; title: 
 export default function AdvertisingIntegrationSettings() {
   const utils = trpc.useUtils();
   const { data: moduleVisibility, isLoading: isVisibilityLoading } = trpc.adIntegrationSettings.moduleVisibility.useQuery();
+  const [renderModule, setRenderModule] = useState(true);
+  const [moduleOpen, setModuleOpen] = useState(true);
   const setModuleVisibility = trpc.adIntegrationSettings.setModuleVisibility.useMutation({
     onSuccess: async (result) => {
       await utils.adIntegrationSettings.moduleVisibility.invalidate();
-      toast.success(result.isVisible ? "Advertising integrations settings shown. Connections remain inactive." : "Advertising integrations settings hidden. Connections remain inactive.");
+      toast.success(result.isVisible ? "Advertising setup module shown. Connections remain inactive." : "Advertising setup module hidden. Connections remain inactive.");
     },
     onError: (error) => toast.error(error.message),
   });
   const isVisible = moduleVisibility?.isVisible ?? true;
+  const checklist = (moduleVisibility?.checklist ?? EMPTY_CHECKLIST) as ChecklistState;
+  const saveChecklist = trpc.adIntegrationSettings.saveChecklist.useMutation({
+    onSuccess: async () => {
+      await utils.adIntegrationSettings.moduleVisibility.invalidate();
+      toast.success("Advertising readiness checklist updated. Integrations remain inactive.");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const completedSteps = CHECKLIST_STEPS.filter((step) => checklist[step.key]).length;
+  const checklistProgress = Math.round((completedSteps / CHECKLIST_STEPS.length) * 100);
+
+  useEffect(() => {
+    if (isVisible) {
+      setRenderModule(true);
+      const frame = requestAnimationFrame(() => setModuleOpen(true));
+      return () => cancelAnimationFrame(frame);
+    }
+    setModuleOpen(false);
+    const timer = window.setTimeout(() => setRenderModule(false), 200);
+    return () => window.clearTimeout(timer);
+  }, [isVisible]);
+
+  const updateChecklist = (key: keyof ChecklistState, checked: boolean) => saveChecklist.mutate({ ...checklist, [key]: checked });
 
   return <section id="advertising-integrations" className="scroll-mt-24 rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-sm sm:p-5" aria-labelledby="advertising-integrations-heading">
     <div className="flex flex-col gap-3 border-b border-border pb-4 lg:flex-row lg:items-start lg:justify-between">
@@ -126,12 +164,13 @@ export default function AdvertisingIntegrationSettings() {
       <div><p className="font-bold">Show advertising setup module</p><p className="mt-1 text-sm leading-5 text-muted-foreground">This hides or shows planning controls only. It never activates Meta or Google.</p></div>
       <Switch checked={isVisible} disabled={isVisibilityLoading || setModuleVisibility.isPending} onCheckedChange={(checked) => setModuleVisibility.mutate({ isVisible: checked })} aria-label="Show advertising integration settings" />
     </div>
-    {!isVisible ? <div className="mt-4 rounded-xl border border-dashed border-border bg-muted/25 p-4 text-sm text-muted-foreground">Advertising integration settings are hidden by the administrator. Use the switch above to show the inactive planning controls again.</div> : <>
-    <div className="mt-4 grid gap-3 rounded-xl border border-border bg-muted/35 p-4 lg:grid-cols-[auto_minmax(0,1fr)]">
+    {!renderModule ? <div className="mt-4 rounded-xl border border-dashed border-border bg-muted/25 p-4 text-sm text-muted-foreground" role="status">Advertising integration settings are hidden by the administrator. Use the switch above to show the inactive planning controls again.</div> : <div className={`grid transition-[grid-template-rows,opacity] duration-200 motion-reduce:transition-none ${moduleOpen ? "mt-4 grid-rows-[1fr] opacity-100" : "mt-0 grid-rows-[0fr] opacity-0 pointer-events-none"}`} aria-hidden={!moduleOpen}>
+    <div className="min-h-0 overflow-hidden">
+    <div className="grid gap-3 rounded-xl border border-border bg-muted/35 p-4 lg:grid-cols-[auto_minmax(0,1fr)]">
       <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary"><ShieldAlert className="h-4 w-4" aria-hidden="true" /></div>
-      <div><h3 className="font-bold">Getting Started checklist</h3><ol className="mt-2 list-decimal space-y-1 pl-5 text-sm leading-6 text-muted-foreground"><li>Create the Meta Business/Ads or Google Ads account and identify the non-secret Account ID.</li><li>Obtain corporate compliance approval for the campaign, consent language, and lead form.</li><li>Record the approved form name or ID and its dashboard field mapping.</li><li>When connection approval is granted, add the provider credential only through protected secret storage.</li><li>Complete a future administrator connection review before any webhook, test request, or lead import is enabled.</li></ol></div>
+      <div><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-bold">Getting Started checklist</h3><span className="text-xs font-bold text-muted-foreground">{completedSteps} of {CHECKLIST_STEPS.length} complete</span></div><Progress value={checklistProgress} className="mt-3 h-2" aria-label={`Advertising setup readiness: ${checklistProgress}% complete`} /><div className="mt-3 grid gap-2">{CHECKLIST_STEPS.map((step) => <label key={step.key} className="flex cursor-pointer items-start gap-2.5 text-sm leading-5 text-muted-foreground"><Checkbox checked={checklist[step.key]} disabled={saveChecklist.isPending} onCheckedChange={(checked) => updateChecklist(step.key, checked === true)} aria-label={step.label} /><span>{step.label}</span></label>)}</div></div>
     </div>
     <div className="mt-4 grid gap-4 xl:grid-cols-2">{PROVIDERS.map((provider) => <PlanningCard key={provider.value} provider={provider.value} title={provider.title} detail={provider.detail} />)}</div>
-    </>}
+    </div></div>}
   </section>;
 }

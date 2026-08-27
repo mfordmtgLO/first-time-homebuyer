@@ -835,3 +835,8 @@
 - [x] Add a Getting Started prerequisites checklist to the administrator advertising integrations settings
 - [x] Add an administrator-controlled master visibility switch that hides or reveals the inactive advertising integrations settings module
 - [x] Add migration, safeguards, regression coverage, responsive verification, and publish the advertising-integration readiness controls
+
+- [x] Add persisted checklist completion controls and a visual progress bar to the administrator advertising Getting Started checklist
+- [x] Add a smooth reduced-motion-safe collapse/expand transition and confirmation feedback for the advertising module visibility switch
+- [x] Add a compact enabled/disabled advertising-module status badge to the main administrator dashboard navigation
+- [x] Add migration, regression coverage, responsive verification, and publish the advertising-readiness interaction refinements

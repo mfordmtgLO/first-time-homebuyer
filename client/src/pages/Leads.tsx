@@ -59,6 +59,8 @@ import {
   Search,
   Send,
   ShieldAlert,
+  CircleCheck,
+  CirclePause,
   MessageSquareText,
   Moon,
   Sun,
@@ -491,6 +493,7 @@ export default function Leads() {
   const { user, loading, isAuthenticated, logout } = useAuth();
   const isAdmin = user?.role === "admin";
   const isTeamMember = user?.role === "team_member";
+  const { data: advertisingModuleStatus } = trpc.adIntegrationSettings.moduleVisibility.useQuery(undefined, { enabled: Boolean(isAuthenticated && isAdmin) });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | LeadStatus>("all");
   const [loanOfficerFilter, setLoanOfficerFilter] = useState("all");
@@ -664,6 +667,7 @@ export default function Leads() {
           </Link>
           <div className="flex items-center gap-3">
             {isAuthenticated && (isAdmin || isTeamMember) && <Button variant="outline" size="sm" onClick={() => setDashboardDarkMode((current) => !current)} aria-label={dashboardDarkMode ? "Use light dashboard theme" : "Use dark dashboard theme"}>{dashboardDarkMode ? <Sun className="h-4 w-4 mr-1.5" /> : <Moon className="h-4 w-4 mr-1.5" />}{dashboardDarkMode ? "Light" : "Dark"}</Button>}
+            {isAuthenticated && isAdmin && <span title="Advertising integration module visibility; provider connections remain inactive." className={`hidden items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-bold md:inline-flex ${advertisingModuleStatus?.isVisible === false ? "border-muted-foreground/30 bg-muted text-muted-foreground" : "border-primary/30 bg-primary/10 text-primary"}`}>{advertisingModuleStatus?.isVisible === false ? <CirclePause className="h-3.5 w-3.5" aria-hidden="true" /> : <CircleCheck className="h-3.5 w-3.5" aria-hidden="true" />}Ads module: {advertisingModuleStatus?.isVisible === false ? "Disabled" : "Enabled"}</span>}
             {isAuthenticated && (
               <span className="hidden sm:block text-sm text-muted-foreground">
                 {user?.name || user?.email}

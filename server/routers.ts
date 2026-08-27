@@ -65,6 +65,7 @@ import {
   createBackupHistoryEvent,
   saveAdvertisingIntegrationSetting,
   saveAdvertisingIntegrationModuleVisibility,
+  saveAdvertisingIntegrationChecklist,
   createTeamLoanOfficerWorkspace,
   prepareTeamLoanOfficerWorkspace,
   createTeamTemplateLibraryEntry,
@@ -2595,6 +2596,18 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
         return saveAdvertisingIntegrationModuleVisibility({ ownerUserId: ctx.user.id, isVisible: input.isVisible });
+      }),
+    saveChecklist: protectedProcedure
+      .input(z.object({
+        accountCreated: z.boolean(),
+        complianceApproved: z.boolean(),
+        formMappingReady: z.boolean(),
+        secureKeyApproved: z.boolean(),
+        connectionReviewReady: z.boolean(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return saveAdvertisingIntegrationChecklist({ ownerUserId: ctx.user.id, checklist: input });
       }),
     list: protectedProcedure.query(async ({ ctx }) => {
       requireAdmin(ctx.user.role);

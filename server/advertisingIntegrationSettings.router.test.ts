@@ -10,17 +10,19 @@ vi.mock("./db", async (importOriginal) => {
     saveAdvertisingIntegrationSetting: vi.fn(async (input) => ({ id: 811, ...input, createdAt: new Date(), updatedAt: new Date() })),
     getAdvertisingIntegrationModuleVisibility: vi.fn(async () => ({ isVisible: true })),
     saveAdvertisingIntegrationModuleVisibility: vi.fn(async (input) => ({ isVisible: input.isVisible })),
+    saveAdvertisingIntegrationChecklist: vi.fn(async (input) => ({ checklist: input.checklist })),
   };
 });
 
 import { appRouter } from "./routers";
-import { getAdvertisingIntegrationModuleVisibility, listAdvertisingIntegrationSettings, saveAdvertisingIntegrationModuleVisibility, saveAdvertisingIntegrationSetting } from "./db";
+import { getAdvertisingIntegrationModuleVisibility, listAdvertisingIntegrationSettings, saveAdvertisingIntegrationChecklist, saveAdvertisingIntegrationModuleVisibility, saveAdvertisingIntegrationSetting } from "./db";
 import type { TrpcContext } from "./_core/context";
 
 const listSettingsMock = vi.mocked(listAdvertisingIntegrationSettings);
 const saveSettingsMock = vi.mocked(saveAdvertisingIntegrationSetting);
 const getModuleVisibilityMock = vi.mocked(getAdvertisingIntegrationModuleVisibility);
 const saveModuleVisibilityMock = vi.mocked(saveAdvertisingIntegrationModuleVisibility);
+const saveChecklistMock = vi.mocked(saveAdvertisingIntegrationChecklist);
 
 function context(role: "admin" | "team_member"): TrpcContext {
   return {
@@ -49,10 +51,13 @@ describe("advertising integration planning settings", () => {
     expect(getModuleVisibilityMock).toHaveBeenCalledWith(9);
     await admin.adIntegrationSettings.setModuleVisibility({ isVisible: false });
     expect(saveModuleVisibilityMock).toHaveBeenCalledWith({ ownerUserId: 9, isVisible: false });
+    await admin.adIntegrationSettings.saveChecklist({ accountCreated: true, complianceApproved: false, formMappingReady: false, secureKeyApproved: false, connectionReviewReady: false });
+    expect(saveChecklistMock).toHaveBeenCalledWith(expect.objectContaining({ ownerUserId: 9, checklist: expect.objectContaining({ accountCreated: true }) }));
     await expect(appRouter.createCaller(context("team_member")).adIntegrationSettings.list()).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(appRouter.createCaller(context("team_member")).adIntegrationSettings.save({ provider: "google_ads", setupStage: "details_saved" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(appRouter.createCaller(context("team_member")).adIntegrationSettings.moduleVisibility()).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(appRouter.createCaller(context("team_member")).adIntegrationSettings.setModuleVisibility({ isVisible: true })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(appRouter.createCaller(context("team_member")).adIntegrationSettings.saveChecklist({ accountCreated: false, complianceApproved: false, formMappingReady: false, secureKeyApproved: false, connectionReviewReady: false })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("keeps key values outside the UI and retains credentials, webhooks, and lead imports as unavailable", async () => {
@@ -72,6 +77,11 @@ describe("advertising integration planning settings", () => {
     expect(source).toContain("developers.google.com/google-ads/api/docs/oauth/overview");
     expect(source).toContain("Show advertising setup module");
     expect(source).toContain("setModuleVisibility");
+    expect(source).toContain("Progress value={checklistProgress}");
+    expect(source).toContain("saveChecklist");
+    expect(source).toContain("motion-reduce:transition-none");
+    const dashboardSource = await readFile(resolve(root, "client/src/pages/Leads.tsx"), "utf8");
+    expect(dashboardSource).toContain("Ads module:");
     expect(source).toContain("Test connection");
     expect(source).toContain("Revoke secure key");
     expect(source).toContain("disabled");
