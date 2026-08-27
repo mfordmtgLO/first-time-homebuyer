@@ -93,6 +93,12 @@ describe("advertising integration planning settings", () => {
     expect(source).toContain("Reset checklist");
     expect(source).toContain("Watch tutorial");
     expect(source).toContain("Tutorial video placeholder");
+    expect(source).toContain("Reset advertising checklist?");
+    expect(source).toContain("Confirm reset");
+    expect(source).toContain("Close tutorial");
+    expect(source).toContain("Official setup references");
+    expect(source).toContain("Meta Marketing API authentication guide");
+    expect(source).toContain("Google Ads API OAuth guide");
     expect(source).toContain("checklistReminderDue");
     expect(source).toContain("saveChecklist");
     expect(source).toContain("motion-reduce:transition-none");

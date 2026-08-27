@@ -850,3 +850,8 @@
 - [x] Add an administrator-only Reset Checklist action that clears saved progress and reminder state without changing integration readiness or connection status
 - [x] Add a Watch Tutorial action that opens a clear setup-walkthrough placeholder modal in the private advertising readiness section
 - [x] Add regression coverage, responsive verification, and publish the checklist reset and tutorial controls
+
+- [x] Add a confirmation dialog before the administrator can reset advertising checklist progress
+- [x] Ensure the advertising tutorial modal supports click-outside dismissal and an explicit Close button
+- [x] Add official Meta and Google documentation links below the tutorial placeholder
+- [x] Add regression coverage, responsive verification, and publish the tutorial and reset-safety refinements
