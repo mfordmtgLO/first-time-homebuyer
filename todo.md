@@ -814,3 +814,8 @@
 - [x] Add date-range filtering and text search to the private backup-history log
 - [x] Add loading and success feedback when an owner records a completed external restoration event
 - [x] Add focused coverage, responsive verification, and publish the private backup-management refinements
+
+- [x] Add truthful per-entry backup package download controls that appear only for saved valid package URLs
+- [x] Add an admin-only Meta and Google advertising integration settings page with planning and approval placeholders only
+- [x] Preserve the explicit hold on native Meta/Google webhooks, advertising credentials, and lead imports
+- [x] Add migration, safeguards, regression coverage, responsive verification, and publish the backup-download and integration-planning controls

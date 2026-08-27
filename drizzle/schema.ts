@@ -1125,6 +1125,30 @@ export const backupHistoryEvent = mysqlTable(
 export type BackupHistoryEvent = typeof backupHistoryEvent.$inferSelect;
 export type InsertBackupHistoryEvent = typeof backupHistoryEvent.$inferInsert;
 
+/**
+ * Non-secret, administrator-owned preparation state for future advertising
+ * integrations. These records intentionally exclude OAuth tokens, client
+ * secrets, webhook URLs, and lead payloads until a separately approved setup.
+ */
+export const advertisingIntegrationSetting = mysqlTable(
+  "advertising_integration_setting",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerUserId: int("ownerUserId").notNull(),
+    provider: mysqlEnum("provider", ["meta", "google_ads"]).notNull(),
+    setupStage: mysqlEnum("setupStage", ["not_started", "details_saved", "compliance_pending", "approved_not_connected"]).default("not_started").notNull(),
+    accountReference: varchar("accountReference", { length: 180 }),
+    formReference: varchar("formReference", { length: 240 }),
+    internalNote: text("internalNote"),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex("advertising_integration_owner_provider_unique").on(table.ownerUserId, table.provider)]
+);
+
+export type AdvertisingIntegrationSetting = typeof advertisingIntegrationSetting.$inferSelect;
+export type InsertAdvertisingIntegrationSetting = typeof advertisingIntegrationSetting.$inferInsert;
+
 /** Owner-private snapshots of AI workflow reviews and the owner's manually recorded outcomes. */
 export const workflowAiReviewHistory = mysqlTable(
   "workflow_ai_review_history",

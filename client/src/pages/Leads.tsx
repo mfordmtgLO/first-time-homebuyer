@@ -19,6 +19,7 @@ import { TeamMemberWorkspacePanel, TeamWorkspaceActivation, TeamWorkspaceManagem
 import { TeamTemplateSubmissionPanel } from "@/components/TeamTemplateSubmissionPanel";
 import { TeamMemberProvisioningStatus } from "@/components/TeamWorkspaceProvisioning";
 import BackupManagementPanel from "@/components/BackupManagementPanel";
+import AdvertisingIntegrationSettings from "@/components/AdvertisingIntegrationSettings";
 import {
   buildLeadWelcomeDraft,
   type LeadEmailAgent,
@@ -999,7 +1000,7 @@ export default function Leads() {
             )}
 
             <div id="co-marketing-agents" className="scroll-mt-24"><AgentSettings /></div>
-            <div id="loan-officers" className="scroll-mt-24"><LoanOfficerSettings /><TeamWorkspaceManagement /><BackupManagementPanel /></div>
+            <div id="loan-officers" className="scroll-mt-24"><LoanOfficerSettings /><TeamWorkspaceManagement /><BackupManagementPanel /><AdvertisingIntegrationSettings /></div>
             <div id="texting-workspace" className="scroll-mt-24"><TextingWorkspace /></div>
             <div id="chat-intakes" className="scroll-mt-24"><ChatIntakeLeads /></div>
             <div id="saved-qualifying-listings" className="scroll-mt-24"><GeoSphereListings /></div>

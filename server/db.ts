@@ -32,6 +32,7 @@ import {
   loAgentSpendPairing,
   mortgagePaymentQuote,
   backupHistoryEvent,
+  advertisingIntegrationSetting,
   workflowAiReviewHistory,
   teamLoanOfficerWorkspace,
   teamTemplateLibrary,
@@ -1965,6 +1966,46 @@ export async function createBackupHistoryEvent(input: {
     eq(backupHistoryEvent.ownerUserId, input.ownerUserId),
   )).limit(1);
   if (!rows[0]) throw new Error("Could not record backup history event.");
+  return rows[0];
+}
+
+// ---------------------------------------------------------------------------
+// Administrator-only deferred advertising integration planning
+// ---------------------------------------------------------------------------
+
+export type AdvertisingIntegrationProvider = "meta" | "google_ads";
+export type AdvertisingIntegrationStage = "not_started" | "details_saved" | "compliance_pending" | "approved_not_connected";
+
+export async function listAdvertisingIntegrationSettings(ownerUserId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(advertisingIntegrationSetting).where(eq(advertisingIntegrationSetting.ownerUserId, ownerUserId)).orderBy(asc(advertisingIntegrationSetting.provider));
+}
+
+export async function saveAdvertisingIntegrationSetting(input: {
+  ownerUserId: number;
+  provider: AdvertisingIntegrationProvider;
+  setupStage: AdvertisingIntegrationStage;
+  accountReference?: string | null;
+  formReference?: string | null;
+  internalNote?: string | null;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(advertisingIntegrationSetting).values(input).onDuplicateKeyUpdate({
+    set: {
+      setupStage: input.setupStage,
+      accountReference: input.accountReference ?? null,
+      formReference: input.formReference ?? null,
+      internalNote: input.internalNote ?? null,
+      updatedAt: new Date(),
+    },
+  });
+  const rows = await db.select().from(advertisingIntegrationSetting).where(and(
+    eq(advertisingIntegrationSetting.ownerUserId, input.ownerUserId),
+    eq(advertisingIntegrationSetting.provider, input.provider),
+  )).limit(1);
+  if (!rows[0]) throw new Error("Could not save advertising integration planning settings.");
   return rows[0];
 }
 

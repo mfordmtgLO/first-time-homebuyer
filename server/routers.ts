@@ -63,6 +63,7 @@ import {
   createMortgagePaymentQuote,
   createWorkflowAiReviewHistory,
   createBackupHistoryEvent,
+  saveAdvertisingIntegrationSetting,
   createTeamLoanOfficerWorkspace,
   prepareTeamLoanOfficerWorkspace,
   createTeamTemplateLibraryEntry,
@@ -151,6 +152,7 @@ import {
   listTeamTemplateSubmissionsForMember,
   listWorkflowAiReviewHistory,
   listBackupHistoryEvents,
+  listAdvertisingIntegrationSettings,
   listSyncedTopAgents,
   listSyncedAgentOutreachTemplates,
   listSyncedTopAgentRankHistory,
@@ -2577,6 +2579,26 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
         return createBackupHistoryEvent({ ...input, ownerUserId: ctx.user.id });
+      }),
+  }),
+
+  adIntegrationSettings: router({
+    /** Planning-only state. Native ad-platform connection and lead imports remain disabled. */
+    list: protectedProcedure.query(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      return listAdvertisingIntegrationSettings(ctx.user.id);
+    }),
+    save: protectedProcedure
+      .input(z.object({
+        provider: z.enum(["meta", "google_ads"]),
+        setupStage: z.enum(["not_started", "details_saved", "compliance_pending", "approved_not_connected"]),
+        accountReference: z.string().trim().max(180).nullable().optional(),
+        formReference: z.string().trim().max(240).nullable().optional(),
+        internalNote: z.string().trim().max(2000).nullable().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        return saveAdvertisingIntegrationSetting({ ...input, ownerUserId: ctx.user.id });
       }),
   }),
 

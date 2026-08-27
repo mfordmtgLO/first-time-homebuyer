@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, ExternalLink, FileClock, Loader2, RotateCcw, Search, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, ExternalLink, FileClock, Loader2, RotateCcw, Search, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,16 @@ function toDateInputValue(value: Date) {
 function endOfDate(value: string) {
   const date = new Date(`${value}T23:59:59.999`);
   return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+function getSecurePackageUrl(value: string | null) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
 }
 
 export default function BackupManagementPanel() {
@@ -125,8 +135,8 @@ export default function BackupManagementPanel() {
         </div>
         <div className="mt-3 grid gap-3 lg:grid-cols-2">
           <label className="grid gap-1.5 text-xs font-semibold text-foreground">
-            Package or reference (optional)
-            <Input value={packageReference} maxLength={300} onChange={(event) => setPackageReference(event.target.value)} placeholder="Original package name or secure reference" />
+            Secure package URL or reference (optional)
+            <Input value={packageReference} maxLength={300} onChange={(event) => setPackageReference(event.target.value)} placeholder="https://… package URL, or a secure reference name" />
           </label>
           <label className="grid gap-1.5 text-xs font-semibold text-foreground">
             Owner notes (optional)
@@ -159,6 +169,7 @@ export default function BackupManagementPanel() {
           {!history.isLoading && !history.isError && history.data?.length === 0 ? <p className="px-4 py-8 text-sm text-muted-foreground">No documented backup or restoration events match these filters.</p> : null}
           {history.data?.map((entry) => {
             const restored = entry.eventType === "restore_confirmed";
+            const packageUrl = getSecurePackageUrl(entry.packageReference);
             return <article key={entry.id} className="flex gap-3 border-b border-border/70 px-4 py-3 last:border-0">
               <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${restored ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "bg-primary/10 text-primary"}`}>
                 {restored ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> : <FileClock className="h-4 w-4" aria-hidden="true" />}
@@ -167,6 +178,9 @@ export default function BackupManagementPanel() {
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1"><p className="font-semibold">{entry.label}</p><span className={`text-xs font-semibold ${restored ? "text-emerald-700 dark:text-emerald-300" : "text-primary"}`}>{restored ? "Restoration confirmed" : "Backup completed"}</span></div>
                 <p className="mt-0.5 text-xs text-muted-foreground">{new Date(entry.occurredAt).toLocaleDateString()} {entry.packageReference ? `· ${entry.packageReference}` : ""}</p>
                 {entry.notes ? <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{entry.notes}</p> : null}
+                <div className="mt-2">
+                  {packageUrl ? <a href={packageUrl} target="_blank" rel="noreferrer" download className="inline-flex items-center gap-1 text-xs font-semibold text-primary underline-offset-4 hover:underline"><Download className="h-3.5 w-3.5" aria-hidden="true" />Download package</a> : <span className="text-xs text-muted-foreground">No secure package URL recorded</span>}
+                </div>
               </div>
             </article>;
           })}
