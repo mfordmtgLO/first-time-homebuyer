@@ -414,6 +414,13 @@
       "when": 1787859662373,
       "tag": "0058_complete_bullseye",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "5",
+      "when": 1787860462945,
+      "tag": "0059_cooing_rockslide",
+      "breakpoints": true
     }
   ]
 }

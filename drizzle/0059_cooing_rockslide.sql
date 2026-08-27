@@ -1,0 +1,1 @@
+ALTER TABLE `advertising_integration_module_setting` ADD `checklistReminderAt` timestamp;

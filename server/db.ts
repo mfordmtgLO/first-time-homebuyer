@@ -2014,7 +2014,11 @@ export async function getAdvertisingIntegrationModuleVisibility(ownerUserId: num
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const rows = await db.select().from(advertisingIntegrationModuleSetting).where(eq(advertisingIntegrationModuleSetting.ownerUserId, ownerUserId)).limit(1);
-  return { isVisible: rows[0]?.isVisible !== 0, checklist: parseAdvertisingChecklist(rows[0]?.checklistState) };
+  return {
+    isVisible: rows[0]?.isVisible !== 0,
+    checklist: parseAdvertisingChecklist(rows[0]?.checklistState),
+    checklistReminderAt: rows[0]?.checklistReminderAt ?? null,
+  };
 }
 
 export async function saveAdvertisingIntegrationModuleVisibility(input: { ownerUserId: number; isVisible: boolean }) {
@@ -2049,6 +2053,21 @@ export async function saveAdvertisingIntegrationChecklist(input: { ownerUserId: 
     set: { checklistState: JSON.stringify(checklist), updatedAt: new Date() },
   });
   return { checklist };
+}
+
+export async function saveAdvertisingIntegrationChecklistReminder(input: { ownerUserId: number; checklistReminderAt: Date }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const current = await db.select().from(advertisingIntegrationModuleSetting).where(eq(advertisingIntegrationModuleSetting.ownerUserId, input.ownerUserId)).limit(1);
+  await db.insert(advertisingIntegrationModuleSetting).values({
+    ownerUserId: input.ownerUserId,
+    isVisible: current[0]?.isVisible ?? 1,
+    checklistState: current[0]?.checklistState ?? null,
+    checklistReminderAt: input.checklistReminderAt,
+  }).onDuplicateKeyUpdate({
+    set: { checklistReminderAt: input.checklistReminderAt, updatedAt: new Date() },
+  });
+  return { checklistReminderAt: input.checklistReminderAt };
 }
 
 // ---------------------------------------------------------------------------

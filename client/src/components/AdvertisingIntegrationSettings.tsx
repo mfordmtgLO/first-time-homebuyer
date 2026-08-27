@@ -141,6 +141,17 @@ export default function AdvertisingIntegrationSettings() {
   });
   const completedSteps = CHECKLIST_STEPS.filter((step) => checklist[step.key]).length;
   const checklistProgress = Math.round((completedSteps / CHECKLIST_STEPS.length) * 100);
+  const remainingSteps = CHECKLIST_STEPS.filter((step) => !checklist[step.key]);
+  const reminderAt = moduleVisibility?.checklistReminderAt ? new Date(moduleVisibility.checklistReminderAt) : null;
+  const checklistReminderDeferred = Boolean(reminderAt && reminderAt.getTime() > Date.now());
+  const checklistReminderDue = Boolean(reminderAt && reminderAt.getTime() <= Date.now());
+  const remindLater = trpc.adIntegrationSettings.remindLater.useMutation({
+    onSuccess: async (result) => {
+      await utils.adIntegrationSettings.moduleVisibility.invalidate();
+      toast.success(`Checklist hidden until ${new Date(result.checklistReminderAt).toLocaleDateString()}. A dashboard reminder will appear on your next visit after that date.`);
+    },
+    onError: (error) => toast.error(error.message),
+  });
 
   useEffect(() => {
     if (isVisible) {
@@ -152,6 +163,12 @@ export default function AdvertisingIntegrationSettings() {
     const timer = window.setTimeout(() => setRenderModule(false), 200);
     return () => window.clearTimeout(timer);
   }, [isVisible]);
+
+  useEffect(() => {
+    if (checklistReminderDue) {
+      toast.message("Advertising setup reminder", { description: "Your deferred Getting Started checklist is ready to review." });
+    }
+  }, [checklistReminderDue]);
 
   const updateChecklist = (key: keyof ChecklistState, checked: boolean) => saveChecklist.mutate({ ...checklist, [key]: checked });
 
@@ -168,7 +185,7 @@ export default function AdvertisingIntegrationSettings() {
     <div className="min-h-0 overflow-hidden">
     <div className="grid gap-3 rounded-xl border border-border bg-muted/35 p-4 lg:grid-cols-[auto_minmax(0,1fr)]">
       <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary"><ShieldAlert className="h-4 w-4" aria-hidden="true" /></div>
-      <div><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-bold">Getting Started checklist</h3><span className="text-xs font-bold text-muted-foreground">{completedSteps} of {CHECKLIST_STEPS.length} complete</span></div><Progress value={checklistProgress} className="mt-3 h-2" aria-label={`Advertising setup readiness: ${checklistProgress}% complete`} /><div className="mt-3 grid gap-2">{CHECKLIST_STEPS.map((step) => <label key={step.key} className="flex cursor-pointer items-start gap-2.5 text-sm leading-5 text-muted-foreground"><Checkbox checked={checklist[step.key]} disabled={saveChecklist.isPending} onCheckedChange={(checked) => updateChecklist(step.key, checked === true)} aria-label={step.label} /><span>{step.label}</span></label>)}</div></div>
+      <div><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-bold">Getting Started checklist</h3><span className="text-xs font-bold text-muted-foreground">{completedSteps} of {CHECKLIST_STEPS.length} complete</span></div>{checklistReminderDue && <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/25 bg-primary/10 px-3 py-2 text-sm text-primary" role="status"><span><strong>Reminder:</strong> your checklist is ready to continue.</span><span className="text-xs font-bold">{remainingSteps.length} remaining</span></div>}{checklistReminderDeferred ? <div className="mt-3 rounded-lg border border-dashed border-border bg-background/60 px-3 py-3 text-sm leading-6 text-muted-foreground" role="status">Checklist temporarily hidden. It will return with a dashboard reminder on your next visit after <strong>{reminderAt?.toLocaleDateString()}</strong>.</div> : <><Tooltip><TooltipTrigger asChild><div tabIndex={0} role="img" aria-label={`Advertising setup readiness: ${completedSteps} completed and ${remainingSteps.length} remaining`} className="mt-3 cursor-help rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"><Progress value={checklistProgress} className="h-2" /></div></TooltipTrigger><TooltipContent side="top" className="max-w-80 p-3"><p className="font-bold">Checklist progress</p><p className="mt-1">{completedSteps} completed · {remainingSteps.length} remaining</p>{remainingSteps.length > 0 && <ul className="mt-2 list-disc space-y-1 pl-4">{remainingSteps.map((step) => <li key={step.key}>{step.label}</li>)}</ul>}</TooltipContent></Tooltip><div className="mt-3 grid gap-2">{CHECKLIST_STEPS.map((step) => <label key={step.key} className="flex cursor-pointer items-start gap-2.5 text-sm leading-5 text-muted-foreground"><Checkbox checked={checklist[step.key]} disabled={saveChecklist.isPending || remindLater.isPending} onCheckedChange={(checked) => updateChecklist(step.key, checked === true)} aria-label={step.label} /><span>{step.label}</span></label>)}</div><div className="mt-3 flex justify-end"><Button type="button" variant="ghost" size="sm" disabled={remindLater.isPending} onClick={() => remindLater.mutate()}>{remindLater.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}Remind me later</Button></div></>}</div>
     </div>
     <div className="mt-4 grid gap-4 xl:grid-cols-2">{PROVIDERS.map((provider) => <PlanningCard key={provider.value} provider={provider.value} title={provider.title} detail={provider.detail} />)}</div>
     </div></div>}

@@ -840,3 +840,9 @@
 - [x] Add a smooth reduced-motion-safe collapse/expand transition and confirmation feedback for the advertising module visibility switch
 - [x] Add a compact enabled/disabled advertising-module status badge to the main administrator dashboard navigation
 - [x] Add migration, regression coverage, responsive verification, and publish the advertising-readiness interaction refinements
+
+- [x] Add a hover and keyboard-focus progress-bar tooltip showing completed and remaining advertising setup steps
+- [x] Add a temporary checklist dismissal with an in-dashboard reminder that returns after one week
+- [x] Add a quick-link from the administrator Ads module status badge to the advertising integration settings section
+- [x] Add scheduling-safe persistence, safeguards, regression coverage, responsive verification, and publish the readiness navigation refinements
+- [x] Implement the chosen Option A reminder: hide the checklist for seven days and show an in-dashboard reminder only when Mike next visits afterward

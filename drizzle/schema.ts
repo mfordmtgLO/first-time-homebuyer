@@ -1157,6 +1157,7 @@ export const advertisingIntegrationModuleSetting = mysqlTable(
     ownerUserId: int("ownerUserId").notNull(),
     isVisible: int("isVisible").default(1).notNull(),
     checklistState: text("checklistState"),
+    checklistReminderAt: timestamp("checklistReminderAt"),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
