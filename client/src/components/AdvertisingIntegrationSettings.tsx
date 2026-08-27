@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BadgeCheck, CircleAlert, CircleCheck, CircleHelp, CirclePause, CirclePlay, ExternalLink, KeyRound, Loader2, PlugZap, RotateCcw, Save, ShieldAlert } from "lucide-react";
+import { BadgeCheck, CircleAlert, CircleCheck, CircleHelp, CirclePause, CirclePlay, Copy, ExternalLink, KeyRound, Loader2, PlugZap, RotateCcw, Save, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -47,10 +47,16 @@ const CHECKLIST_STEPS = [
   { key: "formMappingReady", label: "Record the approved form reference and map its fields to the dashboard intake." },
   { key: "secureKeyApproved", label: "Obtain administrator approval to enter a provider credential through protected secret storage." },
   { key: "connectionReviewReady", label: "Complete the administrator connection review before any test request, webhook, or lead import is considered." },
+  { key: "tutorialWatched", label: "Review the internal advertising setup walkthrough and official provider resources." },
 ] as const;
 
 type ChecklistState = Record<(typeof CHECKLIST_STEPS)[number]["key"], boolean>;
-const EMPTY_CHECKLIST: ChecklistState = { accountCreated: false, complianceApproved: false, formMappingReady: false, secureKeyApproved: false, connectionReviewReady: false };
+const EMPTY_CHECKLIST: ChecklistState = { accountCreated: false, complianceApproved: false, formMappingReady: false, secureKeyApproved: false, connectionReviewReady: false, tutorialWatched: false };
+
+const TUTORIAL_RESOURCES = [
+  { provider: "Meta", title: "Meta Marketing API authentication guide", detail: "Authentication, access-token, and app-permission preparation.", href: CREDENTIAL_HELP.meta.href },
+  { provider: "Google", title: "Google Ads API OAuth guide", detail: "OAuth 2.0 authorization preparation for Google Ads API access.", href: CREDENTIAL_HELP.google_ads.href },
+] as const;
 
 function getReadiness(accountReference: string, apiKeyConfigured: boolean, stage: Stage) {
   if (!accountReference.trim()) return { label: "Inactive — Account ID missing", detail: "Add a non-secret advertising Account ID after the provider account is created.", tone: "text-muted-foreground", Icon: CircleAlert };
@@ -126,6 +132,7 @@ export default function AdvertisingIntegrationSettings() {
   const [moduleOpen, setModuleOpen] = useState(true);
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [resetConfirmationOpen, setResetConfirmationOpen] = useState(false);
+  const [documentationQuery, setDocumentationQuery] = useState("");
   const setModuleVisibility = trpc.adIntegrationSettings.setModuleVisibility.useMutation({
     onSuccess: async (result) => {
       await utils.adIntegrationSettings.moduleVisibility.invalidate();
@@ -182,6 +189,15 @@ export default function AdvertisingIntegrationSettings() {
   }, [checklistReminderDue]);
 
   const updateChecklist = (key: keyof ChecklistState, checked: boolean) => saveChecklist.mutate({ ...checklist, [key]: checked });
+  const visibleTutorialResources = TUTORIAL_RESOURCES.filter((resource) => `${resource.provider} ${resource.title} ${resource.detail}`.toLowerCase().includes(documentationQuery.trim().toLowerCase()));
+  const copyResourceLink = async (resource: (typeof TUTORIAL_RESOURCES)[number]) => {
+    try {
+      await navigator.clipboard.writeText(resource.href);
+      toast.success(`${resource.provider} guide link copied for team sharing.`);
+    } catch {
+      toast.error("Couldn't copy the link. Select the official guide link and copy it manually.");
+    }
+  };
 
   return <section id="advertising-integrations" className="scroll-mt-24 rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-sm sm:p-5" aria-labelledby="advertising-integrations-heading">
     <div className="flex flex-col gap-3 border-b border-border pb-4 lg:flex-row lg:items-start lg:justify-between">
@@ -199,12 +215,13 @@ export default function AdvertisingIntegrationSettings() {
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-bold">Getting Started checklist</h3><span className="text-xs font-bold text-muted-foreground">{completedSteps} of {CHECKLIST_STEPS.length} complete</span></div>
             <div className="mt-3 flex flex-wrap justify-end gap-2">
-              <Dialog open={tutorialOpen} onOpenChange={setTutorialOpen}>
+              <Dialog open={tutorialOpen} onOpenChange={(open) => { setTutorialOpen(open); if (!open) setDocumentationQuery(""); }}>
                 <DialogTrigger asChild><Button type="button" variant="outline" size="sm"><CirclePlay className="mr-1.5 h-4 w-4" aria-hidden="true" />Watch tutorial</Button></DialogTrigger>
                 <DialogContent className="max-w-xl">
                   <DialogHeader><DialogTitle>Advertising integration setup walkthrough</DialogTitle><DialogDescription>This placeholder will hold an approved setup tutorial before Meta or Google connections are enabled.</DialogDescription></DialogHeader>
                   <div className="flex min-h-52 items-center justify-center rounded-xl border border-dashed border-border bg-muted/35 p-6 text-center"><div><CirclePlay className="mx-auto h-10 w-10 text-primary" aria-hidden="true" /><p className="mt-3 font-bold">Tutorial video placeholder</p><p className="mx-auto mt-1 max-w-sm text-sm leading-6 text-muted-foreground">Future walkthrough: create the provider account, collect non-secret references, obtain compliance approval, use protected credential storage, confirm form mapping, and complete the administrator review.</p></div></div>
-                  <div className="rounded-xl border border-border bg-muted/25 p-4"><p className="font-bold">Official setup references</p><p className="mt-1 text-sm leading-6 text-muted-foreground">Use these provider guides only when corporate approval and the connection review are ready.</p><div className="mt-3 grid gap-2"><a className="inline-flex items-center gap-1.5 text-sm font-bold text-primary underline underline-offset-4" href={CREDENTIAL_HELP.meta.href} target="_blank" rel="noreferrer">Meta Marketing API authentication guide <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /></a><a className="inline-flex items-center gap-1.5 text-sm font-bold text-primary underline underline-offset-4" href={CREDENTIAL_HELP.google_ads.href} target="_blank" rel="noreferrer">Google Ads API OAuth guide <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /></a></div></div>
+                  <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-muted/25 p-3 text-sm leading-5 text-muted-foreground"><Checkbox checked={checklist.tutorialWatched} disabled={saveChecklist.isPending} onCheckedChange={(checked) => updateChecklist("tutorialWatched", checked === true)} aria-label="Mark tutorial as watched" /><span><strong className="text-foreground">Mark as watched</strong><br />Counts this walkthrough as completed in the Getting Started checklist. It does not approve, connect, or test any provider.</span></label>
+                  <div className="rounded-xl border border-border bg-muted/25 p-4"><p className="font-bold">Official setup references</p><p className="mt-1 text-sm leading-6 text-muted-foreground">Search the approved resources below. Use provider guides only when corporate approval and the connection review are ready.</p><Input value={documentationQuery} onChange={(event) => setDocumentationQuery(event.target.value)} className="mt-3" aria-label="Search official Meta and Google documentation" placeholder="Search Meta or Google guides" /><div className="mt-3 grid gap-2">{visibleTutorialResources.length > 0 ? visibleTutorialResources.map((resource) => <div key={resource.href} className="flex flex-col gap-2 rounded-lg border border-border bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-bold">{resource.title}</p><p className="mt-0.5 text-xs leading-5 text-muted-foreground">{resource.detail}</p></div><div className="flex shrink-0 flex-wrap gap-2"><a className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs font-bold text-primary underline underline-offset-4" href={resource.href} target="_blank" rel="noreferrer">Open <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /></a><Button type="button" variant="outline" size="sm" onClick={() => void copyResourceLink(resource)}><Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />Copy link</Button></div></div>) : <p className="rounded-lg border border-dashed border-border px-3 py-3 text-sm text-muted-foreground">No official Meta or Google guide matches that search.</p>}</div></div>
                   <p className="text-xs leading-5 text-muted-foreground">No tutorial video is attached yet. This panel does not connect accounts or collect credentials.</p>
                   <div className="flex justify-end"><DialogClose asChild><Button type="button" variant="outline">Close tutorial</Button></DialogClose></div>
                 </DialogContent>

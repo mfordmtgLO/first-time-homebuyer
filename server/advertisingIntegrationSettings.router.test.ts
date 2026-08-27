@@ -99,6 +99,9 @@ describe("advertising integration planning settings", () => {
     expect(source).toContain("Official setup references");
     expect(source).toContain("Meta Marketing API authentication guide");
     expect(source).toContain("Google Ads API OAuth guide");
+    expect(source).toContain("Mark as watched");
+    expect(source).toContain("Search Meta or Google guides");
+    expect(source).toContain("Copy link");
     expect(source).toContain("checklistReminderDue");
     expect(source).toContain("saveChecklist");
     expect(source).toContain("motion-reduce:transition-none");

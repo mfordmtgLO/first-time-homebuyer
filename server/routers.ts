@@ -2606,6 +2606,7 @@ export const appRouter = router({
         formMappingReady: z.boolean(),
         secureKeyApproved: z.boolean(),
         connectionReviewReady: z.boolean(),
+        tutorialWatched: z.boolean().optional().default(false),
       }))
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);

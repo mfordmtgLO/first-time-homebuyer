@@ -855,3 +855,8 @@
 - [x] Ensure the advertising tutorial modal supports click-outside dismissal and an explicit Close button
 - [x] Add official Meta and Google documentation links below the tutorial placeholder
 - [x] Add regression coverage, responsive verification, and publish the tutorial and reset-safety refinements
+
+- [x] Add a tutorial Mark as Watched checkbox that safely updates the existing advertising Getting Started checklist progress
+- [x] Add searchable official Meta and Google documentation resources to the private tutorial modal
+- [x] Add per-resource Copy Link actions in the tutorial modal for internal team sharing
+- [x] Add regression coverage, responsive verification, and publish the tutorial resource interaction enhancements
