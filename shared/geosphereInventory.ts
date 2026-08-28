@@ -12,6 +12,7 @@ export type GeoSphereInventoryListing = {
   hoaDues?: number | null;
   homeownerInsurance?: number | null;
   mortgageInsurance?: number | null;
+  lakeviewReview?: boolean;
 };
 
 const EXPORT_ESTIMATE_RATE = 0.065;
@@ -61,7 +62,7 @@ function escapeCsvCell(value: string | number | null) {
 }
 
 export function buildGeoSphereInventoryCsv(listings: GeoSphereInventoryListing[]) {
-  const headers = ["Address", "Price", "Bedrooms", "Bathrooms", "Square footage", "Property type", "Property taxes (annual)", "Units", "HOA dues (monthly)", "Homeowner insurance (monthly)", "Mortgage insurance (monthly)", "Estimated P&I/month (30y, 6.5%, 5% down)", "Estimated total monthly payment (P&I + taxes + HOA + home insurance + mortgage insurance)", "LMI", "USDA RD eligible"];
+  const headers = ["Address", "Price", "Bedrooms", "Bathrooms", "Square footage", "Property type", "Property taxes (annual)", "Units", "HOA dues (monthly)", "Homeowner insurance (monthly)", "Mortgage insurance (monthly)", "Estimated P&I/month (30y, 6.5%, 5% down)", "Estimated total monthly payment (P&I + taxes + HOA + home insurance + mortgage insurance)", "LMI", "USDA RD eligible", "Lakeview National review match"];
   const rows = listings.map((listing) => [
     listing.address,
     listing.price,
@@ -78,6 +79,7 @@ export function buildGeoSphereInventoryCsv(listings: GeoSphereInventoryListing[]
     estimateExportTotalMonthlyPayment(listing),
     Boolean(listing.isLmi) ? "Yes" : "No",
     Boolean(listing.isUsda) ? "Yes" : "No",
+    listing.lakeviewReview === true ? "Yes" : "No",
   ]);
   return [headers, ...rows].map((row) => row.map(escapeCsvCell).join(",")).join("\n");
 }

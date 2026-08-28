@@ -894,3 +894,7 @@
 - [x] Add additive consent and webhook hardening safeguards with adversarial automated coverage while sender replacement remains paused
 
 - [x] Prevent a signed callback that arrives before the initial audit write from regressing delivery state or creating duplicate recipient events
+
+- [x] Extend the separate GeoSphere map application with a Lakeview National Rentcast qualifying-list saved database, map overlay, property detail popup, and export selection
+
+- [x] Add a review-only Lakeview National program filter to Saved Qualified Listings using existing GeoSphere sync metadata for new and existing Rentcast listing snapshots

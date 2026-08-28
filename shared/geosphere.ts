@@ -13,7 +13,20 @@ export type GeoSphereSourceListing = {
   propertyType?: string | null;
   latitude?: number | string | null;
   longitude?: number | string | null;
-  overlayEligibility?: { lmi?: boolean; usda?: boolean };
+  overlayEligibility?: {
+    lmi?: boolean;
+    usda?: boolean;
+    lakeviewNational?: {
+      available?: boolean;
+      reviewReady?: boolean;
+      state?: string | null;
+      county?: string | null;
+      defaultListingPriceCap?: number | null;
+      priceWithinDefaultCap?: boolean | null;
+      property?: { stickBuiltOneToFour?: boolean; unitCount?: number | null; manufactured?: boolean };
+    };
+    [key: string]: unknown;
+  };
   [key: string]: unknown;
 };
 
@@ -25,6 +38,9 @@ export type GeoSphereSourcePull = {
   count?: number;
   totalFetched?: number;
   overlaySets: Record<GeoSphereOverlayKey, GeoSphereSourceListing[]>;
+  /** Additive source-owned review sets. Version 1 consumers may safely ignore them. */
+  programReviewSets?: Record<string, GeoSphereSourceListing[]>;
+  programReviewConfiguration?: { version?: string; programs?: Array<{ id?: string; label?: string; [key: string]: unknown }> };
 };
 
 export type GeoSphereExport = {
