@@ -27,4 +27,10 @@ describe("Twilio messaging safeguards", () => {
     expect(parseTwilioCallbackStatus("undelivered")).toBe("undelivered");
     expect(parseTwilioCallbackStatus("read")).toBeNull();
   });
+
+  it("returns provider error codes only as a safe reference, never raw Twilio diagnostics", async () => {
+    const { safeTwilioErrorMessage } = await import("./twilio");
+    expect(safeTwilioErrorMessage({ code: 21408, message: "sensitive provider diagnostic" })).toBe("Twilio could not accept this message. Review the recipient’s consent, phone number, and approved Twilio sender (Twilio error code 21408).");
+    expect(safeTwilioErrorMessage({ status: 401, message: "sensitive provider diagnostic" })).toBe("Twilio could not accept this message. Review the recipient’s consent, phone number, and approved Twilio sender (Twilio request status 401).");
+  });
 });

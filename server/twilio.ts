@@ -67,10 +67,16 @@ export function parseTwilioCallbackStatus(value: unknown): TwilioDeliveryStatus 
 
 export function safeTwilioErrorMessage(error: unknown) {
   const code = typeof error === "object" && error !== null && "code" in error ? Number((error as { code?: unknown }).code) : null;
+  const status = typeof error === "object" && error !== null && "status" in error ? Number((error as { status?: unknown }).status) : null;
   if (code === 21608) return "Twilio trial accounts can send only to Twilio-verified destination numbers.";
   if (code === 21606) return "The configured Twilio sender cannot send this SMS/MMS message.";
   if (code === 21211) return "The recipient phone number could not be accepted by Twilio.";
-  return "Twilio could not accept this message. Review the recipient’s consent, phone number, and approved Twilio sender.";
+  const reference = Number.isFinite(code) && code && code > 0
+    ? ` (Twilio error code ${code})`
+    : Number.isFinite(status) && status && status >= 100
+      ? ` (Twilio request status ${status})`
+      : "";
+  return `Twilio could not accept this message. Review the recipient’s consent, phone number, and approved Twilio sender${reference}.`;
 }
 
 export async function sendTwilioTextMessage(input: { to: string; body: string; attachmentUrls: string[] }) {

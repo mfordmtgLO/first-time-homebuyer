@@ -198,7 +198,8 @@ export default function TextingWorkspace() {
       setSelectedKeys(new Set());
       setSendConfirmationOpen(false);
       if (result.failedCount > 0) {
-        toast.warning(`${result.sentCount} message${result.sentCount === 1 ? "" : "s"} accepted by Twilio; ${result.failedCount} recipient${result.failedCount === 1 ? "" : "s"} need review. Open each text chain for the recorded delivery detail.`);
+        const firstFailure = result.outcomes.find((outcome) => !outcome.sent)?.detail;
+        toast.warning(`${result.sentCount} message${result.sentCount === 1 ? "" : "s"} accepted by Twilio; ${result.failedCount} recipient${result.failedCount === 1 ? "" : "s"} need review.${firstFailure ? ` ${firstFailure}` : " Open each text chain for the recorded delivery detail."}`);
       } else {
         toast.success(`${result.sentCount} individual message${result.sentCount === 1 ? "" : "s"} accepted by Twilio. Delivery updates will appear in each text chain.`);
       }

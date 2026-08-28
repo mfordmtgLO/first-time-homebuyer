@@ -880,3 +880,8 @@
 - [ ] Add secure Twilio secret configuration, webhook signature tests, consent/error coverage, controlled testing steps, and publish the callback-enabled texting activation
 
 - [x] Configure the Twilio trial path using only protected Account SID, Auth Token, and From Number values; do not require a Messaging Service SID
+
+- [x] Surface a safe Twilio rejection code in the private delivery detail so a trial sender issue can be resolved without exposing provider diagnostics or credentials
+
+- [ ] Diagnose why the confirmed private-dashboard Twilio send reports zero messages sent despite a verified trial sender and eligible test lead
+- [x] Show a safe per-recipient Twilio rejection detail in the private dashboard send result when zero messages are accepted
