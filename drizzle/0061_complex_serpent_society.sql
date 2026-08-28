@@ -1,0 +1,2 @@
+ALTER TABLE `text_chain_event` ADD CONSTRAINT `text_chain_event_recipient_unique` UNIQUE(`textMessageRecipientId`);--> statement-breakpoint
+ALTER TABLE `text_message_recipient` ADD CONSTRAINT `text_message_recipient_provider_id_unique` UNIQUE(`providerMessageId`);

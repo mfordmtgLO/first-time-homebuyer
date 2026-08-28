@@ -65,6 +65,14 @@ export function parseTwilioCallbackStatus(value: unknown): TwilioDeliveryStatus 
   }
 }
 
+/** Prevent delayed or replayed callbacks from overwriting a later or terminal delivery state. */
+export function shouldApplyTwilioDeliveryStatus(current: string, incoming: TwilioDeliveryStatus) {
+  if (current === incoming) return false;
+  if (current === "delivered" || current === "failed" || current === "undelivered") return false;
+  if (current === "sent" && incoming === "queued") return false;
+  return true;
+}
+
 export function safeTwilioErrorMessage(error: unknown) {
   const code = typeof error === "object" && error !== null && "code" in error ? Number((error as { code?: unknown }).code) : null;
   const status = typeof error === "object" && error !== null && "status" in error ? Number((error as { status?: unknown }).status) : null;

@@ -35,6 +35,8 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+  // Twilio callbacks receive a strict route-specific form parser before broad JSON/upload parsers.
+  registerTwilioStatusCallback(app);
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({
     limit: "50mb",
@@ -49,7 +51,6 @@ async function startServer() {
   app.post("/api/scheduled/geosphere-sync", runGeoSphereScheduledSync);
   registerOregonSyncHttp(app);
   registerPlatformLeadWebhooks(app);
-  registerTwilioStatusCallback(app);
   // tRPC API
   app.use(
     "/api/trpc",

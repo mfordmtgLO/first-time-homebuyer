@@ -19,6 +19,12 @@ This project’s existing Texting Workspace has a consent-gated draft and audit 
 
 > The application must not send to leads without recorded text consent. A first production test should use the account owner’s verified number, especially if the Twilio account is in trial mode.
 
+## Callback security review findings
+
+Twilio's current webhook guidance requires HTTPS using a publicly trusted certificate and recommends SDK-based validation of the `X-Twilio-Signature` against the exact configured webhook URL and **all** received form fields. Twilio may add callback parameters without advance notice, so validation must not rely on a fixed field allowlist for the signature calculation.
+
+For direct Message Resource sends without a Messaging Service, Twilio returns the initial `queued` status in the create response. It does not issue a callback for that initial state; later changes may generate `sent`, `delivered`, `failed`, or `undelivered` callbacks. The private workspace must treat duplicate or out-of-order callbacks as untrusted state notifications and must not regress a terminal delivery result.
+
 ## Official sources
 
 1. [Twilio Messages resource](https://www.twilio.com/docs/messaging/api/message-resource) — create-message requirements, statuses, E.164 phone format, Messaging Service use, and trial restrictions.

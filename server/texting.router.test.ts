@@ -105,6 +105,34 @@ describe("controlled Twilio texting workspace", () => {
     expect(sendTwilioTextMessageMock).not.toHaveBeenCalled();
   });
 
+  it("rejects text attachments that were not uploaded under the current administrator’s storage prefix", async () => {
+    const caller = appRouter.createCaller(context("admin"));
+    await expect(caller.texting.saveDraft({
+      body: "Hi Sarah — thank you for requesting your Roadmap.",
+      recipients: [{ sourceType: "roadmap", sourceLeadId: 44 }],
+      attachments: [{ storageKey: "text-drafts/999/other.jpg", url: "/manus-storage/text-drafts/999/other.jpg", fileName: "roadmap.jpg", mimeType: "image/jpeg", sizeBytes: 1234 }],
+    })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(createTextMessageDraftMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects unowned MMS attachments before a confirmed delivery attempt", async () => {
+    getTwilioReadinessMock.mockReturnValue(CONFIGURED);
+    const caller = appRouter.createCaller(context("admin"));
+    await expect(caller.texting.sendConfirmed({
+      confirmation: true,
+      body: "Hi Sarah — thank you for your request.",
+      recipients: [{ sourceType: "roadmap", sourceLeadId: 44 }],
+      attachments: [{ storageKey: "text-drafts/999/other.jpg", url: "/manus-storage/text-drafts/999/other.jpg", fileName: "roadmap.jpg", mimeType: "image/jpeg", sizeBytes: 1234 }],
+    })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(createTextMessageForTwilioDeliveryMock).not.toHaveBeenCalled();
+    expect(sendTwilioTextMessageMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects non-JPEG upload bytes even when a caller labels them as a JPG", async () => {
+    const caller = appRouter.createCaller(context("admin"));
+    await expect(caller.texting.uploadJpg({ fileName: "not-a-jpeg.jpg", dataBase64: Buffer.from("not a jpeg").toString("base64") })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
   it("sends only after an administrator makes an explicit confirmation and records the provider message ID", async () => {
     getTwilioReadinessMock.mockReturnValue(CONFIGURED);
     sendTwilioTextMessageMock.mockResolvedValue({ providerMessageId: "SM123", deliveryStatus: "queued" });

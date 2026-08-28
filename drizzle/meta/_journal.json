@@ -428,6 +428,13 @@
       "when": 1787875511934,
       "tag": "0060_organic_maginty",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "5",
+      "when": 1787924576295,
+      "tag": "0061_complex_serpent_society",
+      "breakpoints": true
     }
   ]
 }

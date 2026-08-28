@@ -885,3 +885,12 @@
 
 - [ ] Diagnose why the confirmed private-dashboard Twilio send reports zero messages sent despite a verified trial sender and eligible test lead
 - [x] Show a safe per-recipient Twilio rejection detail in the private dashboard send result when zero messages are accepted
+
+- [ ] Isolate the Twilio Trial error 572006 request constraint using read-only or intentionally invalid non-sending diagnostics only
+
+- [ ] Replace the trial-only sender with the newly claimed usable Twilio From Number through protected secret configuration, then revalidate readiness before one controlled delivery test
+
+- [x] Perform a focused security review of consent revalidation, owner confirmation, callback signature validation, and sensitive-data disclosure boundaries
+- [x] Add additive consent and webhook hardening safeguards with adversarial automated coverage while sender replacement remains paused
+
+- [x] Prevent a signed callback that arrives before the initial audit write from regressing delivery state or creating duplicate recipient events

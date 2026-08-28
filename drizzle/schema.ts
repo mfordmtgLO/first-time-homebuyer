@@ -569,6 +569,7 @@ export const textMessageRecipient = mysqlTable(
     index("text_message_recipient_message_idx").on(table.textMessageId),
     index("text_message_recipient_source_idx").on(table.sourceType, table.sourceLeadId),
     index("text_message_recipient_provider_id_idx").on(table.providerMessageId),
+    uniqueIndex("text_message_recipient_provider_id_unique").on(table.providerMessageId),
   ]
 );
 
@@ -621,6 +622,7 @@ export const textChainEvent = mysqlTable(
   (table) => [
     index("text_chain_event_source_time_idx").on(table.sourceType, table.sourceLeadId, table.occurredAt),
     index("text_chain_event_provider_id_idx").on(table.providerName, table.providerMessageId),
+    uniqueIndex("text_chain_event_recipient_unique").on(table.textMessageRecipientId),
   ]
 );
 

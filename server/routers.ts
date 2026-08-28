@@ -436,6 +436,22 @@ const textDraftAttachmentSchema = z.object({
   sizeBytes: z.number().int().positive().max(4_000_000),
 });
 
+function assertOwnedTextAttachments(userId: number, attachments: Array<z.infer<typeof textDraftAttachmentSchema>>) {
+  const allowedPrefix = `text-drafts/${userId}/`;
+  const hasUnsafeAttachment = attachments.some((attachment) =>
+    !attachment.storageKey.startsWith(allowedPrefix)
+    || attachment.storageKey.includes("..")
+    || attachment.url !== `/manus-storage/${attachment.storageKey}`
+  );
+  if (hasUnsafeAttachment) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Text attachments must be JPG files uploaded by the current administrator." });
+  }
+}
+
+function isJpegBuffer(buffer: Buffer) {
+  return buffer.length >= 4 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+}
+
 const chatSessionSchema = z.string().trim().min(12).max(72);
 
 const campaignAttributionInputSchema = z.object({
@@ -1413,8 +1429,8 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
         const buffer = Buffer.from(input.dataBase64, "base64");
-        if (buffer.length === 0 || buffer.length > 4_000_000) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "JPG must be no larger than 4MB." });
+        if (buffer.length === 0 || buffer.length > 4_000_000 || !isJpegBuffer(buffer)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Upload a valid JPG file no larger than 4MB." });
         }
         const key = `text-drafts/${ctx.user.id}/${nanoid(16)}.jpg`;
         const { url } = await storagePut(key, buffer, "image/jpeg");
@@ -1431,6 +1447,7 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
+        assertOwnedTextAttachments(ctx.user.id, input.attachments);
         const candidates = await listTextReadyRecipients();
         const validCandidates = new Map(
           candidates
@@ -1463,6 +1480,7 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
         if (!getTwilioReadiness().configured) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Twilio is not securely configured. Sending remains disabled." });
+        assertOwnedTextAttachments(ctx.user.id, input.attachments);
         const candidates = await listTextReadyRecipients();
         const validCandidates = new Map(
           candidates.filter((candidate) => hasUsableRoadmapPhone(candidate.phone)).map((candidate) => [`${candidate.sourceType}:${candidate.sourceLeadId}`, candidate])

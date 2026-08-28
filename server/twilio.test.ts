@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import twilio from "twilio";
-import { getTwilioStatusCallbackUrl, normalizeUsPhoneToE164, parseTwilioCallbackStatus, sendTwilioTextMessage, validateTwilioStatusCallback } from "./twilio";
+import { getTwilioStatusCallbackUrl, normalizeUsPhoneToE164, parseTwilioCallbackStatus, sendTwilioTextMessage, shouldApplyTwilioDeliveryStatus, validateTwilioStatusCallback } from "./twilio";
 
 describe("Twilio messaging safeguards", () => {
   it("uses the fixed production callback URL and normalizes only valid U.S. destinations", () => {
@@ -26,6 +26,14 @@ describe("Twilio messaging safeguards", () => {
     expect(parseTwilioCallbackStatus("failed")).toBe("failed");
     expect(parseTwilioCallbackStatus("undelivered")).toBe("undelivered");
     expect(parseTwilioCallbackStatus("read")).toBeNull();
+  });
+
+  it("prevents duplicate, stale, and terminal-state callback regressions", () => {
+    expect(shouldApplyTwilioDeliveryStatus("queued", "sent")).toBe(true);
+    expect(shouldApplyTwilioDeliveryStatus("sent", "queued")).toBe(false);
+    expect(shouldApplyTwilioDeliveryStatus("delivered", "sent")).toBe(false);
+    expect(shouldApplyTwilioDeliveryStatus("failed", "undelivered")).toBe(false);
+    expect(shouldApplyTwilioDeliveryStatus("queued", "failed")).toBe(true);
   });
 
   it("returns provider error codes only as a safe reference, never raw Twilio diagnostics", async () => {

@@ -64,7 +64,8 @@ import {
   normalizeProgramContributionLimitValues,
   type ProgramContributionLimitValues,
 } from "../shared/programContributionLimits";
-import { ENV } from './_core/env';
+import { ENV } from "./_core/env";
+import { shouldApplyTwilioDeliveryStatus } from "./twilio";
 
 export const EMAIL_TEMPLATE_USAGE_SCOPES = ["listing_agent", "property_list", "property_page_agent", "property_page_buyer", "oregon_outreach", "agent_directory", "loan_officer_directory"] as const;
 export type EmailTemplateUsageScope = (typeof EMAIL_TEMPLATE_USAGE_SCOPES)[number];
@@ -1613,6 +1614,10 @@ export async function applyTwilioDeliveryStatusCallback(input: {
     return { found: true as const, duplicate: true as const, textMessageRecipientId: recipient.id };
   }
 
+  if (!shouldApplyTwilioDeliveryStatus(recipient.deliveryStatus, input.deliveryStatus)) {
+    return { found: true as const, duplicate: true as const, textMessageRecipientId: recipient.id };
+  }
+
   const occurredAt = input.occurredAt ?? new Date();
   await db.update(textMessageRecipient).set({
     deliveryStatus: input.deliveryStatus,
@@ -1625,19 +1630,29 @@ export async function applyTwilioDeliveryStatusCallback(input: {
   } else {
     const message = (await db.select().from(textMessage).where(eq(textMessage.id, recipient.textMessageId)).limit(1))[0];
     if (!message) throw new Error("Text message not found for Twilio callback");
-    const [eventResult] = await db.insert(textChainEvent).values({
-      sourceType: recipient.sourceType,
-      sourceLeadId: recipient.sourceLeadId,
-      direction: "outgoing",
-      body: message.body,
-      eventStatus: input.deliveryStatus,
-      senderLabel: "Mike Ford",
-      providerName: "twilio",
-      providerMessageId: input.providerMessageId,
-      textMessageId: message.id,
-      textMessageRecipientId: recipient.id,
-      occurredAt,
-    });
+    let eventResult: { insertId: number | bigint };
+    try {
+      [eventResult] = await db.insert(textChainEvent).values({
+        sourceType: recipient.sourceType,
+        sourceLeadId: recipient.sourceLeadId,
+        direction: "outgoing",
+        body: message.body,
+        eventStatus: input.deliveryStatus,
+        senderLabel: "Mike Ford",
+        providerName: "twilio",
+        providerMessageId: input.providerMessageId,
+        textMessageId: message.id,
+        textMessageRecipientId: recipient.id,
+        occurredAt,
+      });
+    } catch (error) {
+      if (!(typeof error === "object" && error !== null && "code" in error && (error as { code?: unknown }).code === "ER_DUP_ENTRY")) throw error;
+      const racedEvent = (await db.select().from(textChainEvent).where(eq(textChainEvent.textMessageRecipientId, recipient.id)).limit(1))[0];
+      if (racedEvent && shouldApplyTwilioDeliveryStatus(racedEvent.eventStatus, input.deliveryStatus)) {
+        await db.update(textChainEvent).set({ eventStatus: input.deliveryStatus, occurredAt }).where(eq(textChainEvent.id, racedEvent.id));
+      }
+      return { found: true as const, duplicate: true as const, textMessageRecipientId: recipient.id };
+    }
     const attachments = await db.select().from(textMessageAttachment).where(eq(textMessageAttachment.textMessageId, message.id));
     if (attachments.length) {
       await db.insert(textChainAttachment).values(attachments.map((attachment) => ({
@@ -1773,19 +1788,39 @@ export async function recordTextChainEvent(input: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const [result] = await db.insert(textChainEvent).values({
-    sourceType: input.sourceType,
-    sourceLeadId: input.sourceLeadId,
-    direction: input.direction,
-    body: input.body,
-    eventStatus: input.eventStatus,
-    senderLabel: input.senderLabel ?? null,
-    providerName: input.providerName ?? null,
-    providerMessageId: input.providerMessageId ?? null,
-    textMessageId: input.textMessageId ?? null,
-    textMessageRecipientId: input.textMessageRecipientId ?? null,
-    occurredAt: input.occurredAt ?? new Date(),
-  });
+  if (input.providerName === "twilio" && input.textMessageRecipientId !== null && input.textMessageRecipientId !== undefined) {
+    const existing = (await db.select().from(textChainEvent).where(eq(textChainEvent.textMessageRecipientId, input.textMessageRecipientId)).limit(1))[0];
+    if (existing) {
+      if (shouldApplyTwilioDeliveryStatus(existing.eventStatus, input.eventStatus as TwilioDeliveryStatus)) {
+        await db.update(textChainEvent).set({ eventStatus: input.eventStatus, occurredAt: input.occurredAt ?? new Date() }).where(eq(textChainEvent.id, existing.id));
+      }
+      return existing.id;
+    }
+  }
+  let result: { insertId: number | bigint };
+  try {
+    [result] = await db.insert(textChainEvent).values({
+      sourceType: input.sourceType,
+      sourceLeadId: input.sourceLeadId,
+      direction: input.direction,
+      body: input.body,
+      eventStatus: input.eventStatus,
+      senderLabel: input.senderLabel ?? null,
+      providerName: input.providerName ?? null,
+      providerMessageId: input.providerMessageId ?? null,
+      textMessageId: input.textMessageId ?? null,
+      textMessageRecipientId: input.textMessageRecipientId ?? null,
+      occurredAt: input.occurredAt ?? new Date(),
+    });
+  } catch (error) {
+    if (!(input.providerName === "twilio" && input.textMessageRecipientId !== null && input.textMessageRecipientId !== undefined && typeof error === "object" && error !== null && "code" in error && (error as { code?: unknown }).code === "ER_DUP_ENTRY")) throw error;
+    const existing = (await db.select().from(textChainEvent).where(eq(textChainEvent.textMessageRecipientId, input.textMessageRecipientId)).limit(1))[0];
+    if (!existing) throw error;
+    if (shouldApplyTwilioDeliveryStatus(existing.eventStatus, input.eventStatus as TwilioDeliveryStatus)) {
+      await db.update(textChainEvent).set({ eventStatus: input.eventStatus, occurredAt: input.occurredAt ?? new Date() }).where(eq(textChainEvent.id, existing.id));
+    }
+    return existing.id;
+  }
   const textChainEventId = Number(result.insertId);
   if (input.attachments?.length) {
     await db.insert(textChainAttachment).values(input.attachments.map((attachment) => ({ textChainEventId, ...attachment })));

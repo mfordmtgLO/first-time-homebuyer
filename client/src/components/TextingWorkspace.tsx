@@ -434,10 +434,10 @@ export default function TextingWorkspace() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Twilio delivery</AlertDialogTitle>
             <AlertDialogDescription>
-              You are about to send {selectedRecipients.length} independent one-to-one SMS/MMS message{selectedRecipients.length === 1 ? "" : "s"}. By continuing, you confirm that every selected lead has explicitly consented to receive text messages. The system will recheck consent and a usable phone number immediately before delivery. No automatic retry or campaign send will occur.
+              You are about to send {selectedRecipients.length} independent one-to-one SMS/MMS message{selectedRecipients.length === 1 ? "" : "s"}. By continuing, you confirm that every selected lead has explicitly consented to receive text messages. The server will recheck recorded consent and a usable phone number immediately before delivery. Any MMS media must be a JPG uploaded by this administrator. No automatic retry or campaign send will occur.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="rounded-md border border-amber-600/25 bg-amber-600/5 px-3 py-2 text-xs leading-relaxed text-amber-950">Twilio trial accounts can send only to destination numbers you have verified in the Twilio Console. Carrier delivery updates will be recorded in each private text chain when Twilio reports them.</div>
+          <div className="rounded-md border border-amber-600/25 bg-amber-600/5 px-3 py-2 text-xs leading-relaxed text-amber-950">Twilio trial accounts can send only to destination numbers you have verified in the Twilio Console. Carrier delivery callbacks must carry a valid Twilio signature before the latest delivery status can update a private text chain.</div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={sendConfirmed.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction disabled={sendConfirmed.isPending} onClick={confirmSend}>{sendConfirmed.isPending ? "Sending…" : "I confirm — send messages"}</AlertDialogAction>
