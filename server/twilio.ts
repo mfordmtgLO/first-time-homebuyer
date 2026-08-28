@@ -85,14 +85,28 @@ export async function sendTwilioTextMessage(input: { to: string; body: string; a
   const to = normalizeUsPhoneToE164(input.to);
   if (!to) throw new Error("This lead’s phone number cannot be sent as a U.S. E.164 SMS/MMS destination.");
 
-  const message = await twilio(ENV.twilioAccountSid.trim(), ENV.twilioAuthToken.trim()).messages.create({
-    to,
-    from: normalizeUsPhoneToE164(ENV.twilioFromNumber)!,
-    body: input.body,
-    ...(input.attachmentUrls.length ? { mediaUrl: input.attachmentUrls.map(toTwilioMediaUrl) } : {}),
-    statusCallback: readiness.statusCallbackUrl,
+  const params = new URLSearchParams({
+    To: to,
+    From: normalizeUsPhoneToE164(ENV.twilioFromNumber)!,
+    Body: input.body,
+    StatusCallback: readiness.statusCallbackUrl,
   });
-  return { providerMessageId: message.sid, deliveryStatus: mapTwilioStatus(message.status) };
+  input.attachmentUrls.map(toTwilioMediaUrl).forEach((url) => params.append("MediaUrl", url));
+  const authorization = Buffer.from(`${ENV.twilioAccountSid.trim()}:${ENV.twilioAuthToken.trim()}`).toString("base64");
+  const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${ENV.twilioAccountSid.trim()}/Messages.json`, {
+    method: "POST",
+    headers: { Authorization: `Basic ${authorization}`, "Content-Type": "application/x-www-form-urlencoded" },
+    body: params,
+    signal: AbortSignal.timeout(15_000),
+  });
+  const payload = await response.json().catch(() => null) as { sid?: unknown; status?: unknown; code?: unknown } | null;
+  if (!response.ok || !payload || typeof payload.sid !== "string") {
+    const error = new Error("Twilio rejected the message request.") as Error & { code?: unknown; status?: number };
+    error.code = payload?.code;
+    error.status = response.status;
+    throw error;
+  }
+  return { providerMessageId: payload.sid, deliveryStatus: mapTwilioStatus(typeof payload.status === "string" ? payload.status : undefined) };
 }
 
 export function validateTwilioStatusCallback(signature: string | undefined, params: Record<string, string>) {

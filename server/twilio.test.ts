@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import twilio from "twilio";
-import { getTwilioStatusCallbackUrl, normalizeUsPhoneToE164, parseTwilioCallbackStatus, validateTwilioStatusCallback } from "./twilio";
+import { getTwilioStatusCallbackUrl, normalizeUsPhoneToE164, parseTwilioCallbackStatus, sendTwilioTextMessage, validateTwilioStatusCallback } from "./twilio";
 
 describe("Twilio messaging safeguards", () => {
   it("uses the fixed production callback URL and normalizes only valid U.S. destinations", () => {
@@ -32,5 +32,16 @@ describe("Twilio messaging safeguards", () => {
     const { safeTwilioErrorMessage } = await import("./twilio");
     expect(safeTwilioErrorMessage({ code: 21408, message: "sensitive provider diagnostic" })).toBe("Twilio could not accept this message. Review the recipient’s consent, phone number, and approved Twilio sender (Twilio error code 21408).");
     expect(safeTwilioErrorMessage({ status: 401, message: "sensitive provider diagnostic" })).toBe("Twilio could not accept this message. Review the recipient’s consent, phone number, and approved Twilio sender (Twilio request status 401).");
+  });
+
+  it("uses a bounded server-side REST request for outbound delivery while leaving secrets out of the response", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ sid: "SM123", status: "queued" }), { status: 201, headers: { "content-type": "application/json" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(sendTwilioTextMessage({ to: "(541) 729-0819", body: "A consented test", attachmentUrls: ["/manus-storage/text-drafts/1/example.jpg"] })).resolves.toEqual({ providerMessageId: "SM123", deliveryStatus: "queued" });
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/\/Messages\.json$/), expect.objectContaining({ method: "POST", signal: expect.any(AbortSignal) }));
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(String(request.body)).toContain("StatusCallback=https%3A%2F%2Ffirsttimehomebuyer.manus.space%2Fapi%2Ftwilio%2Fstatus");
+    expect(String(request.body)).toContain("MediaUrl=https%3A%2F%2Ffirsttimehomebuyer.manus.space%2Fmanus-storage%2Ftext-drafts%2F1%2Fexample.jpg");
+    vi.unstubAllGlobals();
   });
 });
