@@ -530,12 +530,12 @@ export type InsertChatTranscript = typeof chatTranscript.$inferInsert;
 
 /**
  * A dashboard-authored text campaign or individual message. All rows remain in
- * draft mode until a messaging provider is deliberately configured.
+ * draft mode until the dashboard owner deliberately confirms a provider send.
  */
 export const textMessage = mysqlTable("text_message", {
   id: int("id").autoincrement().primaryKey(),
   body: text("body").notNull(),
-  providerMode: mysqlEnum("providerMode", ["draft", "provider_setup_required", "sent", "failed"])
+  providerMode: mysqlEnum("providerMode", ["draft", "provider_setup_required", "queued", "sent", "delivered", "failed", "undelivered"])
     .default("draft")
     .notNull(),
   providerName: varchar("providerName", { length: 80 }),
@@ -557,7 +557,7 @@ export const textMessageRecipient = mysqlTable(
     sourceLeadId: int("sourceLeadId").notNull(),
     recipientName: varchar("recipientName", { length: 180 }).notNull(),
     recipientPhone: varchar("recipientPhone", { length: 40 }).notNull(),
-    deliveryStatus: mysqlEnum("deliveryStatus", ["draft", "provider_setup_required", "sent", "failed", "opted_out"])
+    deliveryStatus: mysqlEnum("deliveryStatus", ["draft", "provider_setup_required", "queued", "sent", "delivered", "failed", "undelivered", "opted_out"])
       .default("draft")
       .notNull(),
     providerMessageId: varchar("providerMessageId", { length: 160 }),
@@ -568,6 +568,7 @@ export const textMessageRecipient = mysqlTable(
   (table) => [
     index("text_message_recipient_message_idx").on(table.textMessageId),
     index("text_message_recipient_source_idx").on(table.sourceType, table.sourceLeadId),
+    index("text_message_recipient_provider_id_idx").on(table.providerMessageId),
   ]
 );
 
@@ -595,8 +596,8 @@ export type InsertTextMessageAttachment = typeof textMessageAttachment.$inferIns
 
 /**
  * Provider-synchronized individual SMS/MMS events. Draft messages remain in
- * text_message until an eventual provider integration records their real
- * outbound delivery here; received messages will also be stored here.
+ * text_message until an approved provider send records real outbound delivery
+ * here; received messages can be modeled separately if that is enabled later.
  */
 export const textChainEvent = mysqlTable(
   "text_chain_event",
@@ -606,7 +607,7 @@ export const textChainEvent = mysqlTable(
     sourceLeadId: int("sourceLeadId").notNull(),
     direction: mysqlEnum("direction", ["incoming", "outgoing"]).notNull(),
     body: text("body").notNull(),
-    eventStatus: mysqlEnum("eventStatus", ["queued", "sent", "delivered", "failed", "received", "opted_out"])
+    eventStatus: mysqlEnum("eventStatus", ["queued", "sent", "delivered", "failed", "undelivered", "received", "opted_out"])
       .default("received")
       .notNull(),
     senderLabel: varchar("senderLabel", { length: 180 }),

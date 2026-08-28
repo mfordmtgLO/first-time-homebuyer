@@ -1515,6 +1515,145 @@ export async function createTextMessageDraft(input: {
   return textMessageId;
 }
 
+export type TwilioDeliveryStatus = "queued" | "sent" | "delivered" | "failed" | "undelivered";
+
+export type TwilioTextRecipient = TextDraftRecipientInput & { id: number };
+
+/**
+ * Persists a single dashboard-confirmed send request before any provider call.
+ * Each recipient remains independently auditable and can therefore receive a
+ * separate Twilio message ID and carrier delivery outcome.
+ */
+export async function createTextMessageForTwilioDelivery(input: {
+  body: string;
+  createdByUserId: number;
+  recipients: TextDraftRecipientInput[];
+  attachments: TextDraftAttachmentInput[];
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [messageResult] = await db.insert(textMessage).values({
+    body: input.body,
+    createdByUserId: input.createdByUserId,
+    providerMode: "queued",
+    providerName: "twilio",
+  });
+  const textMessageId = Number(messageResult.insertId);
+  const recipients: TwilioTextRecipient[] = [];
+  for (const recipient of input.recipients) {
+    const [recipientResult] = await db.insert(textMessageRecipient).values({
+      textMessageId,
+      sourceType: recipient.sourceType,
+      sourceLeadId: recipient.sourceLeadId,
+      recipientName: recipient.name,
+      recipientPhone: recipient.phone,
+      deliveryStatus: "queued",
+      deliveryDetail: "Queued for owner-confirmed Twilio delivery.",
+    });
+    recipients.push({ ...recipient, id: Number(recipientResult.insertId) });
+  }
+  if (input.attachments.length > 0) {
+    await db.insert(textMessageAttachment).values(
+      input.attachments.map((attachment) => ({ textMessageId, ...attachment }))
+    );
+  }
+  return { textMessageId, recipients };
+}
+
+/** Updates the independently tracked result for one outbound provider request. */
+export async function updateTextMessageRecipientDelivery(input: {
+  textMessageRecipientId: number;
+  deliveryStatus: TwilioDeliveryStatus;
+  deliveryDetail: string;
+  providerMessageId?: string | null;
+  sentAt?: Date | null;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(textMessageRecipient).set({
+    deliveryStatus: input.deliveryStatus,
+    deliveryDetail: input.deliveryDetail,
+    ...(input.providerMessageId !== undefined ? { providerMessageId: input.providerMessageId } : {}),
+    ...(input.sentAt !== undefined ? { sentAt: input.sentAt } : {}),
+  }).where(eq(textMessageRecipient.id, input.textMessageRecipientId));
+}
+
+/** Summarizes a multi-recipient send without claiming every carrier outcome is identical. */
+export async function updateTextMessageProviderMode(input: {
+  textMessageId: number;
+  providerMode: "queued" | "sent" | "delivered" | "failed" | "undelivered";
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(textMessage).set({ providerMode: input.providerMode, providerName: "twilio" }).where(eq(textMessage.id, input.textMessageId));
+}
+
+/**
+ * Applies a verified Twilio status callback once. Duplicate callbacks that
+ * repeat the current state do not create duplicate visible message entries.
+ */
+export async function applyTwilioDeliveryStatusCallback(input: {
+  providerMessageId: string;
+  deliveryStatus: TwilioDeliveryStatus;
+  deliveryDetail: string;
+  occurredAt?: Date;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const recipient = (await db.select().from(textMessageRecipient).where(eq(textMessageRecipient.providerMessageId, input.providerMessageId)).limit(1))[0];
+  if (!recipient) return { found: false as const, duplicate: false as const };
+
+  const existingEvent = (await db.select().from(textChainEvent).where(and(
+    eq(textChainEvent.textMessageRecipientId, recipient.id),
+    eq(textChainEvent.providerName, "twilio"),
+    eq(textChainEvent.providerMessageId, input.providerMessageId),
+  )).orderBy(desc(textChainEvent.occurredAt)).limit(1))[0];
+
+  if (existingEvent?.eventStatus === input.deliveryStatus && recipient.deliveryStatus === input.deliveryStatus) {
+    return { found: true as const, duplicate: true as const, textMessageRecipientId: recipient.id };
+  }
+
+  const occurredAt = input.occurredAt ?? new Date();
+  await db.update(textMessageRecipient).set({
+    deliveryStatus: input.deliveryStatus,
+    deliveryDetail: input.deliveryDetail,
+    sentAt: recipient.sentAt ?? occurredAt,
+  }).where(eq(textMessageRecipient.id, recipient.id));
+
+  if (existingEvent) {
+    await db.update(textChainEvent).set({ eventStatus: input.deliveryStatus, occurredAt }).where(eq(textChainEvent.id, existingEvent.id));
+  } else {
+    const message = (await db.select().from(textMessage).where(eq(textMessage.id, recipient.textMessageId)).limit(1))[0];
+    if (!message) throw new Error("Text message not found for Twilio callback");
+    const [eventResult] = await db.insert(textChainEvent).values({
+      sourceType: recipient.sourceType,
+      sourceLeadId: recipient.sourceLeadId,
+      direction: "outgoing",
+      body: message.body,
+      eventStatus: input.deliveryStatus,
+      senderLabel: "Mike Ford",
+      providerName: "twilio",
+      providerMessageId: input.providerMessageId,
+      textMessageId: message.id,
+      textMessageRecipientId: recipient.id,
+      occurredAt,
+    });
+    const attachments = await db.select().from(textMessageAttachment).where(eq(textMessageAttachment.textMessageId, message.id));
+    if (attachments.length) {
+      await db.insert(textChainAttachment).values(attachments.map((attachment) => ({
+        textChainEventId: Number(eventResult.insertId),
+        storageKey: attachment.storageKey,
+        url: attachment.url,
+        fileName: attachment.fileName,
+        mimeType: attachment.mimeType,
+        sizeBytes: attachment.sizeBytes,
+      })));
+    }
+  }
+
+  return { found: true as const, duplicate: false as const, textMessageRecipientId: recipient.id };
+}
+
 /** Lists saved messaging drafts together with their independent recipients and attachments. */
 export async function listTextMessageDrafts() {
   const db = await getDb();
@@ -1553,8 +1692,8 @@ export type TextChainEntry = {
 
 /**
  * Returns one lead's complete visible message history. Existing saved drafts
- * are represented as outgoing provider-setup entries, then future webhook
- * events are merged in chronological order as real SMS/MMS is synchronized.
+ * are represented as outgoing provider-setup entries, then verified provider
+ * delivery events are merged in chronological order.
  */
 export async function listTextChainByLead(input: { sourceType: "roadmap" | "chat"; sourceLeadId: number }): Promise<TextChainEntry[]> {
   const db = await getDb();
@@ -1617,13 +1756,13 @@ export async function listTextChainByLead(input: { sourceType: "roadmap" | "chat
   return [...draftEntries, ...providerEntries].sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime());
 }
 
-/** Provider integration hook for future inbound and outbound SMS/MMS synchronization. */
+/** Provider integration hook for audited inbound and outbound SMS/MMS synchronization. */
 export async function recordTextChainEvent(input: {
   sourceType: "roadmap" | "chat";
   sourceLeadId: number;
   direction: "incoming" | "outgoing";
   body: string;
-  eventStatus: "queued" | "sent" | "delivered" | "failed" | "received" | "opted_out";
+  eventStatus: "queued" | "sent" | "delivered" | "failed" | "undelivered" | "received" | "opted_out";
   senderLabel?: string | null;
   providerName?: string | null;
   providerMessageId?: string | null;

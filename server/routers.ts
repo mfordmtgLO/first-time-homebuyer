@@ -18,6 +18,7 @@ import {
   addChatTranscript,
   createChatLead,
   createTextMessageDraft,
+  createTextMessageForTwilioDelivery,
   createListingAgentEmailTemplate,
   createPropertyEmailTemplate,
   createPropertyLandingPage,
@@ -165,6 +166,7 @@ import {
   listTextMessageDrafts,
   listTextChainByLead,
   listTextReadyRecipients,
+  recordTextChainEvent,
   markLeadSentToAgent,
   setFeaturedAgent,
   setFeaturedLoanOfficer,
@@ -188,6 +190,8 @@ import {
   updatePropertyLandingPageMetadata,
   updatePropertyLandingPagePair,
   updatePropertyLandingPageStatus,
+  updateTextMessageProviderMode,
+  updateTextMessageRecipientDelivery,
 } from "./db";
 import { syncGeoSphereSavedListings } from "./geosphere";
 import { createHeartbeatJob, updateHeartbeatJob } from "./_core/heartbeat";
@@ -202,6 +206,7 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { invokeLLM, listLLMModels } from "./_core/llm";
 import { parsePropertyLandingSnapshot, propertyEligibilityLabel, propertyFinancingContext } from "../shared/propertyLandingPage";
 import { buildSyncedAgentOutreachDraft } from "../shared/syncedAgentOutreachDraft";
+import { getTwilioReadiness, safeTwilioErrorMessage, sendTwilioTextMessage } from "./twilio";
 
 const ADMIN_ONLY_MESSAGE = "Only the site owner can manage agents.";
 
@@ -1367,14 +1372,11 @@ export const appRouter = router({
   }),
 
   texting: router({
-    /** Admin-only provider state. Delivery remains disabled until credentials are intentionally configured. */
+    /** Admin-only non-secret provider readiness state. */
     status: protectedProcedure.query(async ({ ctx }) => {
       requireAdmin(ctx.user.role);
-      return {
-        providerConfigured: false as const,
-        mode: "provider_setup_required" as const,
-        detail: "No SMS/MMS provider is configured. You can select consented leads, upload JPG attachments, and save drafts, but no text messages will be sent.",
-      };
+      const readiness = getTwilioReadiness();
+      return { providerConfigured: readiness.configured, mode: readiness.mode, detail: readiness.detail, statusCallbackUrl: readiness.statusCallbackUrl };
     }),
     /** Admin-only: only recipients with recorded consent and a valid non-placeholder phone are returned. */
     recipients: protectedProcedure.query(async ({ ctx }) => {
@@ -1447,6 +1449,49 @@ export const appRouter = router({
           attachments: input.attachments,
         });
         return { messageId, providerConfigured: false as const, deliveryMode: "provider_setup_required" as const };
+      }),
+    /** Admin-only live delivery: human confirmation and current consent are mandatory for every selected lead. */
+    sendConfirmed: protectedProcedure
+      .input(
+        z.object({
+          confirmation: z.literal(true, { message: "Confirm that every selected lead has explicitly consented to text messages before sending." }),
+          body: z.string().trim().min(1, "Write a message before sending.").max(1600, "Messages are limited to 1600 characters."),
+          recipients: z.array(textDraftRecipientSchema).min(1, "Select at least one text-ready lead.").max(100, "Select up to 100 leads per confirmed send."),
+          attachments: z.array(textDraftAttachmentSchema).max(3, "Attach up to three JPG files per message."),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        if (!getTwilioReadiness().configured) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Twilio is not securely configured. Sending remains disabled." });
+        const candidates = await listTextReadyRecipients();
+        const validCandidates = new Map(
+          candidates.filter((candidate) => hasUsableRoadmapPhone(candidate.phone)).map((candidate) => [`${candidate.sourceType}:${candidate.sourceLeadId}`, candidate])
+        );
+        const distinctSelections = Array.from(new Map(input.recipients.map((recipient) => [`${recipient.sourceType}:${recipient.sourceLeadId}`, recipient])).values());
+        const recipients = distinctSelections.map((selection) => validCandidates.get(`${selection.sourceType}:${selection.sourceLeadId}`)).filter((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate));
+        if (recipients.length !== distinctSelections.length) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "One or more selected leads are no longer text-ready. Refresh the workspace and review recorded consent before sending." });
+        }
+
+        const created = await createTextMessageForTwilioDelivery({ body: input.body, createdByUserId: ctx.user.id, recipients, attachments: input.attachments });
+        const outcomes: Array<{ sourceType: "roadmap" | "chat"; sourceLeadId: number; sent: boolean; status: string; detail: string }> = [];
+        for (const recipient of created.recipients) {
+          try {
+            const provider = await sendTwilioTextMessage({ to: recipient.phone, body: input.body, attachmentUrls: input.attachments.map((attachment) => attachment.url) });
+            const detail = provider.deliveryStatus === "queued" ? "Twilio accepted this message for delivery." : `Twilio reported ${provider.deliveryStatus}.`;
+            await updateTextMessageRecipientDelivery({ textMessageRecipientId: recipient.id, deliveryStatus: provider.deliveryStatus, deliveryDetail: detail, providerMessageId: provider.providerMessageId, sentAt: new Date() });
+            await recordTextChainEvent({ sourceType: recipient.sourceType, sourceLeadId: recipient.sourceLeadId, direction: "outgoing", body: input.body, eventStatus: provider.deliveryStatus, senderLabel: "Mike Ford", providerName: "twilio", providerMessageId: provider.providerMessageId, textMessageId: created.textMessageId, textMessageRecipientId: recipient.id, occurredAt: new Date(), attachments: input.attachments });
+            outcomes.push({ sourceType: recipient.sourceType, sourceLeadId: recipient.sourceLeadId, sent: true, status: provider.deliveryStatus, detail });
+          } catch (error) {
+            const detail = safeTwilioErrorMessage(error);
+            await updateTextMessageRecipientDelivery({ textMessageRecipientId: recipient.id, deliveryStatus: "failed", deliveryDetail: detail, sentAt: new Date() });
+            await recordTextChainEvent({ sourceType: recipient.sourceType, sourceLeadId: recipient.sourceLeadId, direction: "outgoing", body: input.body, eventStatus: "failed", senderLabel: "Mike Ford", providerName: "twilio", textMessageId: created.textMessageId, textMessageRecipientId: recipient.id, occurredAt: new Date(), attachments: input.attachments });
+            outcomes.push({ sourceType: recipient.sourceType, sourceLeadId: recipient.sourceLeadId, sent: false, status: "failed", detail });
+          }
+        }
+        const sentCount = outcomes.filter((outcome) => outcome.sent).length;
+        await updateTextMessageProviderMode({ textMessageId: created.textMessageId, providerMode: sentCount ? "sent" : "failed" });
+        return { messageId: created.textMessageId, sentCount, failedCount: outcomes.length - sentCount, outcomes };
       }),
   }),
 

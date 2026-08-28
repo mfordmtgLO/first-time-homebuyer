@@ -1,0 +1,4 @@
+ALTER TABLE `text_chain_event` MODIFY COLUMN `eventStatus` enum('queued','sent','delivered','failed','undelivered','received','opted_out') NOT NULL DEFAULT 'received';--> statement-breakpoint
+ALTER TABLE `text_message` MODIFY COLUMN `providerMode` enum('draft','provider_setup_required','queued','sent','delivered','failed','undelivered') NOT NULL DEFAULT 'draft';--> statement-breakpoint
+ALTER TABLE `text_message_recipient` MODIFY COLUMN `deliveryStatus` enum('draft','provider_setup_required','queued','sent','delivered','failed','undelivered','opted_out') NOT NULL DEFAULT 'draft';--> statement-breakpoint
+CREATE INDEX `text_message_recipient_provider_id_idx` ON `text_message_recipient` (`providerMessageId`);

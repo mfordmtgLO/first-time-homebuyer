@@ -868,3 +868,15 @@
 
 - [x] Review the private Meta/Google integration settings and Getting Started checklist UI/UX for polish and accessibility
 - [x] Create test scenarios and user-flow documentation for checklist progress, tutorial/reset modal interactions, and the master visibility toggle
+
+- [x] Audit the provider-ready Texting Workspace and current consent gates before Twilio activation
+- [x] Add secure Twilio credential configuration using protected secret storage only
+- [x] Activate owner-controlled Twilio SMS/MMS delivery for explicitly text-consented leads with delivery-status tracking
+- [ ] Verify consent enforcement, delivery error handling, controlled test sending, regression coverage, and publish the Twilio texting activation
+
+- [x] Add a signed HTTPS Twilio status-callback route that records sent, delivered, failed, and undelivered updates in the private text-message thread
+- [x] Add owner-confirmed Twilio SMS/MMS delivery for explicitly consented text-ready leads only
+- [x] Add a private dashboard send confirmation and delivery-status presentation backed by Twilio provider message IDs
+- [ ] Add secure Twilio secret configuration, webhook signature tests, consent/error coverage, controlled testing steps, and publish the callback-enabled texting activation
+
+- [x] Configure the Twilio trial path using only protected Account SID, Auth Token, and From Number values; do not require a Messaging Service SID

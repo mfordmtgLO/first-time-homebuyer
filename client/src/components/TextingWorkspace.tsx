@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Clock3, Contact, ExternalLink, FileText, ImagePlus, Loader2, Mail, MessageSquareText, Paperclip, Save, Send, ShieldCheck, Smartphone, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { buildLeadWelcomeDraft, type LeadWelcomeDraftInput } from "@shared/leadEmailDraft";
@@ -110,7 +111,7 @@ function LinkifiedText({ body }: { body: string }) {
   );
 }
 
-function TextChainDialog({ recipient, onOpenChange }: { recipient: Recipient | null; onOpenChange: (open: boolean) => void }) {
+function TextChainDialog({ recipient, deliveryEnabled, onOpenChange }: { recipient: Recipient | null; deliveryEnabled: boolean; onOpenChange: (open: boolean) => void }) {
   const chain = trpc.texting.chain.useQuery(
     { sourceType: recipient?.sourceType ?? "roadmap", sourceLeadId: recipient?.sourceLeadId ?? 1 },
     { enabled: recipient !== null }
@@ -154,7 +155,7 @@ function TextChainDialog({ recipient, onOpenChange }: { recipient: Recipient | n
             </div>
           )}
         </div>
-        <div className="border-t border-border bg-card px-5 py-3 text-xs text-muted-foreground">Use the Compose draft panel to prepare the next one-to-one message. Delivery remains disabled until an SMS/MMS provider is connected.</div>
+        <div className="border-t border-border bg-card px-5 py-3 text-xs text-muted-foreground">Use the Compose panel to prepare the next one-to-one message. {deliveryEnabled ? "Every send requires a separate owner confirmation and Twilio delivery updates appear here." : "Saving a draft never sends a message."}</div>
       </DialogContent>
     </Dialog>
   );
@@ -175,6 +176,7 @@ export default function TextingWorkspace() {
   const [body, setBody] = useState("");
   const [attachments, setAttachments] = useState<UploadedAttachment[]>([]);
   const [chainRecipient, setChainRecipient] = useState<Recipient | null>(null);
+  const [sendConfirmationOpen, setSendConfirmationOpen] = useState(false);
   const uploadJpg = trpc.texting.uploadJpg.useMutation({
     onError: (error) => toast.error(error.message || "Unable to upload the JPG attachment."),
   });
@@ -187,6 +189,21 @@ export default function TextingWorkspace() {
       toast.success("Text draft saved. It was not sent because no provider is configured.");
     },
     onError: (error) => toast.error(error.message || "Unable to save the text draft."),
+  });
+  const sendConfirmed = trpc.texting.sendConfirmed.useMutation({
+    onSuccess: async (result) => {
+      await Promise.all([utils.texting.listDrafts.invalidate(), utils.texting.chain.invalidate()]);
+      setBody("");
+      setAttachments([]);
+      setSelectedKeys(new Set());
+      setSendConfirmationOpen(false);
+      if (result.failedCount > 0) {
+        toast.warning(`${result.sentCount} message${result.sentCount === 1 ? "" : "s"} accepted by Twilio; ${result.failedCount} recipient${result.failedCount === 1 ? "" : "s"} need review. Open each text chain for the recorded delivery detail.`);
+      } else {
+        toast.success(`${result.sentCount} individual message${result.sentCount === 1 ? "" : "s"} accepted by Twilio. Delivery updates will appear in each text chain.`);
+      }
+    },
+    onError: (error) => toast.error(error.message || "Twilio could not accept this message. No automatic retry was made."),
   });
   const roadmapAssignAgent = trpc.leads.assignAgent.useMutation({ onSuccess: () => void Promise.all([utils.texting.recipients.invalidate(), utils.leads.list.invalidate()]), onError: (error) => toast.error(error.message || "Unable to assign the agent.") });
   const chatAssignAgent = trpc.chat.assignAgent.useMutation({ onSuccess: () => void Promise.all([utils.texting.recipients.invalidate(), utils.chat.list.invalidate()]), onError: (error) => toast.error(error.message || "Unable to assign the agent.") });
@@ -226,6 +243,7 @@ export default function TextingWorkspace() {
   );
   const selectedVisible = filteredRecipients.length > 0 && filteredRecipients.every((recipient) => selectedKeys.has(recipientKey(recipient)));
   const isFiltered = Boolean(search.trim() || source !== "all" || status !== "all" || loanOfficerFilter !== "all" || agentFilter !== "all");
+  const providerReady = statusQuery.data?.providerConfigured === true;
 
   const toggleRecipient = (recipient: Recipient) => {
     const key = recipientKey(recipient);
@@ -269,6 +287,14 @@ export default function TextingWorkspace() {
   };
   const save = () => {
     saveDraft.mutate({
+      body,
+      recipients: selectedRecipients.map(({ sourceType, sourceLeadId }) => ({ sourceType, sourceLeadId })),
+      attachments,
+    });
+  };
+  const confirmSend = () => {
+    sendConfirmed.mutate({
+      confirmation: true,
       body,
       recipients: selectedRecipients.map(({ sourceType, sourceLeadId }) => ({ sourceType, sourceLeadId })),
       attachments,
@@ -323,13 +349,14 @@ export default function TextingWorkspace() {
         <div>
           <div className="flex flex-wrap items-center gap-2.5">
             <h2 className="flex items-center gap-2.5 font-display text-xl font-semibold text-foreground"><MessageSquareText className="h-5 w-5 text-primary" /> Texting Workspace</h2>
-            <Badge className="border-amber-600/30 bg-amber-600/10 text-amber-800 hover:bg-amber-600/10">Draft mode</Badge>
+            <Badge className={providerReady ? "border-emerald-600/30 bg-emerald-600/10 text-emerald-800 hover:bg-emerald-600/10" : "border-amber-600/30 bg-amber-600/10 text-amber-800 hover:bg-amber-600/10"}>{providerReady ? "Delivery ready" : "Draft mode"}</Badge>
           </div>
           <p className="mt-1.5 max-w-3xl text-sm text-muted-foreground">Choose one lead or many text-ready leads. Each selected recipient is saved as an independent one-to-one message—not a shared group thread.</p>
         </div>
-        <div className="rounded-lg border border-amber-600/25 bg-amber-600/5 px-3 py-2 text-xs text-amber-900">
-          <div className="flex items-center gap-1.5 font-semibold"><ShieldCheck className="h-3.5 w-3.5" /> Provider setup required</div>
-          <p className="mt-0.5 max-w-xs text-amber-900/75">Drafts and JPG attachments are saved now. Sending stays disabled until an SMS/MMS provider is configured.</p>
+        <div className={providerReady ? "rounded-lg border border-emerald-600/25 bg-emerald-600/5 px-3 py-2 text-xs text-emerald-900" : "rounded-lg border border-amber-600/25 bg-amber-600/5 px-3 py-2 text-xs text-amber-900"}>
+          <div className="flex items-center gap-1.5 font-semibold"><ShieldCheck className="h-3.5 w-3.5" /> {providerReady ? "Owner-confirmed delivery enabled" : "Provider setup required"}</div>
+          <p className={providerReady ? "mt-0.5 max-w-xs text-emerald-900/75" : "mt-0.5 max-w-xs text-amber-900/75"}>{statusQuery.data?.detail || "Checking secure provider readiness…"}</p>
+          {providerReady && statusQuery.data?.statusCallbackUrl && <p className="mt-1 max-w-xs break-all text-[10px] text-emerald-900/70">Status callback: {statusQuery.data.statusCallbackUrl}</p>}
         </div>
       </div>
 
@@ -377,8 +404,8 @@ export default function TextingWorkspace() {
         </div>
 
         <div className="rounded-lg border border-border bg-background/40 p-4">
-          <div className="flex items-center justify-between gap-3"><h3 className="font-semibold text-foreground">Compose draft</h3><span className="text-xs text-muted-foreground">{body.length}/1600</span></div>
-          <p className="mt-1 text-xs text-muted-foreground">This will save an individual recipient record for each selected lead. No text is sent in draft mode.</p>
+          <div className="flex items-center justify-between gap-3"><h3 className="font-semibold text-foreground">Compose message</h3><span className="text-xs text-muted-foreground">{body.length}/1600</span></div>
+          <p className="mt-1 text-xs text-muted-foreground">Each selected lead receives an independent one-to-one message. Saving a draft never sends; live delivery requires an explicit confirmation and a current consent re-check.</p>
           <Textarea value={body} onChange={(event) => setBody(event.target.value)} maxLength={1600} placeholder="Write your custom message…" className="mt-4 min-h-36 resize-y bg-card" />
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed border-primary/40 bg-card px-3 py-2 text-xs font-medium text-primary transition hover:bg-primary/5">
@@ -390,7 +417,7 @@ export default function TextingWorkspace() {
           {attachments.length > 0 && <div className="mt-3 space-y-2">{attachments.map((attachment) => <div key={attachment.storageKey} className="flex items-center gap-2 rounded-md border border-border bg-card p-2"><img src={attachment.url} alt="Attached JPG preview" className="h-10 w-10 rounded object-cover" /><span className="min-w-0 flex-1 truncate text-xs text-foreground">{attachment.fileName}</span><Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => setAttachments((current) => current.filter((candidate) => candidate.storageKey !== attachment.storageKey))} aria-label={`Remove ${attachment.fileName}`}><X className="h-3.5 w-3.5" /></Button></div>)}</div>}
           <div className="mt-5 grid gap-2 sm:grid-cols-2">
             <Button onClick={save} disabled={!body.trim() || selectedRecipients.length === 0 || saveDraft.isPending || uploadJpg.isPending}><Save className="mr-1.5 h-4 w-4" /> {saveDraft.isPending ? "Saving…" : "Save draft"}</Button>
-            <Button variant="outline" onClick={() => toast.info("Sending is safely disabled until an SMS/MMS provider and approved sending number are configured.")}><Send className="mr-1.5 h-4 w-4" /> Send when connected</Button>
+            <Button variant="outline" disabled={!providerReady || !body.trim() || selectedRecipients.length === 0 || sendConfirmed.isPending || uploadJpg.isPending} onClick={() => setSendConfirmationOpen(true)}><Send className="mr-1.5 h-4 w-4" /> {sendConfirmed.isPending ? "Sending…" : providerReady ? "Review & send" : "Delivery unavailable"}</Button>
           </div>
           {selectedRecipients.length > 0 && <p className="mt-3 flex items-start gap-1.5 text-xs text-muted-foreground"><Users className="mt-0.5 h-3.5 w-3.5 shrink-0" /> This draft will prepare {selectedRecipients.length} separate one-to-one message{selectedRecipients.length === 1 ? "" : "s"}.</p>}
         </div>
@@ -400,7 +427,22 @@ export default function TextingWorkspace() {
         <div className="flex items-center gap-2"><Paperclip className="h-4 w-4 text-muted-foreground" /><h3 className="font-semibold text-foreground">Saved draft history</h3></div>
         {draftsQuery.isLoading ? <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading drafts…</div> : (draftsQuery.data ?? []).length === 0 ? <p className="mt-3 text-sm text-muted-foreground">No text drafts saved yet.</p> : <div className="mt-4 grid gap-3 lg:grid-cols-2">{(draftsQuery.data ?? []).slice(0, 8).map((draft) => <article key={draft.id} className="rounded-lg border border-border bg-background/40 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><Badge className="border-amber-600/30 bg-amber-600/10 text-amber-800 hover:bg-amber-600/10">Provider setup required</Badge><span className="text-xs text-muted-foreground">{new Date(draft.createdAt).toLocaleString()}</span></div><p className="mt-3 line-clamp-3 whitespace-pre-wrap text-sm text-foreground">{draft.body}</p><div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground"><span>{draft.recipients.length} recipient{draft.recipients.length === 1 ? "" : "s"}</span><span>{draft.attachments.length} JPG attachment{draft.attachments.length === 1 ? "" : "s"}</span></div></article>)}</div>}
       </div>
-      <TextChainDialog recipient={chainRecipient} onOpenChange={(open) => { if (!open) setChainRecipient(null); }} />
+      <TextChainDialog recipient={chainRecipient} deliveryEnabled={providerReady} onOpenChange={(open) => { if (!open) setChainRecipient(null); }} />
+      <AlertDialog open={sendConfirmationOpen} onOpenChange={setSendConfirmationOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Twilio delivery</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to send {selectedRecipients.length} independent one-to-one SMS/MMS message{selectedRecipients.length === 1 ? "" : "s"}. By continuing, you confirm that every selected lead has explicitly consented to receive text messages. The system will recheck consent and a usable phone number immediately before delivery. No automatic retry or campaign send will occur.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="rounded-md border border-amber-600/25 bg-amber-600/5 px-3 py-2 text-xs leading-relaxed text-amber-950">Twilio trial accounts can send only to destination numbers you have verified in the Twilio Console. Carrier delivery updates will be recorded in each private text chain when Twilio reports them.</div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={sendConfirmed.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={sendConfirmed.isPending} onClick={confirmSend}>{sendConfirmed.isPending ? "Sending…" : "I confirm — send messages"}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }

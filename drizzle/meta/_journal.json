@@ -421,6 +421,13 @@
       "when": 1787860462945,
       "tag": "0059_cooing_rockslide",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "5",
+      "when": 1787875511934,
+      "tag": "0060_organic_maginty",
+      "breakpoints": true
     }
   ]
 }

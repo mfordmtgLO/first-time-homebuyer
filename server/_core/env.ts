@@ -9,4 +9,7 @@ export const ENV = {
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   geosphereSavedListingsUrl: process.env.GEOSPHERE_SAVED_LISTINGS_URL ?? "",
   geosphereSyncToken: process.env.GEOSPHERE_SYNC_TOKEN ?? "",
+  twilioAccountSid: process.env.TWILIO_ACCOUNT_SID ?? "",
+  twilioAuthToken: process.env.TWILIO_AUTH_TOKEN ?? "",
+  twilioFromNumber: process.env.TWILIO_FROM_NUMBER ?? "",
 };

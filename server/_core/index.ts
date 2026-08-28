@@ -11,6 +11,7 @@ import { serveStatic, setupVite } from "./vite";
 import { runGeoSphereScheduledSync } from "../geosphere.schedule";
 import { registerOregonSyncHttp } from "../oregonSyncHttp";
 import { registerPlatformLeadWebhooks } from "../platformLeadWebhooks";
+import { registerTwilioStatusCallback } from "../twilioStatusCallback";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -48,6 +49,7 @@ async function startServer() {
   app.post("/api/scheduled/geosphere-sync", runGeoSphereScheduledSync);
   registerOregonSyncHttp(app);
   registerPlatformLeadWebhooks(app);
+  registerTwilioStatusCallback(app);
   // tRPC API
   app.use(
     "/api/trpc",
