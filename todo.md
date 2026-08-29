@@ -931,3 +931,11 @@
 - [x] Add regression coverage for the mobile-only public-site changes without touching dashboard/server/schema/lead-routing code
 - [x] Verify public visitor flows at 390x844 and 1280px and confirm desktop remains unchanged
 - [x] Push and checkpoint the completed mobile-only handoff implementation
+
+
+## Mobile homepage enhancements
+
+- [x] Add a lightweight public homepage mortgage payment estimate widget for mobile visitors, reusing existing mortgage calculation logic and showing educational estimate disclosures
+- [x] Add a mobile-only sticky bottom navigation bar with quick access to contact and primary public sections
+- [x] Add regression coverage and verify both enhancements at mobile and desktop viewports without changing the dashboard
+- [x] Push and checkpoint the mobile homepage enhancements

@@ -15,6 +15,8 @@ import FinalCta from "@/components/landing/FinalCta";
 import LocalAgent from "@/components/landing/LocalAgent";
 import Footer from "@/components/landing/Footer";
 import MortgageChatWidget from "@/components/MortgageChatWidget";
+import MortgagePaymentWidget from "@/components/landing/MortgagePaymentWidget";
+import MobileBottomNav from "@/components/landing/MobileBottomNav";
 
 export default function Home({
   agentSlug = null,
@@ -26,11 +28,12 @@ export default function Home({
   return (
     <AgentPageProvider agentSlug={agentSlug} loanOfficerSlug={loanOfficerSlug}>
       <ScenarioProvider>
-        <div id="top" className="min-h-screen">
+        <div id="top" className="min-h-screen pb-20 md:pb-0">
           <Nav />
           <PublicSectionNav />
           <main>
             <div className="scroll-mt-36 md:scroll-mt-40"><Hero /></div>
+            <MortgagePaymentWidget />
             <div id="cost-of-waiting" className="scroll-mt-36 md:scroll-mt-40"><MythBuster /></div>
             <div id="programs" className="scroll-mt-36 md:scroll-mt-40"><Programs /></div>
             <div id="buydown" className="scroll-mt-36 md:scroll-mt-40"><Buydown /></div>
@@ -43,6 +46,7 @@ export default function Home({
             <Footer />
           </main>
           <MortgageChatWidget compactWhenIdle />
+          <MobileBottomNav />
         </div>
       </ScenarioProvider>
     </AgentPageProvider>
