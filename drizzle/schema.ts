@@ -36,6 +36,8 @@ export const leads = mysqlTable("leads", {
   phone: varchar("phone", { length: 40 }).default("").notNull(),
   /** Visitor affirmatively agreed to receive mortgage-inquiry text messages. */
   smsConsent: int("smsConsent").default(0).notNull(),
+  /** Visitor's requested first follow-up channel; legacy records default to text. */
+  preferredContactMethod: mysqlEnum("preferredContactMethod", ["text", "email"]).default("text").notNull(),
   source: varchar("source", { length: 64 }).default("roadmap").notNull(),
   status: mysqlEnum("status", ["new", "contacted", "booked"]).default("new").notNull(),
   notes: text("notes"),

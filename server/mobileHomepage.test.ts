@@ -7,6 +7,7 @@ const homeSource = readFileSync(resolve(projectRoot, "client/src/pages/Home.tsx"
 const widgetSource = readFileSync(resolve(projectRoot, "client/src/components/landing/MortgagePaymentWidget.tsx"), "utf8");
 const navSource = readFileSync(resolve(projectRoot, "client/src/components/landing/MobileBottomNav.tsx"), "utf8");
 const leadMagnetSource = readFileSync(resolve(projectRoot, "client/src/components/landing/LeadMagnet.tsx"), "utf8");
+const leadsDashboardSource = readFileSync(resolve(projectRoot, "client/src/pages/Leads.tsx"), "utf8");
 
 describe("mobile public homepage enhancements", () => {
   it("mounts the payment widget and mobile navigation without touching dashboard routes", () => {
@@ -30,6 +31,21 @@ describe("mobile public homepage enhancements", () => {
     expect(leadMagnetSource).toContain('role="status" aria-live="polite" aria-atomic="true"');
     expect(leadMagnetSource).toContain("Roadmap request received");
     expect(leadMagnetSource).toContain("submitLead.mutate({");
+  });
+
+  it("exposes the contact preference control and inline validation bindings", () => {
+    expect(leadMagnetSource).toContain('preferredContactMethod');
+    expect(leadMagnetSource).toContain('value={method}');
+    expect(leadMagnetSource).toContain('aria-invalid={Boolean(errors.email)}');
+    expect(leadMagnetSource).toContain('lead-sms-consent-error');
+    expect(leadMagnetSource).toContain('preferredContactMethod,');
+  });
+
+  it("shows recent new leads in the dashboard and exports contact preference", () => {
+    expect(leadsDashboardSource).toContain("NEW_LEAD_WINDOW_MS");
+    expect(leadsDashboardSource).toContain('aria-label="New lead submitted within the last 24 hours"');
+    expect(leadsDashboardSource).toContain("Preferred Contact Method");
+    expect(leadsDashboardSource).toContain('l.preferredContactMethod ?? "text"');
   });
 
   it("keeps bottom navigation mobile-only and exposes the main public anchors", () => {

@@ -981,10 +981,10 @@
 
 ## Lead form validation, contact preference, and new-lead badge
 
-- [ ] Audit the existing leads schema/procedure, public LeadMagnet form, and dashboard lead-row rendering
-- [ ] Add a nullable preferred contact method field with safe backward-compatible default behavior
-- [ ] Add inline required-field and format validation messages to the public LeadMagnet form
-- [ ] Add a text/email preferred-contact toggle while preserving explicit consent safeguards
-- [ ] Add a dashboard-only visual New badge for recent new submissions
-- [ ] Add focused regression tests and verify mobile and desktop behavior
-- [ ] Push and checkpoint the release
+- [x] Audit the existing leads schema/procedure, public LeadMagnet form, and dashboard lead-row rendering
+- [x] Add a nullable preferred contact method field with safe backward-compatible default behavior
+- [x] Add inline required-field and format validation messages to the public LeadMagnet form
+- [x] Add a text/email preferred-contact toggle while preserving explicit consent safeguards
+- [x] Add a dashboard-only visual New badge for recent new submissions
+- [x] Add focused regression tests and verify mobile and desktop behavior
+- [x] Push and checkpoint the release

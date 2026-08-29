@@ -54,11 +54,28 @@ describe("leads.submit", () => {
       email: "taylor@example.com",
       phone: "(541) 555-0100",
       smsConsent: 1,
+      preferredContactMethod: "text",
       source: "roadmap",
       scenario: undefined,
     });
     expect(notifyOwnerMock).toHaveBeenCalledTimes(1);
     expect(notifyOwnerMock.mock.calls[0]?.[0]?.title).toContain("Taylor");
+  });
+
+  it("persists an explicit email preferred contact method", async () => {
+    const caller = appRouter.createCaller(createPublicContext());
+
+    await caller.leads.submit({
+      firstName: "Jordan",
+      email: "jordan@example.com",
+      phone: "(541) 555-0100",
+      smsConsent: true,
+      preferredContactMethod: "email",
+    });
+
+    expect(insertLeadMock).toHaveBeenCalledWith(expect.objectContaining({
+      preferredContactMethod: "email",
+    }));
   });
 
   it("defaults source to roadmap when omitted", async () => {

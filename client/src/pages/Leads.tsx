@@ -68,6 +68,12 @@ import {
 } from "lucide-react";
 
 const LOGO = "/manus-storage/cornerstone-logo-standard_72b02c9f.png";
+const NEW_LEAD_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function isRecentNewLead(lead: { status: string; createdAt: Date | string }) {
+  const age = Date.now() - new Date(lead.createdAt).getTime();
+  return lead.status === "new" && age >= 0 && age <= NEW_LEAD_WINDOW_MS;
+}
 
 const DASHBOARD_SECTIONS = [
   { id: "campaign-funnel", label: "Funnel" },
@@ -596,7 +602,7 @@ export default function Leads() {
 
   const downloadCsv = () => {
     const header =
-      "First Name,Email,Phone,Source,Property Page Address,Property Page URL Slug,UTM Source,UTM Medium,UTM Campaign,UTM Content,UTM Term,Landing Path,Referrer Host,Co-branded Source,Loan Officer,Loan Officer URL Slug,Agent,Agent URL Slug,Status,Notes,Submitted At,Purchase Price,Down Payment,Note Rate %,Loan Amount,Year 1 Payment,Year 2 Payment,Note Payment,Year 1 Savings/mo,Year 2 Savings/mo,Seller Subsidy,Wait Years,Monthly Rent,CoW Purchase Price,CoW Down Payment,CoW Interest Rate %,CoW Appreciation %,CoW Rent Increase %,CoW Monthly Payment,Rent Paid If Waiting,Equity Missed,Cost Of Waiting";
+      "First Name,Email,Phone,Preferred Contact Method,Source,Property Page Address,Property Page URL Slug,UTM Source,UTM Medium,UTM Campaign,UTM Content,UTM Term,Landing Path,Referrer Host,Co-branded Source,Loan Officer,Loan Officer URL Slug,Agent,Agent URL Slug,Status,Notes,Submitted At,Purchase Price,Down Payment,Note Rate %,Loan Amount,Year 1 Payment,Year 2 Payment,Note Payment,Year 1 Savings/mo,Year 2 Savings/mo,Seller Subsidy,Wait Years,Monthly Rent,CoW Purchase Price,CoW Down Payment,CoW Interest Rate %,CoW Appreciation %,CoW Rent Increase %,CoW Monthly Payment,Rent Paid If Waiting,Equity Missed,Cost Of Waiting";
     const rows = filteredLeads.map((l) =>
       {
         const parsed = parseScenario(l.scenario ?? null);
@@ -606,6 +612,7 @@ export default function Leads() {
         csvEscape(l.firstName),
         csvEscape(l.email),
         csvEscape(l.phone),
+        csvEscape(l.preferredContactMethod ?? "text"),
         csvEscape(l.source),
         csvEscape(l.propertyPageAddress ?? ""),
         csvEscape(l.propertyPageSlug ?? ""),
@@ -906,7 +913,12 @@ export default function Leads() {
                       {filteredLeads.map((lead, i) => (
                         <tr key={lead.id} className="border-b border-border/60 last:border-0 hover:bg-muted/30">
                           <td className="px-5 py-3.5 text-muted-foreground">{filteredLeads.length - i}</td>
-                          <td className="px-5 py-3.5 font-medium text-foreground">{lead.firstName}</td>
+                          <td className="px-5 py-3.5 font-medium text-foreground">
+                            <div className="flex items-center gap-2">
+                              <span>{lead.firstName}</span>
+                              {isRecentNewLead(lead) ? <span className="inline-flex items-center rounded-full bg-emerald-600/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700" title="Submitted within the last 24 hours" aria-label="New lead submitted within the last 24 hours">New</span> : null}
+                            </div>
+                          </td>
                           <td className="px-5 py-3.5 text-foreground/85">
                             <div>{lead.email}</div>
                             {lead.phone && <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"><span>{lead.phone}</span>{hasUsableRoadmapPhone(lead.phone) && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600/10 px-1.5 py-0.5 font-medium text-emerald-700" title="Usable phone number provided"><Phone className="h-3 w-3" aria-hidden="true" /> Phone ready</span>}{hasUsableRoadmapPhone(lead.phone) && lead.smsConsent === 1 && <span className="inline-flex items-center gap-1 rounded-full bg-violet-600/10 px-1.5 py-0.5 font-medium text-violet-700" title="SMS consent recorded"><MessageSquareText className="h-3 w-3" aria-hidden="true" /> Text ready</span>}</div>}

@@ -35,6 +35,9 @@ const bullets = [
   "How to spot — and fix — quick credit red flags before they cost you",
 ];
 
+type LeadFormField = "firstName" | "email" | "phone" | "smsConsent";
+type LeadFormErrors = Partial<Record<LeadFormField, string>>;
+
 export default function LeadMagnet() {
   const ref = useReveal<HTMLElement>();
   const { scenario, attached, setAttached, cowScenario, cowAttached, setCowAttached } = useScenario();
@@ -46,6 +49,8 @@ export default function LeadMagnet() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [smsConsent, setSmsConsent] = useState(false);
+  const [preferredContactMethod, setPreferredContactMethod] = useState<"text" | "email">("text");
+  const [errors, setErrors] = useState<LeadFormErrors>({});
   const successMessageRef = useRef<HTMLDivElement>(null);
   const returnDestination = getRoadmapSuccessReturnDestination(attached, cowAttached);
   const successNavigationItems = [
@@ -62,6 +67,7 @@ export default function LeadMagnet() {
 
   const submitLead = trpc.leads.submit.useMutation({
     onSuccess: () => {
+      setErrors({});
       setSubmitted(true);
       emitFunnelConversion("roadmap_request_submit");
       toast.success("You're in! Check your inbox for the Roadmap.");
@@ -73,20 +79,16 @@ export default function LeadMagnet() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!firstName.trim() || !email.trim() || !phone.trim()) {
-      toast.error("Please fill in your first name, email, and phone number.");
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      toast.error("Please enter a valid email address.");
-      return;
-    }
-    if (!hasUsableRoadmapPhone(phone)) {
-      toast.error("Please enter a valid 10-digit mobile phone number. Placeholder numbers are not accepted.");
-      return;
-    }
-    if (!smsConsent) {
-      toast.error("Please agree to receive text messages so we can send your Roadmap follow-up.");
+    const nextErrors: LeadFormErrors = {};
+    if (!firstName.trim()) nextErrors.firstName = "Please enter your first name.";
+    if (!email.trim()) nextErrors.email = "Please enter your email address.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) nextErrors.email = "Enter a valid email address.";
+    if (!phone.trim()) nextErrors.phone = "Please enter your phone number.";
+    else if (!hasUsableRoadmapPhone(phone)) nextErrors.phone = "Enter a valid 10-digit phone number.";
+    if (!smsConsent) nextErrors.smsConsent = "Please agree to receive text messages for Roadmap follow-up.";
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      toast.error("Please review the highlighted fields.");
       return;
     }
     const includeScenario = attached && scenario ? scenario : undefined;
@@ -102,6 +104,7 @@ export default function LeadMagnet() {
       email: email.trim(),
       phone: phone.trim(),
       smsConsent: true,
+      preferredContactMethod,
       source: sourceTags.join("+"),
       campaignAttribution: getCampaignAttribution(),
       scenario: includeScenario,
@@ -233,33 +236,48 @@ export default function LeadMagnet() {
                 </div>
               )}
               <div className="flex flex-col sm:flex-row gap-3">
-                <input
-                  type="text"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="First name"
-                  aria-label="First name"
-                  className="h-12 shrink-0 rounded-md border border-input bg-card px-4 text-base outline-none focus:ring-2 focus:ring-ring/60 sm:w-40"
-                />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Email address"
-                  aria-label="Email address"
-                  className="h-12 min-w-0 flex-1 rounded-md border border-input bg-card px-4 text-base outline-none focus:ring-2 focus:ring-ring/60"
-                />
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(formatUsRoadmapPhone(e.target.value))}
-                  placeholder="(555) 555-5555"
-                  aria-label="Best phone number"
-                  autoComplete="tel"
-                  inputMode="tel"
-                  maxLength={14}
-                  className="h-12 min-w-0 flex-1 rounded-md border border-input bg-card px-4 text-base outline-none focus:ring-2 focus:ring-ring/60"
-                />
+                <div className="min-w-0 sm:w-40">
+                  <input
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => { setFirstName(e.target.value); if (errors.firstName) setErrors((current) => ({ ...current, firstName: undefined })); }}
+                    placeholder="First name"
+                    aria-label="First name"
+                    aria-invalid={Boolean(errors.firstName)}
+                    aria-describedby={errors.firstName ? "lead-first-name-error" : undefined}
+                    className={`h-12 w-full shrink-0 rounded-md border bg-card px-4 text-base outline-none focus:ring-2 focus:ring-ring/60 ${errors.firstName ? "border-destructive focus:ring-destructive/40" : "border-input"}`}
+                  />
+                  {errors.firstName ? <p id="lead-first-name-error" role="alert" className="mt-1 text-xs font-medium text-destructive">{errors.firstName}</p> : null}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors((current) => ({ ...current, email: undefined })); }}
+                    placeholder="Email address"
+                    aria-label="Email address"
+                    aria-invalid={Boolean(errors.email)}
+                    aria-describedby={errors.email ? "lead-email-error" : undefined}
+                    className={`h-12 w-full min-w-0 rounded-md border bg-card px-4 text-base outline-none focus:ring-2 focus:ring-ring/60 ${errors.email ? "border-destructive focus:ring-destructive/40" : "border-input"}`}
+                  />
+                  {errors.email ? <p id="lead-email-error" role="alert" className="mt-1 text-xs font-medium text-destructive">{errors.email}</p> : null}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => { setPhone(formatUsRoadmapPhone(e.target.value)); if (errors.phone) setErrors((current) => ({ ...current, phone: undefined })); }}
+                    placeholder="(555) 555-5555"
+                    aria-label="Best phone number"
+                    aria-invalid={Boolean(errors.phone)}
+                    aria-describedby={errors.phone ? "lead-phone-error" : undefined}
+                    autoComplete="tel"
+                    inputMode="tel"
+                    maxLength={14}
+                    className={`h-12 w-full min-w-0 rounded-md border bg-card px-4 text-base outline-none focus:ring-2 focus:ring-ring/60 ${errors.phone ? "border-destructive focus:ring-destructive/40" : "border-input"}`}
+                  />
+                  {errors.phone ? <p id="lead-phone-error" role="alert" className="mt-1 text-xs font-medium text-destructive">{errors.phone}</p> : null}
+                </div>
                 <button
                   type="submit"
                   disabled={submitLead.isPending}
@@ -271,18 +289,40 @@ export default function LeadMagnet() {
                   <span>{submitLead.isPending ? "Sending your Roadmap…" : "Send me the Roadmap"}</span>
                 </button>
               </div>
-              <label className="mt-4 flex items-start gap-2.5 text-xs leading-relaxed text-muted-foreground">
+              <fieldset className="mt-4 rounded-md border border-border/80 bg-card/50 p-3">
+                <legend className="px-1 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Preferred follow-up</legend>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {(["text", "email"] as const).map((method) => (
+                    <label key={method} className={`flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-semibold transition-colors focus-within:ring-2 focus-within:ring-ring/60 ${preferredContactMethod === method ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:text-foreground"}`}>
+                      <input
+                        type="radio"
+                        name="preferredContactMethod"
+                        value={method}
+                        checked={preferredContactMethod === method}
+                        onChange={() => setPreferredContactMethod(method)}
+                        className="h-4 w-4 accent-primary"
+                      />
+                      {method === "text" ? "Text me" : "Email me"}
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Your preference guides the first follow-up. Phone and SMS consent are still required for this Roadmap request.</p>
+              </fieldset>
+              <label className={`mt-4 flex items-start gap-2.5 text-xs leading-relaxed ${errors.smsConsent ? "text-destructive" : "text-muted-foreground"}`}>
                 <input
                   type="checkbox"
                   checked={smsConsent}
-                  onChange={(event) => setSmsConsent(event.target.checked)}
+                  onChange={(event) => { setSmsConsent(event.target.checked); if (errors.smsConsent) setErrors((current) => ({ ...current, smsConsent: undefined })); }}
                   required
+                  aria-invalid={Boolean(errors.smsConsent)}
+                  aria-describedby={errors.smsConsent ? "lead-sms-consent-error" : undefined}
                   className="mt-0.5 h-4 w-4 shrink-0 rounded border-input text-primary focus:ring-ring"
                 />
                 <span>
                   I agree to receive calls and text messages from Mike Ford and Cornerstone First Mortgage about my mortgage inquiry. Consent is not a condition of purchase. Message frequency varies; message and data rates may apply. Reply STOP to opt out or HELP for help.
                 </span>
               </label>
+              {errors.smsConsent ? <p id="lead-sms-consent-error" role="alert" className="mt-1 text-xs font-medium text-destructive">{errors.smsConsent}</p> : null}
               <p className="mt-3 text-xs text-muted-foreground">
                 No spam, ever. Just the guide and a few genuinely useful tips. Unsubscribe anytime.
               </p>
