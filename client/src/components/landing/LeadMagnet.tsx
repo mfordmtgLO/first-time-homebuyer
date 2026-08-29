@@ -153,11 +153,11 @@ export default function LeadMagnet() {
             ))}
           </ul>
           {submitted ? (
-            <div ref={successMessageRef} tabIndex={-1} className="mt-8 rounded-lg bg-card border border-border p-6 reveal in-view focus:outline-none">
+            <div ref={successMessageRef} tabIndex={-1} role="status" aria-live="polite" aria-atomic="true" className="mt-8 rounded-lg bg-card border border-border p-6 reveal in-view focus:outline-none">
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="h-7 w-7 text-primary" />
                 <div>
-                  <div className="font-semibold text-foreground">You're all set, {firstName}!</div>
+                  <div className="font-semibold text-foreground">Roadmap request received — you're all set, {firstName}!</div>
                   <p className="text-sm text-muted-foreground mt-0.5">
                     Your Roadmap is on its way to {email}. Keep an eye out for a few quick tips over the next
                     couple of days.
@@ -192,7 +192,7 @@ export default function LeadMagnet() {
               </div>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="mt-8 reveal">
+            <form onSubmit={handleSubmit} aria-busy={submitLead.isPending} className="mt-8 reveal">
               {attached && scenario && (
                 <div className="mb-4 flex items-start gap-3 rounded-md border border-primary/25 bg-card px-4 py-3">
                   <Calculator className="h-5 w-5 mt-0.5 shrink-0 text-primary" />
@@ -263,10 +263,12 @@ export default function LeadMagnet() {
                 <button
                   type="submit"
                   disabled={submitLead.isPending}
+                  aria-live="polite"
+                  aria-busy={submitLead.isPending}
                   className="btn-press inline-flex h-12 max-sm:w-full min-w-[14.5rem] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-accent px-4 text-base font-semibold text-accent-foreground shadow-md hover:brightness-105 disabled:opacity-70 disabled:pointer-events-none"
                 >
-                  {submitLead.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                  {submitLead.isPending ? "Sending..." : "Send me the Roadmap"}
+                  {submitLead.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Download className="h-4 w-4" aria-hidden="true" />}
+                  <span>{submitLead.isPending ? "Sending your Roadmap…" : "Send me the Roadmap"}</span>
                 </button>
               </div>
               <label className="mt-4 flex items-start gap-2.5 text-xs leading-relaxed text-muted-foreground">

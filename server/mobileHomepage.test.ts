@@ -6,6 +6,7 @@ const projectRoot = process.cwd();
 const homeSource = readFileSync(resolve(projectRoot, "client/src/pages/Home.tsx"), "utf8");
 const widgetSource = readFileSync(resolve(projectRoot, "client/src/components/landing/MortgagePaymentWidget.tsx"), "utf8");
 const navSource = readFileSync(resolve(projectRoot, "client/src/components/landing/MobileBottomNav.tsx"), "utf8");
+const leadMagnetSource = readFileSync(resolve(projectRoot, "client/src/components/landing/LeadMagnet.tsx"), "utf8");
 
 describe("mobile public homepage enhancements", () => {
   it("mounts the payment widget and mobile navigation without touching dashboard routes", () => {
@@ -21,6 +22,14 @@ describe("mobile public homepage enhancements", () => {
     expect(widgetSource).toContain("not a loan offer, rate quote, APR, or promise of approval");
     expect(widgetSource).toContain('inputMode="numeric"');
     expect(widgetSource).toContain('inputMode="decimal"');
+  });
+
+  it("adds accessible loading and success feedback to the lead capture form", () => {
+    expect(leadMagnetSource).toContain('aria-busy={submitLead.isPending}');
+    expect(leadMagnetSource).toContain("Sending your Roadmap…");
+    expect(leadMagnetSource).toContain('role="status" aria-live="polite" aria-atomic="true"');
+    expect(leadMagnetSource).toContain("Roadmap request received");
+    expect(leadMagnetSource).toContain("submitLead.mutate({");
   });
 
   it("keeps bottom navigation mobile-only and exposes the main public anchors", () => {

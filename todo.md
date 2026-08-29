@@ -968,3 +968,23 @@
 - [x] Define Vercel Express/tRPC routing, Node runtime, timeout, database connection, and webhook configuration guidance
 - [x] Create slide content summarizing staging, database/file migration, validation, cutover, and rollback
 - [x] Generate and present the Vercel migration and database transition slide deck
+
+
+## Public lead-capture feedback enhancement
+
+- [x] Audit the public lead-capture form submission state and existing success/error handling
+- [x] Add an accessible loading animation and submitting-state feedback without changing lead payloads or routing
+- [x] Add clear success feedback after a confirmed lead submission, preserving existing next-step navigation
+- [x] Add focused regression coverage and verify mobile/desktop rendering
+- [x] Push and checkpoint the lead-capture UX enhancement
+
+
+## Lead form validation, contact preference, and new-lead badge
+
+- [ ] Audit the existing leads schema/procedure, public LeadMagnet form, and dashboard lead-row rendering
+- [ ] Add a nullable preferred contact method field with safe backward-compatible default behavior
+- [ ] Add inline required-field and format validation messages to the public LeadMagnet form
+- [ ] Add a text/email preferred-contact toggle while preserving explicit consent safeguards
+- [ ] Add a dashboard-only visual New badge for recent new submissions
+- [ ] Add focused regression tests and verify mobile and desktop behavior
+- [ ] Push and checkpoint the release
