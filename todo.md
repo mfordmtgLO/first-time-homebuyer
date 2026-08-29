@@ -939,3 +939,32 @@
 - [x] Add a mobile-only sticky bottom navigation bar with quick access to contact and primary public sections
 - [x] Add regression coverage and verify both enhancements at mobile and desktop viewports without changing the dashboard
 - [x] Push and checkpoint the mobile homepage enhancements
+
+
+## Mobile lead-capture parity verification
+
+- [x] Verify mobile MortgageChatWidget uses the existing chat.start/chat.answer/requestBuyerAgent procedures and persists the full transcript
+- [x] Verify mobile chat yes/no property-search responses retain desired city/county and low/no-down-payment request metadata
+- [x] Verify mobile Roadmap submissions use the existing leads.submit path and preserve UTM/source, consent, and assigned LO/agent routing
+- [x] Verify Cost of Waiting and 2-1 Buydown scenario attachments reach the same lead record fields from mobile CTAs
+- [x] Verify dashboard intake sections and labels remain the same for mobile-originated leads
+- [x] Run focused parity tests and report confirmed behavior or any regression
+
+
+## Vercel independent production migration planning
+
+- [x] Inventory required runtime environment variables and classify public versus secret values for Vercel
+- [x] Inventory database schema/migrations and document a non-destructive MySQL migration path from Manus
+- [x] Inventory uploaded-file/storage references and document an S3/object-storage migration path
+- [x] Verify Vite + Express/tRPC hosting compatibility and identify required Vercel adapter/routing changes
+- [x] Create a staged post-deployment test matrix for OAuth, tRPC routes, Roadmap/chat lead capture, scenarios, webhooks, and dashboard access
+- [x] Provide Vercel configuration, migration, rollback, and validation instructions
+
+
+## Vercel SQL, backend, and transition presentation
+
+- [x] Inventory exact Drizzle tables, migration files, and current Express/tRPC entrypoint for the migration artifacts
+- [x] Produce parameterized non-destructive MySQL dump, restore, schema migration, and verification commands
+- [x] Define Vercel Express/tRPC routing, Node runtime, timeout, database connection, and webhook configuration guidance
+- [x] Create slide content summarizing staging, database/file migration, validation, cutover, and rollback
+- [x] Generate and present the Vercel migration and database transition slide deck
