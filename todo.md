@@ -1029,3 +1029,13 @@
 - [x] Place the compact payment calculator directly below the browser tracker
 - [x] Complete the expandable How much house can I afford? estimator with DTI and credit-score screens
 - [x] Verify all existing lead source labels, lead flows, and dashboard sections remain functional
+
+
+## Browser metrics timeframe and source visualization
+
+- [x] Add All time, Last 30 days, and This year timeframe controls to the browser lead mix tracker
+- [x] Recalculate browser counts, ratio, percentage, and meter from real lead timestamps for the selected timeframe
+- [x] Add accessible tooltips explaining each affordability program’s DTI and minimum credit-score assumptions
+- [x] Add a real-data lead-source pie chart below the browser tracker for chat, Roadmap, and other existing source values
+- [x] Add focused data/count tests and verify dashboard desktop/mobile rendering
+- [x] Push and checkpoint the browser analytics enhancement
