@@ -921,13 +921,13 @@
 
 ## MOBILE_OPTIMIZATION_HANDOFF execution
 
-- [ ] Save a rollback checkpoint before beginning mobile-only public-site changes
-- [ ] Audit public landing components and mobile rendering against MOBILE_OPTIMIZATION_HANDOFF.md
-- [ ] Add mobile-only hero headline scaling and verify CTA tap targets
-- [ ] Add mobile-only tap-to-call navigation control without changing desktop navigation
-- [ ] Harden mobile chat launcher and open panel sizing/stacking without changing desktop behavior
-- [ ] Verify mobile calculator controls and prevent small-screen horizontal overflow without changing desktop grids
-- [ ] Verify roadmap form mobile input modes, tap targets, and full-width submission behavior
-- [ ] Add regression coverage for the mobile-only public-site changes without touching dashboard/server/schema/lead-routing code
-- [ ] Verify public visitor flows at 390x844 and 1280px and confirm desktop remains unchanged
-- [ ] Push and checkpoint the completed mobile-only handoff implementation
+- [x] Save a rollback checkpoint before beginning mobile-only public-site changes
+- [x] Audit public landing components and mobile rendering against MOBILE_OPTIMIZATION_HANDOFF.md
+- [x] Add mobile-only hero headline scaling and verify CTA tap targets
+- [x] Add mobile-only tap-to-call navigation control without changing desktop navigation
+- [x] Harden mobile chat launcher and open panel sizing/stacking without changing desktop behavior
+- [x] Verify mobile calculator controls and prevent small-screen horizontal overflow without changing desktop grids
+- [x] Verify roadmap form mobile input modes, tap targets, and full-width submission behavior
+- [x] Add regression coverage for the mobile-only public-site changes without touching dashboard/server/schema/lead-routing code
+- [x] Verify public visitor flows at 390x844 and 1280px and confirm desktop remains unchanged
+- [x] Push and checkpoint the completed mobile-only handoff implementation

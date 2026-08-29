@@ -206,7 +206,7 @@ export default function LeadMagnet() {
                     type="button"
                     onClick={() => setAttached(false)}
                     aria-label="Remove attached scenario"
-                    className="shrink-0 rounded p-1 text-muted-foreground hover:text-foreground"
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center shrink-0 rounded p-1 text-muted-foreground hover:text-foreground"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -226,7 +226,7 @@ export default function LeadMagnet() {
                     type="button"
                     onClick={() => setCowAttached(false)}
                     aria-label="Remove attached cost-of-waiting scenario"
-                    className="shrink-0 rounded p-1 text-muted-foreground hover:text-foreground"
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center shrink-0 rounded p-1 text-muted-foreground hover:text-foreground"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -263,7 +263,7 @@ export default function LeadMagnet() {
                 <button
                   type="submit"
                   disabled={submitLead.isPending}
-                  className="btn-press inline-flex h-12 min-w-[14.5rem] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-accent px-4 text-base font-semibold text-accent-foreground shadow-md hover:brightness-105 disabled:opacity-70 disabled:pointer-events-none"
+                  className="btn-press inline-flex h-12 max-sm:w-full min-w-[14.5rem] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-accent px-4 text-base font-semibold text-accent-foreground shadow-md hover:brightness-105 disabled:opacity-70 disabled:pointer-events-none"
                 >
                   {submitLead.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                   {submitLead.isPending ? "Sending..." : "Send me the Roadmap"}

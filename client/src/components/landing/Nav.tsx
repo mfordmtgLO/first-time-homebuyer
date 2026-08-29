@@ -40,10 +40,17 @@ export default function Nav() {
             (541) 729-0819
           </a>
           <a
+            href="tel:+15417290819"
+            aria-label="Call Mike Ford at (541) 729-0819"
+            className="btn-press inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-primary/20 bg-card/80 text-primary shadow-sm md:hidden"
+          >
+            <Phone className="h-5 w-5" aria-hidden="true" />
+          </a>
+          <a
             href={CALENDLY_BOOKING_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-press inline-flex items-center rounded-md bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground shadow-sm hover:brightness-105"
+            className="btn-press inline-flex min-h-11 items-center rounded-md bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground shadow-sm hover:brightness-105"
           >
             Book a 15-min Call
           </a>

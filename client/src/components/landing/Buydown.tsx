@@ -116,9 +116,9 @@ export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000
           </p>
         </div>
 
-        <div className="mt-12 grid lg:grid-cols-[minmax(300px,380px)_1fr] gap-8 lg:gap-12 items-start">
+        <div className="mt-12 grid max-md:min-w-0 lg:grid-cols-[minmax(300px,380px)_1fr] gap-8 lg:gap-12 items-start">
           {/* Inputs */}
-          <div className="reveal rounded-lg bg-background border border-foreground/12 shadow-sm p-6 md:p-7 space-y-6">
+          <div className="reveal max-md:min-w-0 rounded-lg bg-background border border-foreground/12 shadow-sm p-6 md:p-7 space-y-6">
             <div>
               <label htmlFor="bd-price" className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                 Purchase price
@@ -128,7 +128,7 @@ export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000
                 <Input
                   id="bd-price"
                   inputMode="numeric"
-                  className="pl-7 text-base font-semibold"
+                  className="max-md:min-h-11 pl-7 text-base font-semibold"
                   value={purchasePrice.toLocaleString("en-US")}
                   onChange={(e) => {
                     const v = Number(e.target.value.replace(/[^0-9]/g, ""));
@@ -171,7 +171,7 @@ export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000
                     <span className="text-sm text-muted-foreground">{fmtUsd(downDollars)}</span>
                   </div>
                   <Slider
-                    className="mt-3"
+                    className="mt-3 min-h-11"
                     value={[downPct]}
                     min={0}
                     max={30}
@@ -190,7 +190,7 @@ export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
                     <Input
                       inputMode="numeric"
-                      className="pl-7 text-base font-semibold"
+                      className="max-md:min-h-11 pl-7 text-base font-semibold"
                       value={downDollars.toLocaleString("en-US")}
                       onChange={(e) => handleDollarInput(e.target.value)}
                       aria-label="Down payment dollars"
@@ -211,7 +211,7 @@ export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000
                 <Input
                   id="bd-rate"
                   inputMode="decimal"
-                  className="w-28 text-base font-semibold"
+                  className="max-md:min-h-11 w-28 text-base font-semibold"
                   value={rateText}
                   onChange={(e) => {
                     const raw = e.target.value;
@@ -313,7 +313,7 @@ export default function Buydown({ purchasePrice: prefilledPurchasePrice = 450000
                 <button
                   type="button"
                   onClick={attachAndGoToForm}
-                  className="btn-press inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-semibold text-accent-foreground shadow-sm whitespace-nowrap"
+                  className="btn-press inline-flex max-md:min-h-12 max-md:w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-semibold text-accent-foreground shadow-sm whitespace-nowrap"
                 >
                   Get these numbers in my Roadmap
                   <FileDown className="h-4 w-4" />

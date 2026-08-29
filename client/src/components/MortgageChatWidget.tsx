@@ -441,7 +441,7 @@ export default function MortgageChatWidget({ compactWhenIdle = false }: { compac
       {open && !minimized && (
         <section
           aria-label="Mortgage Intake Specialist"
-          className="fixed inset-x-3 top-32 bottom-[5.5rem] z-50 flex w-auto max-w-[420px] flex-col overflow-hidden rounded-2xl border border-primary/20 bg-card shadow-2xl sm:inset-x-auto sm:top-32 sm:right-6 sm:bottom-24 sm:w-[420px]"
+          className="fixed inset-x-3 top-32 bottom-[5.5rem] z-50 flex w-auto max-w-[420px] flex-col overflow-hidden rounded-2xl border border-primary/20 bg-card shadow-2xl max-md:top-[4.75rem] max-md:bottom-[calc(5.5rem+env(safe-area-inset-bottom))] max-md:max-h-[calc(100dvh-10.25rem)] sm:inset-x-auto sm:top-32 sm:right-6 sm:bottom-24 sm:w-[420px]"
         >
           <header className="flex items-start justify-between gap-4 bg-primary px-5 py-4 text-primary-foreground">
             <div className="min-w-0">
@@ -463,7 +463,7 @@ export default function MortgageChatWidget({ compactWhenIdle = false }: { compac
               <button
                 type="button"
                 onClick={() => setMinimized(true)}
-                className="rounded-md p-1 text-primary-foreground/75 transition hover:bg-white/10 hover:text-primary-foreground"
+                className="min-h-11 min-w-11 rounded-md p-1 text-primary-foreground/75 transition hover:bg-white/10 hover:text-primary-foreground"
                 aria-label="Minimize mortgage intake chat"
               >
                 <Minus className="h-5 w-5" />
@@ -471,7 +471,7 @@ export default function MortgageChatWidget({ compactWhenIdle = false }: { compac
               <button
                 type="button"
                 onClick={() => { setOpen(false); setMinimized(false); }}
-                className="rounded-md p-1 text-primary-foreground/75 transition hover:bg-white/10 hover:text-primary-foreground"
+                className="min-h-11 min-w-11 rounded-md p-1 text-primary-foreground/75 transition hover:bg-white/10 hover:text-primary-foreground"
                 aria-label="Close mortgage intake chat"
               >
                 <X className="h-5 w-5" />
@@ -599,7 +599,7 @@ export default function MortgageChatWidget({ compactWhenIdle = false }: { compac
             if (!open) { setOpen(true); setMinimized(false); return; }
             setMinimized(false);
           }}
-          className={`btn-press fixed bottom-[5.5rem] right-5 z-50 inline-flex h-14 items-center gap-2 rounded-full bg-primary text-sm font-semibold text-primary-foreground shadow-xl transition-[width,padding,opacity,transform,filter] duration-200 hover:brightness-110 sm:bottom-24 sm:right-6 ${launcherSizing} ${hideCollapsedLauncherDuringHero ? "max-md:pointer-events-none max-md:translate-y-4 max-md:opacity-0" : ""}`}
+          className={`btn-press fixed bottom-[5.5rem] right-5 z-50 inline-flex h-14 items-center gap-2 rounded-full bg-primary text-sm font-semibold text-primary-foreground shadow-xl transition-[width,padding,opacity,transform,filter] duration-200 max-md:bottom-[calc(5.5rem+env(safe-area-inset-bottom))] sm:bottom-24 sm:right-6 ${launcherSizing} ${hideCollapsedLauncherDuringHero ? "max-md:pointer-events-none max-md:translate-y-4 max-md:opacity-0" : ""}`}
           aria-expanded={open && !minimized}
           aria-label={!open ? "Open mortgage intake chat" : "Resume mortgage intake chat"}
         >

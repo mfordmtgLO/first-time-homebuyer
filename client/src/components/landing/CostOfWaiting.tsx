@@ -70,7 +70,7 @@ function SliderInfo({
         <button
           type="button"
           aria-label={ariaLabel}
-          className="inline-flex items-center justify-center rounded-full p-0.5 -my-0.5 text-white/50 transition-colors duration-150 hover:text-[oklch(0.78_0.13_75)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full p-0.5 -my-0.5 text-white/50 transition-colors duration-150 hover:text-[oklch(0.78_0.13_75)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
         >
           <Info className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
@@ -262,7 +262,7 @@ export default function CostOfWaiting({ purchasePrice: prefilledPurchasePrice = 
   };
 
   return (
-    <div className={`mt-14 ${revealImmediately ? "opacity-100 translate-y-0" : "reveal"} rounded-lg border border-white/12 bg-white/[0.05] backdrop-blur-sm p-6 md:p-8`}>
+    <div className={`mt-14 max-md:p-5 ${revealImmediately ? "opacity-100 translate-y-0" : "reveal"} rounded-lg border border-white/12 bg-white/[0.05] backdrop-blur-sm p-6 md:p-8`}>
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
         <div>
           <span className="key-tag bg-white/10" style={{ color: "oklch(0.82 0.12 80)" }}>
@@ -278,9 +278,9 @@ export default function CostOfWaiting({ purchasePrice: prefilledPurchasePrice = 
         </p>
       </div>
 
-      <div className="mt-8 grid lg:grid-cols-[minmax(290px,360px)_1fr] gap-8 items-start">
+      <div className="mt-8 grid max-md:min-w-0 lg:grid-cols-[minmax(290px,360px)_1fr] gap-8 items-start">
         {/* Inputs */}
-        <div className="space-y-6">
+        <div className="max-md:min-w-0 space-y-6">
           <div>
             <div className="flex items-baseline justify-between">
               <FieldLabel>If you wait…</FieldLabel>
@@ -289,7 +289,7 @@ export default function CostOfWaiting({ purchasePrice: prefilledPurchasePrice = 
               </span>
             </div>
             <Slider
-              className="mt-3 cow-slider"
+              className="mt-3 min-h-11 cow-slider"
               value={[waitYears]}
               min={1}
               max={5}
@@ -303,7 +303,7 @@ export default function CostOfWaiting({ purchasePrice: prefilledPurchasePrice = 
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid max-md:grid-cols-1 grid-cols-2 gap-4">
             <div>
               <FieldLabel htmlFor="cow-rent">Current rent /mo</FieldLabel>
               <div className="relative mt-2">
@@ -311,7 +311,7 @@ export default function CostOfWaiting({ purchasePrice: prefilledPurchasePrice = 
                 <Input
                   id="cow-rent"
                   inputMode="numeric"
-                  className="pl-7 text-base font-semibold bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                  className="max-md:min-h-11 pl-7 text-base font-semibold bg-white/10 border-white/20 text-white placeholder:text-white/40"
                   value={monthlyRent.toLocaleString("en-US")}
                   onChange={(e) => {
                     const v = Number(e.target.value.replace(/[^0-9]/g, ""));
@@ -327,7 +327,7 @@ export default function CostOfWaiting({ purchasePrice: prefilledPurchasePrice = 
                 <Input
                   id="cow-price"
                   inputMode="numeric"
-                  className="pl-7 text-base font-semibold bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                  className="max-md:min-h-11 pl-7 text-base font-semibold bg-white/10 border-white/20 text-white placeholder:text-white/40"
                   value={purchasePrice.toLocaleString("en-US")}
                   onChange={(e) => {
                     const v = Number(e.target.value.replace(/[^0-9]/g, ""));
@@ -368,7 +368,7 @@ export default function CostOfWaiting({ purchasePrice: prefilledPurchasePrice = 
                   <span className="text-sm text-white/60">{fmtUsd(downDollars)}</span>
                 </div>
                 <Slider
-                  className="mt-3 cow-slider"
+                  className="mt-3 min-h-11 cow-slider"
                   value={[downPct]}
                   min={0}
                   max={20}
@@ -408,7 +408,7 @@ export default function CostOfWaiting({ purchasePrice: prefilledPurchasePrice = 
               </span>
             </div>
             <Slider
-              className="mt-3 cow-slider"
+              className="mt-3 min-h-11 cow-slider"
               value={[interestRate]}
               min={5.875}
               max={6.5}
@@ -433,7 +433,7 @@ export default function CostOfWaiting({ purchasePrice: prefilledPurchasePrice = 
               </span>
             </div>
             <Slider
-              className="mt-3 cow-slider"
+              className="mt-3 min-h-11 cow-slider"
               value={[appreciation]}
               min={0}
               max={3}
@@ -458,7 +458,7 @@ export default function CostOfWaiting({ purchasePrice: prefilledPurchasePrice = 
               </span>
             </div>
             <Slider
-              className="mt-3 cow-slider"
+              className="mt-3 min-h-11 cow-slider"
               value={[rentIncrease]}
               min={0}
               max={10}
@@ -583,20 +583,20 @@ export default function CostOfWaiting({ purchasePrice: prefilledPurchasePrice = 
               <button
                 type="button"
                 onClick={shareCalculation}
-                className="btn-press inline-flex items-center justify-center gap-2 rounded-md border border-white/25 bg-white/[0.06] px-5 py-3 text-sm font-semibold text-white hover:bg-white/[0.12] whitespace-nowrap"
+                className="btn-press inline-flex max-md:min-h-12 max-md:w-full items-center justify-center gap-2 rounded-md border border-white/25 bg-white/[0.06] px-5 py-3 text-sm font-semibold text-white hover:bg-white/[0.12] whitespace-nowrap"
               >
                 Share this scenario <Share2 className="h-4 w-4" />
               </button>
               <button
                 type="button"
                 onClick={attachAndGoToForm}
-                className="btn-press inline-flex items-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-semibold text-accent-foreground shadow-md hover:brightness-105 whitespace-nowrap"
+                className="btn-press inline-flex max-md:min-h-12 max-md:w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-semibold text-accent-foreground shadow-md hover:brightness-105 whitespace-nowrap"
               >
                 Get these numbers in my Roadmap <FileDown className="h-4 w-4" />
               </button>
               <a
                 href="#book-call"
-                className="btn-press inline-flex items-center justify-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm whitespace-nowrap"
+                className="btn-press inline-flex max-md:min-h-12 max-md:w-full items-center justify-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm whitespace-nowrap"
               >
                 Run my numbers <ArrowRight className="h-4 w-4" />
               </a>

@@ -20,7 +20,7 @@ export default function Hero() {
           <span className="key-tag bg-secondary text-secondary-foreground reveal in-view">
             For first-time homebuyers
           </span>
-          <h1 className="mt-5 font-display font-semibold text-[2.5rem] leading-[1.08] md:text-6xl md:leading-[1.05] text-foreground reveal in-view">
+          <h1 className="mt-5 font-display font-semibold text-[2.5rem] leading-[1.08] max-sm:text-[2rem] max-sm:leading-[1.12] md:text-6xl md:leading-[1.05] text-foreground reveal in-view">
             You don't need 20% down.
             <br />
             You need <span className="amber-underline">the right plan.</span>
@@ -33,14 +33,14 @@ export default function Hero() {
           <div id="hero-primary-actions" className="mt-8 flex flex-col sm:flex-row gap-4 reveal in-view" style={{ transitionDelay: "140ms" }}>
             <a
               href="#book-call"
-              className="btn-press inline-flex items-center justify-center gap-2 rounded-md bg-accent px-6 py-3.5 text-base font-semibold text-accent-foreground shadow-md hover:brightness-105"
+              className="btn-press inline-flex min-h-12 max-sm:w-full items-center justify-center gap-2 rounded-md bg-accent px-6 py-3.5 text-base font-semibold text-accent-foreground shadow-md hover:brightness-105"
             >
               See what your numbers look like
               <ArrowRight className="h-4 w-4" />
             </a>
             <a
               href="#roadmap"
-              className="btn-press inline-flex items-center justify-center gap-2 rounded-md border-2 border-primary/25 bg-transparent px-6 py-3.5 text-base font-semibold text-primary hover:bg-primary/5"
+              className="btn-press inline-flex min-h-12 max-sm:w-full items-center justify-center gap-2 rounded-md border-2 border-primary/25 bg-transparent px-6 py-3.5 text-base font-semibold text-primary hover:bg-primary/5"
             >
               Get the free Roadmap
             </a>
