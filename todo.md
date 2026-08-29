@@ -988,3 +988,13 @@
 - [x] Add a dashboard-only visual New badge for recent new submissions
 - [x] Add focused regression tests and verify mobile and desktop behavior
 - [x] Push and checkpoint the release
+
+
+## Dashboard lead contact tools
+
+- [x] Audit existing lead filters, clipboard utilities, and secure per-lead note editing flow
+- [x] Add a preferred-contact-method filter to the Roadmap lead list
+- [x] Add email and phone copy-to-clipboard controls with accessible feedback
+- [x] Add a simple per-lead follow-up notes editor using the existing protected lead-note procedure
+- [x] Add focused regression tests and verify desktop/mobile dashboard behavior
+- [x] Push and checkpoint the dashboard lead contact tools

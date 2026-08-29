@@ -47,6 +47,8 @@ import { PUBLIC_SITE_ORIGIN } from "@shared/publicSiteUrl";
 import {
   ArrowUp,
   Calculator,
+  Check,
+  Copy,
   Download,
   Inbox,
   Loader2,
@@ -235,6 +237,33 @@ function LeadScenario({ scenarios, leadName }: { scenarios: ParsedScenarios; lea
   );
 }
 
+function CopyLeadField({ value, label, leadName }: { value: string; label: "email" | "phone"; leadName: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      toast.success(`${label === "email" ? "Email" : "Phone"} copied for ${leadName}.`);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      toast.error(`Couldn't copy the ${label}. Select it manually and copy.`);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={() => void copy()}
+      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      aria-label={`Copy ${label} for ${leadName}`}
+      title={copied ? "Copied" : `Copy ${label}`}
+    >
+      {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
+    </button>
+  );
+}
+
 function LeadNotes({
   leadId,
   leadName,
@@ -278,20 +307,20 @@ function LeadNotes({
           aria-label={`Notes for ${leadName}`}
         >
           <NotebookPen className="h-4 w-4" />
-          {hasNotes ? "Notes" : "Add note"}
+              {hasNotes ? "Follow-up note" : "Add follow-up note"}
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 bg-card text-card-foreground">
         <p className="text-sm font-semibold text-foreground">
-          Notes for {leadName}
+          Follow-up notes for {leadName}
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           Call details, follow-up reminders — only you can see these.
         </p>
-        <Textarea
+          <Textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder="e.g., Called 7/12 — pre-approval sent, follow up Friday"
+          placeholder="e.g., Called 7/12 — pre-approval sent, follow up Friday" aria-label={`Follow-up notes for ${leadName}`}
           className="mt-3 min-h-[110px] text-sm"
           maxLength={5000}
         />
@@ -505,6 +534,7 @@ export default function Leads() {
   const [loanOfficerFilter, setLoanOfficerFilter] = useState("all");
   const [agentFilter, setAgentFilter] = useState("all");
   const [campaignFilter, setCampaignFilter] = useState("all");
+  const [contactMethodFilter, setContactMethodFilter] = useState<"all" | "text" | "email">("all");
   const [propertySourceFilter, setPropertySourceFilter] = useState<"all" | "single-property">("all");
   const [propertyAddressFilter, setPropertyAddressFilter] = useState("all");
   const [activityRange, setActivityRange] = useState<PropertyActivityRange>("all");
@@ -562,6 +592,7 @@ export default function Leads() {
       if (agentFilter !== "all" && !matchesSelectedCoBrandPair(l, loanOfficerFilter, agentFilter)) return false;
       const campaign = [l.utmSource, l.utmMedium, l.utmCampaign].filter(Boolean).join(" · ") || "Direct / untagged";
       if (campaignFilter !== "all" && campaign !== campaignFilter) return false;
+      if (contactMethodFilter !== "all" && (l.preferredContactMethod ?? "text") !== contactMethodFilter) return false;
       if (propertySourceFilter === "single-property" && !l.propertyPageAddress) return false;
       if (propertyAddressFilter !== "all" && l.propertyPageAddress !== propertyAddressFilter) return false;
       if (!q) return true;
@@ -575,9 +606,9 @@ export default function Leads() {
         (l.agentName ?? "").toLowerCase().includes(q)
       );
     });
-  }, [leads, search, statusFilter, loanOfficerFilter, agentFilter, campaignFilter, propertySourceFilter, propertyAddressFilter]);
+  }, [leads, search, statusFilter, loanOfficerFilter, agentFilter, campaignFilter, contactMethodFilter, propertySourceFilter, propertyAddressFilter]);
 
-  const isFiltered = search.trim() !== "" || statusFilter !== "all" || loanOfficerFilter !== "all" || agentFilter !== "all" || campaignFilter !== "all" || propertySourceFilter !== "all" || propertyAddressFilter !== "all";
+  const isFiltered = search.trim() !== "" || statusFilter !== "all" || loanOfficerFilter !== "all" || agentFilter !== "all" || campaignFilter !== "all" || contactMethodFilter !== "all" || propertySourceFilter !== "all" || propertyAddressFilter !== "all";
 
   const utils = trpc.useUtils();
   const updateStatus = trpc.leads.updateStatus.useMutation({
@@ -819,6 +850,10 @@ export default function Leads() {
                   <SelectTrigger className="h-9 w-full bg-card text-xs sm:w-[210px]" aria-label="Filter Roadmap leads by campaign attribution"><SelectValue placeholder="All campaigns" /></SelectTrigger>
                   <SelectContent><SelectItem value="all">All campaigns</SelectItem>{campaignOptions.map((campaign) => <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>)}</SelectContent>
                 </Select>
+                <Select value={contactMethodFilter} onValueChange={(value) => setContactMethodFilter(value as typeof contactMethodFilter)}>
+                  <SelectTrigger className="h-9 w-full bg-card text-xs sm:w-[190px]" aria-label="Filter Roadmap leads by preferred contact method"><SelectValue placeholder="All contact methods" /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All contact methods</SelectItem><SelectItem value="text">Text preferred</SelectItem><SelectItem value="email">Email preferred</SelectItem></SelectContent>
+                </Select>
                 <Select value={propertySourceFilter} onValueChange={(value) => setPropertySourceFilter(value as typeof propertySourceFilter)}>
                   <SelectTrigger className="h-9 w-full bg-card text-xs sm:w-[190px]" aria-label="Filter Roadmap leads by source type"><SelectValue placeholder="All lead sources" /></SelectTrigger>
                   <SelectContent><SelectItem value="all">All lead sources</SelectItem><SelectItem value="single-property">Single-property website</SelectItem></SelectContent>
@@ -841,6 +876,7 @@ export default function Leads() {
                       setLoanOfficerFilter("all");
                       setAgentFilter("all");
                       setCampaignFilter("all");
+                      setContactMethodFilter("all");
                       setPropertySourceFilter("all");
                       setPropertyAddressFilter("all");
                     }}
@@ -885,6 +921,7 @@ export default function Leads() {
                       setLoanOfficerFilter("all");
                       setAgentFilter("all");
                       setCampaignFilter("all");
+                      setContactMethodFilter("all");
                       setPropertySourceFilter("all");
                       setPropertyAddressFilter("all");
                     }}
@@ -920,8 +957,9 @@ export default function Leads() {
                             </div>
                           </td>
                           <td className="px-5 py-3.5 text-foreground/85">
-                            <div>{lead.email}</div>
-                            {lead.phone && <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"><span>{lead.phone}</span>{hasUsableRoadmapPhone(lead.phone) && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600/10 px-1.5 py-0.5 font-medium text-emerald-700" title="Usable phone number provided"><Phone className="h-3 w-3" aria-hidden="true" /> Phone ready</span>}{hasUsableRoadmapPhone(lead.phone) && lead.smsConsent === 1 && <span className="inline-flex items-center gap-1 rounded-full bg-violet-600/10 px-1.5 py-0.5 font-medium text-violet-700" title="SMS consent recorded"><MessageSquareText className="h-3 w-3" aria-hidden="true" /> Text ready</span>}</div>}
+                            <div className="flex min-w-0 items-center gap-1"><span className="min-w-0 break-all">{lead.email}</span><CopyLeadField value={lead.email} label="email" leadName={lead.firstName} /></div>
+                            {lead.phone && <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"><span className="inline-flex items-center gap-1"><span>{lead.phone}</span><CopyLeadField value={lead.phone} label="phone" leadName={lead.firstName} /></span>{hasUsableRoadmapPhone(lead.phone) && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600/10 px-1.5 py-0.5 font-medium text-emerald-700" title="Usable phone number provided"><Phone className="h-3 w-3" aria-hidden="true" /> Phone ready</span>}{hasUsableRoadmapPhone(lead.phone) && lead.smsConsent === 1 && <span className="inline-flex items-center gap-1 rounded-full bg-violet-600/10 px-1.5 py-0.5 font-medium text-violet-700" title="SMS consent recorded"><MessageSquareText className="h-3 w-3" aria-hidden="true" /> Text ready</span>}</div>}
+                            {lead.preferredContactMethod && <div className="mt-1 text-xs text-muted-foreground">Preferred: <span className="font-semibold text-foreground">{lead.preferredContactMethod === "email" ? "Email" : "Text"}</span></div>}
                             <div className="mt-1">
                               <LeadEmailDraftAction lead={lead} agents={agentOptions} />
                             </div>

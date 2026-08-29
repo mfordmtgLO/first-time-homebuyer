@@ -48,6 +48,14 @@ describe("mobile public homepage enhancements", () => {
     expect(leadsDashboardSource).toContain('l.preferredContactMethod ?? "text"');
   });
 
+  it("exposes dashboard lead contact tools and preserves protected note editing", () => {
+    expect(leadsDashboardSource).toContain('aria-label="Filter Roadmap leads by preferred contact method"');
+    expect(leadsDashboardSource).toContain('aria-label={`Copy ${label} for ${leadName}`}');
+    expect(leadsDashboardSource).toContain('aria-label={`Follow-up notes for ${leadName}`}');
+    expect(leadsDashboardSource).toContain('trpc.leads.updateNotes.useMutation');
+    expect(leadsDashboardSource).toContain('setContactMethodFilter("all")');
+  });
+
   it("keeps bottom navigation mobile-only and exposes the main public anchors", () => {
     expect(navSource).toContain('aria-label="Mobile quick navigation"');
     expect(navSource).toContain("md:hidden");
