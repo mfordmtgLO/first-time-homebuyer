@@ -20,6 +20,7 @@ import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { ArrowRight, BookOpen, Calculator, CalendarDays, CheckCircle2, ChevronDown, Clock3, Download, Home, MessageCircle, Minus, RotateCcw, ShieldCheck, X } from "lucide-react";
 import { emitFunnelConversion, getCampaignAttribution } from "@/lib/campaignTracking";
+import { getCaptureDevice } from "@/lib/captureDevice";
 import { jsPDF } from "jspdf";
 
 const SESSION_STORAGE_KEY = "mortgage-intake-session";
@@ -206,6 +207,7 @@ export default function MortgageChatWidget({ compactWhenIdle = false }: { compac
       propertyPageSlug: propertyPageSlug ?? undefined,
       scenario: scenario || cowScenario ? { buydown: scenario ?? undefined, costOfWaiting: cowScenario ?? undefined } : undefined,
       campaignAttribution: getCampaignAttribution(),
+      captureDevice: getCaptureDevice(),
     });
   }, [open, agentSlug, loanOfficerSlug, propertyPageSlug, start]);
 
@@ -330,6 +332,7 @@ export default function MortgageChatWidget({ compactWhenIdle = false }: { compac
       propertyPageSlug: propertyPageSlug ?? undefined,
       scenario: scenario || cowScenario ? { buydown: scenario ?? undefined, costOfWaiting: cowScenario ?? undefined } : undefined,
       campaignAttribution: getCampaignAttribution(),
+      captureDevice: getCaptureDevice(),
     });
   };
 

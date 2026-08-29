@@ -1009,3 +1009,23 @@
 - [ ] Add newest-first and oldest-first sorting controls
 - [ ] Add focused regression tests and verify desktop/mobile dashboard behavior
 - [ ] Push and checkpoint the dashboard lead-list enhancements
+
+
+## Browser-source tracking and dashboard affordability tools
+
+- [x] Add backward-compatible mobile/desktop browser capture metadata to existing lead submission payloads while preserving workflow source labels
+- [x] Surface Mobile Browser or Desktop Browser labels wherever lead source is shown in dashboard lead sections and exports
+- [x] Add a sticky sidebar Desktop Browser versus Mobile Browser all-time comparison tracker with counts, ratio, percentage, and gradient meter
+- [x] Move the existing sidebar payment calculator directly below the tracker and make it compact until expanded
+- [x] Add a disclosed How much house can I afford? estimator with credit score, income, debts, and monthly expense inputs
+- [x] Apply the requested program DTI and minimum-credit-score assumptions with clear non-approval disclosure
+- [x] Add focused tests and verify lead capture, dashboard rendering, calculations, and frozen existing flows
+- [x] Push and checkpoint the release
+
+
+## Confirmed sidebar implementation scope
+
+- [x] Complete the sticky fixed Mobile Browser versus Desktop Browser tracker at the top of the dashboard sidebar
+- [x] Place the compact payment calculator directly below the browser tracker
+- [x] Complete the expandable How much house can I afford? estimator with DTI and credit-score screens
+- [x] Verify all existing lead source labels, lead flows, and dashboard sections remain functional

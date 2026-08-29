@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, Download, CheckCircle2, Loader2, Calculator, Compass, Hourglass, UserRound, X } from "lucide-react";
 import { formatUsRoadmapPhone, hasUsableRoadmapPhone } from "@shared/roadmapPhone";
 import { emitFunnelConversion, getCampaignAttribution } from "@/lib/campaignTracking";
+import { getCaptureDevice } from "@/lib/captureDevice";
 
 const fmtUsd = (v: number) =>
   v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -105,6 +106,7 @@ export default function LeadMagnet() {
       phone: phone.trim(),
       smsConsent: true,
       preferredContactMethod,
+      captureDevice: getCaptureDevice(),
       source: sourceTags.join("+"),
       campaignAttribution: getCampaignAttribution(),
       scenario: includeScenario,

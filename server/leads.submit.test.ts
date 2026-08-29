@@ -55,8 +55,13 @@ describe("leads.submit", () => {
       phone: "(541) 555-0100",
       smsConsent: 1,
       preferredContactMethod: "text",
+      captureDevice: "desktop",
       source: "roadmap",
       scenario: undefined,
+      agentId: undefined,
+      loanOfficerId: undefined,
+      propertyPageId: undefined,
+      agentSource: undefined,
     });
     expect(notifyOwnerMock).toHaveBeenCalledTimes(1);
     expect(notifyOwnerMock.mock.calls[0]?.[0]?.title).toContain("Taylor");

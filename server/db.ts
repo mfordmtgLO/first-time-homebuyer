@@ -737,7 +737,7 @@ export async function updateLeadNotes(id: number, notes: string, loanOfficerId?:
   if (!db) {
     throw new Error("Database not available");
   }
-  return db.update(leads).set({ notes }).where(loanOfficerId ? and(eq(leads.id, id), eq(leads.loanOfficerId, loanOfficerId)) : eq(leads.id, id));
+  return db.update(leads).set({ notes, notesUpdatedAt: new Date() }).where(loanOfficerId ? and(eq(leads.id, id), eq(leads.loanOfficerId, loanOfficerId)) : eq(leads.id, id));
 }
 
 /** Assign (or clear) the co-marketing agent on a lead. */

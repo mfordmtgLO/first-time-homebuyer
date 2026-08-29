@@ -794,6 +794,7 @@ export const appRouter = router({
           phone: z.string().trim().min(7, "A valid phone number is required").max(40).optional(),
           smsConsent: z.literal(true, { error: "SMS consent is required." }),
           preferredContactMethod: z.enum(["text", "email"]).default("text"),
+          captureDevice: z.enum(["mobile", "desktop"]).default("desktop"),
           source: z.string().trim().max(64).optional(),
           campaignAttribution: campaignAttributionInputSchema.optional(),
           scenario: buydownScenarioSchema.optional(),
@@ -894,6 +895,7 @@ export const appRouter = router({
           phone: input.phone,
           smsConsent: 1,
           preferredContactMethod: input.preferredContactMethod,
+          captureDevice: input.captureDevice,
           source: propertyPageId ? "property-page" : input.source ?? "roadmap",
           scenario: scenarioPayload,
           agentId,
@@ -1078,6 +1080,7 @@ export const appRouter = router({
           campaignAttribution: campaignAttributionInputSchema.optional(),
           propertyPageSlug: propertyPageSlugSchema.optional(),
           scenario: propertyScenarioInputSchema.optional(),
+          captureDevice: z.enum(["mobile", "desktop"]).default("desktop"),
         })
       )
       .mutation(async ({ input }) => {
@@ -1150,6 +1153,7 @@ export const appRouter = router({
           loanOfficerId: officer?.id,
           propertyPageId,
           scenario: input.scenario ? JSON.stringify(input.scenario) : undefined,
+          captureDevice: input.captureDevice,
           ...input.campaignAttribution,
         });
         await addChatTranscript(Number(leadId), "assistant", greeting);

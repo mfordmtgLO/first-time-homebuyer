@@ -442,6 +442,20 @@
       "when": 1788033109582,
       "tag": "0062_tricky_kate_bishop",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "5",
+      "when": 1788035785429,
+      "tag": "0063_careless_pet_avengers",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "5",
+      "when": 1788037875154,
+      "tag": "0064_glorious_mockingbird",
+      "breakpoints": true
     }
   ]
 }

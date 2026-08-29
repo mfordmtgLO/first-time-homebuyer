@@ -22,6 +22,7 @@ import { getCoBrandAgentFilterOptions, getLoanOfficerFilterOptions, matchesSelec
 import { buildLeadWelcomeDraft } from "@shared/leadEmailDraft";
 import { PUBLIC_SITE_ORIGIN } from "@shared/publicSiteUrl";
 import { hasUsableRoadmapPhone } from "@shared/roadmapPhone";
+import { captureDeviceLabel } from "@/lib/captureDevice";
 import { qualifiesForUsdaDashboardBadge } from "@shared/usdaEligibility";
 import { PROPERTY_ACTIVITY_RANGES, PROPERTY_ACTIVITY_RANGE_LABELS, type PropertyActivityRange } from "@shared/propertyActivity";
 import { promptForStep, type IntakeValues } from "@shared/chatIntake";
@@ -46,6 +47,7 @@ type ChatLead = {
   phone: string | null;
   notes: string | null;
   smsConsent: number;
+  captureDevice: "mobile" | "desktop";
   smsConsentAt: Date | null;
   recipientEmailStatus: "not_attempted" | "sent" | "manual_follow_up";
   recipientEmailDetail: string | null;
@@ -376,7 +378,7 @@ export default function ChatIntakeLeads() {
               <td className="px-5 py-3.5"><div className="font-medium text-foreground">{lead.resendCount === 0 ? "Not resent" : `${lead.resendCount} resend${lead.resendCount === 1 ? "" : "s"}`}</div><div className="mt-0.5 text-xs text-muted-foreground">{lead.lastResentAt ? `Last: ${formatDateTime(lead.lastResentAt)}` : "—"}</div></td>
               <td className="px-5 py-3.5 capitalize">{lead.loanPurpose || "—"}</td>
               <td className="min-w-[14rem] px-5 py-3.5 text-xs text-muted-foreground"><div className="leading-relaxed">{lead.propertyType || "—"} · {money(lead.propertyValue)} · {lead.creditRange || "—"} · Income {money(lead.annualIncome)}</div>{lead.lowDownPaymentHomeSearch === 1 && <div className="mt-1 flex items-center gap-1 text-emerald-700"><MapPin className="h-3 w-3" /> Low/no-down search{lead.targetArea ? ` · ${lead.searchAreaType ?? "Area"}: ${lead.targetArea}` : " requested"}</div>}{lead.buyerAgentRequest === 1 && <div className="mt-1 text-amber-800">Buyer-agent connection requested</div>}<CalculatorScenarioSummary scenario={lead.scenario} /></td>
-              <td className="px-5 py-3.5 whitespace-nowrap text-muted-foreground">{new Date(lead.updatedAt).toLocaleString()}</td>
+              <td className="px-5 py-3.5 whitespace-nowrap text-muted-foreground"><span className={`mr-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${lead.captureDevice === "mobile" ? "bg-emerald-600/10 text-emerald-700" : "bg-slate-600/10 text-slate-700"}`}>{captureDeviceLabel(lead.captureDevice)}</span>{new Date(lead.updatedAt).toLocaleString()}</td>
               <td className="px-5 py-3.5 text-right"><div className="flex min-w-[180px] flex-wrap justify-end gap-2"><Button variant="outline" size="sm" onClick={() => setSelected(lead)}><FileText className="mr-1.5 h-3.5 w-3.5" /> View</Button><Select value={lead.agentId ? String(lead.agentId) : "none"} onValueChange={(value) => assignAgent.mutate({ chatLeadId: lead.id, agentId: value === "none" ? null : Number(value) })} disabled={assignAgent.isPending}><SelectTrigger className="h-8 w-[145px] text-xs"><SelectValue placeholder="No agent" /></SelectTrigger><SelectContent><SelectItem value="none">No agent</SelectItem>{agents.map((agent) => <SelectItem key={agent.id} value={String(agent.id)}>{agent.name}</SelectItem>)}</SelectContent></Select>{lead.status === "qualified" && <Button variant="outline" size="sm" disabled={resend.isPending} onClick={() => setResendCandidate(lead)}><Mail className="mr-1.5 h-3.5 w-3.5" /> Resend</Button>}</div></td>
             </tr>)}</tbody>
           </table>

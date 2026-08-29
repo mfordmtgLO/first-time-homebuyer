@@ -1,0 +1,2 @@
+ALTER TABLE `chat_intake_lead` ADD `captureDevice` enum('mobile','desktop') DEFAULT 'desktop' NOT NULL;--> statement-breakpoint
+ALTER TABLE `leads` ADD `captureDevice` enum('mobile','desktop') DEFAULT 'desktop' NOT NULL;

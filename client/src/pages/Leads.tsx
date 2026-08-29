@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { hasUsableRoadmapPhone } from "@shared/roadmapPhone";
+import { captureDeviceLabel } from "@/lib/captureDevice";
 import { PROPERTY_ACTIVITY_RANGES, PROPERTY_ACTIVITY_RANGE_LABELS, type PropertyActivityRange } from "@shared/propertyActivity";
 import { getCoBrandAgentFilterOptions, getLoanOfficerFilterOptions, matchesSelectedCoBrandPair } from "@shared/roadmapPairFilters";
 import { PUBLIC_SITE_ORIGIN } from "@shared/publicSiteUrl";
@@ -268,10 +269,12 @@ function LeadNotes({
   leadId,
   leadName,
   notes,
+  notesUpdatedAt,
 }: {
   leadId: number;
   leadName: string;
   notes: string | null;
+  notesUpdatedAt: Date | string | null;
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(notes ?? "");
@@ -301,13 +304,13 @@ function LeadNotes({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className={`inline-flex items-center gap-1.5 font-medium hover:underline ${
+          className={`inline-flex items-center gap-2 font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
             hasNotes ? "text-primary" : "text-muted-foreground"
           }`}
           aria-label={`Notes for ${leadName}`}
         >
-          <NotebookPen className="h-4 w-4" />
-              {hasNotes ? "Follow-up note" : "Add follow-up note"}
+          <span className="inline-flex items-center gap-1.5"><NotebookPen className="h-4 w-4" />{hasNotes ? "Follow-up note" : "Add follow-up note"}</span>
+          {notesUpdatedAt ? <span className="text-[11px] font-normal text-muted-foreground" title={`Last updated ${new Date(notesUpdatedAt).toLocaleString()}`}>Updated {new Date(notesUpdatedAt).toLocaleDateString()}</span> : null}
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 bg-card text-card-foreground">
@@ -633,7 +636,7 @@ export default function Leads() {
 
   const downloadCsv = () => {
     const header =
-      "First Name,Email,Phone,Preferred Contact Method,Source,Property Page Address,Property Page URL Slug,UTM Source,UTM Medium,UTM Campaign,UTM Content,UTM Term,Landing Path,Referrer Host,Co-branded Source,Loan Officer,Loan Officer URL Slug,Agent,Agent URL Slug,Status,Notes,Submitted At,Purchase Price,Down Payment,Note Rate %,Loan Amount,Year 1 Payment,Year 2 Payment,Note Payment,Year 1 Savings/mo,Year 2 Savings/mo,Seller Subsidy,Wait Years,Monthly Rent,CoW Purchase Price,CoW Down Payment,CoW Interest Rate %,CoW Appreciation %,CoW Rent Increase %,CoW Monthly Payment,Rent Paid If Waiting,Equity Missed,Cost Of Waiting";
+      "First Name,Email,Phone,Preferred Contact Method,Browser,Source,Property Page Address,Property Page URL Slug,UTM Source,UTM Medium,UTM Campaign,UTM Content,UTM Term,Landing Path,Referrer Host,Co-branded Source,Loan Officer,Loan Officer URL Slug,Agent,Agent URL Slug,Status,Notes,Submitted At,Purchase Price,Down Payment,Note Rate %,Loan Amount,Year 1 Payment,Year 2 Payment,Note Payment,Year 1 Savings/mo,Year 2 Savings/mo,Seller Subsidy,Wait Years,Monthly Rent,CoW Purchase Price,CoW Down Payment,CoW Interest Rate %,CoW Appreciation %,CoW Rent Increase %,CoW Monthly Payment,Rent Paid If Waiting,Equity Missed,Cost Of Waiting";
     const rows = filteredLeads.map((l) =>
       {
         const parsed = parseScenario(l.scenario ?? null);
@@ -644,6 +647,7 @@ export default function Leads() {
         csvEscape(l.email),
         csvEscape(l.phone),
         csvEscape(l.preferredContactMethod ?? "text"),
+        csvEscape(captureDeviceLabel(l.captureDevice)),
         csvEscape(l.source),
         csvEscape(l.propertyPageAddress ?? ""),
         csvEscape(l.propertyPageSlug ?? ""),
@@ -965,9 +969,10 @@ export default function Leads() {
                             </div>
                           </td>
                           <td className="px-5 py-3.5">
-                            <span className="inline-flex rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-semibold">
-                              {lead.source}
-                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                              <span className="inline-flex rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-semibold">{lead.source}</span>
+                              <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${lead.captureDevice === "mobile" ? "bg-emerald-600/10 text-emerald-700" : "bg-slate-600/10 text-slate-700"}`}>{captureDeviceLabel(lead.captureDevice)}</span>
+                            </div>
                           </td>
                           <td className="px-5 py-3.5 text-xs text-muted-foreground">
                             {[lead.utmSource, lead.utmMedium, lead.utmCampaign].filter(Boolean).join(" · ") || "Direct / untagged"}
@@ -1034,6 +1039,7 @@ export default function Leads() {
                                 leadId={lead.id}
                                 leadName={lead.firstName}
                                 notes={lead.notes}
+                                notesUpdatedAt={lead.notesUpdatedAt}
                               />
                             </div>
                           </td>

@@ -38,9 +38,13 @@ export const leads = mysqlTable("leads", {
   smsConsent: int("smsConsent").default(0).notNull(),
   /** Visitor's requested first follow-up channel; legacy records default to text. */
   preferredContactMethod: mysqlEnum("preferredContactMethod", ["text", "email"]).default("text").notNull(),
+  /** Browser surface at submission time; legacy rows are treated as desktop. */
+  captureDevice: mysqlEnum("captureDevice", ["mobile", "desktop"]).default("desktop").notNull(),
   source: varchar("source", { length: 64 }).default("roadmap").notNull(),
   status: mysqlEnum("status", ["new", "contacted", "booked"]).default("new").notNull(),
   notes: text("notes"),
+  /** Last time an internal follow-up note was saved for this lead. */
+  notesUpdatedAt: timestamp("notesUpdatedAt"),
   /** JSON snapshot of the 2-1 buydown calculator scenario the visitor ran, if any. */
   scenario: text("scenario"),
   /** Co-marketing agent this lead is assigned to (or auto-tagged from a /with/:slug page). */
@@ -484,6 +488,8 @@ export const chatIntakeLead = mysqlTable("chat_intake_lead", {
   phone: varchar("phone", { length: 40 }),
   /** Visitor explicitly chose Yes to the chat SMS consent question. */
   smsConsent: int("smsConsent").default(0).notNull(),
+  /** Browser surface at chat creation; legacy rows are treated as desktop. */
+  captureDevice: mysqlEnum("captureDevice", ["mobile", "desktop"]).default("desktop").notNull(),
   smsConsentAt: timestamp("smsConsentAt"),
   agentId: int("agentId"),
   loanOfficerId: int("loanOfficerId"),
