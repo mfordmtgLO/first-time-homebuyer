@@ -537,6 +537,7 @@ export default function Leads() {
   const [loanOfficerFilter, setLoanOfficerFilter] = useState("all");
   const [agentFilter, setAgentFilter] = useState("all");
   const [campaignFilter, setCampaignFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
   const [contactMethodFilter, setContactMethodFilter] = useState<"all" | "text" | "email">("all");
   const [propertySourceFilter, setPropertySourceFilter] = useState<"all" | "single-property">("all");
   const [propertyAddressFilter, setPropertyAddressFilter] = useState("all");
@@ -595,6 +596,7 @@ export default function Leads() {
       if (agentFilter !== "all" && !matchesSelectedCoBrandPair(l, loanOfficerFilter, agentFilter)) return false;
       const campaign = [l.utmSource, l.utmMedium, l.utmCampaign].filter(Boolean).join(" · ") || "Direct / untagged";
       if (campaignFilter !== "all" && campaign !== campaignFilter) return false;
+      if (sourceFilter !== "all" && l.source !== sourceFilter) return false;
       if (contactMethodFilter !== "all" && (l.preferredContactMethod ?? "text") !== contactMethodFilter) return false;
       if (propertySourceFilter === "single-property" && !l.propertyPageAddress) return false;
       if (propertyAddressFilter !== "all" && l.propertyPageAddress !== propertyAddressFilter) return false;
@@ -609,9 +611,9 @@ export default function Leads() {
         (l.agentName ?? "").toLowerCase().includes(q)
       );
     });
-  }, [leads, search, statusFilter, loanOfficerFilter, agentFilter, campaignFilter, contactMethodFilter, propertySourceFilter, propertyAddressFilter]);
+  }, [leads, search, statusFilter, loanOfficerFilter, agentFilter, campaignFilter, sourceFilter, contactMethodFilter, propertySourceFilter, propertyAddressFilter]);
 
-  const isFiltered = search.trim() !== "" || statusFilter !== "all" || loanOfficerFilter !== "all" || agentFilter !== "all" || campaignFilter !== "all" || contactMethodFilter !== "all" || propertySourceFilter !== "all" || propertyAddressFilter !== "all";
+  const isFiltered = search.trim() !== "" || statusFilter !== "all" || loanOfficerFilter !== "all" || agentFilter !== "all" || campaignFilter !== "all" || sourceFilter !== "all" || contactMethodFilter !== "all" || propertySourceFilter !== "all" || propertyAddressFilter !== "all";
 
   const utils = trpc.useUtils();
   const updateStatus = trpc.leads.updateStatus.useMutation({
@@ -757,7 +759,7 @@ export default function Leads() {
           <div className="space-y-6"><TeamMemberProvisioningStatus /><TeamMemberWorkspacePanel /><TeamTemplateSubmissionPanel /></div>
         ) : (
           <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
-           <DashboardWorkdaySidebar records={leads.slice(0, 10).map((lead) => ({ label: `Roadmap lead #${lead.id}`, status: lead.status, meta: `${lead.source} · ${new Date(lead.createdAt).toLocaleDateString()}` }))} />
+           <DashboardWorkdaySidebar records={leads.slice(0, 10).map((lead) => ({ label: `Roadmap lead #${lead.id}`, status: lead.status, meta: `${lead.source} · ${new Date(lead.createdAt).toLocaleDateString()}` }))} onLeadSourceSelect={(source) => { setSourceFilter(source); document.getElementById("roadmap-leads")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
            <div className="min-w-0">
            <CampaignFunnelSummary />
             <PlatformLeadInbox />
@@ -880,6 +882,7 @@ export default function Leads() {
                       setLoanOfficerFilter("all");
                       setAgentFilter("all");
                       setCampaignFilter("all");
+                      setSourceFilter("all");
                       setContactMethodFilter("all");
                       setPropertySourceFilter("all");
                       setPropertyAddressFilter("all");
@@ -925,6 +928,7 @@ export default function Leads() {
                       setLoanOfficerFilter("all");
                       setAgentFilter("all");
                       setCampaignFilter("all");
+                      setSourceFilter("all");
                       setContactMethodFilter("all");
                       setPropertySourceFilter("all");
                       setPropertyAddressFilter("all");

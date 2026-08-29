@@ -37,4 +37,13 @@ describe("dashboard browser tools assumptions", () => {
     expect(source).toContain("How much house can I afford?");
     expect(source).toContain("not an approval, underwriting decision");
   });
+
+  it("includes timeframe, clickable source filtering, trend, and draft-email affordances", () => {
+    expect(source).toContain("Last 30 days");
+    expect(source).toContain("This year");
+    expect(source).toContain("onLeadSourceSelect?.(String(entry.name))");
+    expect(source).toContain("Daily incoming leads");
+    expect(source).toContain("Email Results");
+    expect(source).toContain("mailto:");
+  });
 });

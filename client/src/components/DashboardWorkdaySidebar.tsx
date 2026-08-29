@@ -106,7 +106,7 @@ function DashboardPaymentEstimator() {
   </section>;
 }
 
-export function DashboardWorkdaySidebar({ records }: { records: WorkflowRecord[] }) {
+export function DashboardWorkdaySidebar({ records, onLeadSourceSelect }: { records: WorkflowRecord[]; onLeadSourceSelect?: (source: string) => void }) {
   const [collapsed, setCollapsed] = useState(false);
   const [openSectionId, setOpenSectionId] = useState<string>("campaign-funnel");
   const [reviewSection, setReviewSection] = useState<WorkflowSection | null>(null);
@@ -130,7 +130,7 @@ export function DashboardWorkdaySidebar({ records }: { records: WorkflowRecord[]
       </div>
 
       {collapsed ? <div className="flex flex-col items-center gap-3 py-4">{SECTIONS.slice(0, 7).map((section) => { const Icon = section.icon; return <button key={section.id} type="button" className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" title={section.label} onClick={() => { setCollapsed(false); setOpenSectionId(section.id); }}><Icon className="h-4 w-4" /></button>; })}</div> : <div className="h-[calc(100%-3.5rem)] overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
-        <BrowserLeadTracker />
+        <BrowserLeadTracker onLeadSourceSelect={onLeadSourceSelect} />
         <div className="border-b border-border bg-primary/[0.035] p-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-primary">Pinned daily route</p>
           <ol className="mt-2 space-y-1.5 text-xs leading-5 text-muted-foreground">

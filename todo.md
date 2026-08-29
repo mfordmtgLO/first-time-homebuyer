@@ -1039,3 +1039,13 @@
 - [x] Add a real-data lead-source pie chart below the browser tracker for chat, Roadmap, and other existing source values
 - [x] Add focused data/count tests and verify dashboard desktop/mobile rendering
 - [x] Push and checkpoint the browser analytics enhancement
+
+
+## Lead analytics interactions and affordability email
+
+- [x] Audit existing affordability calculator email-draft conventions and dashboard source-filter state
+- [x] Add an Email Results action that opens a prefilled client-ready affordability summary draft without automatic sending
+- [x] Make source pie-chart segments keyboard/click accessible and connect selection to the main dashboard lead-list source filter
+- [x] Add a real-data daily incoming-lead trend line for the selected timeframe
+- [x] Add focused tests and verify chart interaction, draft generation, filtering, and dashboard rendering
+- [x] Push and checkpoint the release
