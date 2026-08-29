@@ -46,4 +46,12 @@ describe("dashboard browser tools assumptions", () => {
     expect(source).toContain("Email Results");
     expect(source).toContain("mailto:");
   });
+
+  it("supports exact-day trend tooltips, source-filter reset, and result copying", () => {
+    expect(source).toContain("incoming leads");
+    expect(source).toContain("Clear Filters");
+    expect(source).toContain("aria-label=\"Copy affordability results to clipboard\"");
+    expect(source).toContain("navigator.clipboard.writeText(resultsSummary)");
+    expect(source).toContain("setSourceFilter(source === \"all\" ? \"all\" : source)");
+  });
 });

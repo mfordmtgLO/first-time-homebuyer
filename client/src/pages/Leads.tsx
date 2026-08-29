@@ -759,7 +759,7 @@ export default function Leads() {
           <div className="space-y-6"><TeamMemberProvisioningStatus /><TeamMemberWorkspacePanel /><TeamTemplateSubmissionPanel /></div>
         ) : (
           <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
-           <DashboardWorkdaySidebar records={leads.slice(0, 10).map((lead) => ({ label: `Roadmap lead #${lead.id}`, status: lead.status, meta: `${lead.source} · ${new Date(lead.createdAt).toLocaleDateString()}` }))} onLeadSourceSelect={(source) => { setSourceFilter(source); document.getElementById("roadmap-leads")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
+           <DashboardWorkdaySidebar records={leads.slice(0, 10).map((lead) => ({ label: `Roadmap lead #${lead.id}`, status: lead.status, meta: `${lead.source} · ${new Date(lead.createdAt).toLocaleDateString()}` }))} onLeadSourceSelect={(source) => { setSourceFilter(source === "all" ? "all" : source); document.getElementById("roadmap-leads")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
            <div className="min-w-0">
            <CampaignFunnelSummary />
             <PlatformLeadInbox />

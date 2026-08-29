@@ -1049,3 +1049,12 @@
 - [x] Add a real-data daily incoming-lead trend line for the selected timeframe
 - [x] Add focused tests and verify chart interaction, draft generation, filtering, and dashboard rendering
 - [x] Push and checkpoint the release
+
+
+## Dashboard chart and calculator interaction refinements
+
+- [x] Add exact-day hover tooltips to the daily incoming-lead trend line
+- [x] Add a visible Clear Filters button beside the lead-source pie chart that resets the dashboard source-filter view
+- [x] Add a Copy to Clipboard action beside Email Results for the affordability breakdown
+- [x] Add focused regression tests and verify desktop/mobile dashboard rendering
+- [x] Push and checkpoint the interaction refinements
