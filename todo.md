@@ -998,3 +998,14 @@
 - [x] Add a simple per-lead follow-up notes editor using the existing protected lead-note procedure
 - [x] Add focused regression tests and verify desktop/mobile dashboard behavior
 - [x] Push and checkpoint the dashboard lead contact tools
+
+
+## Dashboard lead search, sorting, and note timestamps
+
+- [ ] Audit note persistence fields and current lead search/order behavior
+- [ ] Add a persisted last-updated timestamp for follow-up notes
+- [ ] Display the note last-updated timestamp next to each lead’s follow-up notes area
+- [ ] Add name/email search behavior to the dashboard lead list
+- [ ] Add newest-first and oldest-first sorting controls
+- [ ] Add focused regression tests and verify desktop/mobile dashboard behavior
+- [ ] Push and checkpoint the dashboard lead-list enhancements
