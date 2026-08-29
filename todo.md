@@ -898,3 +898,23 @@
 - [x] Extend the separate GeoSphere map application with a Lakeview National Rentcast qualifying-list saved database, map overlay, property detail popup, and export selection
 
 - [x] Add a review-only Lakeview National program filter to Saved Qualified Listings using existing GeoSphere sync metadata for new and existing Rentcast listing snapshots
+
+## Independent public-site mobile clone
+
+- [ ] Create a separate Manus project clone named First-Time Homebuyer Mobile-First Website without changing the original project
+- [ ] Keep the existing private admin/user dashboard desktop-only and unchanged in the mobile clone
+- [ ] Audit public-site mobile behavior for navigation, forms, chat intake, calculators, and single-property pages
+- [ ] Implement touch-first responsive public-site improvements while preserving desktop browser functionality
+- [ ] Add public-site regression coverage and verify key visitor flows at mobile and desktop viewports
+- [ ] Save and publish the independent public mobile-first clone
+- [ ] Keep the new clone's Twilio, Meta/Google webhook, and Resend email activation states aligned with the source project's paused/on-hold safeguards
+- [ ] Document that the mobile clone is public-site optimized only; dashboard administration remains intended for computer browsers
+
+## Scope history
+
+- [x] Revised the mobile-clone scope to exclude mobile dashboard optimization after user clarification
+
+## Delivery state
+
+- [x] Lakeview National review-only Saved Qualified Listings filter released in checkpoint 8f20b620
+- [ ] Resume intentionally paused provider integrations only after required credentials, sender number, consent, and compliance prerequisites are available
