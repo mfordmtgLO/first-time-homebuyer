@@ -918,3 +918,16 @@
 
 - [x] Lakeview National review-only Saved Qualified Listings filter released in checkpoint 8f20b620
 - [ ] Resume intentionally paused provider integrations only after required credentials, sender number, consent, and compliance prerequisites are available
+
+## MOBILE_OPTIMIZATION_HANDOFF execution
+
+- [ ] Save a rollback checkpoint before beginning mobile-only public-site changes
+- [ ] Audit public landing components and mobile rendering against MOBILE_OPTIMIZATION_HANDOFF.md
+- [ ] Add mobile-only hero headline scaling and verify CTA tap targets
+- [ ] Add mobile-only tap-to-call navigation control without changing desktop navigation
+- [ ] Harden mobile chat launcher and open panel sizing/stacking without changing desktop behavior
+- [ ] Verify mobile calculator controls and prevent small-screen horizontal overflow without changing desktop grids
+- [ ] Verify roadmap form mobile input modes, tap targets, and full-width submission behavior
+- [ ] Add regression coverage for the mobile-only public-site changes without touching dashboard/server/schema/lead-routing code
+- [ ] Verify public visitor flows at 390x844 and 1280px and confirm desktop remains unchanged
+- [ ] Push and checkpoint the completed mobile-only handoff implementation
