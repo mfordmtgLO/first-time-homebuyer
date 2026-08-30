@@ -30,4 +30,13 @@ describe("Executive Workday command center", () => {
   it("states that AI does not send, save, qualify, or approve automatically", () => {
     expect(source).toContain("never send, save, qualify, or approve anything automatically");
   });
+
+  it("supports persisted drag-and-drop and keyboard widget customization", () => {
+    expect(source).toContain("executive-workday-widget-order");
+    expect(source).toContain("draggable={customizing}");
+    expect(source).toContain("Drag a widget to reorder it");
+    expect(source).toContain("Reset layout");
+    expect(source).toContain("Move ${WIDGET_LABELS[id]} earlier");
+    expect(source).toContain("Move ${WIDGET_LABELS[id]} later");
+  });
 });

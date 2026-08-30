@@ -1091,4 +1091,14 @@
 - [x] Design and prioritize cross-dashboard AI/UX improvements before implementation
 - [x] Implement approved dashboard improvements without weakening access, consent, or compliance safeguards
 - [x] Add regression, accessibility, AI-output, and dashboard-flow verification
-- [ ] Push and checkpoint the reviewed/implemented enterprise dashboard improvements
+- [x] Push and checkpoint the reviewed/implemented enterprise dashboard improvements
+
+
+## Executive command-center widget customization
+
+- [x] Audit command-center widget structure and existing preference persistence patterns
+- [x] Add native drag-and-drop ordering for command-center KPI widgets
+- [x] Persist the chosen widget order in the browser for the current dashboard user
+- [x] Add reset-layout control and keyboard-accessible move controls
+- [x] Add focused regression coverage and verify desktop/mobile command-center layout
+- [x] Push and checkpoint the widget customization release
