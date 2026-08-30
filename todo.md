@@ -1002,13 +1002,13 @@
 
 ## Dashboard lead search, sorting, and note timestamps
 
-- [ ] Audit note persistence fields and current lead search/order behavior
-- [ ] Add a persisted last-updated timestamp for follow-up notes
-- [ ] Display the note last-updated timestamp next to each lead’s follow-up notes area
-- [ ] Add name/email search behavior to the dashboard lead list
-- [ ] Add newest-first and oldest-first sorting controls
-- [ ] Add focused regression tests and verify desktop/mobile dashboard behavior
-- [ ] Push and checkpoint the dashboard lead-list enhancements
+- [x] Audit note persistence fields and current lead search/order behavior
+- [x] Add a persisted last-updated timestamp for follow-up notes
+- [x] Display the note last-updated timestamp next to each lead’s follow-up notes area
+- [x] Add name/email search behavior to the dashboard lead list
+- [x] Add newest-first and oldest-first sorting controls
+- [x] Add focused regression tests and verify desktop/mobile dashboard behavior
+- [x] Push and checkpoint the dashboard lead-list enhancements
 
 
 ## Browser-source tracking and dashboard affordability tools
@@ -1080,3 +1080,15 @@
 - [x] Add Copy Summary to saved quote cards with accessible feedback
 - [x] Add security and regression coverage and verify dashboard desktop/mobile behavior
 - [x] Push and checkpoint the saved quote management release
+
+
+## Enterprise dashboard AI and UX review
+
+- [ ] Create a pre-review rollback checkpoint for the current verified project
+- [ ] Create a downloadable source archive excluding secrets and generated dependencies
+- [ ] Document archive coverage and Manus-managed data/storage exclusions
+- [ ] Audit dashboard layout, information architecture, AI assistance, lead flow, outreach, analytics, and enterprise administration
+- [ ] Design and prioritize cross-dashboard AI/UX improvements before implementation
+- [ ] Implement approved dashboard improvements without weakening access, consent, or compliance safeguards
+- [ ] Add regression, accessibility, AI-output, and dashboard-flow verification
+- [ ] Push and checkpoint the reviewed/implemented enterprise dashboard improvements
