@@ -88,7 +88,7 @@ describe("dashboard layout preferences", () => {
     expect(leadsSource).toContain('Follow-up recorded:');
     expect(leadsSource).toContain('Viewing Chat Intakes');
     expect(leadsSource).toContain('Viewing Roadmap leads');
-    expect(leadsSource).toContain('<CombinedAllLeadsPanel rows={combinedRows} comparison={combinedComparison} range={combinedRange} onRangeChange={setCombinedRange} dayFilter={trendDayFilter} onClearDayFilter={() => setTrendDayFilter(null)} clearFiltersToken={combinedFilterResetToken} />');
+    expect(leadsSource).toContain('<CombinedAllLeadsPanel rows={combinedRows} comparison={combinedComparison} range={combinedRange} onRangeChange={setCombinedRange} pageSize={combinedPageSize} onPageSizeChange={setCombinedPageSize} dayFilter={trendDayFilter} onClearDayFilter={() => setTrendDayFilter(null)} clearFiltersToken={combinedFilterResetToken} />');
   });
 
   it("supports combined contact search, multi-select filters, and daily lead destinations", () => {
@@ -125,6 +125,18 @@ describe("dashboard layout preferences", () => {
     expect(leadsSource).toContain('onViewAllTrendDay={(day) =>');
   });
 
+  it("exposes the dashboard default page-size setting and source percentages", () => {
+    const commandCenterSource = readFileSync(resolve(process.cwd(), "client/src/components/ExecutiveCommandCenter.tsx"), "utf8");
+    const leadsSource = readFileSync(resolve(process.cwd(), "client/src/pages/Leads.tsx"), "utf8");
+    expect(commandCenterSource).toContain('aria-label="Open dashboard settings"');
+    expect(commandCenterSource).toContain('Default rows per combined-leads page');
+    expect(commandCenterSource).toContain('onDefaultPageSizeChange');
+    expect(leadsSource).toContain('const [combinedPageSize, setCombinedPageSize] = useState<CombinedPageSize>(readCombinedPageSize)');
+    expect(leadsSource).toContain('window.localStorage.setItem(COMBINED_PAGE_SIZE_STORAGE_KEY, String(combinedPageSize))');
+    expect(leadsSource).toContain('sourcePercent(pageSourceCounts.Roadmap)');
+    expect(leadsSource).toContain('sourcePercent(pageSourceCounts["Mortgage Chat"])');
+  });
+
   it("supports paginated combined rows and a real selected-day count badge", () => {
     const toolsSource = readFileSync(resolve(process.cwd(), "client/src/components/DashboardBrowserTools.tsx"), "utf8");
     const leadsSource = readFileSync(resolve(process.cwd(), "client/src/pages/Leads.tsx"), "utf8");
@@ -132,11 +144,12 @@ describe("dashboard layout preferences", () => {
     expect(toolsSource).toContain('aria-label={`View all ${selectedTrendLeadCount} leads for this day`}');
     expect(toolsSource).toContain('View all leads for this day <span');
     expect(leadsSource).toContain('type CombinedPageSize = 10 | 25 | 50;');
-    expect(leadsSource).toContain('useState<CombinedPageSize>(readCombinedPageSize)');
+    expect(leadsSource).toContain('const [combinedPageSize, setCombinedPageSize] = useState<CombinedPageSize>(readCombinedPageSize)');
     expect(leadsSource).toContain('COMBINED_PAGE_SIZE_STORAGE_KEY');
     expect(leadsSource).toContain('aria-label="First combined leads page"');
     expect(leadsSource).toContain('aria-label="Last combined leads page"');
-    expect(leadsSource).toContain('Roadmap {pageSourceCounts.Roadmap} · Mortgage Chat');
+    expect(leadsSource).toContain('Roadmap {pageSourceCounts.Roadmap} ({sourcePercent(pageSourceCounts.Roadmap)})');
+    expect(leadsSource).toContain('Mortgage Chat {pageSourceCounts["Mortgage Chat"]} ({sourcePercent(pageSourceCounts["Mortgage Chat"])})');
     expect(leadsSource).toContain('<SelectItem value="25">25</SelectItem>');
     expect(leadsSource).toContain('aria-label="Combined leads pagination"');
     expect(leadsSource).toContain('aria-label="Previous combined leads page"');

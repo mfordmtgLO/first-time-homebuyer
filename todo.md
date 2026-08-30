@@ -1216,3 +1216,11 @@
 - [x] Display live Roadmap and Mortgage Chat result counts beside the pagination indicator
 - [x] Add regression coverage and verify desktop/mobile pagination behavior
 - [x] Save and publish the pagination navigation release
+
+## Dashboard default page size and source percentages
+- [x] Audit dashboard settings and combined-leads page-size data flow
+- [x] Add a configurable 10/25/50 default page-size option in main dashboard settings
+- [x] Persist and apply the configured default to the combined all-leads table without overwriting a user’s current session choice unexpectedly
+- [x] Display Roadmap and Mortgage Chat percentages beside filtered result totals
+- [x] Add regression coverage and verify settings and summary at desktop/mobile widths
+- [x] Save and publish the dashboard settings release
