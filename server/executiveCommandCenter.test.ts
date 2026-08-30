@@ -32,7 +32,7 @@ describe("Executive Workday command center", () => {
   });
 
   it("supports persisted drag-and-drop and keyboard widget customization", () => {
-    expect(source).toContain("executive-workday-widget-order");
+    expect(source).toContain("LAYOUT_PREFERENCE_STORAGE_KEY");
     expect(source).toContain("draggable={customizing}");
     expect(source).toContain("Drag a widget to reorder it");
     expect(source).toContain("Reset layout");

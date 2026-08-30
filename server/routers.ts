@@ -64,6 +64,9 @@ import {
   createMortgagePaymentQuote,
   updateMortgagePaymentQuoteName,
   createWorkflowAiReviewHistory,
+  getDashboardLayoutPreference,
+  saveDashboardLayoutPreference,
+  resetDashboardLayoutPreference,
   createBackupHistoryEvent,
   saveAdvertisingIntegrationSetting,
   saveAdvertisingIntegrationModuleVisibility,
@@ -207,6 +210,7 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { invokeLLM, listLLMModels } from "./_core/llm";
 import { parsePropertyLandingSnapshot, propertyEligibilityLabel, propertyFinancingContext } from "../shared/propertyLandingPage";
 import { buildSyncedAgentOutreachDraft } from "../shared/syncedAgentOutreachDraft";
+import { DEFAULT_EXECUTIVE_WIDGET_ORDER, deterministicEngagementOrder, isValidExecutiveWidgetOrder, normalizeExecutiveWidgetOrder, parseExecutiveWidgetOrder, serializeExecutiveWidgetOrder, type ExecutiveEngagementMetric, type ExecutiveWidgetId } from "../shared/dashboardLayout";
 import { getTwilioReadiness, safeTwilioErrorMessage, sendTwilioTextMessage } from "./twilio";
 
 const ADMIN_ONLY_MESSAGE = "Only the site owner can manage agents.";
@@ -2604,6 +2608,49 @@ export const appRouter = router({
       }),
   }),
 
+  dashboardLayout: router({
+    get: protectedProcedure.query(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      const preference = await getDashboardLayoutPreference(ctx.user.id);
+      return { order: preference ? parseExecutiveWidgetOrder(preference.commandCenterWidgetOrder) : [...DEFAULT_EXECUTIVE_WIDGET_ORDER], updatedAt: preference?.updatedAt ?? null };
+    }),
+    save: protectedProcedure
+      .input(z.object({ order: z.array(z.string()).length(DEFAULT_EXECUTIVE_WIDGET_ORDER.length) }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        if (!isValidExecutiveWidgetOrder(input.order)) throw new TRPCError({ code: "BAD_REQUEST", message: "The command-center widget order is invalid." });
+        return { order: normalizeExecutiveWidgetOrder(input.order), updatedAt: (await saveDashboardLayoutPreference({ ownerUserId: ctx.user.id, commandCenterWidgetOrder: serializeExecutiveWidgetOrder(input.order) }))?.updatedAt ?? null };
+      }),
+    reset: protectedProcedure.mutation(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      const preference = await resetDashboardLayoutPreference(ctx.user.id, serializeExecutiveWidgetOrder(DEFAULT_EXECUTIVE_WIDGET_ORDER));
+      return { order: [...DEFAULT_EXECUTIVE_WIDGET_ORDER], updatedAt: preference?.updatedAt ?? null };
+    }),
+    optimize: protectedProcedure
+      .input(z.object({ metrics: z.array(z.object({ widgetId: z.string(), value: z.number().finite().min(0).max(1000000), dailyPeak: z.number().finite().min(0).max(1000000), label: z.string().max(120) })).length(DEFAULT_EXECUTIVE_WIDGET_ORDER.length) }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const safeMetrics: ExecutiveEngagementMetric[] = input.metrics.filter((metric) => DEFAULT_EXECUTIVE_WIDGET_ORDER.includes(metric.widgetId as ExecutiveWidgetId)).map((metric) => ({ widgetId: metric.widgetId as ExecutiveWidgetId, value: metric.value, rationale: `${metric.label}: daily peak ${metric.dailyPeak}` }));
+        const fallback = deterministicEngagementOrder(safeMetrics.length ? safeMetrics : DEFAULT_EXECUTIVE_WIDGET_ORDER.map((widgetId) => ({ widgetId, value: 0, rationale: "No metric supplied" })));
+        try {
+          const response = await invokeLLM({
+            model: "gpt-5-mini",
+            maxTokens: 320,
+            response_format: { type: "json_schema", json_schema: { name: "executive_layout_optimizer", strict: true, schema: { type: "object", properties: { order: { type: "array", items: { type: "string", enum: [...DEFAULT_EXECUTIVE_WIDGET_ORDER] }, minItems: DEFAULT_EXECUTIVE_WIDGET_ORDER.length, maxItems: DEFAULT_EXECUTIVE_WIDGET_ORDER.length }, rationale: { type: "string", maxLength: 360 } }, required: ["order", "rationale"], additionalProperties: false } } },
+            messages: [
+              { role: "system", content: "You are an internal dashboard layout optimizer. Reorder only the four supplied KPI widget IDs using the supplied real daily engagement metrics. Put the most operationally relevant signals first. Return every widget exactly once. Do not invent metrics or make lending, credit, eligibility, compliance, or outreach decisions. This output changes display order only." },
+              { role: "user", content: JSON.stringify(safeMetrics) },
+            ],
+          });
+          const content = response.choices[0]?.message.content;
+          const parsed = JSON.parse(typeof content === "string" ? content : "{}");
+          if (isValidExecutiveWidgetOrder(parsed.order)) return { order: parsed.order, rationale: typeof parsed.rationale === "string" ? parsed.rationale.slice(0, 360) : "Ordered from the supplied daily engagement metrics." };
+        } catch {
+          // Use a deterministic, real-metric fallback when the model is unavailable or returns an invalid order.
+        }
+        return { order: fallback, rationale: "Ordered from the supplied daily engagement metrics using the safe fallback." };
+      }),
+  }),
   workflowAi: router({
     review: protectedProcedure
       .input(z.object({

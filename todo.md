@@ -1106,11 +1106,19 @@
 
 ## Persistent command-center layouts and AI optimizer
 
-- [ ] Audit command-center local layout state, user profile identity, engagement metrics, and existing LLM procedure
-- [ ] Create a rollback point before the layout-preference schema change
-- [ ] Add an owner-scoped dashboard layout preference record with safe legacy/local fallback
-- [ ] Add protected load/save/reset procedures for user layout preferences
-- [ ] Add a governed AI layout optimizer using real daily engagement metrics and strict widget-order validation
-- [ ] Persist AI-applied layout order through the database preference flow
-- [ ] Add regression, security, AI-output, and responsive dashboard tests
-- [ ] Push and checkpoint the persistent layout and AI optimizer release
+- [x] Audit command-center local layout state, user profile identity, engagement metrics, and existing LLM procedure
+- [x] Create a rollback point before the layout-preference schema change
+- [x] Add an owner-scoped dashboard layout preference record with safe legacy/local fallback
+- [x] Add protected load/save/reset procedures for user layout preferences
+- [x] Add a governed AI layout optimizer using real daily engagement metrics and strict widget-order validation
+- [x] Persist AI-applied layout order through the database preference flow
+- [x] Add regression, security, AI-output, and responsive dashboard tests
+- [x] Push and checkpoint the persistent layout and AI optimizer release
+
+
+## Final persistent-layout release review
+
+- [x] Complete the interrupted narrow dashboard screenshot verification
+- [x] Review final diff scope and runtime diagnostics for the persistent layout/AI optimizer work
+- [x] Rerun focused tests and non-watch TypeScript validation after final review
+- [x] Save and publish the final persistent-layout/AI optimizer checkpoint

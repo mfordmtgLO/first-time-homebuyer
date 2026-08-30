@@ -463,6 +463,13 @@
       "when": 1788049378690,
       "tag": "0065_magenta_shotgun",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "5",
+      "when": 1788099484785,
+      "tag": "0066_far_stick",
+      "breakpoints": true
     }
   ]
 }

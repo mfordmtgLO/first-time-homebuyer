@@ -1216,6 +1216,22 @@ export const workflowAiReviewHistory = mysqlTable(
 export type WorkflowAiReviewHistory = typeof workflowAiReviewHistory.$inferSelect;
 export type InsertWorkflowAiReviewHistory = typeof workflowAiReviewHistory.$inferInsert;
 
+/** User-scoped command-center layout preferences; widget order is validated by the server. */
+export const dashboardLayoutPreference = mysqlTable(
+  "dashboard_layout_preference",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerUserId: int("ownerUserId").notNull(),
+    commandCenterWidgetOrder: text("commandCenterWidgetOrder").notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex("dashboard_layout_preference_owner_unique").on(table.ownerUserId)]
+);
+
+export type DashboardLayoutPreference = typeof dashboardLayoutPreference.$inferSelect;
+export type InsertDashboardLayoutPreference = typeof dashboardLayoutPreference.$inferInsert;
+
 /** Private paid-campaign costs used only for dashboard cost-per-tagged-lead reporting. */
 export const campaignSpendEntry = mysqlTable(
   "campaign_spend_entry",

@@ -35,6 +35,7 @@ import {
   advertisingIntegrationSetting,
   advertisingIntegrationModuleSetting,
   workflowAiReviewHistory,
+  dashboardLayoutPreference,
   teamLoanOfficerWorkspace,
   teamTemplateLibrary,
   teamTemplateSubmission,
@@ -2135,6 +2136,27 @@ export async function updateWorkflowAiReviewOutcome(input: {
   const rows = await db.select().from(workflowAiReviewHistory).where(and(eq(workflowAiReviewHistory.id, input.id), eq(workflowAiReviewHistory.ownerUserId, input.ownerUserId))).limit(1);
   if (!rows[0]) throw new Error("Workflow review history was not found.");
   return rows[0];
+}
+
+// ---------------------------------------------------------------------------
+// Private command-center layout preferences
+
+export async function getDashboardLayoutPreference(ownerUserId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db.select().from(dashboardLayoutPreference).where(eq(dashboardLayoutPreference.ownerUserId, ownerUserId)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function saveDashboardLayoutPreference(input: { ownerUserId: number; commandCenterWidgetOrder: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(dashboardLayoutPreference).values(input).onDuplicateKeyUpdate({ set: { commandCenterWidgetOrder: input.commandCenterWidgetOrder } });
+  return getDashboardLayoutPreference(input.ownerUserId);
+}
+
+export async function resetDashboardLayoutPreference(ownerUserId: number, defaultOrder: string) {
+  return saveDashboardLayoutPreference({ ownerUserId, commandCenterWidgetOrder: defaultOrder });
 }
 
 // ---------------------------------------------------------------------------
