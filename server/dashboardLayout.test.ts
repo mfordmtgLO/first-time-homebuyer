@@ -137,6 +137,16 @@ describe("dashboard layout preferences", () => {
     expect(leadsSource).toContain('sourcePercent(pageSourceCounts["Mortgage Chat"])');
   });
 
+  it("explains filtered source percentages and renders a compact source distribution", () => {
+    const leadsSource = readFileSync(resolve(process.cwd(), "client/src/pages/Leads.tsx"), "utf8");
+    expect(leadsSource).toContain('aria-label="How source percentages are calculated"');
+    expect(leadsSource).toContain('Percentages use the currently filtered combined result set: Roadmap plus Mortgage Chat.');
+    expect(leadsSource).toContain('const sourceDistribution = useMemo(() => [');
+    expect(leadsSource).toContain('dataKey="value" nameKey="name" innerRadius={25} outerRadius={42}');
+    expect(leadsSource).toContain('Roadmap: <strong className="text-foreground">{pageSourceCounts.Roadmap}</strong>');
+    expect(leadsSource).toContain('Mortgage Chat: <strong className="text-foreground">{pageSourceCounts["Mortgage Chat"]}</strong>');
+  });
+
   it("supports paginated combined rows and a real selected-day count badge", () => {
     const toolsSource = readFileSync(resolve(process.cwd(), "client/src/components/DashboardBrowserTools.tsx"), "utf8");
     const leadsSource = readFileSync(resolve(process.cwd(), "client/src/pages/Leads.tsx"), "utf8");

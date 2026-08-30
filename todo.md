@@ -1224,3 +1224,11 @@
 - [x] Display Roadmap and Mortgage Chat percentages beside filtered result totals
 - [x] Add regression coverage and verify settings and summary at desktop/mobile widths
 - [x] Save and publish the dashboard settings release
+
+## Combined source summary visualization
+- [x] Audit summary markup, tooltip conventions, and existing chart dependencies
+- [x] Add a tooltip explaining that percentages use the currently filtered combined result set
+- [x] Add a compact real-data Roadmap versus Mortgage Chat pie chart beside the numeric summary
+- [x] Preserve zero-result and one-source edge states without misleading percentages
+- [x] Add regression coverage and verify the summary at desktop/mobile widths
+- [x] Save and publish the source-summary visualization release
