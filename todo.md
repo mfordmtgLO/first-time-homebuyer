@@ -1200,3 +1200,11 @@
 - [x] Add a dynamic real-data count badge to View all leads for this day
 - [x] Add regression coverage and verify desktop/mobile pagination and badge layout
 - [x] Save and publish the combined table usability release
+
+## Combined table pagination and selected-day source counts
+- [x] Audit current pagination and selected-day count derivation
+- [x] Add numbered page buttons to the combined-table pagination controls
+- [x] Add a 10, 25, or 50 rows-per-page selector with safe page resets
+- [x] Display separate Roadmap and Mortgage Chat counts for the selected day
+- [x] Add regression coverage and verify desktop/mobile pagination and count layout
+- [x] Save and publish the pagination and selected-day count release
