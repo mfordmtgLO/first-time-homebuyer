@@ -88,7 +88,7 @@ describe("dashboard layout preferences", () => {
     expect(leadsSource).toContain('Follow-up recorded:');
     expect(leadsSource).toContain('Viewing Chat Intakes');
     expect(leadsSource).toContain('Viewing Roadmap leads');
-    expect(leadsSource).toContain('<CombinedAllLeadsPanel rows={combinedRows} comparison={combinedComparison} range={combinedRange} onRangeChange={setCombinedRange} />');
+    expect(leadsSource).toContain('<CombinedAllLeadsPanel rows={combinedRows} comparison={combinedComparison} range={combinedRange} onRangeChange={setCombinedRange} dayFilter={trendDayFilter} onClearDayFilter={() => setTrendDayFilter(null)} clearFiltersToken={combinedFilterResetToken} />');
   });
 
   it("supports combined contact search, multi-select filters, and daily lead destinations", () => {
@@ -108,5 +108,20 @@ describe("dashboard layout preferences", () => {
     expect(leadsSource).toContain('id={`roadmap-lead-${lead.id}`}');
     expect(chatSource).toContain('id={`chat-intake-lead-${lead.id}`}');
     expect(textingSource).toContain('id={`texting-${recipient.sourceType}-${recipient.sourceLeadId}`}');
+  });
+
+  it("supports selected-day trend state, urgency sorting, and filtered combined export", () => {
+    const toolsSource = readFileSync(resolve(process.cwd(), "client/src/components/DashboardBrowserTools.tsx"), "utf8");
+    const leadsSource = readFileSync(resolve(process.cwd(), "client/src/pages/Leads.tsx"), "utf8");
+    expect(toolsSource).toContain('selectedTrendDay');
+    expect(toolsSource).toContain('<ReferenceLine x={selectedTrendLabel}');
+    expect(toolsSource).toContain('View all leads for this day');
+    expect(toolsSource).toContain('onViewAllTrendDay?.(selectedTrendDay)');
+    expect(leadsSource).toContain('type CombinedSort = "newest" | "oldest" | "urgency";');
+    expect(leadsSource).toContain('value="urgency">Follow-up urgency</SelectItem>');
+    expect(leadsSource).toContain('new Date(row.submittedAt).toISOString().slice(0, 10) === dayFilter');
+    expect(leadsSource).toContain('anchor.download = `combined-leads-');
+    expect(leadsSource).toContain('Export filtered CSV');
+    expect(leadsSource).toContain('onViewAllTrendDay={(day) =>');
   });
 });

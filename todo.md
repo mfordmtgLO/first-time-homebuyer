@@ -1185,3 +1185,11 @@
 - [x] Link each trend lead to every applicable dashboard section, including consent-safe Texting navigation
 - [x] Add regression coverage and verify the new controls and links at desktop and mobile widths
 - [x] Save and publish the combined lead search/filter/navigation release
+
+## Combined analytics interaction polish
+- [x] Audit the trend chart, combined table, and existing CSV export utilities
+- [x] Add a visible selected-day state and a View all leads for this day action
+- [x] Add combined-table sorting by newest, oldest, and follow-up urgency
+- [x] Add CSV export that follows active search, source, outcome, sort, and day filters
+- [x] Add regression coverage and verify desktop/mobile analytics interactions
+- [x] Save and publish the combined analytics interaction release
