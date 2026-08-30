@@ -1193,3 +1193,10 @@
 - [x] Add CSV export that follows active search, source, outcome, sort, and day filters
 - [x] Add regression coverage and verify desktop/mobile analytics interactions
 - [x] Save and publish the combined analytics interaction release
+
+## Combined lead table pagination and day-count badge
+- [x] Audit combined-table pagination state and selected-day count derivation
+- [x] Add bottom pagination controls that operate on the filtered and sorted combined rows
+- [x] Add a dynamic real-data count badge to View all leads for this day
+- [x] Add regression coverage and verify desktop/mobile pagination and badge layout
+- [x] Save and publish the combined table usability release

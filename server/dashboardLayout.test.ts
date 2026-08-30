@@ -124,4 +124,17 @@ describe("dashboard layout preferences", () => {
     expect(leadsSource).toContain('Export filtered CSV');
     expect(leadsSource).toContain('onViewAllTrendDay={(day) =>');
   });
+
+  it("supports paginated combined rows and a real selected-day count badge", () => {
+    const toolsSource = readFileSync(resolve(process.cwd(), "client/src/components/DashboardBrowserTools.tsx"), "utf8");
+    const leadsSource = readFileSync(resolve(process.cwd(), "client/src/pages/Leads.tsx"), "utf8");
+    expect(toolsSource).toContain('selectedTrendLeadCount');
+    expect(toolsSource).toContain('aria-label={`View all ${selectedTrendLeadCount} leads for this day`}');
+    expect(toolsSource).toContain('View all leads for this day <span');
+    expect(leadsSource).toContain('const pageSize = 10;');
+    expect(leadsSource).toContain('aria-label="Combined leads pagination"');
+    expect(leadsSource).toContain('aria-label="Previous combined leads page"');
+    expect(leadsSource).toContain('aria-label="Next combined leads page"');
+    expect(leadsSource).toContain('paginatedRows.map((row) =>');
+  });
 });
