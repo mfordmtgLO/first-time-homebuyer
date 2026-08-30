@@ -67,4 +67,14 @@ describe("dashboard browser tools assumptions", () => {
     expect(source).not.toContain("Email Results");
     expect(source).not.toContain("mailto:");
   });
+
+  it("supports saved quote restore and management actions", () => {
+    const sidebarSource = readFileSync(resolve(process.cwd(), "client/src/components/DashboardWorkdaySidebar.tsx"), "utf8");
+    expect(sidebarSource).toContain("onQuoteLoaded?.(quote)");
+    expect(sidebarSource).toContain("Edit Name");
+    expect(sidebarSource).toContain("Delete");
+    expect(sidebarSource).toContain("Copy Summary");
+    expect(sidebarSource).toContain("updateName.useMutation");
+    expect(sidebarSource).toContain("navigator.clipboard.writeText(summary)");
+  });
 });

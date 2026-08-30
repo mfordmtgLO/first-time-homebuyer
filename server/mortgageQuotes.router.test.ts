@@ -7,16 +7,18 @@ vi.mock("./db", async (importOriginal) => {
     listMortgagePaymentQuotes: vi.fn(async () => []),
     createMortgagePaymentQuote: vi.fn(async (input) => ({ id: 91, ...input, createdAt: new Date() })),
     deleteMortgagePaymentQuote: vi.fn(async () => undefined),
+    updateMortgagePaymentQuoteName: vi.fn(async (input) => ({ id: input.id, name: input.name, ownerUserId: input.ownerUserId })),
   };
 });
 
 import { appRouter } from "./routers";
-import { createMortgagePaymentQuote, deleteMortgagePaymentQuote, listMortgagePaymentQuotes } from "./db";
+import { createMortgagePaymentQuote, deleteMortgagePaymentQuote, listMortgagePaymentQuotes, updateMortgagePaymentQuoteName } from "./db";
 import type { TrpcContext } from "./_core/context";
 
 const listMock = vi.mocked(listMortgagePaymentQuotes);
 const createMock = vi.mocked(createMortgagePaymentQuote);
 const deleteMock = vi.mocked(deleteMortgagePaymentQuote);
+const updateNameMock = vi.mocked(updateMortgagePaymentQuoteName);
 
 function createContext(role: "admin" | "user"): TrpcContext {
   return {
@@ -54,6 +56,8 @@ describe("mortgageQuotes router", () => {
     await caller.mortgageQuotes.create(quoteInput);
     expect(createMock).toHaveBeenCalledWith(expect.objectContaining({ ownerUserId: 83, ...quoteInput, firstName: "", lastName: "", program: "conventional", monthlyFloodInsuranceCents: 0, maxPurchasePriceResultCents: 0 }));
 
+    await caller.mortgageQuotes.updateName({ id: 91, name: "  Renamed condo  " });
+    expect(updateNameMock).toHaveBeenCalledWith({ id: 91, name: "Renamed condo", ownerUserId: 83 });
     await caller.mortgageQuotes.delete({ id: 91 });
     expect(deleteMock).toHaveBeenCalledWith({ id: 91, ownerUserId: 83 });
   });

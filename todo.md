@@ -1069,3 +1069,14 @@
 - [x] Add a searchable dashboard saved-quotes section with first name, last name, program, and max-price slider filters
 - [x] Add migration, security, calculation, search, and responsive regression tests
 - [x] Push and checkpoint the saved-quote release
+
+
+## Saved quote management
+
+- [x] Audit saved quote card data and calculator state restoration fields
+- [x] Add protected edit-name and delete saved quote procedures
+- [x] Reload exact saved quote inputs and result fields into the calculator when selected
+- [x] Add Edit Name and Delete controls beside each saved quote
+- [x] Add Copy Summary to saved quote cards with accessible feedback
+- [x] Add security and regression coverage and verify dashboard desktop/mobile behavior
+- [x] Push and checkpoint the saved quote management release

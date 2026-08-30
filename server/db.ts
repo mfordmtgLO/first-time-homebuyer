@@ -2082,6 +2082,15 @@ export async function createMortgagePaymentQuote(input: {
   return rows[0];
 }
 
+export async function updateMortgagePaymentQuoteName(input: { id: number; ownerUserId: number; name: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(mortgagePaymentQuote).set({ name: input.name.trim() }).where(and(eq(mortgagePaymentQuote.id, input.id), eq(mortgagePaymentQuote.ownerUserId, input.ownerUserId)));
+  const rows = await db.select().from(mortgagePaymentQuote).where(and(eq(mortgagePaymentQuote.id, input.id), eq(mortgagePaymentQuote.ownerUserId, input.ownerUserId))).limit(1);
+  if (!rows[0]) throw new Error("Saved mortgage quote not found.");
+  return rows[0];
+}
+
 export async function deleteMortgagePaymentQuote(input: { id: number; ownerUserId: number }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BarChart3, Check, ChevronDown, ChevronRight, Copy, Info, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -9,6 +9,12 @@ import { CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContaine
 const formatCurrency = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
 
 type ProgramKey = "conventional" | "fha" | "usda" | "va" | "nonqm";
+export type SavedMortgageQuoteRecord = {
+  id: number; name: string; purchasePriceCents: number; downPaymentPercentBasisPoints: number; annualRateBasisPoints: number; termYears: number;
+  annualPropertyTaxCents: number; annualHomeInsuranceCents: number; monthlyFloodInsuranceCents?: number; monthlyHoaDuesCents: number; monthlyMortgageInsuranceCents: number;
+  firstName?: string; lastName?: string; program?: ProgramKey; creditScore?: number; grossMonthlyIncomeCents?: number; monthlyConsumerDebtCents?: number;
+  maxHousingPaymentCents?: number; availablePrincipalAndInterestCents?: number; maxPurchasePriceResultCents?: number; dtiBasisPoints?: number; minimumCreditScore?: number;
+};
 type Timeframe = "all" | "30d" | "year";
 const PROGRAMS: Record<ProgramKey, { label: string; dti: number; minScore: number }> = {
   conventional: { label: "Conventional", dti: 0.50, minScore: 680 },
@@ -95,7 +101,7 @@ export function BrowserLeadTracker({ onLeadSourceSelect, onClearFilters }: { onL
   );
 }
 
-export function DashboardAffordabilityEstimator() {
+export function DashboardAffordabilityEstimator({ quoteToLoad }: { quoteToLoad?: SavedMortgageQuoteRecord | null }) {
   const [open, setOpen] = useState(false);
   const [program, setProgram] = useState<ProgramKey>("conventional");
   const [creditScore, setCreditScore] = useState("680");
@@ -110,6 +116,21 @@ export function DashboardAffordabilityEstimator() {
   const [borrowerLastName, setBorrowerLastName] = useState("");
   const [copied, setCopied] = useState(false);
   const quoteUtils = trpc.useUtils();
+  useEffect(() => {
+    if (!quoteToLoad) return;
+    setOpen(true);
+    setProgram(quoteToLoad.program ?? "conventional");
+    setCreditScore(String(quoteToLoad.creditScore ?? 0));
+    setIncome(String((quoteToLoad.grossMonthlyIncomeCents ?? 0) / 100));
+    setDebts(String((quoteToLoad.monthlyConsumerDebtCents ?? 0) / 100));
+    setTaxes(String((quoteToLoad.annualPropertyTaxCents ?? 0) / 1200));
+    setInsurance(String((quoteToLoad.annualHomeInsuranceCents ?? 0) / 1200));
+    setFloodInsurance(String((quoteToLoad.monthlyFloodInsuranceCents ?? 0) / 100));
+    setHoa(String((quoteToLoad.monthlyHoaDuesCents ?? 0) / 100));
+    setQuoteName(quoteToLoad.name);
+    setBorrowerFirstName(quoteToLoad.firstName ?? "");
+    setBorrowerLastName(quoteToLoad.lastName ?? "");
+  }, [quoteToLoad]);
   const saveQuote = trpc.mortgageQuotes.create.useMutation({ onSuccess: () => { quoteUtils.mortgageQuotes.list.invalidate(); toast.success("Affordability quote saved."); }, onError: () => toast.error("Couldn’t save this affordability quote.") });
   const assumptions = PROGRAMS[program];
   const score = Math.max(0, Number(creditScore) || 0);

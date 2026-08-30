@@ -62,6 +62,7 @@ import {
   addLoAgentSpendEntry,
   updateLoAgentSpendEntry,
   createMortgagePaymentQuote,
+  updateMortgagePaymentQuoteName,
   createWorkflowAiReviewHistory,
   createBackupHistoryEvent,
   saveAdvertisingIntegrationSetting,
@@ -2053,6 +2054,12 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         await resolveDashboardWorkspace(ctx.user);
         return createMortgagePaymentQuote({ ownerUserId: ctx.user.id, ...input });
+      }),
+    updateName: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), name: z.string().trim().min(1, "Enter a quote name.").max(120) }))
+      .mutation(async ({ ctx, input }) => {
+        await resolveDashboardWorkspace(ctx.user);
+        return updateMortgagePaymentQuoteName({ id: input.id, ownerUserId: ctx.user.id, name: input.name });
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number().int().positive() }))
