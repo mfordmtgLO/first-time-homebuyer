@@ -1177,3 +1177,11 @@
 - [x] Add visible Viewing Chat Intakes / Viewing Roadmap leads context banners after source navigation
 - [x] Add regression coverage and verify the combined view at desktop and mobile widths
 - [x] Save and publish the combined all-leads analytics release
+
+## Combined lead search, filters, and trend navigation
+- [x] Audit combined rows, daily trend data, and existing Roadmap/Chat/Texting anchors
+- [x] Add a contact search bar and multi-select outcome/source filters to the combined table
+- [x] Make daily trend points expose the real lead names for the selected day
+- [x] Link each trend lead to every applicable dashboard section, including consent-safe Texting navigation
+- [x] Add regression coverage and verify the new controls and links at desktop and mobile widths
+- [x] Save and publish the combined lead search/filter/navigation release

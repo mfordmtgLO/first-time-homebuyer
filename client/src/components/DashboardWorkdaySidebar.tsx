@@ -6,7 +6,7 @@ import { estimateMonthlyHousingCost } from "@shared/mortgageEstimator";
 import { Calculator, Download, Loader2, PanelLeftClose, PanelLeftOpen, Sparkles, ChevronDown, ChevronRight, Workflow, Target, Users, MapPinned, MessageSquareText, ReceiptText, Megaphone, BookOpenCheck } from "lucide-react";
 import { toast } from "sonner";
 import { jsPDF } from "jspdf";
-import { BrowserLeadTracker, DashboardAffordabilityEstimator, type SavedMortgageQuoteRecord } from "@/components/DashboardBrowserTools";
+import { BrowserLeadTracker, DashboardAffordabilityEstimator, type SavedMortgageQuoteRecord, type TrendLeadDestination } from "@/components/DashboardBrowserTools";
 
 type WorkflowRecord = { label: string; status: string; meta: string };
 type SavedMortgageQuote = SavedMortgageQuoteRecord;
@@ -14,6 +14,7 @@ type SavedMortgageQuote = SavedMortgageQuoteRecord;
 type DashboardWorkdaySidebarProps = {
   records: WorkflowRecord[];
   onLeadSourceSelect?: (source: string) => void;
+  onTrendLeadNavigate?: (destination: TrendLeadDestination) => void;
   collapsed?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
 };
@@ -142,7 +143,7 @@ function DashboardPaymentEstimator({ onQuoteLoaded }: { onQuoteLoaded?: (quote: 
   </section>;
 }
 
-export function DashboardWorkdaySidebar({ records, onLeadSourceSelect, collapsed: collapsedProp, onCollapsedChange }: DashboardWorkdaySidebarProps) {
+export function DashboardWorkdaySidebar({ records, onLeadSourceSelect, onTrendLeadNavigate, collapsed: collapsedProp, onCollapsedChange }: DashboardWorkdaySidebarProps) {
   const [internalCollapsed, setInternalCollapsed] = useState(false);
   const collapsed = collapsedProp ?? internalCollapsed;
   const setCollapsed = (next: boolean) => {
@@ -172,7 +173,7 @@ export function DashboardWorkdaySidebar({ records, onLeadSourceSelect, collapsed
       </div>
 
       {collapsed ? <div className="flex flex-col items-center gap-3 py-4">{SECTIONS.slice(0, 7).map((section) => { const Icon = section.icon; return <button key={section.id} type="button" className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" title={section.label} onClick={() => { setCollapsed(false); setOpenSectionId(section.id); }}><Icon className="h-4 w-4" /></button>; })}</div> : <div className="h-[calc(100%-3.5rem)] overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
-        <BrowserLeadTracker onLeadSourceSelect={onLeadSourceSelect} onClearFilters={() => onLeadSourceSelect?.("all")} />
+        <BrowserLeadTracker onLeadSourceSelect={onLeadSourceSelect} onTrendLeadNavigate={onTrendLeadNavigate} onClearFilters={() => onLeadSourceSelect?.("all")} />
         <div className="border-b border-border bg-primary/[0.035] p-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-primary">Pinned daily route</p>
           <ol className="mt-2 space-y-1.5 text-xs leading-5 text-muted-foreground">

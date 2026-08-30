@@ -90,4 +90,23 @@ describe("dashboard layout preferences", () => {
     expect(leadsSource).toContain('Viewing Roadmap leads');
     expect(leadsSource).toContain('<CombinedAllLeadsPanel rows={combinedRows} comparison={combinedComparison} range={combinedRange} onRangeChange={setCombinedRange} />');
   });
+
+  it("supports combined contact search, multi-select filters, and daily lead destinations", () => {
+    const toolsSource = readFileSync(resolve(process.cwd(), "client/src/components/DashboardBrowserTools.tsx"), "utf8");
+    const leadsSource = readFileSync(resolve(process.cwd(), "client/src/pages/Leads.tsx"), "utf8");
+    const chatSource = readFileSync(resolve(process.cwd(), "client/src/components/ChatIntakeLeads.tsx"), "utf8");
+    const textingSource = readFileSync(resolve(process.cwd(), "client/src/components/TextingWorkspace.tsx"), "utf8");
+    expect(leadsSource).toContain('placeholder="Search name, email, phone, source, or outcome"');
+    expect(leadsSource).toContain('selectedSources');
+    expect(leadsSource).toContain('selectedOutcomes');
+    expect(leadsSource).toContain('outcomeOptions = ["New", "Contacted", "Booked", "Qualified", "Incomplete"]');
+    expect(toolsSource).toContain('selectedTrendDay');
+    expect(toolsSource).toContain('Leads on {formatTrendDate(selectedTrendDay)}');
+    expect(toolsSource).toContain('onTrendLeadNavigate?.(link)');
+    expect(toolsSource).toContain('texting-roadmap-');
+    expect(toolsSource).toContain('texting-chat-');
+    expect(leadsSource).toContain('id={`roadmap-lead-${lead.id}`}');
+    expect(chatSource).toContain('id={`chat-intake-lead-${lead.id}`}');
+    expect(textingSource).toContain('id={`texting-${recipient.sourceType}-${recipient.sourceLeadId}`}');
+  });
 });

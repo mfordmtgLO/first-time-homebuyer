@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BarChart3, Check, ChevronDown, ChevronRight, Copy, Info, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { hasUsableRoadmapPhone } from "@shared/roadmapPhone";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts";
@@ -16,6 +17,9 @@ export type SavedMortgageQuoteRecord = {
   maxHousingPaymentCents?: number; availablePrincipalAndInterestCents?: number; maxPurchasePriceResultCents?: number; dtiBasisPoints?: number; minimumCreditScore?: number;
 };
 type Timeframe = "all" | "30d" | "year";
+export type TrendLeadDestination = { section: "roadmap" | "chat" | "texting"; anchorId: string; label: string };
+type TrendLeadGroup = { key: string; name: string; links: TrendLeadDestination[] };
+
 const PROGRAMS: Record<ProgramKey, { label: string; dti: number; minScore: number }> = {
   conventional: { label: "Conventional", dti: 0.50, minScore: 680 },
   fha: { label: "FHA", dti: 0.57, minScore: 580 },
@@ -56,7 +60,7 @@ function TrendTooltip({ active, payload }: { active?: boolean; payload?: Array<{
   return <div className="rounded-md border border-border bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-sm"><p className="font-semibold">{point?.day ? formatTrendDate(point.day) : "Selected day"}</p><p>{payload[0]?.value ?? 0} incoming leads</p></div>;
 }
 
-export function BrowserLeadTracker({ onLeadSourceSelect, onClearFilters }: { onLeadSourceSelect?: (source: string) => void; onClearFilters?: () => void }) {
+export function BrowserLeadTracker({ onLeadSourceSelect, onClearFilters, onTrendLeadNavigate }: { onLeadSourceSelect?: (source: string) => void; onClearFilters?: () => void; onTrendLeadNavigate?: (destination: TrendLeadDestination) => void }) {
   const leads = trpc.leads.list.useQuery();
   const chats = trpc.chat.list.useQuery();
   const [timeframe, setTimeframe] = useState<Timeframe>("all");
@@ -85,6 +89,38 @@ export function BrowserLeadTracker({ onLeadSourceSelect, onClearFilters }: { onL
     });
     return Array.from(counts.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([day, total]) => ({ day, label: formatTrendDate(day), total }));
   }, [allRecords]);
+  const [selectedTrendDay, setSelectedTrendDay] = useState<string | null>(null);
+  const trendLeadGroups = useMemo<TrendLeadGroup[]>(() => {
+    const grouped = new Map<string, TrendLeadGroup>();
+    const add = (key: string, name: string, destination: TrendLeadDestination) => {
+      const group = grouped.get(key) ?? { key, name, links: [] };
+      if (!group.links.some((link) => link.anchorId === destination.anchorId)) group.links.push(destination);
+      grouped.set(key, group);
+    };
+    filtered.roadmap.forEach((lead) => {
+      const identity = (lead.email || lead.phone || lead.firstName || `roadmap-${lead.id}`).trim().toLowerCase().replace(/\\D/g, "") || `roadmap-${lead.id}`;
+      const day = new Date(lead.createdAt).toISOString().slice(0, 10);
+      const name = lead.firstName || "Unnamed Roadmap lead";
+      add(`${day}-${identity}`, name, { section: "roadmap", anchorId: `roadmap-lead-${lead.id}`, label: "Roadmap" });
+      if (lead.smsConsent === 1 && hasUsableRoadmapPhone(lead.phone)) add(`${day}-${identity}`, name, { section: "texting", anchorId: `texting-roadmap-${lead.id}`, label: "Texting" });
+    });
+    filtered.chat.forEach((lead) => {
+      const identity = (lead.email || lead.phone || lead.fullName || `chat-${lead.id}`).trim().toLowerCase().replace(/\\D/g, "") || `chat-${lead.id}`;
+      const day = new Date(lead.createdAt).toISOString().slice(0, 10);
+      const name = lead.fullName || "Unnamed Mortgage Chat lead";
+      add(`${day}-${identity}`, name, { section: "chat", anchorId: `chat-intake-lead-${lead.id}`, label: "Chat Intakes" });
+      if (lead.smsConsent === 1 && hasUsableRoadmapPhone(lead.phone)) add(`${day}-${identity}`, name, { section: "texting", anchorId: `texting-chat-${lead.id}`, label: "Texting" });
+    });
+    return Array.from(grouped.values()).sort((left, right) => left.name.localeCompare(right.name));
+  }, [filtered]);
+  const selectedTrendLeads = useMemo(() => {
+    if (!selectedTrendDay) return [];
+    return trendLeadGroups.filter((group) => group.key.startsWith(`${selectedTrendDay}-`));
+  }, [selectedTrendDay, trendLeadGroups]);
+  const handleTrendClick = (state: { activePayload?: Array<{ payload?: { day?: string } }> } | undefined) => {
+    const day = state?.activePayload?.[0]?.payload?.day;
+    if (day) setSelectedTrendDay(day);
+  };
   const mobileShare = counts.total > 0 ? Math.round((counts.mobile / counts.total) * 100) : 0;
 
   return (
@@ -95,7 +131,7 @@ export function BrowserLeadTracker({ onLeadSourceSelect, onClearFilters }: { onL
       <div className="mt-2" role="img" aria-label={`Mobile Browser ${counts.mobile} leads versus Desktop Browser ${counts.desktop} leads for ${timeframeLabel(timeframe)}`}><div className="relative h-3 overflow-hidden rounded-full bg-gradient-to-r from-emerald-600 via-teal-500 to-amber-500"><div className="absolute inset-y-0 w-0.5 bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.45)]" style={{ left: `${mobileShare}%` }} /></div><div className="mt-1 flex justify-between text-[9px] font-medium text-muted-foreground"><span>Mobile Browser</span><span>{mobileShare}% mobile · {100 - mobileShare}% desktop</span><span>Desktop Browser</span></div></div>
       <p className="mt-2 text-[10px] leading-4 text-muted-foreground">{counts.total} total captured leads: {filtered.roadmap.length} Roadmap + {filtered.chat.length} Mortgage Chat. Browser split: {counts.mobile} mobile and {counts.desktop} desktop for {timeframeLabel(timeframe)}. Legacy records without a mobile marker are counted as Desktop Browser.</p>
       <div className="mt-3 border-t border-border pt-3" aria-label="Lead source breakdown: Roadmap versus Mortgage Chat"><div className="flex items-center gap-2"><div className="h-4 w-4 rounded-full" style={{ background: `conic-gradient(${sourceCounts.length ? sourceCounts.map(([_, count], index) => `${SOURCE_COLORS[index % SOURCE_COLORS.length]} ${(sourceCounts.slice(0, index).reduce((sum, item) => sum + item[1], 0) / Math.max(counts.total, 1)) * 100}% ${sourceCounts.slice(0, index + 1).reduce((sum, item) => sum + item[1], 0) / Math.max(counts.total, 1) * 100}%`).join(", ") : "#e5e7eb 0 100%"})` }} aria-hidden="true" /><p className="min-w-0 flex-1 text-[10px] font-semibold uppercase tracking-wide text-primary">Lead source mix</p>{onClearFilters && <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={onClearFilters}>Clear Filters</Button>}</div>{sourceCounts.length === 0 ? <p className="mt-2 text-[10px] text-muted-foreground">No leads in this timeframe.</p> : <><div className="mt-2 flex items-center gap-3"><div className="h-24 w-24 shrink-0"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={sourceCounts.map(([name, value]) => ({ name, value }))} dataKey="value" nameKey="name" innerRadius={25} outerRadius={42} paddingAngle={2} onClick={(entry) => onLeadSourceSelect?.(String(entry.name))}>{sourceCounts.map(([name], index) => <Cell key={name} fill={SOURCE_COLORS[index % SOURCE_COLORS.length]} cursor="pointer" />)}</Pie><RechartsTooltip formatter={(value, name) => [`${value} leads`, name]} /></PieChart></ResponsiveContainer></div><div className="min-w-0 flex-1 space-y-1">{sourceCounts.map(([source, count], index) => <button key={source} type="button" className="flex w-full items-center gap-1.5 rounded px-1 py-0.5 text-left text-[10px] text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => onLeadSourceSelect?.(source)}><span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: SOURCE_COLORS[index % SOURCE_COLORS.length] }} aria-hidden="true" /><span className="truncate">{source}</span><span className="ml-auto pl-2 font-semibold tabular-nums text-foreground">{count}</span></button>)}</div></div></>}</div>
-      <div className="mt-3 border-t border-border pt-3" aria-label="Daily incoming lead trend"><div className="flex items-center justify-between gap-2"><p className="text-[10px] font-semibold uppercase tracking-wide text-primary">Daily incoming leads</p><span className="text-[10px] text-muted-foreground">{trendData.reduce((sum, point) => sum + point.total, 0)} total</span></div>{trendData.length < 2 ? <p className="mt-2 text-[10px] text-muted-foreground">Trend line appears after leads arrive on at least two days.</p> : <div className="mt-1 h-24 w-full"><ResponsiveContainer width="100%" height="100%"><LineChart data={trendData} margin={{ top: 8, right: 4, left: -22, bottom: 0 }}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" /><XAxis dataKey="label" tick={{ fontSize: 9 }} minTickGap={18} /><YAxis allowDecimals={false} tick={{ fontSize: 9 }} width={28} /><RechartsTooltip content={<TrendTooltip />} /><Line type="monotone" dataKey="total" stroke="#047857" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} /></LineChart></ResponsiveContainer></div>}</div>
+      <div className="mt-3 border-t border-border pt-3" aria-label="Daily incoming lead trend"><div className="flex items-center justify-between gap-2"><p className="text-[10px] font-semibold uppercase tracking-wide text-primary">Daily incoming leads</p><span className="text-[10px] text-muted-foreground">{trendData.reduce((sum, point) => sum + point.total, 0)} total</span></div>{trendData.length < 2 ? <p className="mt-2 text-[10px] text-muted-foreground">Trend line appears after leads arrive on at least two days.</p> : <div className="mt-1 h-24 w-full"><ResponsiveContainer width="100%" height="100%"><LineChart data={trendData} onClick={handleTrendClick} margin={{ top: 8, right: 4, left: -22, bottom: 0 }}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" /><XAxis dataKey="label" tick={{ fontSize: 9 }} minTickGap={18} /><YAxis allowDecimals={false} tick={{ fontSize: 9 }} width={28} /><RechartsTooltip content={<TrendTooltip />} /><Line type="monotone" dataKey="total" stroke="#047857" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} /></LineChart></ResponsiveContainer></div>}{selectedTrendDay && <div className="mt-2 rounded-md border border-border bg-background/70 p-2" aria-live="polite"><div className="flex items-center justify-between gap-2"><p className="text-[10px] font-semibold text-foreground">Leads on {formatTrendDate(selectedTrendDay)}</p><button type="button" className="text-[10px] font-semibold text-muted-foreground underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setSelectedTrendDay(null)}>Clear</button></div>{selectedTrendLeads.length === 0 ? <p className="mt-1 text-[10px] text-muted-foreground">No lead names available for this day.</p> : <div className="mt-1 space-y-1">{selectedTrendLeads.map((group) => <div key={group.key} className="flex flex-wrap items-center gap-1.5 text-[10px]"><span className="font-semibold text-foreground">{group.name}</span>{group.links.map((link) => <button key={`${group.key}-${link.anchorId}`} type="button" className="rounded bg-primary/10 px-1.5 py-0.5 font-semibold text-primary underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => onTrendLeadNavigate?.(link)}>{link.label}</button>)}</div>)}</div>}</div>}</div>
         </div>}
     </section>
   );
