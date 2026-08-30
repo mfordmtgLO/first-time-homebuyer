@@ -1232,3 +1232,11 @@
 - [x] Preserve zero-result and one-source edge states without misleading percentages
 - [x] Add regression coverage and verify the summary at desktop/mobile widths
 - [x] Save and publish the source-summary visualization release
+
+## Interactive source-distribution chart
+- [x] Audit pie data, source-filter callbacks, and date-range records
+- [x] Make Roadmap and Mortgage Chat pie segments apply the matching combined-table source filter
+- [x] Add real total lead count and last-updated timestamp beneath the pie chart
+- [x] Add a selected-date-range source-distribution trend indicator
+- [x] Add regression coverage and verify chart interactions at desktop/mobile widths
+- [x] Save and publish the interactive source-chart release

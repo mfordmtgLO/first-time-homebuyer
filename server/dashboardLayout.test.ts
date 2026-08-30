@@ -88,7 +88,7 @@ describe("dashboard layout preferences", () => {
     expect(leadsSource).toContain('Follow-up recorded:');
     expect(leadsSource).toContain('Viewing Chat Intakes');
     expect(leadsSource).toContain('Viewing Roadmap leads');
-    expect(leadsSource).toContain('<CombinedAllLeadsPanel rows={combinedRows} comparison={combinedComparison} range={combinedRange} onRangeChange={setCombinedRange} pageSize={combinedPageSize} onPageSizeChange={setCombinedPageSize} dayFilter={trendDayFilter} onClearDayFilter={() => setTrendDayFilter(null)} clearFiltersToken={combinedFilterResetToken} />');
+    expect(leadsSource).toContain('<CombinedAllLeadsPanel rows={combinedRows} comparison={combinedComparison} range={combinedRange} onRangeChange={setCombinedRange} pageSize={combinedPageSize} onPageSizeChange={setCombinedPageSize} dayFilter={trendDayFilter} onClearDayFilter={() => setTrendDayFilter(null)} clearFiltersToken={combinedFilterResetToken} lastUpdatedAt={combinedLastUpdatedAt} />');
   });
 
   it("supports combined contact search, multi-select filters, and daily lead destinations", () => {
@@ -145,6 +145,18 @@ describe("dashboard layout preferences", () => {
     expect(leadsSource).toContain('dataKey="value" nameKey="name" innerRadius={25} outerRadius={42}');
     expect(leadsSource).toContain('Roadmap: <strong className="text-foreground">{pageSourceCounts.Roadmap}</strong>');
     expect(leadsSource).toContain('Mortgage Chat: <strong className="text-foreground">{pageSourceCounts["Mortgage Chat"]}</strong>');
+  });
+
+  it("supports interactive source distribution context and range trend indicators", () => {
+    const leadsSource = readFileSync(resolve(process.cwd(), "client/src/pages/Leads.tsx"), "utf8");
+    expect(leadsSource).toContain('const selectSource = (source: CombinedLeadRow["source"]) =>');
+    expect(leadsSource).toContain('cursor="pointer" onClick={(_entry, index) =>');
+    expect(leadsSource).toContain('onClick={() => selectSource("Roadmap")}');
+    expect(leadsSource).toContain('onClick={() => selectSource("Mortgage Chat")}');
+    expect(leadsSource).toContain('Total {sortedRows.length}');
+    expect(leadsSource).toContain('Updated {lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleString() : "Awaiting refresh"}');
+    expect(leadsSource).toContain('SourceMixTrendBadge label="Roadmap" delta={sourceMixTrend.roadmapDelta}');
+    expect(leadsSource).toContain('SourceMixTrendBadge label="Chat" delta={sourceMixTrend.chatDelta}');
   });
 
   it("supports paginated combined rows and a real selected-day count badge", () => {
