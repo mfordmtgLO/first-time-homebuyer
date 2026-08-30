@@ -1240,3 +1240,11 @@
 - [x] Add a selected-date-range source-distribution trend indicator
 - [x] Add regression coverage and verify chart interactions at desktop/mobile widths
 - [x] Save and publish the interactive source-chart release
+
+## Active source filter clarity
+- [x] Audit active source state, trend period helper, and summary controls
+- [x] Add a distinct visual outline/highlight to the active pie segment
+- [x] Add exact comparison-period details to the source trend tooltip
+- [x] Add a Clear Filter button beside the pie chart
+- [x] Add regression coverage and verify the summary at desktop/mobile widths
+- [x] Save and publish the active-filter clarity release

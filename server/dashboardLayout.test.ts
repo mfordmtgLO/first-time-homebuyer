@@ -153,10 +153,15 @@ describe("dashboard layout preferences", () => {
     expect(leadsSource).toContain('cursor="pointer" onClick={(_entry, index) =>');
     expect(leadsSource).toContain('onClick={() => selectSource("Roadmap")}');
     expect(leadsSource).toContain('onClick={() => selectSource("Mortgage Chat")}');
+    expect(leadsSource).toContain('const activeSource = selectedSources.length === 1 ? selectedSources[0] : null;');
+    expect(leadsSource).toContain('stroke={isActive ? "#d99c2b" : "hsl(var(--background))"}');
+    expect(leadsSource).toContain('aria-label="Clear active source filter"');
     expect(leadsSource).toContain('Total {sortedRows.length}');
     expect(leadsSource).toContain('Updated {lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleString() : "Awaiting refresh"}');
-    expect(leadsSource).toContain('SourceMixTrendBadge label="Roadmap" delta={sourceMixTrend.roadmapDelta}');
-    expect(leadsSource).toContain('SourceMixTrendBadge label="Chat" delta={sourceMixTrend.chatDelta}');
+    expect(leadsSource).toContain('Earlier: ${formatSourceMixDate(rangeStart)}–${formatSourceMixDate(midpoint)}; Later:');
+    expect(leadsSource).toContain('Movement is measured in percentage points between the two periods.');
+    expect(leadsSource).toContain('SourceMixTrendBadge label="Roadmap" delta={sourceMixTrend.roadmapDelta} periodLabel={sourceMixTrend.periodLabel}');
+    expect(leadsSource).toContain('SourceMixTrendBadge label="Chat" delta={sourceMixTrend.chatDelta} periodLabel={sourceMixTrend.periodLabel}');
   });
 
   it("supports paginated combined rows and a real selected-day count badge", () => {
