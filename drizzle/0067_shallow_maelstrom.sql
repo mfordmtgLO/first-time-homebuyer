@@ -1,0 +1,1 @@
+ALTER TABLE `dashboard_layout_preference` ADD `optimizerEnabled` boolean DEFAULT false NOT NULL;

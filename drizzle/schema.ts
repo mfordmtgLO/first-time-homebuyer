@@ -1,4 +1,4 @@
-import { index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+import { boolean, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -1223,6 +1223,7 @@ export const dashboardLayoutPreference = mysqlTable(
     id: int("id").autoincrement().primaryKey(),
     ownerUserId: int("ownerUserId").notNull(),
     commandCenterWidgetOrder: text("commandCenterWidgetOrder").notNull(),
+    optimizerEnabled: boolean("optimizerEnabled").default(false).notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },

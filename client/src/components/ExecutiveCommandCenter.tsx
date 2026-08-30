@@ -51,6 +51,8 @@ export function ExecutiveCommandCenter({ leads }: Props) {
   const [draggedWidget, setDraggedWidget] = useState<WidgetId | null>(null);
   const [layoutHydrated, setLayoutHydrated] = useState(false);
   const [optimizerRationale, setOptimizerRationale] = useState<string | null>(null);
+  const [optimizerEnabled, setOptimizerEnabled] = useState(false);
+  const [optimizerNotice, setOptimizerNotice] = useState<string | null>(null);
   const review = trpc.workflowAi.review.useMutation({
     onError: (error) => toast.error(error.message || "The executive review could not be prepared."),
   });
@@ -59,13 +61,26 @@ export function ExecutiveCommandCenter({ leads }: Props) {
     onError: (error) => toast.error(error.message || "The command-center layout could not be saved."),
   });
   const resetLayout = trpc.dashboardLayout.reset.useMutation({
+    onSuccess: () => {
+      setOptimizerNotice("Command-center widgets reset to the default layout.");
+      toast.success("Command-center layout reset to default.");
+    },
     onError: (error) => toast.error(error.message || "The command-center layout could not be reset."),
+  });
+  const setOptimizer = trpc.dashboardLayout.setOptimizerEnabled.useMutation({
+    onSuccess: (result) => {
+      setOptimizerEnabled(result.optimizerEnabled);
+      setOptimizerNotice(result.optimizerEnabled ? "AI layout optimizer enabled for this dashboard profile." : "AI layout optimizer disabled. Widget order will not be changed by AI.");
+      toast.success(result.optimizerEnabled ? "AI layout optimizer enabled." : "AI layout optimizer disabled.");
+    },
+    onError: (error) => toast.error(error.message || "The AI layout optimizer setting could not be saved."),
   });
   const optimizeLayout = trpc.dashboardLayout.optimize.useMutation({
     onSuccess: (result) => {
       const next = normalizeExecutiveWidgetOrder(result.order) as WidgetId[];
       setWidgetOrder(next);
       setOptimizerRationale(result.rationale);
+      setOptimizerNotice("AI reordered the command-center widgets using the supplied engagement metrics.");
       toast.success("AI reordered the command-center KPIs from the supplied engagement metrics.");
     },
     onError: (error) => toast.error(error.message || "The AI layout optimizer could not prepare an order."),
@@ -74,6 +89,7 @@ export function ExecutiveCommandCenter({ leads }: Props) {
   useEffect(() => {
     if (layoutQuery.isLoading || layoutHydrated) return;
     const fromDatabase = layoutQuery.data?.order;
+    setOptimizerEnabled(layoutQuery.data?.optimizerEnabled ?? false);
     if (fromDatabase?.length) {
       setWidgetOrder(normalizeExecutiveWidgetOrder(fromDatabase) as WidgetId[]);
     } else {
@@ -111,6 +127,10 @@ export function ExecutiveCommandCenter({ leads }: Props) {
   };
 
   const runLayoutOptimizer = () => {
+    if (!optimizerEnabled) {
+      toast.message("Enable the AI layout optimizer first.");
+      return;
+    }
     optimizeLayout.mutate({ metrics: [
       { widgetId: "new-today", value: metrics.newToday, dailyPeak: metrics.dailyPeak, label: WIDGET_LABELS["new-today"] },
       { widgetId: "open-queue", value: metrics.open, dailyPeak: metrics.dailyPeak, label: WIDGET_LABELS["open-queue"] },
@@ -158,9 +178,10 @@ export function ExecutiveCommandCenter({ leads }: Props) {
   return <section className="mb-6 rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/[0.08] via-card to-card p-5 shadow-sm sm:p-6" aria-labelledby="executive-command-center-title">
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div className="max-w-2xl"><div className="flex items-center gap-2"><Rocket className="h-5 w-5 text-primary" /><h2 id="executive-command-center-title" className="font-display text-xl font-semibold text-foreground">Executive workday command center</h2></div><p className="mt-1.5 text-sm leading-6 text-muted-foreground">A real-data operating view for prioritizing lead response, campaign review, and team oversight. AI suggestions are internal workflow guidance only and never send, save, qualify, or approve anything automatically.</p></div>
-      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end"><Button type="button" size="sm" variant={customizing ? "default" : "outline"} onClick={() => setCustomizing((value) => !value)} aria-pressed={customizing}><GripVertical className="mr-1.5 h-4 w-4" />{customizing ? "Done customizing" : "Customize layout"}</Button><Button type="button" size="sm" variant="outline" onClick={runLayoutOptimizer} disabled={optimizeLayout.isPending || layoutQuery.isLoading} className="w-full shrink-0 sm:w-auto"><Sparkles className="mr-1.5 h-4 w-4" />{optimizeLayout.isPending ? "Optimizing layout…" : "Optimize layout with AI"}</Button><Button type="button" size="sm" onClick={runExecutiveReview} disabled={review.isPending} className="w-full shrink-0 sm:w-auto"><Sparkles className="mr-1.5 h-4 w-4" />{review.isPending ? "Preparing review…" : "AI review today’s queue"}</Button></div>
+      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end"><Button type="button" size="sm" variant={customizing ? "default" : "outline"} onClick={() => setCustomizing((value) => !value)} aria-pressed={customizing}><GripVertical className="mr-1.5 h-4 w-4" />{customizing ? "Done customizing" : "Customize layout"}</Button><Button type="button" size="sm" variant={optimizerEnabled ? "default" : "outline"} onClick={() => setOptimizer.mutate({ enabled: !optimizerEnabled })} disabled={setOptimizer.isPending || layoutQuery.isLoading} role="switch" aria-checked={optimizerEnabled} className="w-full shrink-0 sm:w-auto"><Sparkles className="mr-1.5 h-4 w-4" />{setOptimizer.isPending ? "Saving setting…" : `AI optimizer: ${optimizerEnabled ? "On" : "Off"}`}</Button><Button type="button" size="sm" variant="outline" onClick={runLayoutOptimizer} disabled={!optimizerEnabled || optimizeLayout.isPending || layoutQuery.isLoading} className="w-full shrink-0 sm:w-auto"><Sparkles className="mr-1.5 h-4 w-4" />{optimizeLayout.isPending ? "Optimizing layout…" : "Optimize layout with AI"}</Button><Button type="button" size="sm" onClick={runExecutiveReview} disabled={review.isPending} className="w-full shrink-0 sm:w-auto"><Sparkles className="mr-1.5 h-4 w-4" />{review.isPending ? "Preparing review…" : "AI review today’s queue"}</Button></div>
     </div>
-    {customizing && <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-primary/35 bg-primary/[0.04] px-3 py-2 text-xs text-muted-foreground" role="status"><GripVertical className="h-4 w-4 text-primary" />Drag a widget to reorder it, or use the keyboard move controls. Your layout is saved to your dashboard profile.<Button type="button" size="sm" variant="ghost" className="ml-auto h-7 text-xs" onClick={() => { setWidgetOrder([...DEFAULT_WIDGET_ORDER]); resetLayout.mutate(); }} disabled={resetLayout.isPending}><RotateCcw className="mr-1 h-3.5 w-3.5" />{resetLayout.isPending ? "Resetting…" : "Reset layout"}</Button></div>}
+    {customizing && <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-primary/35 bg-primary/[0.04] px-3 py-2 text-xs text-muted-foreground" role="status"><GripVertical className="h-4 w-4 text-primary" />Drag a widget to reorder it, or use the keyboard move controls. Your layout is saved to your dashboard profile.<Button type="button" size="sm" variant="ghost" className="ml-auto h-7 text-xs" onClick={() => { setWidgetOrder([...DEFAULT_WIDGET_ORDER]); resetLayout.mutate(); }} disabled={resetLayout.isPending}><RotateCcw className="mr-1 h-3.5 w-3.5" />{resetLayout.isPending ? "Resetting…" : "Reset to Default Layout"}</Button></div>}
+    {optimizerNotice && <p className="mt-3 flex items-center gap-1.5 text-xs text-emerald-700" role="status" aria-live="polite"><Check className="h-3.5 w-3.5" />{optimizerNotice}</p>}
     {optimizerRationale && <p className="mt-3 text-xs text-muted-foreground" role="status" aria-live="polite"><Sparkles className="mr-1 inline h-3.5 w-3.5 text-violet-600" />AI layout note: {optimizerRationale}</p>}
     <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Executive metrics">
       {widgetOrder.map((id, index) => <div key={id} draggable={customizing} onDragStart={() => setDraggedWidget(id)} onDragEnd={() => setDraggedWidget(null)} onDragOver={(event) => { if (customizing) event.preventDefault(); }} onDrop={() => dropWidget(id)} className={`rounded-xl border border-border bg-background/80 p-3 ${customizing ? "cursor-grab border-primary/35 focus-within:ring-2 focus-within:ring-ring active:cursor-grabbing" : ""}`} tabIndex={customizing ? 0 : undefined} aria-label={`${WIDGET_LABELS[id]}${customizing ? ". Draggable widget." : ""}`}>

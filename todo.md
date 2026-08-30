@@ -1122,3 +1122,14 @@
 - [x] Review final diff scope and runtime diagnostics for the persistent layout/AI optimizer work
 - [x] Rerun focused tests and non-watch TypeScript validation after final review
 - [x] Save and publish the final persistent-layout/AI optimizer checkpoint
+
+
+## Command Center optimizer controls
+
+- [x] Audit current reset label, optimizer enablement state, and AI reorder feedback
+- [x] Add a persisted per-user AI optimizer enabled/disabled preference with safe default
+- [x] Rename the reset action to Reset to Default Layout and preserve its behavior
+- [x] Add visible success/status feedback when AI reorders widgets
+- [x] Add an accessible AI optimizer toggle and enforce the setting before optimization
+- [x] Add focused authorization, persistence, interaction, and responsive tests
+- [x] Push and checkpoint the optimizer-control release

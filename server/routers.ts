@@ -2612,24 +2612,35 @@ export const appRouter = router({
     get: protectedProcedure.query(async ({ ctx }) => {
       requireAdmin(ctx.user.role);
       const preference = await getDashboardLayoutPreference(ctx.user.id);
-      return { order: preference ? parseExecutiveWidgetOrder(preference.commandCenterWidgetOrder) : [...DEFAULT_EXECUTIVE_WIDGET_ORDER], updatedAt: preference?.updatedAt ?? null };
+      return { order: preference ? parseExecutiveWidgetOrder(preference.commandCenterWidgetOrder) : [...DEFAULT_EXECUTIVE_WIDGET_ORDER], optimizerEnabled: preference?.optimizerEnabled ?? false, updatedAt: preference?.updatedAt ?? null };
     }),
     save: protectedProcedure
       .input(z.object({ order: z.array(z.string()).length(DEFAULT_EXECUTIVE_WIDGET_ORDER.length) }))
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
         if (!isValidExecutiveWidgetOrder(input.order)) throw new TRPCError({ code: "BAD_REQUEST", message: "The command-center widget order is invalid." });
-        return { order: normalizeExecutiveWidgetOrder(input.order), updatedAt: (await saveDashboardLayoutPreference({ ownerUserId: ctx.user.id, commandCenterWidgetOrder: serializeExecutiveWidgetOrder(input.order) }))?.updatedAt ?? null };
+        const saved = await saveDashboardLayoutPreference({ ownerUserId: ctx.user.id, commandCenterWidgetOrder: serializeExecutiveWidgetOrder(input.order) });
+        return { order: normalizeExecutiveWidgetOrder(input.order), optimizerEnabled: saved?.optimizerEnabled ?? false, updatedAt: saved?.updatedAt ?? null };
       }),
     reset: protectedProcedure.mutation(async ({ ctx }) => {
       requireAdmin(ctx.user.role);
       const preference = await resetDashboardLayoutPreference(ctx.user.id, serializeExecutiveWidgetOrder(DEFAULT_EXECUTIVE_WIDGET_ORDER));
-      return { order: [...DEFAULT_EXECUTIVE_WIDGET_ORDER], updatedAt: preference?.updatedAt ?? null };
+      return { order: [...DEFAULT_EXECUTIVE_WIDGET_ORDER], optimizerEnabled: preference?.optimizerEnabled ?? false, updatedAt: preference?.updatedAt ?? null };
     }),
+    setOptimizerEnabled: protectedProcedure
+      .input(z.object({ enabled: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const existing = await getDashboardLayoutPreference(ctx.user.id);
+        const saved = await saveDashboardLayoutPreference({ ownerUserId: ctx.user.id, commandCenterWidgetOrder: existing?.commandCenterWidgetOrder ?? serializeExecutiveWidgetOrder(DEFAULT_EXECUTIVE_WIDGET_ORDER), optimizerEnabled: input.enabled });
+        return { optimizerEnabled: saved?.optimizerEnabled ?? input.enabled, updatedAt: saved?.updatedAt ?? null };
+      }),
     optimize: protectedProcedure
       .input(z.object({ metrics: z.array(z.object({ widgetId: z.string(), value: z.number().finite().min(0).max(1000000), dailyPeak: z.number().finite().min(0).max(1000000), label: z.string().max(120) })).length(DEFAULT_EXECUTIVE_WIDGET_ORDER.length) }))
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
+        const preference = await getDashboardLayoutPreference(ctx.user.id);
+        if (!preference?.optimizerEnabled) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Enable the AI layout optimizer before optimizing the command center." });
         const safeMetrics: ExecutiveEngagementMetric[] = input.metrics.filter((metric) => DEFAULT_EXECUTIVE_WIDGET_ORDER.includes(metric.widgetId as ExecutiveWidgetId)).map((metric) => ({ widgetId: metric.widgetId as ExecutiveWidgetId, value: metric.value, rationale: `${metric.label}: daily peak ${metric.dailyPeak}` }));
         const fallback = deterministicEngagementOrder(safeMetrics.length ? safeMetrics : DEFAULT_EXECUTIVE_WIDGET_ORDER.map((widgetId) => ({ widgetId, value: 0, rationale: "No metric supplied" })));
         try {

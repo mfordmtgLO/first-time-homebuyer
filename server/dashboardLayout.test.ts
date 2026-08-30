@@ -32,6 +32,9 @@ describe("dashboard layout preferences", () => {
     expect(routerSource).toContain("getDashboardLayoutPreference(ctx.user.id)");
     expect(dbSource).toContain("dashboardLayoutPreference");
     expect(routerSource).toContain("executive_layout_optimizer");
+    expect(routerSource).toContain("setOptimizerEnabled");
+    expect(routerSource).toContain("Enable the AI layout optimizer before optimizing");
+    expect(dbSource).toContain("optimizerEnabled");
     expect(componentSource).toContain("trpc.dashboardLayout.get.useQuery");
     expect(componentSource).toContain("trpc.dashboardLayout.save.useMutation");
     expect(componentSource).toContain("Optimize layout with AI");

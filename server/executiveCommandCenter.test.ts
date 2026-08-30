@@ -35,7 +35,9 @@ describe("Executive Workday command center", () => {
     expect(source).toContain("LAYOUT_PREFERENCE_STORAGE_KEY");
     expect(source).toContain("draggable={customizing}");
     expect(source).toContain("Drag a widget to reorder it");
-    expect(source).toContain("Reset layout");
+    expect(source).toContain("Reset to Default Layout");
+    expect(source).toContain('role="switch" aria-checked={optimizerEnabled}');
+    expect(source).toContain("AI reordered the command-center widgets");
     expect(source).toContain("Move ${WIDGET_LABELS[id]} earlier");
     expect(source).toContain("Move ${WIDGET_LABELS[id]} later");
   });

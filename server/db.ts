@@ -2148,15 +2148,18 @@ export async function getDashboardLayoutPreference(ownerUserId: number) {
   return rows[0] ?? null;
 }
 
-export async function saveDashboardLayoutPreference(input: { ownerUserId: number; commandCenterWidgetOrder: string }) {
+export async function saveDashboardLayoutPreference(input: { ownerUserId: number; commandCenterWidgetOrder: string; optimizerEnabled?: boolean }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.insert(dashboardLayoutPreference).values(input).onDuplicateKeyUpdate({ set: { commandCenterWidgetOrder: input.commandCenterWidgetOrder } });
+  const existing = input.optimizerEnabled === undefined ? await getDashboardLayoutPreference(input.ownerUserId) : null;
+  const optimizerEnabled = input.optimizerEnabled ?? existing?.optimizerEnabled ?? false;
+  await db.insert(dashboardLayoutPreference).values({ ...input, optimizerEnabled }).onDuplicateKeyUpdate({ set: { commandCenterWidgetOrder: input.commandCenterWidgetOrder, optimizerEnabled } });
   return getDashboardLayoutPreference(input.ownerUserId);
 }
 
 export async function resetDashboardLayoutPreference(ownerUserId: number, defaultOrder: string) {
-  return saveDashboardLayoutPreference({ ownerUserId, commandCenterWidgetOrder: defaultOrder });
+  const existing = await getDashboardLayoutPreference(ownerUserId);
+  return saveDashboardLayoutPreference({ ownerUserId, commandCenterWidgetOrder: defaultOrder, optimizerEnabled: existing?.optimizerEnabled ?? false });
 }
 
 // ---------------------------------------------------------------------------
