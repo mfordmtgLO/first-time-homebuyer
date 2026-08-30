@@ -1133,3 +1133,10 @@
 - [x] Add an accessible AI optimizer toggle and enforce the setting before optimization
 - [x] Add focused authorization, persistence, interaction, and responsive tests
 - [x] Push and checkpoint the optimizer-control release
+
+## Command Center optimizer interaction polish
+- [x] Add an explanatory tooltip next to the AI optimizer toggle describing exactly what enabling it does
+- [x] Add a temporary undo action after AI reordering that restores the prior widget order
+- [x] Add smooth reduced-motion-safe transitions for widget reordering and layout reset states
+- [x] Add regression coverage and verify the desktop/mobile dashboard presentation
+- [x] Save and publish the optimizer interaction polish release

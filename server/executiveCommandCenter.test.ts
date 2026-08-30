@@ -38,6 +38,13 @@ describe("Executive Workday command center", () => {
     expect(source).toContain("Reset to Default Layout");
     expect(source).toContain('role="switch" aria-checked={optimizerEnabled}');
     expect(source).toContain("AI reordered the command-center widgets");
+    expect(source).toContain("What does the AI layout optimizer do?");
+    expect(source).toContain("using the current real-data engagement metrics");
+    expect(source).toContain("undoOrder");
+    expect(source).toContain("Previous widget layout restored.");
+    expect(source).toContain("prefers-reduced-motion: reduce");
+    expect(source).toContain("cubic-bezier(0.23, 1, 0.32, 1)");
+    expect(source).toContain("transition-[transform,opacity]");
     expect(source).toContain("Move ${WIDGET_LABELS[id]} earlier");
     expect(source).toContain("Move ${WIDGET_LABELS[id]} later");
   });

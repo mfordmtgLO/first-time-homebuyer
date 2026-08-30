@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { ArrowDown, ArrowUp, Check, GripVertical, Loader2, MessageSquareText, Megaphone, Rocket, RotateCcw, Sparkles, Users, Workflow } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ArrowDown, ArrowUp, Check, CircleHelp, GripVertical, Loader2, MessageSquareText, Megaphone, Rocket, RotateCcw, Sparkles, Undo2, Users, Workflow } from "lucide-react";
 import { toast } from "sonner";
 import { DEFAULT_EXECUTIVE_WIDGET_ORDER, EXECUTIVE_WIDGET_LABELS, LAYOUT_PREFERENCE_STORAGE_KEY, normalizeExecutiveWidgetOrder, type ExecutiveWidgetId } from "../../../shared/dashboardLayout";
 
@@ -53,6 +54,30 @@ export function ExecutiveCommandCenter({ leads }: Props) {
   const [optimizerRationale, setOptimizerRationale] = useState<string | null>(null);
   const [optimizerEnabled, setOptimizerEnabled] = useState(false);
   const [optimizerNotice, setOptimizerNotice] = useState<string | null>(null);
+  const [undoOrder, setUndoOrder] = useState<WidgetId[] | null>(null);
+  const widgetOrderRef = useRef(widgetOrder);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const widgetRefs = useRef(new Map<WidgetId, HTMLDivElement>());
+  const pendingWidgetAnimation = useRef<Map<WidgetId, DOMRect> | null>(null);
+  const dismissUndo = () => {
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    undoTimerRef.current = null;
+    setUndoOrder(null);
+  };
+  const offerUndo = (previousOrder: WidgetId[]) => {
+    dismissUndo();
+    setUndoOrder(previousOrder);
+    undoTimerRef.current = setTimeout(() => {
+      setUndoOrder(null);
+      undoTimerRef.current = null;
+    }, 8000);
+  };
+  const reorderWidgets = (next: WidgetId[]) => {
+    if (JSON.stringify(next) === JSON.stringify(widgetOrderRef.current)) return;
+    pendingWidgetAnimation.current = new Map(Array.from(widgetRefs.current.entries()).map(([id, element]) => [id, element.getBoundingClientRect()]));
+    widgetOrderRef.current = next;
+    setWidgetOrder(next);
+  };
   const review = trpc.workflowAi.review.useMutation({
     onError: (error) => toast.error(error.message || "The executive review could not be prepared."),
   });
@@ -62,6 +87,7 @@ export function ExecutiveCommandCenter({ leads }: Props) {
   });
   const resetLayout = trpc.dashboardLayout.reset.useMutation({
     onSuccess: () => {
+      dismissUndo();
       setOptimizerNotice("Command-center widgets reset to the default layout.");
       toast.success("Command-center layout reset to default.");
     },
@@ -78,13 +104,45 @@ export function ExecutiveCommandCenter({ leads }: Props) {
   const optimizeLayout = trpc.dashboardLayout.optimize.useMutation({
     onSuccess: (result) => {
       const next = normalizeExecutiveWidgetOrder(result.order) as WidgetId[];
-      setWidgetOrder(next);
+      const previous = [...widgetOrderRef.current];
+      const changed = JSON.stringify(previous) !== JSON.stringify(next);
+      if (changed) {
+        reorderWidgets(next);
+        offerUndo(previous);
+      }
       setOptimizerRationale(result.rationale);
-      setOptimizerNotice("AI reordered the command-center widgets using the supplied engagement metrics.");
-      toast.success("AI reordered the command-center KPIs from the supplied engagement metrics.");
+      setOptimizerNotice(changed ? "AI reordered the command-center widgets using the supplied engagement metrics." : "AI reviewed the command-center widgets and kept the current order.");
+      toast.success(changed ? "AI reordered the command-center KPIs from the supplied engagement metrics." : "AI kept the current command-center order.");
     },
     onError: (error) => toast.error(error.message || "The AI layout optimizer could not prepare an order."),
   });
+
+  useEffect(() => () => {
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+  }, []);
+
+  useLayoutEffect(() => {
+    const firstRects = pendingWidgetAnimation.current;
+    if (!firstRects) return;
+    pendingWidgetAnimation.current = null;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    widgetRefs.current.forEach((element, id) => {
+      const first = firstRects.get(id);
+      if (!first || typeof element.animate !== "function") return;
+      const last = element.getBoundingClientRect();
+      const deltaX = first.left - last.left;
+      const deltaY = first.top - last.top;
+      if (Math.abs(deltaX) < 1 && Math.abs(deltaY) < 1) return;
+      element.animate([
+        { transform: `translate(${deltaX}px, ${deltaY}px)`, opacity: 0.84 },
+        { transform: "translate(0, 0)", opacity: 1 },
+      ], { duration: 220, easing: "cubic-bezier(0.23, 1, 0.32, 1)" });
+    });
+  }, [widgetOrder]);
+
+  useEffect(() => {
+    widgetOrderRef.current = widgetOrder;
+  }, [widgetOrder]);
 
   useEffect(() => {
     if (layoutQuery.isLoading || layoutHydrated) return;
@@ -144,27 +202,24 @@ export function ExecutiveCommandCenter({ leads }: Props) {
   const mobilePercent = totalDeviceTagged ? Math.round((metrics.mobile / totalDeviceTagged) * 100) : 0;
 
   const moveWidget = (widgetId: WidgetId, direction: -1 | 1) => {
-    setWidgetOrder((current) => {
-      const index = current.indexOf(widgetId);
-      const target = index + direction;
-      if (index < 0 || target < 0 || target >= current.length) return current;
-      const next = [...current];
-      [next[index], next[target]] = [next[target], next[index]];
-      return next;
-    });
+    const currentOrder = widgetOrderRef.current;
+    const index = currentOrder.indexOf(widgetId);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= currentOrder.length) return;
+    const next = [...widgetOrderRef.current];
+    [next[index], next[target]] = [next[target], next[index]];
+    reorderWidgets(next);
   };
 
   const dropWidget = (targetId: WidgetId) => {
     if (!draggedWidget || draggedWidget === targetId) return;
-    setWidgetOrder((current) => {
-      const next = [...current];
-      const from = next.indexOf(draggedWidget);
-      const to = next.indexOf(targetId);
-      if (from < 0 || to < 0) return current;
-      next.splice(from, 1);
-      next.splice(to, 0, draggedWidget);
-      return next;
-    });
+    const next = [...widgetOrderRef.current];
+    const from = next.indexOf(draggedWidget);
+    const to = next.indexOf(targetId);
+    if (from < 0 || to < 0) return;
+    next.splice(from, 1);
+    next.splice(to, 0, draggedWidget);
+    reorderWidgets(next);
     setDraggedWidget(null);
   };
 
@@ -178,13 +233,14 @@ export function ExecutiveCommandCenter({ leads }: Props) {
   return <section className="mb-6 rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/[0.08] via-card to-card p-5 shadow-sm sm:p-6" aria-labelledby="executive-command-center-title">
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div className="max-w-2xl"><div className="flex items-center gap-2"><Rocket className="h-5 w-5 text-primary" /><h2 id="executive-command-center-title" className="font-display text-xl font-semibold text-foreground">Executive workday command center</h2></div><p className="mt-1.5 text-sm leading-6 text-muted-foreground">A real-data operating view for prioritizing lead response, campaign review, and team oversight. AI suggestions are internal workflow guidance only and never send, save, qualify, or approve anything automatically.</p></div>
-      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end"><Button type="button" size="sm" variant={customizing ? "default" : "outline"} onClick={() => setCustomizing((value) => !value)} aria-pressed={customizing}><GripVertical className="mr-1.5 h-4 w-4" />{customizing ? "Done customizing" : "Customize layout"}</Button><Button type="button" size="sm" variant={optimizerEnabled ? "default" : "outline"} onClick={() => setOptimizer.mutate({ enabled: !optimizerEnabled })} disabled={setOptimizer.isPending || layoutQuery.isLoading} role="switch" aria-checked={optimizerEnabled} className="w-full shrink-0 sm:w-auto"><Sparkles className="mr-1.5 h-4 w-4" />{setOptimizer.isPending ? "Saving setting…" : `AI optimizer: ${optimizerEnabled ? "On" : "Off"}`}</Button><Button type="button" size="sm" variant="outline" onClick={runLayoutOptimizer} disabled={!optimizerEnabled || optimizeLayout.isPending || layoutQuery.isLoading} className="w-full shrink-0 sm:w-auto"><Sparkles className="mr-1.5 h-4 w-4" />{optimizeLayout.isPending ? "Optimizing layout…" : "Optimize layout with AI"}</Button><Button type="button" size="sm" onClick={runExecutiveReview} disabled={review.isPending} className="w-full shrink-0 sm:w-auto"><Sparkles className="mr-1.5 h-4 w-4" />{review.isPending ? "Preparing review…" : "AI review today’s queue"}</Button></div>
+      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end"><Button type="button" size="sm" variant={customizing ? "default" : "outline"} onClick={() => setCustomizing((value) => !value)} aria-pressed={customizing}><GripVertical className="mr-1.5 h-4 w-4" />{customizing ? "Done customizing" : "Customize layout"}</Button><div className="flex w-full items-center gap-1 sm:w-auto"><Button type="button" size="sm" variant={optimizerEnabled ? "default" : "outline"} onClick={() => setOptimizer.mutate({ enabled: !optimizerEnabled })} disabled={setOptimizer.isPending || layoutQuery.isLoading} role="switch" aria-checked={optimizerEnabled} className="w-full shrink-0 sm:w-auto"><Sparkles className="mr-1.5 h-4 w-4" />{setOptimizer.isPending ? "Saving setting…" : `AI optimizer: ${optimizerEnabled ? "On" : "Off"}`}</Button><Tooltip><TooltipTrigger asChild><button type="button" aria-label="What does the AI layout optimizer do?" className="rounded-sm p-1 text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"><CircleHelp className="h-4 w-4" aria-hidden="true" /></button></TooltipTrigger><TooltipContent side="top" className="max-w-80 p-3 text-left leading-5"><p className="font-semibold">AI layout optimizer</p><p className="mt-1">When enabled, Optimize layout with AI can reorder the four Command Center widgets using the current real-data engagement metrics. It only changes widget order after you click Optimize; it never sends, saves, qualifies, or approves anything.</p></TooltipContent></Tooltip></div><Button type="button" size="sm" variant="outline" onClick={runLayoutOptimizer} disabled={!optimizerEnabled || optimizeLayout.isPending || layoutQuery.isLoading} className="w-full shrink-0 sm:w-auto"><Sparkles className="mr-1.5 h-4 w-4" />{optimizeLayout.isPending ? "Optimizing layout…" : "Optimize layout with AI"}</Button><Button type="button" size="sm" onClick={runExecutiveReview} disabled={review.isPending} className="w-full shrink-0 sm:w-auto"><Sparkles className="mr-1.5 h-4 w-4" />{review.isPending ? "Preparing review…" : "AI review today’s queue"}</Button></div>
     </div>
-    {customizing && <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-primary/35 bg-primary/[0.04] px-3 py-2 text-xs text-muted-foreground" role="status"><GripVertical className="h-4 w-4 text-primary" />Drag a widget to reorder it, or use the keyboard move controls. Your layout is saved to your dashboard profile.<Button type="button" size="sm" variant="ghost" className="ml-auto h-7 text-xs" onClick={() => { setWidgetOrder([...DEFAULT_WIDGET_ORDER]); resetLayout.mutate(); }} disabled={resetLayout.isPending}><RotateCcw className="mr-1 h-3.5 w-3.5" />{resetLayout.isPending ? "Resetting…" : "Reset to Default Layout"}</Button></div>}
+    {customizing && <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-primary/35 bg-primary/[0.04] px-3 py-2 text-xs text-muted-foreground" role="status"><GripVertical className="h-4 w-4 text-primary" />Drag a widget to reorder it, or use the keyboard move controls. Your layout is saved to your dashboard profile.<Button type="button" size="sm" variant="ghost" className="ml-auto h-7 text-xs" onClick={() => { reorderWidgets([...DEFAULT_WIDGET_ORDER]); resetLayout.mutate(); }} disabled={resetLayout.isPending}><RotateCcw className="mr-1 h-3.5 w-3.5" />{resetLayout.isPending ? "Resetting…" : "Reset to Default Layout"}</Button></div>}
+    {undoOrder && <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/[0.08] px-3 py-2 text-xs text-amber-950" role="status" aria-live="polite"><span>AI reordered the widgets. Revert to your previous layout within 8 seconds.</span><Button type="button" size="sm" variant="outline" className="ml-auto h-7 border-amber-700/30 bg-background/70 text-xs text-amber-950 hover:bg-background" onClick={() => { const previous = undoOrder; dismissUndo(); reorderWidgets(previous); setOptimizerNotice("AI layout reorder undone. Your previous widget order is restored."); toast.success("Previous widget layout restored."); }}><Undo2 className="mr-1 h-3.5 w-3.5" />Undo</Button></div>}
     {optimizerNotice && <p className="mt-3 flex items-center gap-1.5 text-xs text-emerald-700" role="status" aria-live="polite"><Check className="h-3.5 w-3.5" />{optimizerNotice}</p>}
     {optimizerRationale && <p className="mt-3 text-xs text-muted-foreground" role="status" aria-live="polite"><Sparkles className="mr-1 inline h-3.5 w-3.5 text-violet-600" />AI layout note: {optimizerRationale}</p>}
     <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Executive metrics">
-      {widgetOrder.map((id, index) => <div key={id} draggable={customizing} onDragStart={() => setDraggedWidget(id)} onDragEnd={() => setDraggedWidget(null)} onDragOver={(event) => { if (customizing) event.preventDefault(); }} onDrop={() => dropWidget(id)} className={`rounded-xl border border-border bg-background/80 p-3 ${customizing ? "cursor-grab border-primary/35 focus-within:ring-2 focus-within:ring-ring active:cursor-grabbing" : ""}`} tabIndex={customizing ? 0 : undefined} aria-label={`${WIDGET_LABELS[id]}${customizing ? ". Draggable widget." : ""}`}>
+      {widgetOrder.map((id, index) => <div key={id} ref={(element) => { if (element) widgetRefs.current.set(id, element); else widgetRefs.current.delete(id); }} draggable={customizing} onDragStart={() => setDraggedWidget(id)} onDragEnd={() => setDraggedWidget(null)} onDragOver={(event) => { if (customizing) event.preventDefault(); }} onDrop={() => dropWidget(id)} className={`rounded-xl border border-border bg-background/80 p-3 transition-[transform,opacity] duration-200 motion-reduce:transition-none ${customizing ? "cursor-grab border-primary/35 focus-within:ring-2 focus-within:ring-ring active:cursor-grabbing" : ""}`} tabIndex={customizing ? 0 : undefined} aria-label={`${WIDGET_LABELS[id]}${customizing ? ". Draggable widget." : ""}`}>
         <div className="flex items-start justify-between gap-2"><div className="min-w-0 flex-1">{renderWidget(id)}</div>{customizing && <div className="flex shrink-0 items-center gap-0.5"><GripVertical className="h-4 w-4 text-primary" aria-hidden="true" /><Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveWidget(id, -1)} disabled={index === 0} aria-label={`Move ${WIDGET_LABELS[id]} earlier`}><ArrowUp className="h-3.5 w-3.5" /></Button><Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveWidget(id, 1)} disabled={index === widgetOrder.length - 1} aria-label={`Move ${WIDGET_LABELS[id]} later`}><ArrowDown className="h-3.5 w-3.5" /></Button></div>}</div>
       </div>)}
     </div>
