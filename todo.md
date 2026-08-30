@@ -1102,3 +1102,15 @@
 - [x] Add reset-layout control and keyboard-accessible move controls
 - [x] Add focused regression coverage and verify desktop/mobile command-center layout
 - [x] Push and checkpoint the widget customization release
+
+
+## Persistent command-center layouts and AI optimizer
+
+- [ ] Audit command-center local layout state, user profile identity, engagement metrics, and existing LLM procedure
+- [ ] Create a rollback point before the layout-preference schema change
+- [ ] Add an owner-scoped dashboard layout preference record with safe legacy/local fallback
+- [ ] Add protected load/save/reset procedures for user layout preferences
+- [ ] Add a governed AI layout optimizer using real daily engagement metrics and strict widget-order validation
+- [ ] Persist AI-applied layout order through the database preference flow
+- [ ] Add regression, security, AI-output, and responsive dashboard tests
+- [ ] Push and checkpoint the persistent layout and AI optimizer release
