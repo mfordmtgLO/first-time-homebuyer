@@ -132,7 +132,11 @@ describe("dashboard layout preferences", () => {
     expect(toolsSource).toContain('aria-label={`View all ${selectedTrendLeadCount} leads for this day`}');
     expect(toolsSource).toContain('View all leads for this day <span');
     expect(leadsSource).toContain('type CombinedPageSize = 10 | 25 | 50;');
-    expect(leadsSource).toContain('useState<CombinedPageSize>(10)');
+    expect(leadsSource).toContain('useState<CombinedPageSize>(readCombinedPageSize)');
+    expect(leadsSource).toContain('COMBINED_PAGE_SIZE_STORAGE_KEY');
+    expect(leadsSource).toContain('aria-label="First combined leads page"');
+    expect(leadsSource).toContain('aria-label="Last combined leads page"');
+    expect(leadsSource).toContain('Roadmap {pageSourceCounts.Roadmap} · Mortgage Chat');
     expect(leadsSource).toContain('<SelectItem value="25">25</SelectItem>');
     expect(leadsSource).toContain('aria-label="Combined leads pagination"');
     expect(leadsSource).toContain('aria-label="Previous combined leads page"');

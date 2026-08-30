@@ -1208,3 +1208,11 @@
 - [x] Display separate Roadmap and Mortgage Chat counts for the selected day
 - [x] Add regression coverage and verify desktop/mobile pagination and count layout
 - [x] Save and publish the pagination and selected-day count release
+
+## Combined pagination navigation and source summary
+- [x] Audit pagination state, local-storage conventions, and row source counts
+- [x] Add First and Last page buttons to the combined-leads pagination controls
+- [x] Persist the user’s selected 10/25/50 page size in local storage with safe fallback
+- [x] Display live Roadmap and Mortgage Chat result counts beside the pagination indicator
+- [x] Add regression coverage and verify desktop/mobile pagination behavior
+- [x] Save and publish the pagination navigation release
