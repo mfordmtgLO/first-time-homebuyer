@@ -1084,11 +1084,11 @@
 
 ## Enterprise dashboard AI and UX review
 
-- [ ] Create a pre-review rollback checkpoint for the current verified project
-- [ ] Create a downloadable source archive excluding secrets and generated dependencies
-- [ ] Document archive coverage and Manus-managed data/storage exclusions
-- [ ] Audit dashboard layout, information architecture, AI assistance, lead flow, outreach, analytics, and enterprise administration
-- [ ] Design and prioritize cross-dashboard AI/UX improvements before implementation
-- [ ] Implement approved dashboard improvements without weakening access, consent, or compliance safeguards
-- [ ] Add regression, accessibility, AI-output, and dashboard-flow verification
+- [x] Create a pre-review rollback checkpoint for the current verified project
+- [x] Create a downloadable source archive excluding secrets and generated dependencies
+- [x] Document archive coverage and Manus-managed data/storage exclusions
+- [x] Audit dashboard layout, information architecture, AI assistance, lead flow, outreach, analytics, and enterprise administration
+- [x] Design and prioritize cross-dashboard AI/UX improvements before implementation
+- [x] Implement approved dashboard improvements without weakening access, consent, or compliance safeguards
+- [x] Add regression, accessibility, AI-output, and dashboard-flow verification
 - [ ] Push and checkpoint the reviewed/implemented enterprise dashboard improvements
