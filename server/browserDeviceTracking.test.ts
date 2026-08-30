@@ -43,8 +43,18 @@ describe("dashboard browser tools assumptions", () => {
     expect(source).toContain("This year");
     expect(source).toContain("onLeadSourceSelect?.(String(entry.name))");
     expect(source).toContain("Daily incoming leads");
-    expect(source).toContain("Email Results");
-    expect(source).toContain("mailto:");
+    expect(source).toContain("Save Quote");
+    expect(source).toContain("saveAffordabilityQuote");
+  });
+
+  it("supports saved quote naming, borrower/program search, and max-price filtering", () => {
+    const sidebarSource = readFileSync(resolve(process.cwd(), "client/src/components/DashboardWorkdaySidebar.tsx"), "utf8");
+    expect(sidebarSource).toContain("Saved quote loan program");
+    expect(sidebarSource).toContain("Search saved quotes by first name");
+    expect(sidebarSource).toContain("Search saved quotes by last name");
+    expect(sidebarSource).toContain("Maximum saved quote purchase price");
+    expect(sidebarSource).toContain("filteredSavedQuotes");
+    expect(sidebarSource).toContain("maxPurchasePriceResultCents");
   });
 
   it("supports exact-day trend tooltips, source-filter reset, and result copying", () => {
@@ -52,6 +62,9 @@ describe("dashboard browser tools assumptions", () => {
     expect(source).toContain("Clear Filters");
     expect(source).toContain("aria-label=\"Copy affordability results to clipboard\"");
     expect(source).toContain("navigator.clipboard.writeText(resultsSummary)");
-    expect(source).toContain("setSourceFilter(source === \"all\" ? \"all\" : source)");
+    expect(source).toContain("onClearFilters");
+    expect(source).toContain("onLeadSourceSelect?.(source)");
+    expect(source).not.toContain("Email Results");
+    expect(source).not.toContain("mailto:");
   });
 });

@@ -52,10 +52,22 @@ describe("mortgageQuotes router", () => {
   it("saves and removes scenarios only within the signed-in owner scope", async () => {
     const caller = appRouter.createCaller(createContext("admin"));
     await caller.mortgageQuotes.create(quoteInput);
-    expect(createMock).toHaveBeenCalledWith({ ownerUserId: 83, ...quoteInput });
+    expect(createMock).toHaveBeenCalledWith(expect.objectContaining({ ownerUserId: 83, ...quoteInput, firstName: "", lastName: "", program: "conventional", monthlyFloodInsuranceCents: 0, maxPurchasePriceResultCents: 0 }));
 
     await caller.mortgageQuotes.delete({ id: 91 });
     expect(deleteMock).toHaveBeenCalledWith({ id: 91, ownerUserId: 83 });
+  });
+
+  it("passes owner-scoped borrower, program, and max-price filters to the database helper", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    await caller.mortgageQuotes.list({ firstName: "Ava", lastName: "Lee", program: "fha", maxPurchasePriceCents: 60_000_000 });
+    expect(listMock).toHaveBeenCalledWith(83, { firstName: "Ava", lastName: "Lee", program: "fha", maxPurchasePriceCents: 60_000_000 });
+  });
+
+  it("accepts saved affordability inputs and max-price results", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    await caller.mortgageQuotes.create({ ...quoteInput, firstName: "Ava", lastName: "Lee", program: "fha", creditScore: 640, grossMonthlyIncomeCents: 800000, monthlyConsumerDebtCents: 50000, maxHousingPaymentCents: 406000, availablePrincipalAndInterestCents: 256000, maxPurchasePriceResultCents: 50000000, dtiBasisPoints: 5700, minimumCreditScore: 580 });
+    expect(createMock).toHaveBeenCalledWith(expect.objectContaining({ firstName: "Ava", lastName: "Lee", program: "fha", creditScore: 640, maxPurchasePriceResultCents: 50000000, dtiBasisPoints: 5700, minimumCreditScore: 580 }));
   });
 
   it("requires a name and rejects invalid monthly-cost values", async () => {

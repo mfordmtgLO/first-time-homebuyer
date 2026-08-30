@@ -1094,17 +1094,34 @@ export const mortgagePaymentQuote = mysqlTable(
     id: int("id").autoincrement().primaryKey(),
     ownerUserId: int("ownerUserId").notNull(),
     name: varchar("name", { length: 120 }).notNull(),
+    /** Optional borrower labels used only for private saved-quote search. */
+    firstName: varchar("firstName", { length: 120 }).default("").notNull(),
+    lastName: varchar("lastName", { length: 120 }).default("").notNull(),
+    /** Program screen used for the saved affordability result. */
+    program: mysqlEnum("program", ["conventional", "fha", "usda", "va", "nonqm"]).default("conventional").notNull(),
     purchasePriceCents: int("purchasePriceCents").notNull(),
     downPaymentPercentBasisPoints: int("downPaymentPercentBasisPoints").notNull(),
     annualRateBasisPoints: int("annualRateBasisPoints").notNull(),
     termYears: int("termYears").notNull(),
     annualPropertyTaxCents: int("annualPropertyTaxCents").default(0).notNull(),
     annualHomeInsuranceCents: int("annualHomeInsuranceCents").default(0).notNull(),
+    monthlyFloodInsuranceCents: int("monthlyFloodInsuranceCents").default(0).notNull(),
     monthlyHoaDuesCents: int("monthlyHoaDuesCents").default(0).notNull(),
     monthlyMortgageInsuranceCents: int("monthlyMortgageInsuranceCents").default(0).notNull(),
+    creditScore: int("creditScore").default(0).notNull(),
+    grossMonthlyIncomeCents: int("grossMonthlyIncomeCents").default(0).notNull(),
+    monthlyConsumerDebtCents: int("monthlyConsumerDebtCents").default(0).notNull(),
+    maxHousingPaymentCents: int("maxHousingPaymentCents").default(0).notNull(),
+    availablePrincipalAndInterestCents: int("availablePrincipalAndInterestCents").default(0).notNull(),
+    maxPurchasePriceResultCents: int("maxPurchasePriceResultCents").default(0).notNull(),
+    dtiBasisPoints: int("dtiBasisPoints").default(5000).notNull(),
+    minimumCreditScore: int("minimumCreditScore").default(680).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
-  (table) => [index("mortgage_payment_quote_owner_created_idx").on(table.ownerUserId, table.createdAt)]
+  (table) => [
+    index("mortgage_payment_quote_owner_created_idx").on(table.ownerUserId, table.createdAt),
+    index("mortgage_payment_quote_owner_max_price_idx").on(table.ownerUserId, table.maxPurchasePriceResultCents),
+  ]
 );
 
 export type MortgagePaymentQuote = typeof mortgagePaymentQuote.$inferSelect;

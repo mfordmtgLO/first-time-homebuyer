@@ -1062,10 +1062,10 @@
 
 ## Saved affordability quote workflow
 
-- [ ] Audit existing affordability calculator result fields, dashboard quote UI, schema, and protected procedure conventions
-- [ ] Add a user-scoped saved affordability quote table with named quote, borrower name, program, inputs, result, and timestamps
-- [ ] Add protected create/list procedures with name, program, and maximum-price ceiling filters
-- [ ] Replace Email Results with a named Save Quote workflow in the affordability calculator
-- [ ] Add a searchable dashboard saved-quotes section with first name, last name, program, and max-price slider filters
-- [ ] Add migration, security, calculation, search, and responsive regression tests
-- [ ] Push and checkpoint the saved-quote release
+- [x] Audit existing affordability calculator result fields, dashboard quote UI, schema, and protected procedure conventions
+- [x] Add a user-scoped saved affordability quote table with named quote, borrower name, program, inputs, result, and timestamps
+- [x] Add protected create/list procedures with name, program, and maximum-price ceiling filters
+- [x] Replace Email Results with a named Save Quote workflow in the affordability calculator
+- [x] Add a searchable dashboard saved-quotes section with first name, last name, program, and max-price slider filters
+- [x] Add migration, security, calculation, search, and responsive regression tests
+- [x] Push and checkpoint the saved-quote release

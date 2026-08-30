@@ -2015,21 +2015,40 @@ export const appRouter = router({
 
   mortgageQuotes: router({
     /** Private owner-only saved payment scenarios; never exposed to public pages or agent accounts. */
-    list: protectedProcedure.query(async ({ ctx }) => {
-      await resolveDashboardWorkspace(ctx.user);
-      return listMortgagePaymentQuotes(ctx.user.id);
-    }),
+    list: protectedProcedure
+      .input(z.object({
+        firstName: z.string().trim().max(120).optional(),
+        lastName: z.string().trim().max(120).optional(),
+        program: z.enum(["conventional", "fha", "usda", "va", "nonqm"]).optional(),
+        maxPurchasePriceCents: z.number().int().min(0).max(1_000_000_000).optional(),
+      }).optional())
+      .query(async ({ ctx, input }) => {
+        await resolveDashboardWorkspace(ctx.user);
+        return listMortgagePaymentQuotes(ctx.user.id, input);
+      }),
     create: protectedProcedure
       .input(z.object({
         name: z.string().trim().min(1, "Enter a quote name.").max(120),
+        firstName: z.string().trim().max(120).optional().default(""),
+        lastName: z.string().trim().max(120).optional().default(""),
+        program: z.enum(["conventional", "fha", "usda", "va", "nonqm"]).optional().default("conventional"),
         purchasePriceCents: z.number().int().min(0).max(1_000_000_000),
         downPaymentPercentBasisPoints: z.number().int().min(0).max(10_000),
         annualRateBasisPoints: z.number().int().min(0).max(10_000),
         termYears: z.union([z.literal(15), z.literal(30)]),
         annualPropertyTaxCents: z.number().int().min(0).max(100_000_000),
         annualHomeInsuranceCents: z.number().int().min(0).max(100_000_000),
+        monthlyFloodInsuranceCents: z.number().int().min(0).max(10_000_000).optional().default(0),
         monthlyHoaDuesCents: z.number().int().min(0).max(10_000_000),
         monthlyMortgageInsuranceCents: z.number().int().min(0).max(10_000_000),
+        creditScore: z.number().int().min(0).max(1_000).optional().default(0),
+        grossMonthlyIncomeCents: z.number().int().min(0).max(1_000_000_000).optional().default(0),
+        monthlyConsumerDebtCents: z.number().int().min(0).max(100_000_000).optional().default(0),
+        maxHousingPaymentCents: z.number().int().min(0).max(100_000_000).optional().default(0),
+        availablePrincipalAndInterestCents: z.number().int().min(0).max(100_000_000).optional().default(0),
+        maxPurchasePriceResultCents: z.number().int().min(0).max(1_000_000_000).optional().default(0),
+        dtiBasisPoints: z.number().int().min(0).max(10_000).optional().default(5_000),
+        minimumCreditScore: z.number().int().min(0).max(1_000).optional().default(680),
       }))
       .mutation(async ({ ctx, input }) => {
         await resolveDashboardWorkspace(ctx.user);

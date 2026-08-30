@@ -2016,27 +2016,67 @@ export async function deleteLoAgentSpendPairing(input: { id: number; ownerUserId
 // ---------------------------------------------------------------------------
 // Private saved mortgage payment quotes
 
-export async function listMortgagePaymentQuotes(ownerUserId: number) {
+export async function listMortgagePaymentQuotes(ownerUserId: number, filters?: { firstName?: string; lastName?: string; program?: "conventional" | "fha" | "usda" | "va" | "nonqm"; maxPurchasePriceCents?: number }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return db.select().from(mortgagePaymentQuote).where(eq(mortgagePaymentQuote.ownerUserId, ownerUserId)).orderBy(desc(mortgagePaymentQuote.createdAt), desc(mortgagePaymentQuote.id));
+  const conditions = [eq(mortgagePaymentQuote.ownerUserId, ownerUserId)];
+  if (filters?.firstName?.trim()) conditions.push(like(mortgagePaymentQuote.firstName, `%${filters.firstName.trim()}%`));
+  if (filters?.lastName?.trim()) conditions.push(like(mortgagePaymentQuote.lastName, `%${filters.lastName.trim()}%`));
+  if (filters?.program) conditions.push(eq(mortgagePaymentQuote.program, filters.program));
+  if (filters?.maxPurchasePriceCents !== undefined) conditions.push(lte(mortgagePaymentQuote.maxPurchasePriceResultCents, filters.maxPurchasePriceCents));
+  return db.select().from(mortgagePaymentQuote).where(and(...conditions)).orderBy(desc(mortgagePaymentQuote.createdAt), desc(mortgagePaymentQuote.id));
 }
 
 export async function createMortgagePaymentQuote(input: {
   ownerUserId: number;
   name: string;
+  firstName?: string;
+  lastName?: string;
+  program?: "conventional" | "fha" | "usda" | "va" | "nonqm";
   purchasePriceCents: number;
   downPaymentPercentBasisPoints: number;
   annualRateBasisPoints: number;
   termYears: number;
   annualPropertyTaxCents: number;
   annualHomeInsuranceCents: number;
+  monthlyFloodInsuranceCents?: number;
   monthlyHoaDuesCents: number;
   monthlyMortgageInsuranceCents: number;
+  creditScore?: number;
+  grossMonthlyIncomeCents?: number;
+  monthlyConsumerDebtCents?: number;
+  maxHousingPaymentCents?: number;
+  availablePrincipalAndInterestCents?: number;
+  maxPurchasePriceResultCents?: number;
+  dtiBasisPoints?: number;
+  minimumCreditScore?: number;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const [result] = await db.insert(mortgagePaymentQuote).values(input);
+  const [result] = await db.insert(mortgagePaymentQuote).values({
+    ownerUserId: input.ownerUserId,
+    name: input.name,
+    firstName: input.firstName ?? "",
+    lastName: input.lastName ?? "",
+    program: input.program ?? "conventional",
+    purchasePriceCents: input.purchasePriceCents,
+    downPaymentPercentBasisPoints: input.downPaymentPercentBasisPoints,
+    annualRateBasisPoints: input.annualRateBasisPoints,
+    termYears: input.termYears,
+    annualPropertyTaxCents: input.annualPropertyTaxCents,
+    annualHomeInsuranceCents: input.annualHomeInsuranceCents,
+    monthlyFloodInsuranceCents: input.monthlyFloodInsuranceCents ?? 0,
+    monthlyHoaDuesCents: input.monthlyHoaDuesCents,
+    monthlyMortgageInsuranceCents: input.monthlyMortgageInsuranceCents,
+    creditScore: input.creditScore ?? 0,
+    grossMonthlyIncomeCents: input.grossMonthlyIncomeCents ?? 0,
+    monthlyConsumerDebtCents: input.monthlyConsumerDebtCents ?? 0,
+    maxHousingPaymentCents: input.maxHousingPaymentCents ?? 0,
+    availablePrincipalAndInterestCents: input.availablePrincipalAndInterestCents ?? 0,
+    maxPurchasePriceResultCents: input.maxPurchasePriceResultCents ?? 0,
+    dtiBasisPoints: input.dtiBasisPoints ?? 5000,
+    minimumCreditScore: input.minimumCreditScore ?? 680,
+  });
   const rows = await db.select().from(mortgagePaymentQuote).where(eq(mortgagePaymentQuote.id, Number(result.insertId))).limit(1);
   if (!rows[0]) throw new Error("Couldn't save mortgage payment quote.");
   return rows[0];
