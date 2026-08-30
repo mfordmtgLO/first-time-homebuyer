@@ -64,4 +64,17 @@ describe("dashboard layout preferences", () => {
     expect(toolsSource).toContain('id="browser-lead-timeframe"');
     expect(sidebarSource).toContain('Pinned daily route');
   });
+
+  it("keeps Mortgage Chat and Roadmap source clicks dataset-aware", () => {
+    const toolsSource = readFileSync(resolve(process.cwd(), "client/src/components/DashboardBrowserTools.tsx"), "utf8");
+    const leadsSource = readFileSync(resolve(process.cwd(), "client/src/pages/Leads.tsx"), "utf8");
+    expect(toolsSource).toContain('["Mortgage Chat", filtered.chat.length]');
+    expect(toolsSource).toContain('["Roadmap", filtered.roadmap.length]');
+    expect(toolsSource).toContain('aria-label="All captured leads: Roadmap plus Mortgage Chat browser lead tracker"');
+    expect(toolsSource).toContain('counts.total} total captured leads: {filtered.roadmap.length} Roadmap + {filtered.chat.length} Mortgage Chat');
+    expect(leadsSource).toContain('if (source === "Mortgage Chat")');
+    expect(leadsSource).toContain('document.getElementById("chat-intakes")');
+    expect(leadsSource).toContain('source === "Roadmap" ? "all" : source');
+    expect(leadsSource).toContain('document.getElementById("roadmap-leads")');
+  });
 });

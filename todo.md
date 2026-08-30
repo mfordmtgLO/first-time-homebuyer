@@ -1154,3 +1154,18 @@
 - [x] Preserve the pinned steps 1–4 and all sidebar sections in the full vertical scroll area
 - [x] Add regression coverage and verify the sidebar at desktop and mobile widths
 - [x] Save and publish the Browser Lead Mix compact-start release
+
+## Dataset-aware Mortgage Chat and Roadmap source filtering
+- [x] Audit source-slice callbacks and the Roadmap/Chat Intakes section anchors
+- [x] Route Mortgage Chat source selections to Chat Intakes instead of the Roadmap table
+- [x] Keep Roadmap source selections scoped to the Roadmap leads table
+- [x] Clarify Browser Lead Mix labels and combined Roadmap/Mortgage Chat totals
+- [x] Add regression coverage and verify source filtering at desktop and mobile widths
+- [x] Save and publish the dataset-aware source-filtering release
+
+## Source-aware Mortgage Chat and Roadmap dashboard filtering
+- [x] Route Mortgage Chat source clicks to Chat Intakes and clear the Roadmap-only filter
+- [x] Keep Roadmap source clicks scoped to the Roadmap leads table
+- [x] Label the Browser Lead Mix as a combined Roadmap plus Mortgage Chat population with explicit totals
+- [x] Add regression coverage and verify the source-click behavior at desktop and mobile widths
+- [x] Save and publish the source-aware filtering release
