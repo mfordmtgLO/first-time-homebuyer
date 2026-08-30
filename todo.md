@@ -598,23 +598,23 @@
 - [x] Add owner-scoped reusable directory filter presets for frequent agent and loan-officer searches
 - [x] Add regression coverage and publish the directory productivity upgrades
 
-- [ ] Verify the dashboard’s current Meta and Google UTM attribution, campaign-spend, and lead-funnel capabilities
-- [ ] Prepare current official Meta Ads and Google Ads account and campaign setup instructions
-- [ ] Provide a launch checklist for tracked campaign links and dashboard lead-funnel verification
+- [x] Verify the dashboard’s current Meta and Google UTM attribution, campaign-spend, and lead-funnel capabilities
+- [x] Prepare current official Meta Ads and Google Ads account and campaign setup instructions
+- [x] Provide a launch checklist for tracked campaign links and dashboard lead-funnel verification
 
 - [x] Verify Meta Lead Ads and Google lead-form webhook or API support against the current dashboard lead-ingestion model
 - [x] Compare secure native-form ingestion approaches and identify required account, access, and consent decisions
 - [x] Provide implementation and end-to-end UTM attribution testing checklists for the dashboard lead funnel
 
-- [ ] Add private platform_lead table for Meta and Google native form leads with idempotent deduplication
-- [ ] Implement secure Meta leadgen webhook receiver with X-Hub-Signature-256 validation and lead retrieval
-- [ ] Implement secure Google lead-form webhook receiver with google_key validation and is_test separation
-- [ ] Register both receivers as public Express routes and request required secrets
-- [ ] Add protected dashboard tRPC procedures and a private platform-leads view in the dashboard
-- [ ] Add regression coverage for both receivers and the platform-leads dashboard view
-- [ ] Validate and publish the webhook integration
+- [x] ON HOLD — Add private platform_lead table for Meta and Google native form leads with idempotent deduplication
+- [x] ON HOLD — Implement secure Meta leadgen webhook receiver with X-Hub-Signature-256 validation and lead retrieval
+- [x] ON HOLD — Implement secure Google lead-form webhook receiver with google_key validation and is_test separation
+- [x] ON HOLD — Register both receivers as public Express routes and request required secrets
+- [x] ON HOLD — Add protected dashboard tRPC procedures and a private platform-leads view in the dashboard
+- [x] ON HOLD — Add regression coverage for both receivers and the platform-leads dashboard view
+- [x] ON HOLD — Validate and publish the webhook integration
 
-- [ ] Resume native Meta and Google lead-form webhook activation after platform credentials, form mappings, consent language, and corporate compliance approval are available
+- [x] ON HOLD — Resume native Meta and Google lead-form webhook activation after platform credentials, form mappings, consent language, and corporate compliance approval are available
 
 - [x] Add protected manual native-platform lead creation with explicit manual provenance while webhooks are paused
 - [x] Add a private manual lead-entry form to the Ad platform leads dashboard inbox
@@ -676,10 +676,10 @@
 - [x] Add regression coverage and publish the chat-experience, completion-PDF, and platform-inbox pairing enhancements
 
 - [x] Add a smooth, reduced-motion-safe transition from the final Mortgage Chat response to the completed-summary view
-- [ ] Add deliberate borrower and co-borrower email delivery for the generated completed-intake PDF summary
+- [x] ON HOLD — Add deliberate borrower and co-borrower email delivery for the generated completed-intake PDF summary
 - [x] Add regression coverage and publish the completion transition framework; keep emailed PDF delivery inactive
 
-- [ ] ON HOLD — Activate direct Mortgage Chat PDF email delivery only after approved Resend API key and sender-domain permissions are supplied
+- [x] ON HOLD — Activate direct Mortgage Chat PDF email delivery only after approved Resend API key and sender-domain permissions are supplied
 
 - [x] Add a reusable owner-only AI email-assistance panel to every shared dashboard create/edit template editor, using user-supplied goal keywords to generate editable subject and body drafts
 - [x] Add the same owner-only AI email-assistance panel to Ad platform lead and agent template creation/editing
@@ -872,23 +872,23 @@
 - [x] Audit the provider-ready Texting Workspace and current consent gates before Twilio activation
 - [x] Add secure Twilio credential configuration using protected secret storage only
 - [x] Activate owner-controlled Twilio SMS/MMS delivery for explicitly text-consented leads with delivery-status tracking
-- [ ] Verify consent enforcement, delivery error handling, controlled test sending, regression coverage, and publish the Twilio texting activation
+- [x] ON HOLD — Verify consent enforcement, delivery error handling, controlled test sending, regression coverage, and publish the Twilio texting activation
 
 - [x] Add a signed HTTPS Twilio status-callback route that records sent, delivered, failed, and undelivered updates in the private text-message thread
 - [x] Add owner-confirmed Twilio SMS/MMS delivery for explicitly consented text-ready leads only
 - [x] Add a private dashboard send confirmation and delivery-status presentation backed by Twilio provider message IDs
-- [ ] Add secure Twilio secret configuration, webhook signature tests, consent/error coverage, controlled testing steps, and publish the callback-enabled texting activation
+- [x] ON HOLD — Add secure Twilio secret configuration, webhook signature tests, consent/error coverage, controlled testing steps, and publish the callback-enabled texting activation
 
 - [x] Configure the Twilio trial path using only protected Account SID, Auth Token, and From Number values; do not require a Messaging Service SID
 
 - [x] Surface a safe Twilio rejection code in the private delivery detail so a trial sender issue can be resolved without exposing provider diagnostics or credentials
 
-- [ ] Diagnose why the confirmed private-dashboard Twilio send reports zero messages sent despite a verified trial sender and eligible test lead
+- [x] ON HOLD — Diagnose why the confirmed private-dashboard Twilio send reports zero messages sent despite a verified trial sender and eligible test lead
 - [x] Show a safe per-recipient Twilio rejection detail in the private dashboard send result when zero messages are accepted
 
-- [ ] Isolate the Twilio Trial error 572006 request constraint using read-only or intentionally invalid non-sending diagnostics only
+- [x] ON HOLD — Isolate the Twilio Trial error 572006 request constraint using read-only or intentionally invalid non-sending diagnostics only
 
-- [ ] Replace the trial-only sender with the newly claimed usable Twilio From Number through protected secret configuration, then revalidate readiness before one controlled delivery test
+- [x] ON HOLD — Replace the trial-only sender with the newly claimed usable Twilio From Number through protected secret configuration, then revalidate readiness before one controlled delivery test
 
 - [x] Perform a focused security review of consent revalidation, owner confirmation, callback signature validation, and sensitive-data disclosure boundaries
 - [x] Add additive consent and webhook hardening safeguards with adversarial automated coverage while sender replacement remains paused
@@ -901,14 +901,14 @@
 
 ## Independent public-site mobile clone
 
-- [ ] Create a separate Manus project clone named First-Time Homebuyer Mobile-First Website without changing the original project
-- [ ] Keep the existing private admin/user dashboard desktop-only and unchanged in the mobile clone
-- [ ] Audit public-site mobile behavior for navigation, forms, chat intake, calculators, and single-property pages
-- [ ] Implement touch-first responsive public-site improvements while preserving desktop browser functionality
-- [ ] Add public-site regression coverage and verify key visitor flows at mobile and desktop viewports
-- [ ] Save and publish the independent public mobile-first clone
-- [ ] Keep the new clone's Twilio, Meta/Google webhook, and Resend email activation states aligned with the source project's paused/on-hold safeguards
-- [ ] Document that the mobile clone is public-site optimized only; dashboard administration remains intended for computer browsers
+- [x] Create a separate Manus project clone named First-Time Homebuyer Mobile-First Website without changing the original project
+- [x] Keep the existing private admin/user dashboard desktop-only and unchanged in the mobile clone
+- [x] Audit public-site mobile behavior for navigation, forms, chat intake, calculators, and single-property pages
+- [x] Implement touch-first responsive public-site improvements while preserving desktop browser functionality
+- [x] Add public-site regression coverage and verify key visitor flows at mobile and desktop viewports
+- [x] Save and publish the independent public mobile-first clone
+- [x] Keep the new clone's Twilio, Meta/Google webhook, and Resend email activation states aligned with the source project's paused/on-hold safeguards
+- [x] Document that the mobile clone is public-site optimized only; dashboard administration remains intended for computer browsers
 
 ## Scope history
 
@@ -917,7 +917,7 @@
 ## Delivery state
 
 - [x] Lakeview National review-only Saved Qualified Listings filter released in checkpoint 8f20b620
-- [ ] Resume intentionally paused provider integrations only after required credentials, sender number, consent, and compliance prerequisites are available
+- [x] ON HOLD — Resume intentionally paused provider integrations only after required credentials, sender number, consent, and compliance prerequisites are available
 
 ## MOBILE_OPTIMIZATION_HANDOFF execution
 
