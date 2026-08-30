@@ -43,7 +43,7 @@ import {
 import { toast } from "sonner";
 import { hasUsableRoadmapPhone } from "@shared/roadmapPhone";
 import { captureDeviceLabel } from "@/lib/captureDevice";
-import { PROPERTY_ACTIVITY_RANGES, PROPERTY_ACTIVITY_RANGE_LABELS, type PropertyActivityRange } from "@shared/propertyActivity";
+import { getPropertyActivitySince, PROPERTY_ACTIVITY_RANGES, PROPERTY_ACTIVITY_RANGE_LABELS, type PropertyActivityRange } from "@shared/propertyActivity";
 import { getCoBrandAgentFilterOptions, getLoanOfficerFilterOptions, matchesSelectedCoBrandPair } from "@shared/roadmapPairFilters";
 import { PUBLIC_SITE_ORIGIN } from "@shared/publicSiteUrl";
 import {
@@ -80,6 +80,7 @@ function isRecentNewLead(lead: { status: string; createdAt: Date | string }) {
 }
 
 const DASHBOARD_SECTIONS = [
+  { id: "all-leads", label: "All leads" },
   { id: "campaign-funnel", label: "Funnel" },
   { id: "roadmap-leads", label: "Roadmap" },
   { id: "co-marketing-agents", label: "Agents" },
@@ -91,6 +92,39 @@ const DASHBOARD_SECTIONS = [
 ] as const;
 
 type LeadStatus = "new" | "contacted" | "booked";
+type LeadViewContext = "all" | "roadmap" | "chat";
+type CombinedLeadRow = {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  source: "Roadmap" | "Mortgage Chat";
+  status: string;
+  followUpRecorded: boolean;
+  followUpLabel: string;
+  submittedAt: Date | string;
+  captureDevice: "mobile" | "desktop";
+  destination: "roadmap" | "chat";
+};
+
+type CombinedOutcomeStat = {
+  source: CombinedLeadRow["source"];
+  captured: number;
+  outcomeCount: number;
+  outcomeLabel: string;
+  followUpCount: number;
+};
+
+const combinedOutcomePercent = (count: number, total: number) => total === 0 ? "—" : `${Math.round((count / total) * 100)}%`;
+
+function hasRoadmapFollowUp(lead: { status: string; notes?: string | null; notesUpdatedAt?: Date | string | null; sentToAgentAt?: Date | string | null }) {
+  return Boolean(lead.notes?.trim() || lead.notesUpdatedAt || lead.sentToAgentAt || lead.status !== "new");
+}
+
+function hasChatFollowUp(lead: { notes?: string | null; recipientEmailStatus?: string | null; buyerAgentRequest?: number; buyerAgentRequestedAt?: Date | string | null }) {
+  return Boolean(lead.notes?.trim() || lead.recipientEmailStatus === "sent" || lead.recipientEmailStatus === "manual_follow_up" || lead.buyerAgentRequest === 1 || lead.buyerAgentRequestedAt);
+}
+
 
 const STATUS_META: Record<LeadStatus, { label: string; className: string }> = {
   new: { label: "New", className: "bg-accent/15 text-accent-foreground border-accent/40" },
@@ -526,6 +560,24 @@ function LeadAgentCell({
   );
 }
 
+function LeadViewContextBanner({ context, onViewAll }: { context: Exclude<LeadViewContext, "all">; onViewAll: () => void }) {
+  const label = context === "chat" ? "Viewing Chat Intakes" : "Viewing Roadmap leads";
+  const description = context === "chat" ? "The Mortgage Chat source selected from the combined lead mix." : "The Roadmap source selected from the combined lead mix.";
+  return <div role="status" aria-live="polite" className="mb-4 flex flex-col gap-2 rounded-lg border border-primary/20 bg-primary/[0.05] px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between"><div><span className="font-semibold text-primary">{label}</span><span className="ml-2 text-muted-foreground">{description}</span></div><Button type="button" variant="outline" size="sm" className="h-8 shrink-0" onClick={onViewAll}>View all captured leads</Button></div>;
+}
+
+function CombinedAllLeadsPanel({ rows, comparison, range, onRangeChange }: { rows: CombinedLeadRow[]; comparison: CombinedOutcomeStat[]; range: PropertyActivityRange; onRangeChange: (range: PropertyActivityRange) => void }) {
+  return <section id="all-leads" className="scroll-mt-24 rounded-xl border border-border bg-card p-5 shadow-sm">
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div><h2 className="flex items-center gap-2 font-display text-2xl font-semibold text-foreground"><Inbox className="h-6 w-6 text-primary" /> All captured leads</h2><p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">Mortgage Chat and Roadmap records in one read-only view. Each row keeps its original source so totals remain auditable.</p></div>
+      <div className="flex items-center gap-2"><label htmlFor="combined-leads-range" className="text-xs font-semibold text-muted-foreground">Date range</label><Select value={range} onValueChange={(value) => onRangeChange(value as PropertyActivityRange)}><SelectTrigger id="combined-leads-range" className="h-9 w-[170px] bg-background text-xs" aria-label="Filter combined leads by date range"><SelectValue /></SelectTrigger><SelectContent>{PROPERTY_ACTIVITY_RANGES.map((value) => <SelectItem key={value} value={value}>{PROPERTY_ACTIVITY_RANGE_LABELS[value]}</SelectItem>)}</SelectContent></Select></div>
+    </div>
+    <div className="mt-5 grid gap-3 md:grid-cols-2"><div className="rounded-lg border border-border bg-background p-3"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Combined captured</p><p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{rows.length}</p><p className="mt-1 text-xs text-muted-foreground">{comparison[0]?.captured ?? 0} Roadmap + {comparison[1]?.captured ?? 0} Mortgage Chat</p></div><div className="rounded-lg border border-border bg-background p-3"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Outcome comparison</p><p className="mt-1 text-sm text-foreground">Roadmap booked: <strong>{comparison[0]?.outcomeCount ?? 0}</strong> ({combinedOutcomePercent(comparison[0]?.outcomeCount ?? 0, comparison[0]?.captured ?? 0)}) · Chat qualified: <strong>{comparison[1]?.outcomeCount ?? 0}</strong> ({combinedOutcomePercent(comparison[1]?.outcomeCount ?? 0, comparison[1]?.captured ?? 0)})</p><p className="mt-1 text-xs text-muted-foreground">Follow-up recorded: {comparison[0]?.followUpCount ?? 0} Roadmap · {comparison[1]?.followUpCount ?? 0} Mortgage Chat</p></div></div>
+    <div className="mt-5 overflow-x-auto rounded-lg border border-border"><table className="w-full min-w-[760px] text-sm"><thead><tr className="border-b border-border bg-muted/70 text-left text-xs text-muted-foreground"><th className="px-4 py-3 font-semibold">Source</th><th className="px-4 py-3 font-semibold">Lead</th><th className="px-4 py-3 font-semibold">Contact</th><th className="px-4 py-3 font-semibold">Outcome</th><th className="px-4 py-3 font-semibold">Follow-up</th><th className="px-4 py-3 font-semibold">Submitted</th></tr></thead><tbody>{rows.length === 0 ? <tr><td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">No captured leads in this date range.</td></tr> : rows.map((row) => <tr key={row.id} className="border-b border-border/60 last:border-0 hover:bg-muted/30"><td className="px-4 py-3"><span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${row.source === "Mortgage Chat" ? "bg-emerald-600/10 text-emerald-700" : "bg-primary/10 text-primary"}`}>{row.source}</span><div className="mt-1 text-[10px] text-muted-foreground">{captureDeviceLabel(row.captureDevice)}</div></td><td className="px-4 py-3 font-medium text-foreground">{row.name}</td><td className="px-4 py-3 text-xs text-muted-foreground"><div>{row.email ?? "—"}</div><div>{row.phone ?? "—"}</div></td><td className="px-4 py-3"><span className="font-medium text-foreground">{row.status}</span></td><td className="px-4 py-3 text-xs"><span className={row.followUpRecorded ? "font-semibold text-emerald-700" : "text-muted-foreground"}>{row.followUpLabel}</span></td><td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">{new Date(row.submittedAt).toLocaleString()}</td></tr>)}</tbody></table></div>
+    <div className="mt-3 grid gap-1 text-[11px] leading-4 text-muted-foreground"><p><strong className="text-foreground">Outcome definitions:</strong> Roadmap uses <span className="font-medium text-foreground">Booked</span>; Mortgage Chat uses <span className="font-medium text-foreground">Qualified</span>, matching each existing workflow’s native status.</p><p><strong className="text-foreground">Follow-up recorded:</strong> Roadmap notes, status progression, or agent referral; Mortgage Chat notes, recipient delivery, or buyer-agent request.</p></div>
+  </section>;
+}
+
 export default function Leads() {
   const [dashboardDarkMode, setDashboardDarkMode] = useState(() => localStorage.getItem("dashboard-theme") === "dark");
   useEffect(() => { localStorage.setItem("dashboard-theme", dashboardDarkMode ? "dark" : "light"); }, [dashboardDarkMode]);
@@ -543,6 +595,8 @@ export default function Leads() {
   const [propertySourceFilter, setPropertySourceFilter] = useState<"all" | "single-property">("all");
   const [propertyAddressFilter, setPropertyAddressFilter] = useState("all");
   const [activityRange, setActivityRange] = useState<PropertyActivityRange>("all");
+  const [combinedRange, setCombinedRange] = useState<PropertyActivityRange>("all");
+  const [leadViewContext, setLeadViewContext] = useState<LeadViewContext>("all");
   const [workdaySidebarCollapsed, setWorkdaySidebarCollapsed] = useState(false);
 
   const leadsQuery = trpc.leads.list.useQuery({ activityRange }, {
@@ -551,6 +605,10 @@ export default function Leads() {
   });
 
   const agentsQuery = trpc.agent.list.useQuery(undefined, {
+    enabled: isAuthenticated && isAdmin,
+    retry: false,
+  });
+  const combinedChatQuery = trpc.chat.list.useQuery({ activityRange: "all" }, {
     enabled: isAuthenticated && isAdmin,
     retry: false,
   });
@@ -616,6 +674,53 @@ export default function Leads() {
   }, [leads, search, statusFilter, loanOfficerFilter, agentFilter, campaignFilter, sourceFilter, contactMethodFilter, propertySourceFilter, propertyAddressFilter]);
 
   const isFiltered = search.trim() !== "" || statusFilter !== "all" || loanOfficerFilter !== "all" || agentFilter !== "all" || campaignFilter !== "all" || sourceFilter !== "all" || contactMethodFilter !== "all" || propertySourceFilter !== "all" || propertyAddressFilter !== "all";
+
+  const combinedRows = useMemo<CombinedLeadRow[]>(() => {
+    const since = getPropertyActivitySince(combinedRange);
+    const inRange = (value: Date | string) => !since || new Date(value).getTime() >= since.getTime();
+    const roadmapRows: CombinedLeadRow[] = leads.filter((lead) => inRange(lead.createdAt)).map((lead) => {
+      const followUpRecorded = hasRoadmapFollowUp(lead);
+      return {
+        id: `roadmap-${lead.id}`,
+        name: lead.firstName || "Unnamed Roadmap lead",
+        email: lead.email || null,
+        phone: lead.phone || null,
+        source: "Roadmap",
+        status: STATUS_META[lead.status as LeadStatus]?.label ?? lead.status,
+        followUpRecorded,
+        followUpLabel: followUpRecorded ? "Recorded" : "Not recorded",
+        submittedAt: lead.createdAt,
+        captureDevice: lead.captureDevice,
+        destination: "roadmap",
+      };
+    });
+    const chatRows: CombinedLeadRow[] = (combinedChatQuery.data ?? []).filter((lead) => inRange(lead.createdAt)).map((lead) => {
+      const followUpRecorded = hasChatFollowUp(lead);
+      return {
+        id: `chat-${lead.id}`,
+        name: lead.fullName || "Unnamed Mortgage Chat lead",
+        email: lead.email || null,
+        phone: lead.phone || null,
+        source: "Mortgage Chat",
+        status: lead.status === "qualified" ? "Qualified" : "Incomplete",
+        followUpRecorded,
+        followUpLabel: followUpRecorded ? "Recorded" : "Not recorded",
+        submittedAt: lead.createdAt,
+        captureDevice: lead.captureDevice,
+        destination: "chat",
+      };
+    });
+    return [...roadmapRows, ...chatRows].sort((left, right) => new Date(right.submittedAt).getTime() - new Date(left.submittedAt).getTime());
+  }, [combinedChatQuery.data, combinedRange, leads]);
+
+  const combinedComparison = useMemo<CombinedOutcomeStat[]>(() => {
+    const roadmap = combinedRows.filter((row) => row.source === "Roadmap");
+    const chat = combinedRows.filter((row) => row.source === "Mortgage Chat");
+    return [
+      { source: "Roadmap", captured: roadmap.length, outcomeCount: roadmap.filter((row) => row.status === "Booked").length, outcomeLabel: "Booked", followUpCount: roadmap.filter((row) => row.followUpRecorded).length },
+      { source: "Mortgage Chat", captured: chat.length, outcomeCount: chat.filter((row) => row.status === "Qualified").length, outcomeLabel: "Qualified", followUpCount: chat.filter((row) => row.followUpRecorded).length },
+    ];
+  }, [combinedRows]);
 
   const utils = trpc.useUtils();
   const updateStatus = trpc.leads.updateStatus.useMutation({
@@ -763,12 +868,14 @@ export default function Leads() {
           <>
           <ExecutiveCommandCenter leads={leads.map((lead) => ({ id: lead.id, firstName: lead.firstName, email: lead.email, status: lead.status, source: lead.source, createdAt: lead.createdAt, captureDevice: lead.captureDevice }))} />
           <div className={`grid min-w-0 gap-6 transition-[grid-template-columns] duration-200 ease-out motion-reduce:transition-none ${workdaySidebarCollapsed ? "lg:grid-cols-[3.5rem_minmax(0,1fr)]" : "lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]"}`}>
-           <DashboardWorkdaySidebar collapsed={workdaySidebarCollapsed} onCollapsedChange={setWorkdaySidebarCollapsed} records={leads.slice(0, 10).map((lead) => ({ label: `Roadmap lead #${lead.id}`, status: lead.status, meta: `${lead.source} · ${new Date(lead.createdAt).toLocaleDateString()}` }))} onLeadSourceSelect={(source) => { if (source === "Mortgage Chat") { setSourceFilter("all"); document.getElementById("chat-intakes")?.scrollIntoView({ behavior: "smooth", block: "start" }); return; } setSourceFilter(source === "all" || source === "Roadmap" ? "all" : source); document.getElementById("roadmap-leads")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
+           <DashboardWorkdaySidebar collapsed={workdaySidebarCollapsed} onCollapsedChange={setWorkdaySidebarCollapsed} records={leads.slice(0, 10).map((lead) => ({ label: `Roadmap lead #${lead.id}`, status: lead.status, meta: `${lead.source} · ${new Date(lead.createdAt).toLocaleDateString()}` }))} onLeadSourceSelect={(source) => { if (source === "all") { setSourceFilter("all"); setLeadViewContext("all"); document.getElementById("all-leads")?.scrollIntoView({ behavior: "smooth", block: "start" }); return; } if (source === "Mortgage Chat") { setSourceFilter("all"); setLeadViewContext("chat"); document.getElementById("chat-intakes")?.scrollIntoView({ behavior: "smooth", block: "start" }); return; } setSourceFilter(source === "Roadmap" ? "all" : source); setLeadViewContext("roadmap"); document.getElementById("roadmap-leads")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
            <div className="min-w-0">
+           <CombinedAllLeadsPanel rows={combinedRows} comparison={combinedComparison} range={combinedRange} onRangeChange={setCombinedRange} />
            <CampaignFunnelSummary />
             <PlatformLeadInbox />
             <PropertyEngagementSummary />
            <section id="roadmap-leads" className="scroll-mt-24">
+            {leadViewContext === "roadmap" && <LeadViewContextBanner context="roadmap" onViewAll={() => { setLeadViewContext("all"); document.getElementById("all-leads")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />}
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
               <div>
                 <h1 className="font-display font-semibold text-3xl text-foreground flex items-center gap-3">
@@ -1070,7 +1177,7 @@ export default function Leads() {
             <div id="co-marketing-agents" className="scroll-mt-24"><AgentSettings /></div>
             <div id="loan-officers" className="scroll-mt-24"><LoanOfficerSettings /><TeamWorkspaceManagement /><BackupManagementPanel /><AdvertisingIntegrationSettings /></div>
             <div id="texting-workspace" className="scroll-mt-24"><TextingWorkspace /></div>
-            <div id="chat-intakes" className="scroll-mt-24"><ChatIntakeLeads /></div>
+            <div id="chat-intakes" className="scroll-mt-24">{leadViewContext === "chat" && <LeadViewContextBanner context="chat" onViewAll={() => { setLeadViewContext("all"); document.getElementById("all-leads")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />}<ChatIntakeLeads /></div>
             <div id="saved-qualifying-listings" className="scroll-mt-24"><GeoSphereListings /></div>
             <div id="pairing-spend-tracker" className="scroll-mt-24"><PairingSpendTracker /></div>
           </section>

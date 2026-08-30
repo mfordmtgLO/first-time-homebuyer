@@ -1169,3 +1169,11 @@
 - [x] Label the Browser Lead Mix as a combined Roadmap plus Mortgage Chat population with explicit totals
 - [x] Add regression coverage and verify the source-click behavior at desktop and mobile widths
 - [x] Save and publish the source-aware filtering release
+
+## Combined all-leads analytics view
+- [x] Audit the existing Roadmap and Mortgage Chat record shapes and outcome/status fields
+- [x] Add a combined all-leads table with clear Mortgage Chat and Roadmap source labels
+- [x] Add date-range comparison metrics for conversion and follow-up outcomes
+- [x] Add visible Viewing Chat Intakes / Viewing Roadmap leads context banners after source navigation
+- [x] Add regression coverage and verify the combined view at desktop and mobile widths
+- [x] Save and publish the combined all-leads analytics release

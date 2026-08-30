@@ -77,4 +77,17 @@ describe("dashboard layout preferences", () => {
     expect(leadsSource).toContain('source === "Roadmap" ? "all" : source');
     expect(leadsSource).toContain('document.getElementById("roadmap-leads")');
   });
+
+  it("provides a combined all-leads table with date-range outcome comparison and context banners", () => {
+    const leadsSource = readFileSync(resolve(process.cwd(), "client/src/pages/Leads.tsx"), "utf8");
+    expect(leadsSource).toContain('function CombinedAllLeadsPanel');
+    expect(leadsSource).toContain('id="all-leads"');
+    expect(leadsSource).toContain('id="combined-leads-range"');
+    expect(leadsSource).toContain('Roadmap booked:');
+    expect(leadsSource).toContain('Chat qualified:');
+    expect(leadsSource).toContain('Follow-up recorded:');
+    expect(leadsSource).toContain('Viewing Chat Intakes');
+    expect(leadsSource).toContain('Viewing Roadmap leads');
+    expect(leadsSource).toContain('<CombinedAllLeadsPanel rows={combinedRows} comparison={combinedComparison} range={combinedRange} onRangeChange={setCombinedRange} />');
+  });
 });
