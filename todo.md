@@ -1147,3 +1147,10 @@
 - [x] Preserve fit, responsive behavior, accessibility, and all existing dashboard features
 - [x] Add regression coverage and verify collapsed/expanded desktop layouts
 - [x] Save and publish the coordinated sizing release
+
+## Browser Lead Mix compact sidebar start
+- [x] Audit the Browser Lead Mix default expansion state and workday sidebar scroll container
+- [x] Start Browser Lead Mix in the most compact view while retaining access to its timeframe control
+- [x] Preserve the pinned steps 1–4 and all sidebar sections in the full vertical scroll area
+- [x] Add regression coverage and verify the sidebar at desktop and mobile widths
+- [x] Save and publish the Browser Lead Mix compact-start release

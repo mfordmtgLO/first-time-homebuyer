@@ -53,4 +53,15 @@ describe("dashboard layout preferences", () => {
     expect(leadsSource).toContain('transition-[grid-template-columns]');
     expect(leadsSource).toContain('collapsed={workdaySidebarCollapsed} onCollapsedChange={setWorkdaySidebarCollapsed}');
   });
+
+  it("starts Browser Lead Mix compact while preserving its detail controls", () => {
+    const toolsSource = readFileSync(resolve(process.cwd(), "client/src/components/DashboardBrowserTools.tsx"), "utf8");
+    const sidebarSource = readFileSync(resolve(process.cwd(), "client/src/components/DashboardWorkdaySidebar.tsx"), "utf8");
+    expect(toolsSource).toContain('const [open, setOpen] = useState(false);');
+    expect(toolsSource).toContain('aria-controls="browser-lead-mix-details"');
+    expect(toolsSource).toContain('aria-expanded={open}');
+    expect(toolsSource).toContain('id="browser-lead-mix-details"');
+    expect(toolsSource).toContain('id="browser-lead-timeframe"');
+    expect(sidebarSource).toContain('Pinned daily route');
+  });
 });
