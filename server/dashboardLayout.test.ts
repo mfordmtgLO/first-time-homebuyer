@@ -40,4 +40,17 @@ describe("dashboard layout preferences", () => {
     expect(componentSource).toContain("Optimize layout with AI");
     expect(componentSource).toContain("AI layout note:");
   });
+
+  it("coordinates the live workday sidebar width with the flexing main workspace", () => {
+    const sidebarSource = readFileSync(resolve(process.cwd(), "client/src/components/DashboardWorkdaySidebar.tsx"), "utf8");
+    const leadsSource = readFileSync(resolve(process.cwd(), "client/src/pages/Leads.tsx"), "utf8");
+    expect(sidebarSource).toContain("onCollapsedChange?: (collapsed: boolean) => void");
+    expect(sidebarSource).toContain("collapsed: collapsedProp");
+    expect(sidebarSource).toContain('aria-label={collapsed ? "Expand workday sidebar" : "Collapse workday sidebar"}');
+    expect(leadsSource).toContain("workdaySidebarCollapsed");
+    expect(leadsSource).toContain('lg:grid-cols-[3.5rem_minmax(0,1fr)]');
+    expect(leadsSource).toContain('lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]');
+    expect(leadsSource).toContain('transition-[grid-template-columns]');
+    expect(leadsSource).toContain('collapsed={workdaySidebarCollapsed} onCollapsedChange={setWorkdaySidebarCollapsed}');
+  });
 });

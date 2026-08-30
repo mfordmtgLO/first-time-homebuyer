@@ -543,6 +543,7 @@ export default function Leads() {
   const [propertySourceFilter, setPropertySourceFilter] = useState<"all" | "single-property">("all");
   const [propertyAddressFilter, setPropertyAddressFilter] = useState("all");
   const [activityRange, setActivityRange] = useState<PropertyActivityRange>("all");
+  const [workdaySidebarCollapsed, setWorkdaySidebarCollapsed] = useState(false);
 
   const leadsQuery = trpc.leads.list.useQuery({ activityRange }, {
     enabled: isAuthenticated && isAdmin,
@@ -761,8 +762,8 @@ export default function Leads() {
         ) : (
           <>
           <ExecutiveCommandCenter leads={leads.map((lead) => ({ id: lead.id, firstName: lead.firstName, email: lead.email, status: lead.status, source: lead.source, createdAt: lead.createdAt, captureDevice: lead.captureDevice }))} />
-          <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
-           <DashboardWorkdaySidebar records={leads.slice(0, 10).map((lead) => ({ label: `Roadmap lead #${lead.id}`, status: lead.status, meta: `${lead.source} · ${new Date(lead.createdAt).toLocaleDateString()}` }))} onLeadSourceSelect={(source) => { setSourceFilter(source === "all" ? "all" : source); document.getElementById("roadmap-leads")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
+          <div className={`grid min-w-0 gap-6 transition-[grid-template-columns] duration-200 ease-out motion-reduce:transition-none ${workdaySidebarCollapsed ? "lg:grid-cols-[3.5rem_minmax(0,1fr)]" : "lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]"}`}>
+           <DashboardWorkdaySidebar collapsed={workdaySidebarCollapsed} onCollapsedChange={setWorkdaySidebarCollapsed} records={leads.slice(0, 10).map((lead) => ({ label: `Roadmap lead #${lead.id}`, status: lead.status, meta: `${lead.source} · ${new Date(lead.createdAt).toLocaleDateString()}` }))} onLeadSourceSelect={(source) => { setSourceFilter(source === "all" ? "all" : source); document.getElementById("roadmap-leads")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
            <div className="min-w-0">
            <CampaignFunnelSummary />
             <PlatformLeadInbox />

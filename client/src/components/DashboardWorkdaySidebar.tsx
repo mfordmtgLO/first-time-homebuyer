@@ -11,6 +11,13 @@ import { BrowserLeadTracker, DashboardAffordabilityEstimator, type SavedMortgage
 type WorkflowRecord = { label: string; status: string; meta: string };
 type SavedMortgageQuote = SavedMortgageQuoteRecord;
 
+type DashboardWorkdaySidebarProps = {
+  records: WorkflowRecord[];
+  onLeadSourceSelect?: (source: string) => void;
+  collapsed?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
+};
+
 type WorkflowSection = {
   id: "campaign-funnel" | "platform-leads" | "roadmap-leads" | "co-marketing-agents" | "loan-officers" | "texting-workspace" | "chat-intakes" | "saved-qualifying-listings" | "pairing-spend-tracker";
   label: string;
@@ -135,8 +142,13 @@ function DashboardPaymentEstimator({ onQuoteLoaded }: { onQuoteLoaded?: (quote: 
   </section>;
 }
 
-export function DashboardWorkdaySidebar({ records, onLeadSourceSelect }: { records: WorkflowRecord[]; onLeadSourceSelect?: (source: string) => void }) {
-  const [collapsed, setCollapsed] = useState(false);
+export function DashboardWorkdaySidebar({ records, onLeadSourceSelect, collapsed: collapsedProp, onCollapsedChange }: DashboardWorkdaySidebarProps) {
+  const [internalCollapsed, setInternalCollapsed] = useState(false);
+  const collapsed = collapsedProp ?? internalCollapsed;
+  const setCollapsed = (next: boolean) => {
+    if (collapsedProp === undefined) setInternalCollapsed(next);
+    onCollapsedChange?.(next);
+  };
   const [openSectionId, setOpenSectionId] = useState<string>("campaign-funnel");
   const [quoteToLoad, setQuoteToLoad] = useState<SavedMortgageQuote | null>(null);
   const [reviewSection, setReviewSection] = useState<WorkflowSection | null>(null);
@@ -156,7 +168,7 @@ export function DashboardWorkdaySidebar({ records, onLeadSourceSelect }: { recor
     <aside className={`sticky top-20 z-30 h-[calc(100vh-6.25rem)] shrink-0 self-start overflow-hidden rounded-2xl border border-primary/20 bg-card/95 shadow-sm backdrop-blur transition-[width] duration-200 ${collapsed ? "w-14" : "w-full lg:w-80"}`} aria-label="Daily workday workflow">
       <div className="flex h-14 items-center justify-between border-b border-border px-3">
         {!collapsed && <div className="flex min-w-0 items-center gap-2"><Workflow className="h-4 w-4 shrink-0 text-primary" /><span className="truncate text-sm font-semibold">Daily workday flow</span></div>}
-        <Button variant="ghost" size="icon" className="ml-auto h-8 w-8" onClick={() => setCollapsed((value) => !value)} aria-label={collapsed ? "Expand workday sidebar" : "Collapse workday sidebar"}>{collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}</Button>
+        <Button variant="ghost" size="icon" className="ml-auto h-8 w-8" onClick={() => setCollapsed(!collapsed)} aria-label={collapsed ? "Expand workday sidebar" : "Collapse workday sidebar"}>{collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}</Button>
       </div>
 
       {collapsed ? <div className="flex flex-col items-center gap-3 py-4">{SECTIONS.slice(0, 7).map((section) => { const Icon = section.icon; return <button key={section.id} type="button" className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" title={section.label} onClick={() => { setCollapsed(false); setOpenSectionId(section.id); }}><Icon className="h-4 w-4" /></button>; })}</div> : <div className="h-[calc(100%-3.5rem)] overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">

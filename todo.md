@@ -1140,3 +1140,10 @@
 - [x] Add smooth reduced-motion-safe transitions for widget reordering and layout reset states
 - [x] Add regression coverage and verify the desktop/mobile dashboard presentation
 - [x] Save and publish the optimizer interaction polish release
+
+## Coordinated dashboard sidebar/workspace sizing
+- [x] Audit the dashboard shell’s sidebar collapse and main workspace width behavior
+- [x] Make the main workspace expand when the sidebar collapses and shrink when it expands
+- [x] Preserve fit, responsive behavior, accessibility, and all existing dashboard features
+- [x] Add regression coverage and verify collapsed/expanded desktop layouts
+- [x] Save and publish the coordinated sizing release
