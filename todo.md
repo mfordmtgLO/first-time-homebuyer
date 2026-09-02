@@ -1248,3 +1248,20 @@
 - [x] Add a Clear Filter button beside the pie chart
 - [x] Add regression coverage and verify the summary at desktop/mobile widths
 - [x] Save and publish the active-filter clarity release
+
+## Mortgage CRM advanced enhancement blueprint
+- [x] Define actionable implementation sprints, dependencies, owners, and acceptance gates
+- [x] Map current dashboard capabilities to predictive lead scoring and automated SMS/email trigger requirements
+- [x] Define explainable, reviewable predictive scoring architecture without autonomous qualification or approval
+- [x] Define consent-gated event-triggered SMS/email architecture with idempotency, retries, quiet hours, opt-out, and human approval controls
+- [x] Define security, privacy, SOC 2, GLBA, TCPA/CAN-SPAM, and mortgage fair-lending control requirements with authoritative references
+- [x] Produce rollout, monitoring, rollback, and incident-response safeguards
+- [x] Deliver the sprint roadmap and backend architecture/compliance blueprint
+
+## Private development access gate
+- [x] Audit public routes, authentication state, and existing invite/account data model
+- [x] Put the public first-time-homebuyer pages behind an invite-accepted login gate
+- [x] Preserve authenticated dashboard routes and existing lead-capture workflows
+- [x] Add admin-controlled invite creation, acceptance, and revocation flow
+- [x] Add regression coverage for unauthenticated, pending-invite, accepted-invite, and dashboard access
+- [x] Verify public URLs cannot bypass the gate and save/publish the private-development release

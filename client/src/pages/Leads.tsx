@@ -22,6 +22,7 @@ import { TeamTemplateSubmissionPanel } from "@/components/TeamTemplateSubmission
 import { TeamMemberProvisioningStatus } from "@/components/TeamWorkspaceProvisioning";
 import BackupManagementPanel from "@/components/BackupManagementPanel";
 import AdvertisingIntegrationSettings from "@/components/AdvertisingIntegrationSettings";
+import PublicSiteInviteManager from "@/components/PublicSiteInviteManager";
 import {
   buildLeadWelcomeDraft,
   type LeadEmailAgent,
@@ -1309,7 +1310,7 @@ export default function Leads() {
             )}
 
             <div id="co-marketing-agents" className="scroll-mt-24"><AgentSettings /></div>
-            <div id="loan-officers" className="scroll-mt-24"><LoanOfficerSettings /><TeamWorkspaceManagement /><BackupManagementPanel /><AdvertisingIntegrationSettings /></div>
+            <div id="loan-officers" className="scroll-mt-24"><LoanOfficerSettings /><TeamWorkspaceManagement /><PublicSiteInviteManager /><BackupManagementPanel /><AdvertisingIntegrationSettings /></div>
             <div id="texting-workspace" className="scroll-mt-24"><TextingWorkspace /></div>
             <div id="chat-intakes" className="scroll-mt-24">{leadViewContext === "chat" && <LeadViewContextBanner context="chat" onViewAll={() => { setLeadViewContext("all"); document.getElementById("all-leads")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />}<ChatIntakeLeads /></div>
             <div id="saved-qualifying-listings" className="scroll-mt-24"><GeoSphereListings /></div>

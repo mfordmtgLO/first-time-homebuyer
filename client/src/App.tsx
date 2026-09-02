@@ -9,16 +9,33 @@ import AgentHome from "./pages/AgentHome";
 import LoanOfficerHome from "./pages/LoanOfficerHome";
 import PropertyLandingPage from "./pages/PropertyLandingPage";
 import Leads from "./pages/Leads";
+import PublicSiteAccessGate from "./components/PublicSiteAccessGate";
+
+function PrivateHome() {
+  return <PublicSiteAccessGate><Home /></PublicSiteAccessGate>;
+}
+
+function PrivateAgentHome() {
+  return <PublicSiteAccessGate><AgentHome /></PublicSiteAccessGate>;
+}
+
+function PrivateLoanOfficerHome() {
+  return <PublicSiteAccessGate><LoanOfficerHome /></PublicSiteAccessGate>;
+}
+
+function PrivatePropertyLandingPage() {
+  return <PublicSiteAccessGate><PropertyLandingPage /></PublicSiteAccessGate>;
+}
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
-      <Route path={"/"}>{() => <Home />}</Route>
-      <Route path={"/loan-officer/:loanOfficerSlug"} component={LoanOfficerHome} />
-      <Route path={"/with/:loanOfficerSlug/:agentSlug"} component={AgentHome} />
-      <Route path={"/with/:slug"} component={AgentHome} />
-      <Route path={"/property/:slug"} component={PropertyLandingPage} />
+      <Route path={"/"} component={PrivateHome} />
+      <Route path={"/loan-officer/:loanOfficerSlug"} component={PrivateLoanOfficerHome} />
+      <Route path={"/with/:loanOfficerSlug/:agentSlug"} component={PrivateAgentHome} />
+      <Route path={"/with/:slug"} component={PrivateAgentHome} />
+      <Route path={"/property/:slug"} component={PrivatePropertyLandingPage} />
       <Route path={"/leads"} component={Leads} />
       <Route path={"/admin/leads"} component={Leads} />
       <Route path={"/404"} component={NotFound} />

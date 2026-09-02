@@ -1,4 +1,5 @@
 import { COOKIE_NAME } from "@shared/const";
+import { createHash, randomBytes } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { PROPERTY_ACTIVITY_RANGES, getPropertyActivitySince } from "@shared/propertyActivity";
@@ -74,6 +75,12 @@ import {
   saveAdvertisingIntegrationChecklistReminder,
   resetAdvertisingIntegrationChecklist,
   createTeamLoanOfficerWorkspace,
+  createPublicSiteInvite,
+  listPublicSiteInvites,
+  getPublicSiteInviteByTokenHash,
+  getLatestPublicSiteInviteForEmail,
+  acceptPublicSiteInvite,
+  revokePublicSiteInvite,
   prepareTeamLoanOfficerWorkspace,
   createTeamTemplateLibraryEntry,
   createTeamTemplateSubmission,
@@ -2795,6 +2802,72 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         requireAdmin(ctx.user.role);
         return saveAdvertisingIntegrationSetting({ ...input, ownerUserId: ctx.user.id });
+      }),
+  }),
+
+  publicSiteAccess: router({
+    status: protectedProcedure
+      .input(z.object({ token: z.string().trim().min(32).max(128).optional() }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role === "admin") return { access: "admin" as const };
+        const email = ctx.user.email?.trim().toLowerCase();
+        if (!email) return { access: "none" as const };
+        const invite = input.token
+          ? await getPublicSiteInviteByTokenHash(createHash("sha256").update(input.token).digest("hex"))
+          : await getLatestPublicSiteInviteForEmail(email);
+        if (!invite) return { access: "none" as const };
+        if (invite.invitedEmail !== email) return { access: "none" as const };
+        if (invite.status === "revoked") return { access: "revoked" as const };
+        if (invite.status === "accepted" && invite.memberUserId === ctx.user.id) return { access: "accepted" as const };
+        if (invite.status === "accepted") return { access: "none" as const };
+        if (invite.expiresAt.getTime() <= Date.now()) return { access: "expired" as const };
+        return { access: "pending" as const };
+      }),
+    accept: protectedProcedure
+      .input(z.object({ token: z.string().trim().min(32).max(128).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const email = ctx.user.email?.trim().toLowerCase();
+        if (!email) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Your signed-in account needs an email address to accept this invitation." });
+        const invite = input.token
+          ? await getPublicSiteInviteByTokenHash(createHash("sha256").update(input.token).digest("hex"))
+          : await getLatestPublicSiteInviteForEmail(email);
+        if (!invite || invite.invitedEmail !== email) throw new TRPCError({ code: "FORBIDDEN", message: "This invitation does not match the signed-in email address." });
+        if (invite.status === "revoked") throw new TRPCError({ code: "FORBIDDEN", message: "This website invitation has been revoked by the administrator." });
+        if (invite.status === "accepted" && invite.memberUserId === ctx.user.id) return { success: true } as const;
+        if (invite.status === "accepted") throw new TRPCError({ code: "FORBIDDEN", message: "This invitation has already been accepted by another account." });
+        if (invite.expiresAt.getTime() <= Date.now()) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This website invitation has expired. Ask the administrator for a new invitation." });
+        await acceptPublicSiteInvite({ id: invite.id, memberUserId: ctx.user.id });
+        return { success: true } as const;
+      }),
+    createInvite: protectedProcedure
+      .input(z.object({ invitedEmail: z.string().trim().toLowerCase().email(), expiresInDays: z.number().int().min(1).max(30).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const token = randomBytes(32).toString("hex");
+        const expiresAt = new Date(Date.now() + (input.expiresInDays ?? 7) * 24 * 60 * 60 * 1000);
+        const id = await createPublicSiteInvite({
+          ownerUserId: ctx.user.id,
+          invitedEmail: input.invitedEmail,
+          tokenHash: createHash("sha256").update(token).digest("hex"),
+          expiresAt,
+        });
+        return { id, token, expiresAt } as const;
+      }),
+    listInvites: protectedProcedure.query(async ({ ctx }) => {
+      requireAdmin(ctx.user.role);
+      const invites = await listPublicSiteInvites(ctx.user.id);
+      return invites.map((invite) => ({
+        ...invite,
+        statusLabel: invite.status === "accepted" ? "Accepted" : invite.status === "revoked" ? "Revoked" : invite.expiresAt.getTime() <= Date.now() ? "Expired" : "Pending",
+      }));
+    }),
+    revokeInvite: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        requireAdmin(ctx.user.role);
+        const affectedRows = await revokePublicSiteInvite({ ownerUserId: ctx.user.id, id: input.id });
+        if (!affectedRows) throw new TRPCError({ code: "NOT_FOUND", message: "That private-site invitation was not found." });
+        return { success: true } as const;
       }),
   }),
 

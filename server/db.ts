@@ -36,6 +36,7 @@ import {
   advertisingIntegrationModuleSetting,
   workflowAiReviewHistory,
   dashboardLayoutPreference,
+  publicSiteInvite,
   teamLoanOfficerWorkspace,
   teamTemplateLibrary,
   teamTemplateSubmission,
@@ -509,6 +510,79 @@ export async function activateTeamLoanOfficerWorkspace(input: { memberUserId: nu
   await db.update(teamLoanOfficerWorkspace).set({ memberUserId: input.memberUserId, status: "active" }).where(eq(teamLoanOfficerWorkspace.id, workspace.id));
   await setUserDashboardRole(input.memberUserId, "team_member");
   return workspace.id;
+}
+
+/**
+ * Private public-site invitations. Raw tokens never enter the database; only
+ * the SHA-256 hash is stored and the raw token is returned once to the admin.
+ */
+export async function createPublicSiteInvite(input: { ownerUserId: number; invitedEmail: string; tokenHash: string; expiresAt: Date }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const invitedEmail = input.invitedEmail.trim().toLowerCase();
+  const result = await db.insert(publicSiteInvite).values({
+    ownerUserId: input.ownerUserId,
+    invitedEmail,
+    tokenHash: input.tokenHash,
+    expiresAt: input.expiresAt,
+  });
+  return Number(result[0].insertId);
+}
+
+export async function listPublicSiteInvites(ownerUserId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .select({
+      id: publicSiteInvite.id,
+      invitedEmail: publicSiteInvite.invitedEmail,
+      status: publicSiteInvite.status,
+      expiresAt: publicSiteInvite.expiresAt,
+      acceptedAt: publicSiteInvite.acceptedAt,
+      createdAt: publicSiteInvite.createdAt,
+      memberUserId: publicSiteInvite.memberUserId,
+    })
+    .from(publicSiteInvite)
+    .where(eq(publicSiteInvite.ownerUserId, ownerUserId))
+    .orderBy(desc(publicSiteInvite.createdAt));
+}
+
+export async function getPublicSiteInviteByTokenHash(tokenHash: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db.select().from(publicSiteInvite).where(eq(publicSiteInvite.tokenHash, tokenHash)).limit(1);
+  return rows[0];
+}
+
+export async function getLatestPublicSiteInviteForEmail(invitedEmail: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db
+    .select()
+    .from(publicSiteInvite)
+    .where(eq(publicSiteInvite.invitedEmail, invitedEmail.trim().toLowerCase()))
+    .orderBy(desc(publicSiteInvite.createdAt))
+    .limit(1);
+  return rows[0];
+}
+
+export async function acceptPublicSiteInvite(input: { id: number; memberUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const now = new Date();
+  await db.update(publicSiteInvite).set({
+    status: "accepted",
+    memberUserId: input.memberUserId,
+    acceptedAt: now,
+  }).where(eq(publicSiteInvite.id, input.id));
+  return input.id;
+}
+
+export async function revokePublicSiteInvite(input: { ownerUserId: number; id: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.update(publicSiteInvite).set({ status: "revoked" }).where(and(eq(publicSiteInvite.id, input.id), eq(publicSiteInvite.ownerUserId, input.ownerUserId)));
+  return Number(result[0].affectedRows ?? 0);
 }
 
 export async function updateTeamLoanOfficerWorkspaceStatus(input: { adminUserId: number; id: number; status: "pending" | "active" | "suspended" }) {

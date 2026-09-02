@@ -26,6 +26,35 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
 /**
+ * Private-development invitations for the public first-time-homebuyer site.
+ * Only a SHA-256 token hash is persisted; the raw token is returned once when
+ * an administrator creates an invitation.
+ */
+export const publicSiteInvite = mysqlTable(
+  "public_site_invite",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerUserId: int("ownerUserId").notNull(),
+    invitedEmail: varchar("invitedEmail", { length: 320 }).notNull(),
+    tokenHash: varchar("tokenHash", { length: 128 }).notNull(),
+    memberUserId: int("memberUserId"),
+    status: mysqlEnum("status", ["pending", "accepted", "revoked"]).default("pending").notNull(),
+    expiresAt: timestamp("expiresAt").notNull(),
+    acceptedAt: timestamp("acceptedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("public_site_invite_token_hash_unique").on(table.tokenHash),
+    index("public_site_invite_owner_status_idx").on(table.ownerUserId, table.status),
+    index("public_site_invite_email_created_idx").on(table.invitedEmail, table.createdAt),
+  ]
+);
+
+export type PublicSiteInvite = typeof publicSiteInvite.$inferSelect;
+export type InsertPublicSiteInvite = typeof publicSiteInvite.$inferInsert;
+
+/**
  * Roadmap lead capture — stores submissions from the landing page lead form.
  */
 export const leads = mysqlTable("leads", {
